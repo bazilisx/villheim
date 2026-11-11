@@ -283,9 +283,9 @@ const TYPES = {
 // sides; part: a round hall with a flat front, the open chunk a forecourt. Weights per village. lab/hub_lines.js measures
 // and prints these: a culture whose other buildings at s3 are crossFrom (0.7) or more long or branched (L, T, U,
 // cross) takes the cross; the rest the round family (see that file for the rule).
-// capH: the tallest other building of the culture at s3 in the lab, leaving out the watchtower (lab/hub_lines.js), and
-// capStoreys: how many storeys of storeyH a hub may stand over it. The lab builds other types to s3 only; the value in
-// use is 2 (one storey for the hub rule at s5, one for the other buildings' growth from s3 to s5, D-138).
+// capStoreys: how many storeys of storeyH a hub may stand over the culture's other buildings (D-156, Tyler 2026-11-11: the
+// storey limit does not limit roofs or crowns; "Roofs can be taller depending on the design, and that's okay. It should
+// not be cut off").
 // stoneFrom: the stage from which a Meadows or Black Forest hub stands on a stone course (D-012: stone for advanced
 // buildings and later stages); 's6' keeps them in wood throughout.
 const HUB = {
@@ -295,8 +295,6 @@ const HUB = {
     'celtic': { round: 3, part: 1 }, 'slavic': { octagon: 3, part: 1 }, 'celtic-crannog': { round: 3, part: 1 }, 'baltic': { octagon: 3, part: 1 },
     'fen-folk': { octagon: 3, part: 1 }, 'norse-highland': { octagon: 3, part: 1 }, 'saami': { round: 3, part: 1 }, 'byzantine': { octagon: 3, part: 1 },
     'steppe': { round: 3, part: 1 }, [ID.lamari]: { cross: 1 }, 'middle-eastern': { part: 3, octagon: 1 } },
-  capH: { 'norse': 10.2, 'anglo-saxon': 10.2, 'frankish-norman': 11.2, 'norse-forest': 11.2, 'celtic': 9, 'slavic': 12.2, 'celtic-crannog': 9.6,
-    'baltic': 11.2, 'fen-folk': 12.2, 'norse-highland': 8.2, 'saami': 11, 'byzantine': 10, 'steppe': 6.2, [ID.lamari]: 16.7, 'middle-eastern': 11 },
   capStoreys: 2, storeyH: 3,
 };
 

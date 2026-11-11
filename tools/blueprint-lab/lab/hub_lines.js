@@ -3,7 +3,8 @@
 // in the culture's first biome and reads each plan from its pieces: round (walls turned off the square: octagons, rings, yurts), long (an
 // orthogonal plan 1.5 or more times as long as it is wide), branched (an orthogonal plan filling under 85 % of its
 // bounding box: L, T, U, cross) or compact (the rest). Prints the shares per culture, the lines the rule below gives
-// (as lib/styles.js HUB.lines holds them) and the tallest other building at s3 leaving out the watchtower (HUB.capH).
+// (as lib/styles.js HUB.lines holds them) and the tallest other building at s3 leaving out the watchtower (for the
+// record; D-156: no height cap).
 // The rule (D-137, Tyler 2026-11-11: round, part round or octagonal "for most, and cross-shape for those that are more
 // strongly rectangular or l-shaped structures throughout the rest of the settlement"): long and branched plans together
 // HUB.crossFrom (0.7) or more of the culture's buildings: cross. Else the round family: a culture with round buildings of
@@ -54,5 +55,5 @@ for (const [key, C] of Object.entries(S.CULTURES)) {
 }
 console.log('culture            biome         round  long  branched  compact  long+br  line                       tallest other (not tower)');
 for (const r of rows) console.log(`${r.key.padEnd(18)} ${r.biome.padEnd(13)} ${String(r.round).padStart(5)} ${String(r.long).padStart(5)} ${String(r.branched).padStart(9)} ${String(r.compact).padStart(8)} ${String(r.lb).padStart(8)}  ${r.line.padEnd(26)} ${r.tall.type} ${r.tall.top} m`);
-const same = rows.every(r => JSON.stringify(S.HUB.lines[r.key]) === r.line && (S.HUB.capH || {})[r.key] === r.tall.top);
-console.log(same ? '\nstyles.js HUB.lines and HUB.capH match' : `\nstyles.js HUB differs; measured:\nlines: ${JSON.stringify(lines)}\ncapH: ${JSON.stringify(Object.fromEntries(rows.map(r => [r.key, r.tall.top])))}`);
+const same = rows.every(r => JSON.stringify(S.HUB.lines[r.key]) === r.line);
+console.log(same ? '\nstyles.js HUB.lines match' : `\nstyles.js HUB.lines differs; measured:\nlines: ${JSON.stringify(lines)}`);

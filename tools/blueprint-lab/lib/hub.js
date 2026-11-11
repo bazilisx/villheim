@@ -27,8 +27,9 @@
 // blueprint, line 'seat;x;y;z;yaw' (the high seat or, before there is one, the seat the leader takes by the fire), and
 // from s3 a line 'spouse;x;y;z;yaw' for the seat beside it. Empty item stands wait for the village's mementos and
 // trophies (D-134); the generator leaves them empty.
-// Height: the hub stands at most HUB.capStoreys storeys over the culture's tallest other building (styles.js HUB.capH);
-// a hub that would stand taller is built again a step plainer (see TIERS).
+// Height (D-156, Tyler 2026-11-11: "Roofs can be taller depending on the design, and that's okay. It should not be cut
+// off"): roofs and crowns as tall as the design calls for, their proportions drawn per village from the corpus spread
+// (ROOF_Q); the storey rule (styles.js HUB.capStoreys) counts storeys only.
 
 const NODE_H = typeof module !== 'undefined';
 const SH = NODE_H ? require('./styles.js') : window.VHStyles;
@@ -261,6 +262,127 @@ function walker(b) {
     // after test(p) said yes: the piece went in (already marked) or did not (b.put keeps one piece per place)
     took(p, inSet) { const o = solidOf(p); if (!o || !L.length) return; if (inSet) seen++; else mark(o, -1); },
   };
+}
+
+// The reach logic of lab/reach.js (design/integration2), copied so the hub's last pass and lab/test_hub.js read a design
+// the same way: rooms, main pieces and doorways' entry zones a person cannot reach (see that file for the rules).
+function reachH(design) {
+  const P = PH, Ck = CkH(), D = DecH();
+  const F = D.FURNITURE, I = D._int;
+  const S = 0.25, R = 0.45, rooms = (design.rooms || []).filter(r => r.x1 > r.x0 && r.z1 > r.z0);
+  const out = { rooms: 0, roomsOut: [], pieces: 0, piecesOut: [], entry: [] };
+  if (!rooms.length) return out;
+  const pieces = design.pieces;
+  const PASS = new Set(['floor', 'rug', 'roof', 'roofTop', 'roofCorner', 'door', 'nature', 'misc']);
+  const hungAt = p => { const f = F[p.name]; return f && ['mount', 'hang', 'top', 'rug'].includes(f.at); };
+  // each piece's footprint test and its height range
+  const solids = [];
+  for (const p of pieces) {
+    const role = P.piece(p.name).role;
+    if (PASS.has(role) || (p.decor && hungAt(p)) || p.onTable) continue;
+    if (role === 'stair') continue; // a climb is walked as a portal; its own cells are not floor
+    { const o = Ck.aabbShapes(p); if (o.pass) continue; solids.push({ p, y0: o.y0, y1: o.y1, d: (x, z) => Math.hypot(Math.max(o.x0 - x, 0, x - o.x1), Math.max(o.z0 - z, 0, z - o.z1)), bx: (o.x0 + o.x1) / 2, bz: (o.z0 + o.z1) / 2, r: Math.hypot(o.x1 - o.x0, o.z1 - o.z0) / 2 }); }
+  }
+  // floors by height
+  const levels = [...new Set(rooms.map(r => Math.round(r.y * 4) / 4))].sort((a, b) => a - b);
+  const grids = new Map();
+  for (const y of levels) {
+    const rs = rooms.filter(r => Math.abs(r.y - y) < 0.2);
+    const x0 = Math.min(...rs.map(r => r.x0)), x1 = Math.max(...rs.map(r => r.x1)), z0 = Math.min(...rs.map(r => r.z0)), z1 = Math.max(...rs.map(r => r.z1));
+    const here = solids.filter(s => s.y0 < y + 1.8 && s.y1 > y + 0.25);
+    const cells = new Map();
+    for (let x = x0 + S / 2; x < x1; x += S) for (let z = z0 + S / 2; z < z1; z += S) {
+      if (!rs.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+      const free = !here.some(s => Math.abs(s.bx - x) < s.r + R + 0.01 && Math.abs(s.bz - z) < s.r + R + 0.01 && s.d(x, z) < R);
+      cells.set(`${Math.round(x / S)},${Math.round(z / S)}`, { x, z, free, seen: false });
+    }
+    grids.set(y, { rs, cells });
+  }
+  const near = (g, x, z, rad) => [...g.cells.values()].filter(c => c.free && Math.hypot(c.x - x, c.z - z) <= rad);
+  const queue = [];
+  const seed = (y, c) => { if (!c.seen) { c.seen = true; queue.push([y, c]); } };
+  // doors to the outside
+  const doors = pieces.filter(p => !p.decor && P.piece(p.name).role === 'door');
+  for (const p of doors) {
+    const o = P.doorOpening(p);
+    const y = levels.find(l => Math.abs(l - o.y) < 0.6);
+    if (y == null) continue;
+    const g = grids.get(y);
+    const inRoom = (x, z) => g.rs.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+    for (const sg of [1, -1]) {
+      const ix = o.x + o.nx * sg * 0.8, iz = o.z + o.nz * sg * 0.8, ox = o.x - o.nx * sg * 0.8, oz = o.z - o.nz * sg * 0.8;
+      if (inRoom(ix, iz) && !inRoom(ox, oz)) for (const c of near(g, o.x + o.nx * sg * 0.6, o.z + o.nz * sg * 0.6, 1.2)) seed(y, c);
+      // the entry zone on each inside side
+      if (inRoom(ix, iz)) {
+        const hw = o.w / 2 + 0.3, ux = o.ux, uz = o.uz, nx = o.nx * sg, nz = o.nz * sg;
+        for (const s of solids) {
+          if (!s.p.decor || s.y0 > y + 1.8 || s.y1 < y + 0.05) continue;
+          // the piece's box against the zone: sample its footprint by distance from points of the zone
+          let hit = false;
+          for (let a = -hw; a <= hw + 1e-6 && !hit; a += 0.25) for (let dd = 0.15; dd <= 1.5 + 1e-6 && !hit; dd += 0.25) if (s.d(o.x + ux * a + nx * dd, o.z + uz * a + nz * dd) < 0.01) hit = true;
+          if (hit && !out.entry.some(e => e.p === s.p)) out.entry.push({ p: s.p, name: s.p.name, at: `${s.p.x.toFixed(1)},${s.p.y.toFixed(1)},${s.p.z.toFixed(1)}` });
+        }
+      }
+    }
+  }
+  // climbs: touching stair and ladder pieces
+  const climbs = [];
+  for (const p of pieces.filter(q => !q.decor && P.piece(q.name).role === 'stair')) {
+    const o = Ck.aabb(p);
+    const touch = climbs.filter(c => c.some(q => q.o.x0 < o.x1 + 0.3 && q.o.x1 > o.x0 - 0.3 && q.o.z0 < o.z1 + 0.3 && q.o.z1 > o.z0 - 0.3 && q.o.y0 < o.y1 + 0.3 && q.o.y1 > o.y0 - 0.3));
+    const merged = [{ p, o }, ...touch.flat()];
+    for (const t of touch) climbs.splice(climbs.indexOf(t), 1);
+    climbs.push(merged);
+  }
+  const links = [];
+  for (const c of climbs) {
+    const lo = c.reduce((a, q) => (q.o.y0 < a.o.y0 ? q : a)), hi = c.reduce((a, q) => (q.o.y1 > a.o.y1 ? q : a));
+    const yl = levels.filter(l => Math.abs(l - lo.o.y0) < 0.7).sort((a, b) => Math.abs(a - lo.o.y0) - Math.abs(b - lo.o.y0))[0];
+    const yh = levels.filter(l => Math.abs(l - hi.o.y1) < 0.9 && l !== yl).sort((a, b) => Math.abs(a - hi.o.y1) - Math.abs(b - hi.o.y1))[0];
+    if (yl == null || yh == null) continue;
+    const d = (q, x, z) => Math.hypot(Math.max(q.o.x0 - x, 0, x - q.o.x1), Math.max(q.o.z0 - z, 0, z - q.o.z1));
+    const a = [...grids.get(yl).cells.values()].filter(cc => cc.free && d(lo, cc.x, cc.z) <= 1.2);
+    const b = [...grids.get(yh).cells.values()].filter(cc => cc.free && d(hi, cc.x, cc.z) <= 1.2);
+    if (a.length && b.length) links.push([yl, a, yh, b]);
+  }
+  if (!queue.length) { const g = grids.get(levels[0]); const m = g.rs.find(r => r.main) || g.rs[0]; for (const c of g.cells.values()) if (c.free && c.x > m.x0 && c.x < m.x1 && c.z > m.z0 && c.z < m.z1) { seed(levels[0], c); break; } }
+  const walk = () => {
+    while (queue.length) {
+      const [y, c] = queue.pop(), g = grids.get(y);
+      const i = Math.round(c.x / S), j = Math.round(c.z / S);
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = g.cells.get(`${i + di},${j + dj}`); if (n && n.free && !n.seen) { n.seen = true; queue.push([y, n]); } }
+    }
+  };
+  walk();
+  for (let k = 0; k < links.length + 1; k++) {
+    let more = false;
+    for (const [yl, a, yh, b] of links) {
+      if (a.some(c => c.seen) && !b.some(c => c.seen)) { for (const c of b) seed(yh, c); more = true; }
+      if (b.some(c => c.seen) && !a.some(c => c.seen)) { for (const c of a) seed(yl, c); more = true; }
+    }
+    walk();
+    if (!more) break;
+  }
+  // rooms and main pieces
+  for (const r of rooms) {
+    out.rooms++;
+    const g = grids.get(levels.find(l => Math.abs(l - r.y) < 0.2));
+    const ok = [...g.cells.values()].some(c => c.seen && c.x > r.x0 && c.x < r.x1 && c.z > r.z0 && c.z < r.z1);
+    if (!ok) out.roomsOut.push(`room ${r.x0},${r.z0} to ${r.x1},${r.z1} at ${r.y}`);
+  }
+  const MAIN = new Set(['bed', 'table', 'craft', 'storage']);
+  for (const s of solids) {
+    const p = s.p, f = F[p.name];
+    // a pot on the fire is reached with the fire; a station's extension (a tanning rack, an anvil, a forge's bellows)
+    // works by standing near its station in the game and is never used itself
+    if (!p.decor || !f || !MAIN.has(f.cat) || p.outside || p.yard || /cauldron|cookingstation/.test(p.name) || /_ext(\d|_|$)/.test(p.name)) continue;
+    const y = levels.find(l => p.y > l - 0.3 && p.y < l + 0.45);
+    if (y == null) continue;
+    out.pieces++;
+    const ok = [...grids.get(y).cells.values()].some(c => c.seen && Math.abs(c.x - s.bx) < s.r + 1 && Math.abs(c.z - s.bz) < s.r + 1 && s.d(c.x, c.z) < 0.9);
+    if (!ok) out.piecesOut.push(`${p.name} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
+  }
+  return out;
 }
 
 function placer(b, T) {
@@ -543,8 +665,8 @@ function cellRects(cells, y, use) {
   return out;
 }
 
-// Pieces put while fn runs are marked as the crown (a drum, lantern, raised crown or finial): the height cap applies to
-// the main roof, and the crown may rise CROWN_OVER over it (generate's tier loop).
+// Pieces put while fn runs are marked as the crown (a drum, lantern, raised crown or finial), to tell its height from
+// the main roof's (request.mainTop; their proportion follows the corpus spread, ROOF_Q).
 function asCrown(b, fn) {
   b.put = function (n, x, y, z, yaw, extra) { return Object.getPrototypeOf(b).put.call(b, n, x, y, z, yaw, { ...(extra || {}), crown: true }); };
   try { fn(); } finally { delete b.put; }
@@ -573,19 +695,20 @@ const RSPEC = { round: { s2: [16, 2], s3: [24, 2], s4: [16, 4], s5: [24, 4] }, o
 const roundStyle = C => (C.roof === 'flat' ? 'flat' : C.roof === 'conical' ? 'posts' : 'drum');
 
 function roundHall(b, K, C, T, o) {
-  const { stage, variant, tier, ext } = o;
+  const { stage, variant, ext } = o;
+  const V = o.V;
   const style = roundStyle(C);
   const k = +stage[1];
   const [N, L] = RSPEC[variant === 'octagon' ? 'octagon' : 'round'][stage], ap = ringPoly(N, L);
-  // from s4 two storeys of 3 m with a gallery round the upper walls (tier 4: one storey, no gallery)
-  const gallery = k >= 4 && tier < 4;
+  // from s4 two storeys of 3 m with a gallery round the upper walls (at s4 the village may have none, V.gallery)
+  const gallery = k >= 4 && V.gallery !== 'none';
   const SHt = gallery ? 3 : style === 'posts' ? 3 : 4, storeys = gallery ? 2 : 1, top = SHt * storeys;
   const doorSide = N / 2, doorK = Math.floor(L / 4);
-  const drum = style === 'drum' && k >= 4 && tier < 2;
+  const drum = style === 'drum' && k >= 4;
   const Nd = k === 5 ? 18 : 16, apD = ringPoly(Nd, 2);
   // (at s4 under a drum the gallery's inner edge is the drum's ring, so one ring of posts carries both)
   const vR0 = ringPoly(k === 5 ? 18 : 16, 2) / Math.cos(Math.PI / (k === 5 ? 18 : 16));
-  const drumOnGallery = gallery && k === 4 && style === 'drum' && tier < 2;
+  const drumOnGallery = gallery && k === 4 && style === 'drum';
   const rIn = gallery ? (drumOnGallery ? vR0 + 0.1 : ap - (k === 5 ? 4.5 : 3.5)) : 0;
   // the part round's straight front at z = zc (an odd metre, about 0.4 of the way out; clear of the drum, and at s5
   // behind the walkway along the front)
@@ -601,9 +724,14 @@ function roundHall(b, K, C, T, o) {
   }
   // the stair to the gallery: a flight of three along the -x wall rising toward the door side; the walkway across the
   // hall at s5 at z = -8 (in front of the fire, clear of the high seat and of the drum)
-  const cxS = -2 * Math.ceil((rIn + 1) / 2);
+  // the stair on the side the village drew (V.stairSide), the side rooms on the other
+  const sS = V.stairSide, sR = -sS;
+  const cxS = sS * 2 * Math.ceil((rIn + 1) / 2);
   const St = gallery ? { run: [[cxS, 2], [cxS, 0], [cxS, -2]], stand: [cxS, 4], land: [cxS, -4], dir: [0, -1] } : null;
-  const bridge = k === 5 && gallery ? [-8, -6, -4, -2, 0, 2, 4, 6, 8].map(x => [x, -8]) : [];
+  // the walkway across the hall at s5 by the village's draw: across the front (z = -8, before the fire), along a side
+  // (x = 8 on the rooms' side, clear of the stair), or none
+  const wk = k === 5 && gallery ? V.walkway : 'none';
+  const bridge = wk === 'front' ? [-8, -6, -4, -2, 0, 2, 4, 6, 8].map(x => [x, -8]) : wk === 'side' ? [-8, -6, -4, -2, 0, 2, 4, 6, 8].map(z => [sR * 8, z]) : [];
   const inCells = (list, x, z, m = 0) => list.some(([cx, cz]) => Math.abs(x - cx) < 1 + m && Math.abs(z - cz) < 1 + m);
   const stairCells = St ? [St.stand, ...St.run, St.land] : [];
   // the floor, the hearth's stone flags under the fire from s2 (D-131)
@@ -614,31 +742,37 @@ function roundHall(b, K, C, T, o) {
     const st = s > 0 && /stone/.test(o.wallStyle) ? 'plank' : o.wallStyle;
     bays.push(...polyWalls(b, K, C, T, N, L, ap, s * SHt, SHt, (i, kk) => {
       if (s === 0 && i === doorSide && kk === doorK && zc == null) return 'door';
-      if (s === 0 && k >= 3 && i === N / 4 && kk === L / 2 - 1) return 'door';
+      if (s === 0 && k >= 3 && i === (sR > 0 ? N / 4 : 3 * N / 4) && kk === (sR > 0 ? L / 2 - 1 : 0)) return 'door';
       if (s === storeys - 1 && i % 3 === 1 && kk === 0) return 'window';
       return 'wall';
     }, st));
   }
   let door = bays.find(bb => bb.kind === 'door' && bb.i === doorSide) || { x: 0, z: -ap };
-  // outer roof: two low rings then steeper (the culture's 26 degree pitch, or tier 1 on, keeps every ring low)
-  let rs = drum ? [1] : style === 'posts' ? (k === 5 ? [1, 1, 2] : [1, 2]) : k === 5 ? [1, 1, 1, 2] : [1, 1, 2];
-  if (C.pitch === 26 || tier >= 1) rs = rs.map(() => 1);
-  const crown = tier >= 3 ? 4.4 : 2.4;
+  // outer roof (D-156: as tall as the design calls for): the village's drawn rise against the hall's width
+  // (V.rise, corpus spread), the outer rings low (26 degrees) and as many inner rings steep (45) as reach it
+  const crown = 2.4;
+  const nr = Math.max(1, Math.floor((ap + 0.75 - 1 - Math.max(crown, drum ? apD : 0)) / 2) + 1);
+  // (the eave ring stays low, so the roof's edge stands clear of the doors)
+  const steep = Math.max(0, Math.min(nr - 1, Math.round(V.rise * 2 * ap - nr)));
+  let rs = [...Array(nr - steep).fill(1), ...Array(steep).fill(2)];
   let outer = { rings: [], top }, peak = top;
   if (style === 'flat') {
     // a flat roof, open over the fire, and over the opening a raised lantern: walls at its corners, the middle bays
-    // open for the smoke, a flat top (tiers 0 and 1)
+    // open for the smoke, a flat top, as tall as the village's crown draw
     polyFloor(b, K, N, ap, top, { skip: (x, z) => Math.hypot(x, z) < 3.5 });
-    if (tier < 2) {
-      asCrown(b, () => lantern(b, K, C, T, top, 2, { flat: true, windows: !!ext.highWindows }));
-      peak = top + 2.4;
+    const lh = Math.max(2, Math.min(4, Math.round(V.crown * 3 + 2)));
+    {
+      asCrown(b, () => lantern(b, K, C, T, top, lh, { flat: true, windows: !!ext.highWindows }));
+      peak = top + lh + 0.4;
       b.notes.push('A flat roof, open over the fire, with a raised lantern over the opening: walls at its corners, the middle bays open, a flat top.');
-    } else { peak = top + 0.2; b.notes.push('A flat roof, open over the fire.'); }
+    }
   } else {
     outer = ringRoofH(b, K, ap, top, rs, { stop: drum ? apD : 0, crown, N });
     peak = outer.top;
   }
   const roofAt = rho => { if (style === 'flat') return top; let y = top; for (const rg of outer.rings) if (rg.rho - 1 >= rho) y = rg.low + rg.r; else if (rg.rho + 1 > rho) { y = rg.low + rg.r * (rg.rho + 1 - rho) / 2; break; } return y; };
+  // the drum's walls as tall as the village's crown draw (2 to 4 m)
+  const hd = Math.max(2, Math.min(4, Math.round(2 + V.crown * 4)));
   if (drum) asCrown(b, () => {
     const last = outer.rings[outer.rings.length - 1];
     const yd = Math.floor(last.low + last.r * Math.min(1, (last.rho + 1 - apD) / 2) - 0.2);
@@ -649,10 +783,10 @@ function roundHall(b, K, C, T, o) {
     for (let i = 0; i < Nd; i++) {
       const a = i * 360 / Nd, x = Math.sin(rad(a)) * apD, z = Math.cos(rad(a)) * apD;
       b.put(K.beam, x, yd + 0.1, z, a);
-      T.wallSegment(b, K, C, x, yd + 0.2, z, a, 3, i % 2 === 0 ? 'window' : 'wall', 'plank');
-      b.put(K.beam, x, yd + 3.2, z, a);
+      T.wallSegment(b, K, C, x, yd + 0.2, z, a, hd, i % 2 === 0 ? 'window' : 'wall', 'plank');
+      b.put(K.beam, x, yd + hd + 0.2, z, a);
     }
-    const inner = ringRoofH(b, K, apD, yd + 3.2, [1], { eave: false });
+    const inner = ringRoofH(b, K, apD, yd + hd + 0.2, [1], { eave: false });
     peak = inner.top;
     b.notes.push('A drum of high windows on posts over the fire, the outer roof running up to it and a low cone over it.');
   });
@@ -661,6 +795,7 @@ function roundHall(b, K, C, T, o) {
   if (gallery && !drumOnGallery) rings.push({ r: rIn - 0.1, h: style === 'flat' ? top : SHt });
   if (style === 'posts' && k <= 3) rings.push({ r: ap - 2.2 });
   const postsOf = [];
+  const xmD = 2 * Math.ceil(((gallery ? rIn : ap - 3.5) - 1) / 2) + 1, roomDoors = V.rooms === 'two' ? [[sR * xmD, -4], [sR * xmD, 4]] : [[sR * xmD, -4]];
   for (const rr of rings) {
     // posts 5.5 m or more apart round the ring (corpus round and polygon buildings over 300 m2: 7.5 free-standing inner
     // posts in the median, 1.45 per 100 m2, clear radius round the middle 6 m, nearest post 2 to 4 m; lab/hub_posts.py)
@@ -671,6 +806,8 @@ function roundHall(b, K, C, T, o) {
       if (Math.hypot(x - (zc != null ? 0 : door.x), z - (zc != null ? zc : door.z)) < 2.4) continue;
       if (zc != null && z < zc + 0.5) continue;
       if (inCells(stairCells, x, z, 0.3) || inCells(bridge, x, z, 0.3)) continue;
+      // (clear of the side rooms' doors)
+      if (k >= 4 && roomDoors.some(([dx, dz]) => Math.hypot(x - dx, z - dz) < 2.2)) continue;
       T.posts(b, K, x, z, h);
       postsOf.push({ x, z, h });
     }
@@ -683,7 +820,7 @@ function roundHall(b, K, C, T, o) {
     const M = 2 * Math.max(4, Math.round(Math.PI / Math.atan(1 / rIn) / 2)), aIn = ringPoly(M, 2);
     polyFloor(b, K, N, ap, SHt, { rIn, inner: { M, a: aIn }, m: 0.02, skip: (x, z) => inCells(St.run, x, z) || inCells(bridge, x, z) });
     putStair(b, K, St, 0);
-    const strip = bridge.length ? { x0: -9.2, x1: 9.2, z0: -9.2, z1: -6.8 } : null;
+    const strip = wk === 'front' ? { x0: -9.2, x1: 9.2, z0: -9.2, z1: -6.8 } : wk === 'side' ? { x0: sR * 8 - 1.2, x1: sR * 8 + 1.2, z0: -9.2, z1: 9.2 } : null;
     for (let i = 0; i < M; i++) {
       const a = i * 360 / M, x = Math.sin(rad(a)) * aIn, z = Math.cos(rad(a)) * aIn, tx = Math.cos(rad(a)), tz = -Math.sin(rad(a));
       // (none where the walkway crosses the opening)
@@ -696,22 +833,22 @@ function roundHall(b, K, C, T, o) {
     rail(b, K, cxS, SHt, St.run[0][1] + 1, 0);
     if (bridge.length) {
       for (const [x, z] of bridge) if (polyInside(N, ap)(x, z, 1)) b.put(K.floor, x, SHt, z);
-      for (const [x] of bridge) { rail(b, K, x, SHt, -7, 0); if (zc == null && Math.abs(x) <= 6) rail(b, K, x, SHt, -9, 0); }
+      if (wk === 'front') for (const [x] of bridge) { rail(b, K, x, SHt, -7, 0); if (zc == null && Math.abs(x) <= 6) rail(b, K, x, SHt, -9, 0); }
+      else for (const [, z] of bridge) { rail(b, K, sR * 7, SHt, z, 90); if (Math.abs(z) <= 6) rail(b, K, sR * 9, SHt, z, 90); }
       // (the walkway spans from gallery to gallery)
       b.notes.push('A walkway across the hall high up in front of the fire, between the two sides of the gallery.');
     }
     b.notes.push('A gallery round the upper walls at 3 m, a stair up to it from the floor.');
   }
   // the crown: a smoke cap on four short posts (drum style, s2 and s3); over the posts style crown from s4 a raised
-  // roof on a ring of posts, open at the sides for the smoke, with a finial post on top (tier 0)
+  // roof on a ring of posts, open at the sides for the smoke, with a finial post on top; its height the village's crown
+  // draw against the main roof (corpus spread, V.crown), none when that is under a metre and a half
   const crownY = outer.top;
-  if (style !== 'flat' && !drum && (style === 'drum' || (k >= 4 && tier < 2)) && tier < 3) {
+  const crownH = V.crown * (outer.top - top);
+  if (style !== 'flat' && !drum && (style === 'drum' || (k >= 4 && crownH >= 1.5))) {
     const big = style === 'posts', rp = big ? 2.6 : 1.4, np = big ? 8 : 4;
-    // the raised crown fits the room the height cap leaves it (o.crownMax): 2 m posts and a finial, else 1 m posts
-    // and no finial, else none (the crown is about 5 m tall with all its parts)
-    const rr = big && tier < 1 && C.pitch !== 26 ? 2 : 1, rise = big ? 2 * rr - rr * 0.375 : 0.625;
-    const fits = (hp, fin) => crownY - 0.6 + hp + rise + (fin ? 1.5 : 0) <= (o.crownMax || Infinity) + 0.01;
-    const hp = !big ? 1 : fits(2, true) ? 2 : fits(1, false) ? 1 : 0, finial = big && hp === 2;
+    const rr = big && rs[rs.length - 1] === 2 ? 2 : 1, rise = big ? 2 * rr - rr * 0.375 : 0.625;
+    const hp = !big ? 1 : Math.max(1, Math.min(3, Math.round(crownH - rise))), finial = big && crownH - rise - hp >= 1;
     if (hp) {
       asCrown(b, () => {
         for (let i = 0; i < np; i++) { const a = (i + 0.5) * 360 / np; for (let y = crownY - 0.6; y < crownY - 0.6 + hp - 0.01; y += 1) b.put(K.pole1, Math.sin(rad(a)) * rp, y + 0.5, Math.cos(rad(a)) * rp); }
@@ -761,20 +898,27 @@ function roundHall(b, K, C, T, o) {
     b.notes.push(`A straight front ${(2 * mm + 2)} m wide with the door, ${(-zc).toFixed(0)} m in front of the fire; the open part of the round in front is the forecourt.`);
   }
   const doors = [door, ...bays.filter(bb => bb.kind === 'door' && bb.i !== doorSide).map(bb => ({ x: bb.x, z: bb.z }))];
-  // side rooms from s4 against the +x wall, under the gallery: a kitchen toward the door side (with the back door), a
-  // storage closet behind it, a partition with a door into each and a wall between them
+  // side rooms from s4 against the wall away from the stair, under the gallery: storage always (D-154: the hub holds the
+  // village's storage), and by the village's draw a second room toward the door side (food prep with the back door, or a
+  // closet); a partition with a door into each
   const rooms = [];
   if (k >= 4) {
-    const xs = 2 * Math.ceil(((gallery ? rIn : ap - 3.5) - 1) / 2) + 1, w = Math.sqrt(ap * ap - xs * xs) - 0.2;
-    const zMin = zc != null ? zc + 1 : -w;
+    const xm = 2 * Math.ceil(((gallery ? rIn : ap - 3.5) - 1) / 2) + 1, xs = sR * xm, w = Math.sqrt(ap * ap - xm * xm) - 0.2;
+    const zMin = zc != null ? zc + 1 : -w, two = V.rooms === 'two';
     for (let z = -2 * Math.floor((w - 1) / 2); z <= w - 1 + 1e-6; z += 2) {
       if (z - 1 < zMin - 0.01) continue;
-      T.wallSegment(b, K, C, xs, 0, z, 90, SHt, Math.abs(z) === 4 ? 'door' : 'wall', 'plank');
+      T.wallSegment(b, K, C, xs, 0, z, 90, SHt, Math.abs(z) === 4 && (two || z < 0) ? 'door' : 'wall', 'plank');
     }
-    for (let x = xs + 1; x + 1 <= Math.sqrt(ap * ap) - 0.4; x += 2) T.wallSegment(b, K, C, x, 0, 0, 0, SHt, 'wall', 'plank');
-    rooms.push({ x0: xs, x1: ap, z0: Math.max(zMin, -w), z1: 0, y: 0, h: SHt, use: 'kitchen' }, { x0: xs, x1: ap, z0: 0, z1: w, y: 0, h: SHt, use: 'storage' });
-    doors.push({ x: xs, z: -4 }, { x: xs, z: 4 });
-    b.notes.push('Two side rooms under the gallery: a kitchen and a storage closet.');
+    const x0 = Math.min(xs, sR * ap), x1 = Math.max(xs, sR * ap);
+    if (two) {
+      for (let x = xm + 1; x + 1 <= ap - 0.4; x += 2) T.wallSegment(b, K, C, sR * x, 0, 0, 0, SHt, 'wall', 'plank');
+      rooms.push({ x0, x1, z0: Math.max(zMin, -w), z1: 0, y: 0, h: SHt, use: V.second === 'food' ? 'kitchen' : 'closet' }, { x0, x1, z0: 0, z1: w, y: 0, h: SHt, use: 'storage' });
+      doors.push({ x: xs, z: -4 }, { x: xs, z: 4 });
+    } else {
+      rooms.push({ x0, x1, z0: Math.max(zMin, -w), z1: w, y: 0, h: SHt, use: 'storage' });
+      doors.push({ x: xs, z: -4 });
+    }
+    b.notes.push(two ? `Two side rooms under the gallery: ${V.second === 'food' ? 'food prep' : 'a closet'} and storage.` : 'A storage room under the gallery.');
   }
   // the hall, the gallery (its rail closes it off from the open middle), the walkway, the side rooms
   b.rooms.push({ x0: -ap, x1: ap, z0: zc != null ? zc : -ap, z1: ap, y: 0, h: top, use: 'hall', main: true, door: { x: door.x, z: door.z } });
@@ -795,7 +939,7 @@ function roundHall(b, K, C, T, o) {
     coveredEntrance(b, K, C, T, door.x, door.z, wy, ext.porch6 ? 6 : 4);
     if (ext.dragons) b.put('wood_dragon1', door.x, wy + 1.3, door.z - (ext.porch6 ? 6 : 4) - 0.6, 180, { decor: true });
   }
-  return { groundBays: [...bays.slice(0, N * L / 2), ...frontBays], ap, N, L, top, peak, door, doors, rings, postsOf, gallery, rIn, St, bridge, drum, apD, SHt, zc, style, roofAt, rooms, sideX: k >= 4 ? rooms[0].x0 : null };
+  return { groundBays: [...bays.slice(0, N * L / 2), ...frontBays], ap, N, L, top, peak, door, doors, rings, postsOf, gallery, rIn, St, bridge, drum, apD, SHt, zc, style, roofAt, rooms, sideX: k >= 4 ? Math.abs(sR * (2 * Math.ceil(((gallery ? rIn : ap - 3.5) - 1) / 2) + 1)) : null, sideS: sR, inSide: (x, m = 0) => k >= 4 && sR * x > 2 * Math.ceil(((gallery ? rIn : ap - 3.5) - 1) / 2) + 1 - m };
 }
 
 // ---------------------------------------------------------------- cross hall
@@ -805,12 +949,14 @@ function roundHall(b, K, C, T, o) {
 // storeys; s5 30 x 26 m, arms 14 m.
 const CSPEC = { s2: [7, 7, 3, 3, 1], s3: [9, 9, 5, 4, 1], s4: [13, 11, 5, 3, 2], s5: [15, 13, 7, 3, 2] };
 function crossHall(b, K, C, T, o) {
-  const { stage, tier, ext } = o;
+  const { stage, ext } = o;
+  const V = o.V;
   const k = +stage[1];
-  let [Wz, Wx, D, SHt, storeys] = CSPEC[stage];
-  if (tier >= 4 && storeys === 2) { SHt = 4; storeys = 1; }
-  const top = SHt * storeys, gallery = storeys === 2;
-  const r = tier >= 1 || C.pitch === 26 ? 1 : 2;
+  const [Wz, Wx, D, SHt, storeys] = CSPEC[stage];
+  const top = SHt * storeys, gallery = storeys === 2 && V.gallery !== 'none';
+  // the roof's pitch from the village's drawn rise against the arms' width (D-156, corpus spread): 45 degrees gives a
+  // rise of about 0.43 of the width, 26 degrees 0.21
+  const r = V.rise >= 0.32 ? 2 : 1;
   const inMain = (x, z) => Math.abs(x) < D && Math.abs(z) < Wz, inTrans = (x, z) => Math.abs(x) < Wx && Math.abs(z) < D;
   const cells = new Map();
   for (let x = -Wx + 1; x < Wx; x += 2) for (let z = -Wz + 1; z < Wz; z += 2) if (inMain(x, z) || inTrans(x, z)) cells.set(`${x},${z}`, [x, z]);
@@ -828,7 +974,8 @@ function crossHall(b, K, C, T, o) {
     edges.push({ x: x + dx / 2, z: z + dz / 2, yaw, nx: -dx / 2, nz: -dz / 2 });
   }
   const isMainDoor = e => e.yaw === 0 && Math.abs(e.z + Wz) < 0.01 && Math.abs(e.x) < 0.01;
-  const isSideDoor = e => k >= 3 && e.yaw === 90 && Math.abs(e.x - Wx) < 0.01 && Math.abs(e.z) < 0.01;
+  const sR = V.roomSide, sS = V.stairSide;
+  const isSideDoor = e => k >= 3 && e.yaw === 90 && Math.abs(e.x - sR * Wx) < 0.01 && Math.abs(e.z) < 0.01;
   const endWall = e => (e.yaw === 0 && Math.abs(Math.abs(e.z) - Wz) < 0.01) || (e.yaw === 90 && Math.abs(Math.abs(e.x) - Wx) < 0.01);
   const doors = [];
   for (const e of edges) for (let s = 0; s < storeys; s++) {
@@ -847,9 +994,12 @@ function crossHall(b, K, C, T, o) {
   const p = Wx - 4, rooms = [];
   if (k >= 4) {
     for (const sx of [-1, 1]) for (let z = -D + 1; z < D; z += 2) T.wallSegment(b, K, C, sx * p, 0, z, 90, SHt, z === 0 ? 'door' : 'wall', 'plank');
-    rooms.push({ x0: p, x1: Wx, z0: -D, z1: D, y: 0, h: SHt, use: 'kitchen' }, { x0: -Wx, x1: -p, z0: -D, z1: D, y: 0, h: SHt, use: 'storage' });
+    // storage always (D-154); the other end food prep with its own door out, or a closet (the village's draw), on the side
+    // the village drew
+    const second = V.second === 'food' ? 'kitchen' : 'closet';
+    rooms.push({ x0: Math.min(sR * p, sR * Wx), x1: Math.max(sR * p, sR * Wx), z0: -D, z1: D, y: 0, h: SHt, use: second }, { x0: Math.min(-sR * p, -sR * Wx), x1: Math.max(-sR * p, -sR * Wx), z0: -D, z1: D, y: 0, h: SHt, use: 'storage' });
     doors.push({ x: p, z: 0 }, { x: -p, z: 0 });
-    b.notes.push('Side rooms at the ends of the side arms: a kitchen with its own door out, and a storage closet.');
+    b.notes.push(`Side rooms at the ends of the side arms: ${second === 'kitchen' ? 'food prep with its own door out' : 'a closet'} and storage.`);
   }
   // the gallery (from s4) at 3 m. s4: over the front arm's end (over the door) and along its -x wall, a stair up the +x
   // wall. s5: along both walls of every arm, so a railed walkway runs round the hall and crosses the front and back arms
@@ -859,9 +1009,10 @@ function crossHall(b, K, C, T, o) {
   const addG = (x, z) => { if (has(x, z)) G.set(`${x},${z}`, [x, z]); };
   if (gallery && k === 4) {
     for (let x = -D + 1; x < D; x += 2) addG(x, -Wz + 1);
-    for (let z = -Wz + 3; z <= -D - 1; z += 2) addG(-D + 1, z);
-    stairs.push({ run: [[D - 1, -D - 1], [D - 1, -D - 3], [D - 1, -D - 5]], stand: [D - 1, -D + 1], land: [D - 1, -D - 7], dir: [0, -1] });
-    addG(D - 1, -D - 7);
+    // (the stair on the side the village drew, the gallery along the other wall)
+    for (let z = -Wz + 3; z <= -D - 1; z += 2) addG(-sS * (D - 1), z);
+    stairs.push({ run: [[sS * (D - 1), -D - 1], [sS * (D - 1), -D - 3], [sS * (D - 1), -D - 5]], stand: [sS * (D - 1), -D + 1], land: [sS * (D - 1), -D - 7], dir: [0, -1] });
+    addG(sS * (D - 1), -D - 7);
   } else if (gallery) {
     for (const [, [x, z]] of cells) if ((inMain(x, z) && Math.abs(x) >= 4) || (inTrans(x, z) && Math.abs(z) >= 4) || (inTrans(x, z) && Math.abs(x) >= p + 1)) addG(x, z);
     for (const sx of [-1, 1]) stairs.push({ run: [[sx * 6, 8], [sx * 6, 10], [sx * 6, 12]], stand: [sx * 6, 6], land: [sx * 6, 14], dir: [0, 1] });
@@ -885,7 +1036,7 @@ function crossHall(b, K, C, T, o) {
   const parts = [];
   for (const w of wings) parts.push(...T.gablePieces(K, C, w, top, r, [true, true], null, null));
   T.valleys(parts, b);
-  const tower = k >= 4 && tier < 2 && ext.tiers3;
+  const tower = k >= 4 && ext.tiers3 && V.crown * r * (D - 1) / 2 >= 1.5;
   const capY = top + r * (D - 1) / 2;
   const placed = new Set();
   for (const q of parts) {
@@ -905,12 +1056,12 @@ function crossHall(b, K, C, T, o) {
   // the lantern tower: four posts at the crossing's inner corners up to the roofs, a ring of walls with windows at the
   // corners and the middle bays open for the smoke, a small gable roof over it
   if (tower) {
-    const y0 = capY - r;
+    const y0 = capY - r, th = Math.max(2, Math.min(4, Math.round(V.crown * r * (D - 1) / 2)));
     asCrown(b, () => {
       for (const sx of [-3, 3]) for (const sz of [-3, 3]) T.posts(b, K, sx, sz, y0);
-      lantern(b, K, C, T, y0, 3, { r, windows: !!ext.highWindows });
+      lantern(b, K, C, T, y0, th, { r, windows: !!ext.highWindows });
     });
-    peak = y0 + 3 + r + 0.3;
+    peak = y0 + th + r + 0.3;
     b.notes.push(`A lantern tower over the crossing, ${ext.highWindows ? 'windows' : 'walls'} at its corners and open bays for the smoke.`);
   }
   // carved heads at the four gable ends (s4 on, or by the draw)
@@ -941,7 +1092,7 @@ function crossHall(b, K, C, T, o) {
   b.rooms.push(...rooms);
   b.doorX = 0;
   b.notes.push(`Cross hall ${2 * Wx} x ${2 * Wz} m, arms ${2 * D} m wide, round the fire at the crossing.`);
-  return { Wz, Wx, D, top, SHt, capY, peak, doors, door: { x: 0, z: -Wz }, edges, stairs, G, rooms, porch, hangs, sideX: k >= 4 ? p : null, isRun };
+  return { inSide: (x, m = 0) => k >= 4 && Math.abs(x) > p - m, Wz, Wx, D, top, SHt, capY, peak, doors, door: { x: 0, z: -Wz }, edges, stairs, G, rooms, porch, hangs, sideX: k >= 4 ? p : null, isRun };
 }
 
 // ---------------------------------------------------------------- furnishing a hall stage
@@ -961,7 +1112,7 @@ function wallSpots(b, o, F, y) {
     // a spot at each ground-storey wall bay, facing in (the doors' bays left out)
     for (const bb of F.groundBays) {
       if (bb.kind === 'door' || (F.zc != null && bb.z < F.zc + 1)) continue;
-      if (bb.z > 0 && Math.abs(normH(bb.yaw + 180) - 180) < 40) continue; // the trophy wall
+      if (Math.abs(normH(bb.yaw - (F.seatA || 0) + 180) - 180) < 40 && Math.hypot(bb.x, bb.z) > 2) continue; // the trophy wall
       out.push(spotOf(bb.x + bb.nx * 0.15, bb.z + bb.nz * 0.15, bb.nx, bb.nz, y));
     }
   }
@@ -981,19 +1132,28 @@ function roomSpots(room, ok) {
 }
 
 function furnish(b, K, C, T, o, F) {
-  const { stage, line, place, has, skipDecor } = o;
+  const { stage, line, place, has, skipDecor, V } = o;
   const k = +stage[1];
   const ds = n => ({ ds: n });
-  // the fire at the heart: a hearth from s2 (stone flags under it, D-131)
-  b.put(k >= 2 ? 'hearth' : 'fire_pit', 0, 0.125, 0, 0, { decor: true, hearth: true, ds: 1 });
+  // the fire at the heart (stone flags under it from s2, D-131), in the form the village drew (V.hearth): the stone
+  // hearth, a fire pit, or a long fire of a hearth between two pits across the hall
+  const form = k >= 2 ? V.hearth : 'pit';
+  b.put(form === 'pit' ? 'fire_pit' : 'hearth', 0, 0.125, 0, 0, { decor: true, hearth: true, ds: 1 });
   place.keep(-2.4, 2.4, -2, 2, 0, 3);
   b.put('piece_cookingstation', 0, 0.55, 0, 0, { decor: true, ds: 1 });
   const fires = [{ x: 0, z: 0 }];
+  if (form === 'long') for (const x of [-2, 2]) {
+    b.put('stone_floor_2x2', x, -0.375, 0, 0, { hearthStone: true });
+    b.pieces = b.pieces.filter(q => !(q.name === K.floor && Math.abs(q.x - x) < 0.01 && Math.abs(q.z) < 0.01 && Math.abs(q.y) < 0.01));
+    b.put('fire_pit', x * 1.4, 0.125, 0, 0, { decor: true, hearth: true, ds: 1 });
+    place.keep(x - 1.6, x + 1.6, -1.6, 1.6, 0, 3);
+  }
+  if (form === 'long') b.notes.push('A long fire: the hearth between two fire pits.');
   // more fires in the big halls (corpus: 3 or more fires in 17 % of the ranked set, 63 % of the top tenth): the cross
   // a second fire in the front arm from s4 and one in the back arm at s5 by the draw; the round hall two at its sides
   // at s5 by the draw. Never under a gallery or walkway.
   const extra = line === 'cross' ? (k === 5 && has('fires3', stage) ? [[0, -9], [0, 9]] : k >= 4 ? [[0, -9]] : [])
-    : k === 5 && has('fires3', stage) ? [[-7, 0], [7, 0]].filter(([x]) => F.sideX == null || x < F.sideX - 2) : [];
+    : k === 5 && has('fires3', stage) ? [[-7, 0], [7, 0]].filter(([x]) => !F.inSide || !F.inSide(x, 2)) : [];
   for (const [x, ez] of extra) {
     b.put('stone_floor_2x2', x, -0.375, ez, 0, { hearthStone: true });
     b.pieces = b.pieces.filter(q => !(q.name === K.floor && Math.abs(q.x - x) < 0.01 && Math.abs(q.z - ez) < 0.01 && Math.abs(q.y) < 0.01));
@@ -1012,25 +1172,35 @@ function furnish(b, K, C, T, o, F) {
   // hall (inside the gallery's ring); on a dais when the village has one (corpus: under 7 % of high seats in the set,
   // 32 % in the top tenth), always at s5. A seat for the spouse beside it (D-154).
   if (k >= 3) {
-    // (in a round hall with a drum, inside the drum's ring of posts)
-    const sx = 0, sz = line === 'cross' ? F.Wz - 1.3 : F.drum ? F.apD - 1.1 : (F.gallery ? F.rIn - 1.3 : F.ap - 2.2), yaw = 180;
-    const dais = has('dais', stage) || k === 5;
+    // where the village drew it (V.seat): the far end facing the door, at a side facing the fire (round halls), or the
+    // near end of the back arm (cross); (in a round hall with a drum, inside the drum's ring of posts)
+    let dist = line === 'cross' ? (V.seat === 'near' ? F.D + 1.6 : F.Wz - 1.3) : F.drum ? F.apD - 1.1 : (F.gallery ? F.rIn - 1.3 : F.ap - 2.2);
+    const side = line !== 'cross' && V.seat === 'side' && k >= 4 && F.gallery;
+    const ux = side ? V.seatSide : 0, uz = side ? 0 : 1, tx = uz, tz = -ux;
+    // (a seat at the side stands clear of the side rooms' partition)
+    if (side && F.sideX != null) dist = Math.min(dist, F.sideX - 1.8);
+    const sx = ux * dist, sz = uz * dist, yaw = normH(Math.atan2(-ux, -uz) * 180 / Math.PI);
+    F.seatA = normH(Math.atan2(ux, uz) * 180 / Math.PI);
+    // raised as the village drew it (V.raise): a dais of two steps, one step, or none (always raised at s5)
+    const raise = V.raise;
     let y = 0.125;
-    if (dais) {
+    if (raise !== 'none') {
       for (let a = -1.5; a <= 1.5; a += 1) for (let c = 0; c < 3; c++) {
-        const x = sx + a, z = sz + (c - 0.7);
+        const x = sx + tx * a + ux * (c - 0.7), z = sz + tz * a + uz * (c - 0.7);
         b.put(K.floor1, x, 0.25, z, 0, { dais: true });
-        if (c < 2) b.put(K.floor1, x, 0.5, z, 0, { dais: true });
+        if (c < 2 && raise === 'dais') b.put(K.floor1, x, 0.5, z, 0, { dais: true });
       }
-      y = 0.625;
-      b.notes.push('The high seat on a dais.');
+      y = raise === 'dais' ? 0.625 : 0.375;
+      b.notes.push(raise === 'dais' ? 'The high seat on a dais.' : 'The high seat on a step.');
     }
     b.put('piece_throne01', sx, y, sz, yaw, { decor: true, ds: 1, highSeat: true });
-    place.keep(sx - 1, sx + 1, sz - 1, sz + 1, 0, 3);
+    place.keep(Math.min(sx - 1, sx + 1), sx + 1, sz - 1, sz + 1, 0, 3);
     leader = { x: sx, y, z: sz, yaw };
-    for (const s of [1.45, -1.45]) if (place.put('piece_chair02', sx + s, y, sz, yaw, { ds: 1, spouseSeat: true }, { inKeep: true })) { spouse = { x: sx + s, y, z: sz, yaw }; break; }
-    place.keep(-1.3, 1.3, 2, sz - 0.6, 0, 3);
-    for (const s of [-1, 1]) place.put('piece_groundtorch_wood', sx + s * 2.6, y + 0.75, sz + 0.4, 0, ds(2));
+    for (const s of [1.45, -1.45]) if (place.put('piece_chair02', sx + tx * s, y, sz + tz * s, yaw, { ds: 1, spouseSeat: true }, { inKeep: true })) { spouse = { x: sx + tx * s, y, z: sz + tz * s, yaw }; break; }
+    // the way from the fire to the high seat
+    if (side) place.keep(Math.min(2 * ux, sx - ux * 0.6), Math.max(2 * ux, sx - ux * 0.6), -1.3, 1.3, 0, 3);
+    else place.keep(-1.3, 1.3, 2, sz - 0.6, 0, 3);
+    for (const s of [-1, 1]) place.put('piece_groundtorch_wood', sx + tx * s * 2.6 + ux * 0.4, y + 0.75, sz + tz * s * 2.6 + uz * 0.4, 0, ds(2));
   }
   if (skipDecor) { b.leader = leader || { x: 0, y: 0.125, z: 3, yaw: 180 }; b.spouse = spouse; return; }
   // rugs overlap as corpus builds lay them (lab/hub_dress.py, builds with 2 to 12 rugs: half the rugs overlap another,
@@ -1048,6 +1218,10 @@ function furnish(b, K, C, T, o, F) {
     }
     const f = hit / 64, nOver = rugs.filter(r => r.over).length;
     if (f > RUG_OVER || (f > 0.05 && nOver + 1 > (rugs.length + 1) / 2)) return false;
+    // (nor may it cover a rug already down by more than that)
+    const me = { x, y, z, yaw, w, l };
+    const cover = r => { let h = 0; const ra = rad(r.yaw); for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { const u = -r.w / 2 + r.w * (i + 0.5) / 8, v = -r.l / 2 + r.l * (j + 0.5) / 8, px = r.x + u * Math.cos(ra) + v * Math.sin(ra), pz = r.z - u * Math.sin(ra) + v * Math.cos(ra); if ([...rugs, me].some(o => o !== r && Math.abs(o.y - r.y) < 0.3 && inRug(o, px, pz))) h++; } return h / 64; };
+    if (rugs.some(r => Math.abs(r.y - y) < 0.3 && Math.hypot(r.x - x, r.z - z) < 4.5 && cover(r) > RUG_OVER)) return false;
     if (!place.put(name, x, y, z, yaw, extra, { onFurn: true, inKeep: true })) return false;
     rugs.push({ x, y, z, yaw, w, l, over: f > 0.05 });
     return true;
@@ -1061,7 +1235,7 @@ function furnish(b, K, C, T, o, F) {
       const x = f.x + Math.sin(rad(a)) * 3.2, z = f.z + Math.cos(rad(a)) * 3.2;
       if (place.put('piece_bench01', x, 0.125, z, a + 180, ds(f === fires[0] ? 1 : 2))) benches.push({ x, z, yaw: normH(a + 180), a, main: f === fires[0] });
     }
-    for (const a of [45, 225]) putRug('rug_fur', f.x + Math.sin(rad(a)) * 2.6, 0.14, f.z + Math.cos(rad(a)) * 2.6, a, ds(2));
+    for (const a of [45, 225]) putRug(V.rug, f.x + Math.sin(rad(a)) * 2.6, 0.14, f.z + Math.cos(rad(a)) * 2.6, a, ds(2));
   }
   if (!leader) {
     const bn = benches.find(bb => bb.main && bb.a === 0) || benches[0];
@@ -1089,48 +1263,79 @@ function furnish(b, K, C, T, o, F) {
   // cross (the corpus long halls' feast tables); in a round hall under a cone, rings of benches round the fire; under a
   // drum, long tables like spokes between the fire and the gallery; under a flat roof, rugs round the fire and tables
   // along the walls
-  const seating = line === 'cross' ? 'rows' : F.style === 'posts' ? 'ring' : F.style === 'flat' ? 'rugs' : 'spokes';
-  let nRows = 0;
-  if (seating === 'rows') {
+  // the table plan the village drew (V.tables, V.nTables): long rows down the arms, a U of rows round the back arm and
+  // the side arms, spokes from the fire, a ring of benches, rugs round the fire, loose groups of a table and chairs, or
+  // a mix of spokes and groups
+  const seating = V.tables;
+  let nRows = 0, nGroups = 0;
+  const noGo = (x, z) => (F.inSide && F.inSide(x, 1.6)) || (F.zc != null && z < F.zc + 1.6);
+  // a loose group: a table with chairs at its heads and sides (D-152), turned a little toward the fire
+  const group = (x, z, yaw, d) => {
+    if (!place.put('piece_table', x, 0.125, z, yaw, ds(d))) return false;
+    const a = rad(yaw), ex = Math.cos(a), ez = -Math.sin(a), nx = Math.sin(a), nz = Math.cos(a);
+    for (const [px, pz, py] of [[ex * 1.6, ez * 1.6, yaw + 90], [-ex * 1.6, -ez * 1.6, yaw - 90], [nx * 0.95 + ex * 0.6, nz * 0.95 + ez * 0.6, yaw + 180], [-nx * 0.95 - ex * 0.6, -nz * 0.95 - ez * 0.6, yaw]])
+      place.put('piece_chair', x + px, 0.125, z + pz, py, ds(d));
+    nGroups++;
+    return true;
+  };
+  const groups = n => {
+    const R2 = rngH(hashH(`${o.lineage}|groups|${stage}`));
+    const r0 = 4.4, r1 = line === 'cross' ? Math.max(F.Wz, F.Wx) - 2.5 : (F.gallery ? F.rIn + 2.5 : F.ap - 2);
+    for (let t = 0; t < 40 && nGroups < n; t++) {
+      const a = R2() * 360, r = r0 + R2() * (r1 - r0), x = Math.sin(rad(a)) * r, z = Math.cos(rad(a)) * r;
+      if (noGo(x, z)) continue;
+      group(x, z, normH(a + 90 + (R2() - 0.5) * 20), nGroups < 2 ? 1 : 2);
+    }
+  };
+  const spokes = n => {
+    // (when the drum stands on the gallery's posts the open middle is small: the spokes run under the gallery)
+    const under = F.gallery && F.rIn < 7, r0 = under ? F.rIn + 0.4 : 4.0, r1 = under ? F.ap - 0.8 : F.gallery ? F.rIn - 0.6 : F.ap - 0.8;
+    // n spokes evenly round the fire from a drawn start, clear of the door's, the high seat's and the stair's sides;
+    // each a long table pointing at the fire with a bench down each side (D-152: a spoke that does not fit is left out)
+    const off = rngH(hashH(`${o.lineage}|spokes`))() * 360 / n, avoid = [180, F.seatA || 0, F.St ? (F.St.run[0][0] < 0 ? 270 : 90) : null].filter(v => v != null);
+    for (let i = 0; i < n; i++) {
+      const a = normH(off + i * 360 / n);
+      if (avoid.some(v => Math.abs(normH(a - v + 180) - 180) < 30)) continue;
+      const ux = Math.sin(rad(a)), uz = Math.cos(rad(a));
+      nRows += longRow(ux * r0, uz * r0, ux, uz, r1 - r0 - (a % 90 && !F.gallery ? 1 : 0), nRows < 3 ? 1 : 2) ? 1 : 0;
+    }
+  };
+  if (seating === 'rows' || seating === 'U') {
     if (k === 2) for (const sx of [-1, 1]) tryTable(sx * 5, 0, 90, 1);
     else {
-      // (at s5 the rows start in the crossing's corners, inside the stairs)
+      // (at s5 the rows start in the crossing's corners, inside the stairs); a U leaves the front arm open
       const v = k === 5 ? 3.6 : F.D - 2.4, s0 = k === 5 ? 4 : F.D + 0.5, endX = F.sideX != null ? F.sideX - 0.6 : F.Wx - 1;
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-        nRows += longRow(sx * v, sz * s0, 0, sz, (sz > 0 ? F.Wz - 4.5 : F.Wz - 2.5) - s0, 1) ? 1 : 0;
+        if (!(seating === 'U' && sz < 0)) nRows += longRow(sx * v, sz * s0, 0, sz, (sz > 0 ? F.Wz - 4.5 : F.Wz - 2.5) - s0, 1) ? 1 : 0;
         nRows += longRow(sx * s0, sz * v, sx, 0, endX - s0, 2) ? 1 : 0;
       }
     }
-  } else if (seating === 'spokes') {
-    // (when the drum stands on the gallery's posts the open middle is small: the spokes run under the gallery)
-    const under = F.gallery && F.rIn < 7, r0 = under ? F.rIn + 0.4 : 4.0, r1 = under ? F.ap - 0.8 : F.gallery ? F.rIn - 0.6 : F.ap - 0.8;
-    // five spokes: the four diagonals and the side away from the stair, each a long table pointing at the fire with a
-    // bench down each side (D-152: seats keep their spots; a spoke that does not fit is left out, never turned)
-    for (const a of F.gallery ? [45, 135, 225, 315, 90] : [90, 270]) {
-      const ux = Math.sin(rad(a)), uz = Math.cos(rad(a));
-      nRows += longRow(ux * r0, uz * r0, ux, uz, r1 - r0, nRows < 3 ? 1 : 2) ? 1 : 0;
-    }
-  } else {
-    // a ring of log benches round the fire (cone halls), or rugs (flat roof halls), and a few tables at the walls
+  } else if (seating === 'spokes') spokes(Math.min(6, Math.max(3, V.nTables)));
+  else if (seating === 'mixed') { spokes(3); groups(Math.max(2, V.nTables - 2)); }
+  else if (seating === 'groups') groups(V.nTables);
+  else {
+    // a ring of log benches round the fire (cone halls), or rugs (flat roof halls), and tables in a ring at the walls
     // (the log benches keep inside the cone's ring of posts at s2 and s3; none in a hall too small for both rings)
     const ringR = F.rings && F.rings.length && !F.gallery ? Math.min(...F.rings.map(r => r.r)) : Infinity;
-    const rr = seating === 'ring' ? Math.min(5.4, ringR - 1.4) : 3.6, n = seating === 'ring' ? (rr >= 4.4 ? 8 : 0) : 6;
+    const rr = seating === 'ring' ? Math.min(5.4, ringR - 1.4) : 3.6, n = seating === 'ring' ? (rr >= 4.4 ? Math.min(8, V.nTables + 3) : 0) : 6;
     for (let i = 0; i < n; i++) {
       const a = (i + 0.5) * 360 / n, x = Math.sin(rad(a)) * rr, z = Math.cos(rad(a)) * rr;
-      if (seating === 'ring') place.put('piece_logbench01', x, 0.125, z, a + 180, ds(i % 2 ? 2 : 1));
-      else putRug(i % 2 ? 'rug_deer' : 'jute_carpet', x, 0.14, z, a, ds(i % 2 ? 2 : 1));
+      // (the ring leaves gaps toward the door and the high seat, and a way through between every two benches)
+      if (seating === 'ring') { if (Math.abs(normH(a - 180 + 180) - 180) < 35 || Math.abs(normH(a - (F.seatA || 0) + 180) - 180) < 35) continue; place.put('piece_logbench01', x, 0.125, z, a + 180, ds(i % 2 ? 2 : 1)); }
+      else putRug(i % 2 ? V.rug : 'jute_carpet', x, 0.14, z, a, ds(i % 2 ? 2 : 1));
     }
+    if (line !== 'cross') {
+      const rr2 = F.gallery ? F.rIn + 1.8 : Math.max(F.ap - 2.8, 4.8);
+      const n2 = Math.min(V.nTables + 2, Math.max(3, Math.floor(2 * Math.PI * rr2 / 5)));
+      for (let i = 0; i < n2; i++) {
+        const a = (i + 0.5) * 360 / n2, x = Math.sin(rad(a)) * rr2, z = Math.cos(rad(a)) * rr2;
+        if (noGo(x, z)) continue;
+        tryTable(x, z, a, i % 2 ? 2 : 1);
+      }
+    } else groups(V.nTables);
   }
-  if (line !== 'cross' && seating !== 'spokes') {
-    const rr = F.gallery ? F.rIn + 1.8 : Math.max(F.ap - 2.8, 4.8);
-    const n = Math.max(3, Math.floor(2 * Math.PI * rr / 5));
-    for (let i = 0; i < n; i++) {
-      const a = (i + 0.5) * 360 / n, x = Math.sin(rad(a)) * rr, z = Math.cos(rad(a)) * rr;
-      if ((F.sideX != null && x > F.sideX - 1.6) || (F.zc != null && z < F.zc + 1.6)) continue;
-      tryTable(x, z, a, i % 2 ? 2 : 1);
-    }
-  }
-  if (nRows) b.notes.push(`${nRows} long tables with benches${seating === 'spokes' ? ' like spokes round the fire' : ' down the arms'}.`);
+  if (nGroups) b.notes.push(`${nGroups} loose groups of a table and chairs.`);
+  if (nRows) b.notes.push(`${nRows} long tables with benches${seating === 'spokes' || seating === 'mixed' ? ' like spokes round the fire' : seating === 'U' ? ' in a U' : ' down the arms'}.`);
   if (seating === 'ring') b.notes.push('A ring of log benches round the fire.');
   if (seating === 'rugs') b.notes.push('Rugs and carpets round the fire.');
   // lights on the gallery and the walkway: standing torches by the rail (d2)
@@ -1165,8 +1370,11 @@ function furnish(b, K, C, T, o, F) {
   } else {
     const rr = F.ap * Math.cos(Math.PI / F.N) - (highT + 0.12);
     const ys = [1.85, F.gallery ? F.SHt + 1.6 : F.top >= 4 ? 3.1 : null].filter(v => v != null);
-    for (const yy of ys) for (const a of [-12, 12, -24, 24, -36, 36, 0]) {
-      if (a === 0 && yy < 3) continue;
+    // (behind the high seat, wherever it sits; two or three rows by the village's draw)
+    const ys2 = V.trophyRows === 3 && ys.length === 2 ? [ys[0], ys[0] + 0.9, ys[1]] : ys;
+    for (const yy of ys2) for (const a0 of [-12, 12, -24, 24, -36, 36, 0]) {
+      if (a0 === 0 && yy < 3) continue;
+      const a = (F.seatA || 0) + a0;
       tSpots.push({ x: Math.sin(rad(a)) * rr, y: yy, z: Math.cos(rad(a)) * rr, yaw: normH(a + 180) });
     }
   }
@@ -1177,7 +1385,7 @@ function furnish(b, K, C, T, o, F) {
   let nChest = 0;
   for (const sp of edgeSpots) {
     if (nChest >= { s2: 3, s3: 6, s4: 6, s5: 8 }[stage]) break;
-    if (!(F.sideX != null && sp.x > F.sideX - 0.5) && frontClear(sp, lowT + 0.42) && place.put('piece_chest_wood', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, { ds: nChest < 2 ? 1 : nChest < 4 ? 2 : 3, chest: true })) nChest++;
+    if (!(F.inSide && F.inSide(sp.x, 0.5)) && frontClear(sp, lowT + 0.42) && place.put('piece_chest_wood', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, { ds: nChest < 2 ? 1 : nChest < 4 ? 2 : 3, chest: true })) nChest++;
   }
   // the side rooms: the closet full of chests, the kitchen with its prep table, butcher's table, fermenter and chests
   const inHall = line === 'cross' ? () => true : (x, z) => polyInside(F.N, F.ap)(x, z, 0.7);
@@ -1218,9 +1426,9 @@ function furnish(b, K, C, T, o, F) {
   for (const [i, sp] of edgeSpots.entries()) {
     if (nt >= 4 + 2 * k) break;
     if (i % 3 !== 1) continue;
-    if (place.put('piece_walltorch', sp.x + sp.nx * (highT + 0.17), sp.y + 1.6, sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true })) nt++;
+    if (place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + 1.6, sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true })) nt++;
   }
-  if (k >= 4) for (const sp of edgeSpots.filter((s, i) => i % 5 === 2).slice(0, 6)) place.put('piece_banner01', sp.x + sp.nx * (highT + 0.12), sp.y + (F.top >= 6 ? 5.2 : 2.9), sp.z + sp.nz * (highT + 0.12), sp.yawIn, ds(3), { inKeep: true });
+  if (k >= 4) for (const sp of edgeSpots.filter((s, i) => i % 5 === 2).slice(0, 6)) place.put(V.banner, sp.x + sp.nx * (highT + 0.12), sp.y + (F.top >= 6 ? 5.2 : 2.9), sp.z + sp.nz * (highT + 0.12), sp.yawIn, ds(3), { inKeep: true });
   // a cauldron by the main fire's side and a fermenter in the halls without a kitchen yet
   if (k === 3) {
     const sp = edgeSpots[Math.floor(edgeSpots.length / 3)];
@@ -1239,7 +1447,7 @@ function furnish(b, K, C, T, o, F) {
     const spots = edgeSpots.filter((sp, i) => i % 2 === 0).concat(edgeSpots.filter((sp, i) => i % 2 === 1));
     let have = edgeSpots.filter(dressed).length, turn = 0;
     const items = [
-      sp => place.put('piece_walltorch', sp.x + sp.nx * (highT + 0.17), sp.y + 1.6, sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true, solid: true }),
+      sp => place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + 1.6, sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true, solid: true }),
       sp => place.put('piece_chest_wood', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, { ds: 2, chest: true }, { solid: true }),
       sp => place.put('piece_bench01', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, ds(2), { solid: true }),
       sp => place.put('itemstand', sp.x + sp.nx * (highT + 0.12), sp.y + 1.85, sp.z + sp.nz * (highT + 0.12), sp.yawIn, { ds: 2, memento: true }, { inKeep: true, solid: true }),
@@ -1249,7 +1457,7 @@ function furnish(b, K, C, T, o, F) {
       // (the share counts every ground-storey bay, the trophy wall's and the side rooms' among them)
       if (have >= want * (F.groundBays ? F.groundBays.length : edgeSpots.length)) break;
       if (dressed(sp)) continue;
-      for (let t = 0; t < items.length; t++) { const it = (turn + t) % items.length; if ([1, 2, 4].includes(it) && ((F.sideX != null && sp.x > F.sideX - 0.5) || !frontClear(sp, lowT + 0.42))) continue; if (items[it](sp)) { have++; turn = (it + 1) % items.length; break; } }
+      for (let t = 0; t < items.length; t++) { const it = (turn + t) % items.length; if ([1, 2, 4].includes(it) && ((F.inSide && F.inSide(sp.x, 0.5)) || !frontClear(sp, lowT + 0.42))) continue; if (items[it](sp)) { have++; turn = (it + 1) % items.length; break; } }
     }
     b.notes.push(`Wall sides: ${have} of ${edgeSpots.length} wall bays with furniture or dressing.`);
   }
@@ -1260,22 +1468,63 @@ function furnish(b, K, C, T, o, F) {
 
 // ---------------------------------------------------------------- the design
 
-// The height a hub may reach: the culture's tallest other building (styles.js HUB.capH) and HUB.capStoreys storeys.
-function capFor(cultureKey) {
-  const H = SH.HUB || {}, c = (H.capH || {})[cultureKey];
-  return c == null ? Infinity : c + (H.capStoreys != null ? H.capStoreys : 2) * (H.storeyH || 3);
-}
 const topOf = pieces => pieces.reduce((m, p) => { const pi = PH.piece(p.name); return pi.structural ? Math.max(m, p.y + pi.size[1] / 2) : m; }, 0);
-// The steps a hub takes down when its main roof would stand over the cap or its crown more than CROWN_OVER over that:
-// 0 as designed; 1 with low (26 degree) roofs; 2 without the lantern tower, drum or raised crown; 3 with a wide open
-// crown on a round hall; 4 one storey without a gallery.
 // RUG_OVER: the most of a rug's area that may lie on rugs already down (corpus third quartile, lab/hub_dress.py).
 const RUG_OVER = 0.52;
-// MIRROR: build the stair and side rooms on the other side in half the villages (off, see generate)
-const MIRROR = false;
-// CROWN_OVER: how far a crown, lantern or finial may rise over the cap (the lead's call, 2026-11-11: up to one storey).
-const CROWN_OVER = 3;
-const TIERS = 5;
+// Roof proportions of the corpus big buildings (lab/hub_roofs.py, the 300 m2 set): roof rise against the short side of
+// the ground floor and crown (lantern, cupola, spire) against the main roof, as quantiles at 10, 25, 50, 75 and 90 %.
+// A village draws its place in the spread (D-156: a roof is as tall as its design calls for and is never cut off).
+const ROOF_Q = { round: { rise: [0.18, 0.22, 0.34, 0.54, 0.82], crown: [0, 0.07, 0.16, 0.32, 0.5] },
+  hall: { rise: [0.25, 0.37, 0.49, 0.56, 0.64], crown: [0, 0, 0.21, 0.33, 0.62] } };
+function quant(u, q) {
+  const at = [0.1, 0.25, 0.5, 0.75, 0.9];
+  if (u <= at[0]) return q[0];
+  for (let i = 1; i < at.length; i++) if (u <= at[i]) return q[i - 1] + (q[i] - q[i - 1]) * (u - at[i - 1]) / (at[i] - at[i - 1]);
+  return q[4];
+}
+
+// The village's layout (D-155, Tyler 2026-11-11: "the layout and interior decor, etc should be highly varied and dynamic
+// and kitbashed such that even same cultural villages have different interior layouts"): one draw per choice from the
+// village's lineage, so each choice moves on its own; weights from the corpus measures (hubs.md, hub-gen.md) and the
+// culture data (roof style, pitch). sig: the choices, for lab/test_hub_variance.js.
+function drawLayout(lineage, cultureKey, C, line, k) {
+  const u = name => rngH(hashH(`${lineage}|${cultureKey}|${name}`))();
+  const pick = (name, w) => { const e = Object.entries(w).filter(([, v]) => v > 0), t = e.reduce((a, [, v]) => a + v, 0); let x = u(name) * t; for (const [kk, v] of e) if ((x -= v) <= 0) return kk; return e[0][0]; };
+  const round = line !== 'cross', style = round ? roundStyle(C) : 'cross';
+  const RQ = ROOF_Q[round ? 'round' : 'hall'];
+  const KIT = (DecH().KIT || {});
+  const V = {
+    // the culture's low pitch keeps it in the lower part of the corpus spread
+    rise: quant(C.pitch === 26 ? u('rise') * 0.6 : u('rise'), RQ.rise),
+    crown: quant(u('crown'), RQ.crown),
+    // the high seat: at the far end facing the door (corpus: 74 % of high seats at an end), or at a side
+    seat: pick('seat', round ? { far: 3, side: 1 } : { far: 3, near: 1 }),
+    seatSide: u('seatSide') < 0.5 ? -1 : 1,
+    // raised on a dais (corpus: 7 % of high seats in the ranked set, 32 % in its top tenth), a step, or none
+    raise: pick('raise', { dais: 2, step: 2, none: 3 }),
+    hearth: pick('hearth', style === 'posts' ? { pit: 4, hearth: 2, long: 1 } : style === 'flat' ? { hearth: 3, pit: 2, long: 1 } : { hearth: 3, long: 2, pit: 2 }),
+    tables: pick('tables', !round ? { rows: 4, U: 3, groups: 2, mixed: 1 } : style === 'drum' ? { spokes: 4, ring: 2, groups: 2, mixed: 2 }
+      : style === 'posts' ? { ring: 4, groups: 3, spokes: 1, mixed: 1 } : { rugs: 4, groups: 3, ring: 1 }),
+    nTables: 3 + Math.floor(u('nTables') * 4),
+    gallery: k === 4 ? pick('gallery', { full: 3, none: 1 }) : 'full',
+    walkway: pick('walkway', { front: 3, side: 2, none: 2 }),
+    stairSide: u('stairSide') < 0.5 ? -1 : 1,
+    roomSide: u('roomSide') < 0.5 ? -1 : 1,
+    rooms: pick('rooms', { two: 3, one: 2 }),
+    second: pick('second', { food: 3, closet: 2 }),
+    light: pick('light', { piece_walltorch: 3, piece_dvergr_lantern: 1 }),
+    banner: (KIT.banner || ['piece_banner01'])[Math.floor(u('banner') * (KIT.banner || [1]).length)],
+    rug: pick('rug', { rug_fur: 3, rug_deer: 2, rug_wolf: 1, jute_carpet: 1 }),
+    trophyRows: u('trophyRows') < 0.4 ? 3 : 2,
+  };
+  if (k === 5 && V.raise === 'none') V.raise = 'step';
+  // (a part round's walkway runs along its straight front, where the gallery's opening meets it)
+  if (line === 'part') V.walkway = 'front';
+  if (V.seat === 'side' && round) V.seatSide = V.stairSide === V.seatSide ? -V.seatSide : V.seatSide;
+  V.sig = [V.seat === 'side' ? `seat side ${V.seatSide}` : `seat ${V.seat}`, V.raise, `hearth ${V.hearth}`, `${V.tables} ${V.nTables}`,
+    `gallery ${V.gallery}${round ? ' walkway ' + V.walkway : ''}`, `stair ${V.stairSide}`, `rooms ${round ? -V.stairSide : V.roomSide} ${V.rooms} ${V.second}`].join(', ');
+  return V;
+}
 
 function generate(req, T) {
   const biome = SH.BIOMES.includes(req.biome) ? req.biome : 'Meadows';
@@ -1303,23 +1552,17 @@ function generate(req, T) {
   C.baseTop = 0.6;
   const info = { type: 'hub', biome, cultureKey, stage, decor, seed, line, family: k === 1 ? 'camp' : line === 'cross' ? 'cross' : 'round', walls: k === 1 ? 'none' : wallStyle };
   const ext = exteriorOf(has, stage, line, C);
-  let b, F = {}, tier = 0;
-  const cap = capFor(cultureKey);
+  let b, F = {};
+  // the village's draws (D-155: every major choice by the village's seed, weighted by the corpus and the culture data)
+  const V = drawLayout(lineage, cultureKey, C, line, k);
   if (k === 1) {
     b = new T.Build(); b.markers = [];
     campDesign(b, K, T, { R, cultureKey, decor, place: placer(b, T), biome });
   } else {
-    // the hall, built again a step plainer while it stands over the height the village allows
-    // (req.minTier: start further down, for the lab)
-    for (tier = Math.max(0, Math.min(TIERS - 1, +req.minTier || 0)); tier < TIERS; tier++) {
-      b = new T.Build(); b.markers = [];
-      F = line === 'cross' ? crossHall(b, Kw, C, T, { stage, tier, ext, wallStyle, has })
-        : roundHall(b, Kw, C, T, { stage, variant: line, tier, ext, wallStyle, has, cultureKey, crownMax: cap + CROWN_OVER });
-      if (topOf(b.pieces.filter(p => !p.crown)) <= cap + 0.01 && topOf(b.pieces) <= cap + CROWN_OVER + 0.01) break;
-    }
-    if (tier >= TIERS) tier = TIERS - 1;
-    if (tier) b.notes.push(`Built ${tier} step${tier > 1 ? 's' : ''} plainer to stay within ${cap.toFixed(1)} m (the culture's tallest other building and ${(SH.HUB || {}).capStoreys} storeys).`);
-    info.plan = line; info.roof = line === 'cross' ? 'gable' : F.style === 'flat' ? 'flat' : F.drum ? 'drum' : 'conical'; info.tier = tier;
+    b = new T.Build(); b.markers = [];
+    F = line === 'cross' ? crossHall(b, Kw, C, T, { stage, ext, wallStyle, has, V })
+      : roundHall(b, Kw, C, T, { stage, variant: line, ext, wallStyle, has, cultureKey, V });
+    info.plan = line; info.roof = line === 'cross' ? 'gable' : F.style === 'flat' ? 'flat' : F.drum ? 'drum' : 'conical';
     if (line !== 'cross') b.notes.push(`${line === 'octagon' ? 'Octagonal' : line === 'part' ? 'Part round' : 'Round'} hall of ${F.N} sides, ${(2 * F.ap).toFixed(1)} m across round the fire.`);
     const place = placer(b, T);
     // the notice board in the hearth area (D-140): freestanding outside the main door, and from s4 signs on a wall by
@@ -1330,7 +1573,18 @@ function generate(req, T) {
     noticeBoard(b, K, d0.x + (k >= 4 && !F.porch ? 4.6 : 3.6), nbz, 0);
     if (k >= 4) noticeWall(b, { x: d0.x - 3, z: d0.z + 0.2, yaw: 0, nx: 0, nz: 1 }, 0.125);
     b.markers.push({ kind: 'path', x: d0.x, y: 0, z: d0.z - (F.porch ? 5 : 2), yaw: 180 });
-    furnish(b, Kw, C, T, { stage, line, place, R, has, skipDecor: req.skipDecor, cultureKey, biome }, F);
+    furnish(b, Kw, C, T, { stage, line, place, R, has, skipDecor: req.skipDecor, cultureKey, biome, V, lineage }, F);
+    // the last pass: anything the walk leaves unreached, or standing in a doorway's entry zone, comes out (D-148, D-152)
+    for (let t = 0; t < 4 && !req.skipDecor; t++) {
+      const r = reachH({ pieces: b.pieces, rooms: b.rooms });
+      const bad = new Set([...r.piecesOut, ...r.entry.map(e => `${e.name} ${e.at}`)]);
+      if (!bad.size) break;
+      const key = p => `${p.name} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`, key2 = p => `${p.name} ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`;
+      const n0 = b.pieces.length;
+      b.pieces = b.pieces.filter(p => !(p.decor && !p.highSeat && !p.hearth && (bad.has(key(p)) || bad.has(key2(p)))));
+      if (b.pieces.length === n0) break;
+      b.notes.push(`${n0 - b.pieces.length} pieces left out where they would block the way.`);
+    }
     // outside: a wood stack and a stone pile by the hall (Amenities.cs puts the same by the hearth)
     if (!req.skipDecor) {
       const ox = line === 'cross' ? F.Wx + 2 : F.ap + 1.8;
@@ -1344,38 +1598,16 @@ function generate(req, T) {
   else b.pieces = b.pieces.filter(p => !p.decor || p.hearth || p.notice || p.highSeat || p.spouseSeat);
   // pieces that stand on their pivot in the game go down to their foot (as lib/generate.js finish)
   for (const p of b.pieces) { const pi = PH.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
-  // the stair and the side rooms stand on the left or the right, by the village (the whole hall mirrored across its
-  // axis from the door to the high seat; the culture data give no side)
-  // (off: a mirrored hall moves pieces whose solids sit off their middle by a few cm, and fine clearances the walk test
-  // passed close up; MIRROR turns it on)
-  info.mirrored = MIRROR && k >= 2 && rngH(hashH(`${lineage}|${cultureKey}|side`))() < 0.5;
-  if (info.mirrored) {
-    for (const p of b.pieces) {
-      // a door hangs off its bay's middle by its own offset (generate.js putDoor): it is hung again in the mirrored bay
-      if (!p.decor && PH.piece(p.name).role === 'door' && PH.doorSpec) {
-        const sp = PH.doorSpec(p.name), Y = rad(p.yaw || 0), bx = p.x + Math.cos(Y) * sp.offset, bz = p.z - Math.sin(Y) * sp.offset;
-        const Y2 = normH(-(p.yaw || 0) + (sp.along === 'z' ? 180 : 0)), a2 = rad(Y2);
-        p.x = +(-bx - Math.cos(a2) * sp.offset).toFixed(3); p.z = +(bz + Math.sin(a2) * sp.offset).toFixed(3); p.yaw = Y2; p.q = T.quat(Y2);
-        continue;
-      }
-      p.x = +(-p.x).toFixed(3); p.yaw = normH(-(p.yaw || 0)); p.q = T.quat(p.yaw);
-    }
-    for (const r of b.rooms) { const x0 = r.x0; r.x0 = -r.x1; r.x1 = -x0; if (r.door) r.door = { ...r.door, x: -r.door.x }; }
-    for (const m of b.markers) { m.x = -m.x; m.yaw = normH(-(m.yaw || 0)); }
-    for (const m of [b.leader, b.spouse]) if (m) { m.x = -m.x; m.yaw = normH(-(m.yaw || 0)); }
-  }
   const L = b.leader || { x: 0, y: 0, z: 3, yaw: 180 };
   const mk = (m, extra) => ({ kind: 'seat', x: +m.x.toFixed(3), y: +m.y.toFixed(3), z: +m.z.toFixed(3), yaw: Math.round(m.yaw || 0), ...extra });
   const markers = [...b.markers, mk(L, { leader: true })];
   if (b.spouse && b.pieces.some(p => p.spouseSeat)) markers.push(mk(b.spouse, { spouse: true }));
   // the drawn features this line builds (the rest of GRAND has no form in it yet)
   const USED = k === 5 ? ['fires3', 'dais'] : ['dais'];
-  // (a hub built plainer to keep its height leaves out its tiers)
-  info.features = k === 1 ? [] : [...new Set([...USED.filter(f => has(f, stage)), ...Object.keys(ext)])].filter(f => !(f === 'tiers3' && tier >= 2));
+  info.features = k === 1 ? [] : [...new Set([...USED.filter(f => has(f, stage)), ...Object.keys(ext)])];
   info.top = +topOf(b.pieces).toFixed(1);
   info.mainTop = +topOf(b.pieces.filter(p => !p.crown)).toFixed(1);
-  info.crownOver = CROWN_OVER;
-  info.cap = isFinite(cap) ? +cap.toFixed(1) : null;
+  info.layout = V.sig;
   const name = `hub_${biome.replace(' ', '')}_${cultureKey}_${line}_${stage}${decor}_${seed}`;
   return {
     ground: 0,
@@ -1399,5 +1631,5 @@ function write(d) {
   return extra.length ? text.replace('#Pieces\n', extra.join('\n') + '\n#Pieces\n') : text;
 }
 
-const apiH = { generate, write, lineFor, featureDraw, capFor, GRAND, STAGES, LINES, CROWN_OVER, RUG_OVER };
+const apiH = { generate, write, lineFor, featureDraw, drawLayout, GRAND, STAGES, LINES, RUG_OVER, ROOF_Q };
 if (NODE_H) module.exports = apiH; else window.VHHub = apiH;

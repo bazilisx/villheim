@@ -471,3 +471,46 @@ node lib/build_web.js web/index.html                                # the reques
 
 The sample set lives in `tools/blueprint-lab/out/cultures/<key>/` (blueprint, four-view sheet and icon per design,
 `summary.json`) and is not committed.
+
+## Village hub per culture (plan, 2026-11-11)
+
+The hub is the central hearth area: the village's gathering place and the leader's usual spot, grown stage by stage
+like a Millénaire town hall (Tyler, 2026-11-11; D-067). Plan, measures and sources:
+`docs/handoffs/2026-11-10-design/hubs.md`; data in `tools/blueprint-lab/data/hubs/`. Nothing here is built yet; the
+lab has no `hub` type. Open questions D-137 to D-142 are proposed in hubs.md.
+
+Every line: s1 is a campfire with two to four shelters open to it, log benches, the notice board and chests (Tyler's
+hub1 s1: fire pit, three lean-tos 5.4 to 8.8 m out, benches at 3 m, board at 9.2 m). The s1 plot is sized for s5
+(D-083), the shape family stays from s2 to s5 (D-132), and s5 is the village's grandest building. Corpus sizes for the
+last stages: halls 20 x 36 m, 11 m, 3 storeys (Norse group median); round halls 27 x 30 m, 11 m; temples 23 x 40 m,
+18 m. Materials by the biome rule (D-125, D-012, D-131).
+
+- **norse:** long hall (corpus: 63 % gable) and a round line from Tyler's hub1 (D-137). Long line: small hall,
+  longhouse with aisle posts, great hall with a loft and high seat, mead hall about 20 x 36 m. Round line (hub1): round
+  wall 20 m (s2), 16-sided round hall with a sunken stone hearth, raised ring floor, drum and two roofs (s3 without the
+  inner roof, s4 with it), and at s5 a round thatch hall about 30 m across and 15 m high from the MWL_MountainsHogan1
+  location, repaired.
+- **anglo-saxon:** long hall with opposed doors, growing end partitions and then annexes; s5 a great hall of about
+  300 m2 with a tiered timber seating stand outside facing a platform (Yeavering).
+- **frankish-norman:** timber hall, then a tower at one end, then a stone hall over an undercroft; s5 a 3-storey keep
+  joined to the hall round a yard with a low wall.
+- **norse-forest:** stave hall, the gallery roof from s3, two roof tiers at s4, three with dragon heads at s5.
+- **celtic:** round: 9.7 m, 14.5 m, about 20 m with an inner post ring, s5 about 30 m with two post rings and a central
+  post or open crown (Navan Fort's 40 m round building).
+- **slavic:** log hall, then on a log ground storey with an outside stair, then a terem of 2 to 3 storeys; s5 a terem
+  with a tower over a square.
+- **celtic-crannog:** round on a platform: 9.7 m, 14.5 m, about 20 m with a deck all round; s5 on its own platform with
+  a causeway.
+- **baltic:** long log hall (rija) on the lake platform, a granary on posts beside it, s5 at the platform's center with
+  a lane round it.
+- **fen-folk:** aisled longhouse on the mound top, walkways to it, s5 25 to 35 m with a low hipped roof and the houses
+  set round it.
+- **norse-highland:** gabled houses in a row with a long fire hall behind, s5 a hall farm of about 28 m (Stöng); the
+  Hogan fits here too (D-137).
+- **saami:** low round: gathering goahti 9.7 m, 14.5 m, two joined, s5 the largest goahti in a ring of lavvu and
+  storehouses; grandest by floor area while staying low.
+- **middle-eastern:** court: one wing and an arcade, three wings and a well, four wings with an iwan and a tower, s5 a
+  courtyard of 24 m or more with iwans and corner towers.
+- **byzantine:** chapel, cross with a dome, cross-in-square with a narthex, s5 a domed church on an arcaded square.
+- **steppe:** great yurt 9.7 m, 14.5 m, then joined to smaller yurts, s5 the largest yurt in a ring of yurts.
+- **lamari:** machub hall, a 4-storey tower beside it, a darbazi hall, s5 a hall with two towers and a drum church.

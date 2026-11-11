@@ -972,12 +972,131 @@ wall's relief. Past 1 cm against the colliders: furniture into furniture 50th pe
 ### Not run
 
 - `lab/mine_kitbash.js`, `lab/mine_creative.js`, `lab/mine_yards.js`, `lab/mine_motifs.js`, `lab/coverage.js`: they read
-  `compact.json` (`lab/build_corpus.py` over the review sheet files), which is not on the device. By code they read
-  colliders and bounds only, so their output is the same on ee15184.
+  `compact.json`, which is not on the device. Rerun in the second recount below.
 - Generator-side `lab/test_stands.js` against the new miner switch: the generator and the miner use the default
   (colliders), so the test_stands tables stay as in models.md Round 3.
 - Furniture clip rows use the roles `wall`, `pole`, `beam`, `window`, `door`, `gable` as structure; a counter built of
   wall pieces counts as structure.
+
+### Miners that need compact.json (second recount, 2026-11-11)
+
+Branch `design/wip-recount2` from `design/wip-recount` 0b5fa55. Scope: measure only; no generator code, target or band changed.
+Corpus: Tyler's 2,153 files on his PC (2,128 builds after 25 duplicates). `compact.json` is made by the new
+`lab/build_compact.js <corpus folder> <out>` (folder walk as `lab/mine_stands.js`, `index.json` for titles and downloads, same-build
+rule of `lab/build_corpus.py`); `lab/build_corpus.py` reads an older folder layout (pb, vh, hs, review.json) that the corpus no
+longer has. The Review tab is not on the device, so every `verdict` is empty (4,268,344 pieces; 188 MB; kept in `/home/claude/study`,
+outside the repo). Effects: `lab/mine_motifs.js` picks builds by downloads alone (517 builds, cut 251) where the committed file also took
+Tyler's Yes; the corpus now holds 1,555 vanilla builds for `lab/mine_kitbash.js` (356 well-liked) and 195 well-liked yard builds, against 115
+in the committed `data/yards.json`. So the "old" column below is the unchanged miner (or the colliders through the same code path) run on
+this corpus, not the committed file.
+
+#### Where each script judges contact, clipping or touching
+
+Rest and snap keep the colliders in every mode. Judgments of what shows get the `VH_SHAPES=collider|coarse|fine` switch
+(`lab/shape_mode.js`; unset gives the old output, `collider` runs the new code path on the colliders).
+
+| Script | Judgment | About | Shapes |
+|---|---|---|---|
+| mine_kitbash | what a piece rests on (floor, anchor, another piece, hung); against a wall at its height (box within 0.3 m of a wall box) | rest/snap | colliders (`Ck.aabb`) |
+| mine_kitbash | anchor frames and wall faces (`extent`, `faces`: the collider face a piece stands against) | rest/snap | colliders |
+| mine_kitbash | clip depth between members, to the anchor, to the wall (`SHP.clipDepth`) | what shows | switch |
+| mine_creative | rest (`restOf`) and wall faces | rest/snap | colliders |
+| mine_creative | contact that joins pieces into one object (solids within 2 cm, `touch`) | what shows | switch (box test widened 0.5 m first) |
+| mine_creative | clip depth between members, to the anchor, to the wall; the 3 cm "on purpose" rule reads these | what shows | switch |
+| mine_yards | piece box (collider), roofed cells, distance to the building (`againstWall`, distance under 1.3 m) | position, no contact | unchanged |
+| mine_yards | fence line joins by snap points (`ends`) | snap | unchanged |
+| mine_yards | sink of a piece below the ground; fence, wall, post and gate height and foot | what shows | switch (lowest and highest point of the shapes) |
+| mine_yards | prop clip depth into fence, post, wall or another prop | what shows | switch (`clipDepth` of the shapes; old: shallowest axis of the two collider boxes) |
+| mine_motifs | piece in the region, wall and roof "base" anchors, doorway cover | position | model bounds, unchanged |
+| mine_motifs | nothing floating (each piece touches an anchor or a piece that does, 8 cm) | what shows | switch |
+| mine_motifs | hidden piece (over 80 % shared volume), clipping (over 0.4 m rejects), kept clip depth | what shows | switch |
+| mine_motifs | clip into the wall the feature is on | what shows | switch |
+| coverage | footprint, wall and roof boxes, overhang, outer/inner | position | unchanged |
+| coverage | a prop set into a wall (middle point inside a thin wall's box) | what shows | switch (point inside a wall part) |
+
+Coarse and fine parts are read with `lib/mesh.js` (`world`, `worldFine`). Pieces without parts keep their collider. Not switched: the
+candidate lists (`around`, the 2 m grid), which still use collider boxes.
+
+#### Results
+
+Tolerance: 1 cm for depths and heights; 5 points for clip shares; the test_stands band (0.6 to 1.6 times, at least 2 points) for
+counts and rates. Data files, next to the old ones: `data/kitbash-interior-fine.json`, `data/yards-fine.json`, `data/motifs-fine.json`,
+`data/coverage-fine.json` (all builds), `data/recount2-compare.json` (every row below). Command lines are in the handoff.
+
+Kitbash library (`lab/mine_kitbash.js`, 1,555 builds, colliders against fine):
+
+| Measure | Colliders | Fine | Change | Feeds |
+|---|---|---|---|---|
+| Entries kept, same anchor and pieces at the same spots | 533, 522 shared | 533, 522 shared | 0 entries differ | library membership unchanged (grouping reads no clip) |
+| Clips between members: count, 50th, 90th | 307, 6.9, 23.0 cm | 590, 6.5, 13.3 cm | +283, -0.4, -9.7 cm (past) | `assemblies[].clips`, `clipOf`, furnClip 12 cm |
+| Clips to the anchor: count, 50th, 90th | 207, 7.1, 25.7 cm | 484, 9.4, 26.9 cm | +277, +2.3, +1.2 cm (past) | same |
+| Clips to the wall: count, 50th, 90th | 362, 13.0, 35.0 cm | 677, 11.0, 30.0 cm | +315, -2.0, -5.0 cm (past) | intoWall 15 cm, mountClip |
+| Entries with a clip of 3 cm or more | 54.0 % | 76.5 % | +22.5 pt (past) | which entries `maxClip` marks |
+| Entries with a clip of 12 cm or more | 33.2 % | 52.5 % | +19.3 pt (past) | furnClip gate |
+| Decor table: pieces with 30+ uses whose 90th clip moved over 1 cm | | 103 of 131 | | `decor[].clip90` |
+
+Largest decor movers (90th percentile clip, colliders to fine): Blueberries 0 to 61 cm, QueensJam 0 to 49 cm, blackmarble_head02 100 to
+52 cm, forge_ext2 63 to 18 cm, piece_cookingstation 62 to 21 cm, fermenter 61 to 31 cm, piece_xmasgarland 0 to 30 cm.
+Fine parts of food and wall decor have no matching collider, so pairs the colliders never saw now count. The library keeps the same
+entries. The clips stored with each entry change, so the clip allowances the generator reads from it move.
+
+Yards (`lab/mine_yards.js`, well-liked 195 builds; the unchanged miner and the collider path differ in the clip depth only, the
+unchanged one takes the shallowest axis of two collider boxes, 487 clips, median 23 cm):
+
+| Measure | Colliders | Fine | Change | Feeds |
+|---|---|---|---|---|
+| Prop clip depth (n 255 to 293): median, 75th, 90th | 14, 19, 28 cm | 8, 16, 25 cm | -6, -3, -3 cm (past) | yards prop clip allowance |
+| Sink of props: median, 75th, 90th | 0, 9, 22 cm | 3, 15, 40 cm | +3, +6, +18 cm (past) | yards sink into the ground |
+| Sink of fences: 75th, 90th | 20, 59 cm | 15, 65 cm | -5, +6 cm (past) | same |
+| Fence top (all fence kinds) median | 363 cm | 356 cm | -7 cm (past) | fence height |
+| wood_fence top median, 90th | 213, 278 cm | 231, 296 cm | +18, +18 cm (past) | fence height |
+| stake_wall top | 380 cm | 373 cm | -7 cm (past) | fence height |
+| Low wall top median | 100 cm | 108 cm | +8 cm (past) | low wall height |
+| Post top 90th | 370 cm | 386 cm | +16 cm (past) | post height |
+| Gate top, floor sink | | | 0 | no change |
+
+Heights here are over the ground estimate of the miner (5th percentile of the structure's bottoms). All vanilla builds (958 fences) move
+the same way; dvergr stake wall top +50 cm (15 pieces). The full row list is in `data/recount2-compare.json`.
+
+Motifs (`lab/mine_motifs.js`, 517 builds, colliders against fine; the fine run takes 6 slices of `SLICE=i/6` with `DUMP` and `MERGE`
+because one run takes over 5 minutes on the device):
+
+| Measure | Colliders | Fine | Change | Feeds |
+|---|---|---|---|---|
+| Distinct motifs kept | 2,647 | 2,649 | +2 | motif library size |
+| Motifs with a clipped piece | 74.4 % | 75.2 % | +0.8 pt | D-098 clip marks |
+| Clip depth, median, 90th | 20, 30 cm | 20, 34 cm | 0, +4 cm (past) | motif clip allowance |
+| Motif keys only in one run | 235 | 237 | | library membership (past: about 9 % of keys differ) |
+| Top 100 by rank shared | 98 of 100 | | | the top of the library holds |
+| Sites dropped as "hidden piece" (corner, base, balcony, chimney) | 42, 17, 9, 2 | 71, 36, 15, 10 | +29, +19, +6, +8 (past) | site rates |
+| Sites rejected as "clipping" (window, eave, valley, icorner) | 88, 55, 1, 5 | 149, 97, 6, 13 | +61, +42, +5, +8 (past) | site rates |
+| Sites rejected as "floating" (corner, valley, gable, icorner, balcony) | 7, 24, 15, 7, 6 | 4, 12, 6, 0, 3 | fewer (past) | site rates |
+
+Fine parts see more overlap between trim pieces (window trim, eaves) and more contact (fewer floating).
+
+Creative sets (`lab/mine_creative.js`). One run of the fine shapes takes over 20 minutes (contact tests between fine parts), so both
+settings ran on every 6th vanilla build (256 of 1,536; `data/creative-mined-fine-sample.json`). The unchanged miner and the
+collider path give the same 2,706 objects on the sample.
+
+| Measure | Colliders | Fine | Change | Feeds |
+|---|---|---|---|---|
+| Combined objects found, distinct entries | 2,706, 1,896 | 2,763, 1,962 | +57, +66 | `data/creative-mined.json` size |
+| Entries in both runs (same anchor, same pieces at the same spots) | 1,276 | 1,276 | 596 only colliders, 664 only fine (past, about 31 %) | creative set library membership |
+| Clips between members: count, 50th, 90th | 5,931, 10.4, 25.6 cm | 7,600, 9.2, 21.9 cm | +1,669, -1.2, -3.7 cm (past) | `objects[].clips`, `fclip` marks |
+| Clips to the anchor: count, 50th, 90th | 320, 7.0, 20.7 cm | 574, 5.1, 19.6 cm | +254, -1.9, -1.1 cm (past) | same |
+| Clips to the wall: count, 50th, 90th | 2,282, 19.3, 33.6 cm | 3,022, 17.5, 32.8 cm | +740, -1.8, -0.8 cm | `wclip` |
+| Entries with a clip of 3 cm or more | 80.4 % | 88.9 % | +8.5 pt (past) | which sets count as clipped on purpose |
+| Entries with a clip of 12 cm or more | 62.0 % | 65.3 % | +3.3 pt | furnClip |
+
+Contact grouping (shown shapes touch within 2 cm) makes the object set change; the library keeps different entries where the fine
+parts join or separate pieces.
+
+Coverage (`lab/coverage.js --quick`, 239 well-liked buildings): buildings with 3 or more props set into a wall, 5.4 % (colliders) to 6.3 %
+(fine), +0.9 pt, inside tolerance. Generated side 0 % both ways. The COVERAGE.md gap is unchanged.
+
+Rows past tolerance (summary): creative sets: membership (about 31 % of entries differ), clip percentiles to members and anchor, clip share 3 cm; kitbash clip counts, percentiles and shares (all three clip kinds); yards prop clip depth, prop and fence
+sink, fence, wall and post heights; motif clip 90th percentile, motif key set, hidden/clipping/floating site rates. Library membership
+changes: kitbash none; motifs about 9 % of keys differ; creative sets about 31 % of entries differ (sample).
 
 ## Households (D-068)
 

@@ -601,7 +601,8 @@ function add(b, ctx) {
         // the card's back on the wall face, its pivot out from it by the model's depth behind the pivot
         const [x, z] = f.base(t - V.along, V.back + R() * 0.06, y, y + h);
         const py = y - V.y0;
-        if (ok && !placed.some(q => q.green.k === 'vine' && Math.hypot(q.x - x, q.z - z) < 0.08 && Math.abs(q.y - py) < 0.08)) {
+        // (within 0.1 m on every axis two vines read as one doubled piece in lib/checks.js overlap, which keys pieces to 0.1 m)
+        if (ok && !placed.some(q => q.green.k === 'vine' && Math.abs(q.x - x) < 0.1 && Math.abs(q.z - z) < 0.1 && Math.abs(q.y - py) < 0.1)) {
           if (put(e, 'vine', 'wall', pick.src, x, py, z, yaw, 1)) { k++; left--; got.vine = (got.vine || 0) + 1; }
           else miss++;
         } else miss++;

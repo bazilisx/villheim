@@ -19,6 +19,9 @@
 const NODE_D = typeof module !== 'undefined';
 const PD = NODE_D ? require('./pieces.js') : window.VHPieces;
 const checksD = () => (NODE_D ? require('./checks.js') : window.VHChecks);
+const decorDt = () => (NODE_D ? require('./decorate.js') : window.VHDecorate);
+// a hung prop or banner with plain wall behind it as the decorator's audit reads it (lib/decorate.js mountClear)
+const mountClearD = (b, p) => { const D = decorDt(); return !D || !D.mountClear || D.mountClear(p, b.pieces); };
 const MotifsD = NODE_D ? require('./motifs.js') : window.VHMotifs;
 const meshDt = () => (NODE_D ? require('./mesh.js') : window.VHMesh);
 // How far a wall piece shows past its middle on its fuller side (lib/mesh.js): 0.15 for a flat wall, 0.28 for the
@@ -526,6 +529,9 @@ function commitMotifs(b, ctx) {
       for (const q of floors) { if (Math.abs(q.x - p.x) > 2.5 || Math.abs(q.z - p.z) > 2.5) continue; const t = SH.topAt(SH.world(q) || [], p.x, p.z); if (t != null && t <= V.y0 + 0.05 && t > fl) fl = t; }
       out = V.y0 < fl - 0.03 || V.y0 > fl + 1.0;
     }
+    // and plain wall behind a hung one, as the decorator's audit reads it (mountOnOpening: motif signs and a wall torch
+    // over openings on a Plains sawmill and storehouse, integration round 4)
+    if (!out && !mountClearD(b, { ...p, q: p.q || quatD(p.yaw) })) out = true;
     if (out) bad.push(p);
   }
   const dropped = p => bad.some(q => q.motif === p.motif && Math.abs(q.x - p.x) < 3 && Math.abs(q.y - p.y) < 4 && Math.abs(q.z - p.z) < 3);
@@ -741,7 +747,7 @@ function hangBanners(b, X, fr, as, id, wall) {
     const c = { m: { id, kind: 'wallface', fit: {} }, kept: bannerPieces(X, as, h, o) };
     const placed = MotifsD.place(b, c, fr, null, { ground: 0, dry: true, minShare: 1, keepOut });
     if (!placed.length) continue;
-    if (!placed.every(p => wallBehind(b, p, fr))) return false; // an open bay, a window: no other height helps
+    if (!placed.every(p => wallBehind(b, p, fr) && mountClearD(b, p))) return false; // an open bay, a window: no other height helps
     hold(b, placed); return true;
   }
   return false;

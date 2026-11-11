@@ -3487,6 +3487,16 @@ function mountOk(it, wallish) {
   }
   return true;
 }
+// The audit's plain-wall test for one hung piece against the building as it stands (lib/details.js asks it for motif
+// props and banners, so the outside trim passes the audit's mountOnOpening): true for a piece that is not hung.
+function mountClear(p, pieces) {
+  modelSizes();
+  const it = itemOf(p.q ? p : { ...p, q: [0, Math.sin((p.yaw || 0) * PI / 360), 0, Math.cos((p.yaw || 0) * PI / 360)] });
+  if (it.f.at !== 'mount') return true;
+  const wallish = pieces.filter(q => Math.abs(q.x - p.x) < 3 && Math.abs(q.z - p.z) < 3 && (!q.decor || (!F[q.name] && P.piece(q.name).structural)))
+    .map(structBox).filter(sb => WALLISH.has(sb.role));
+  return mountOk(it, wallish);
+}
 // The audit's box for one piece, as boxOf in audit() makes it.
 function itemOf(p) {
   modelSizes();
@@ -3745,6 +3755,6 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
 }
 
 const api = { lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
-  lightCls, lightBudget, rugBudget, lightRoomOf, LIGHT_D2, topWeights,
+  lightCls, lightBudget, rugBudget, lightRoomOf, LIGHT_D2, topWeights, mountClear,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

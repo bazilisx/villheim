@@ -191,6 +191,93 @@ Open:
 - Homes with no rug 50 % in the 36-home sample (corpus 28 to 32 %), from 7 of 18 household draws.
 - Wall station stands 31.4 % (corpus 16.9), as in round 3.
 
+## Integration, round 5 (2026-11-11, branch design/integration2 from dda70fe)
+
+Tyler's words this round: D-152 "egress and room movement should always allow someone to move into rooms and
+explore"; D-148 "a player or npc must be able to navigate around the table to the bed or vice versa. So if .6m is too
+tight to do so, any furniture or decor that disrupts that expectation should not be placed. Any furniture or decor.";
+D-149 "B. Always mirror what corpus builders do. WWCBD should be a central tenet". Fix clusters (D-123):
+- a29e5b1 reach (layout.js, generate.js finish, kitbash.js apply): `openWays` reads the finished design as
+  lab/reach.js does (`walkMap`: 0.25 m grid over the room rects, 0.9 m lane, walked from every door to the outside and
+  over the climbs) and, for each closed room, out-of-reach bed, table, station or chest and piece in an entry zone:
+  moves what stands in the cheapest lane (a group: the piece, what stands on it, a table's seats, a library set whole)
+  to a spot of its floor clear of the lane, the entry zones, the climbs, doors and the fire's ring, that a person
+  reaches; else moves or turns the piece itself; else makes a double bed single; else leaves out loose things, then
+  chests, then the piece, then tables and stations in the lane. A change is kept only when the count falls and no new
+  closed room or entry problem comes. A long hearth that leaves no lane where the structure does becomes a fire pit
+  (D-132). Fires, doors, clipped pieces and the first chest never move; beds and fires are never left out. It runs in
+  generate.js `finish` after every pass that sets furniture. clearLanes moves loose furniture aside (`moveAside`)
+  before it takes any out; the late clearEntries and clearLanes calls at the end of kitbash.js apply are gone.
+- 70f1bd8 D-148 (decorate.js): `TABLE_BED_TIGHT` removed; tableSure keeps 0.9 m from a bed on every try; what still
+  closes a lane is moved or left out by openWays.
+- 2e61017 D-149 (generate.js tidyFurniture): a lone chair stays where a wall, seat, stand, chest, window, light, rug or
+  station is within 1.2 m of its box; bare rugs stay up to 67 % of a design's rugs. Corpus (1,739 vanilla builds,
+  pivots only, device script `~/vhrug/rugmine.js`, kept off the repo): 69 % of roofed chairs stand 2.3 m or more from
+  a table and 3 m from a fire, 99 % of those with one of those kinds within 1.6 m; 67 % of 14,540 flat rugs have no
+  furniture on them (3,457 more hang on walls).
+- 6398565, 6b61120, 3c20fd1 (layout.js, lab/reach.js): rooms are opened before single pieces (a smithy lost its forge
+  to a closed room); the smallest blocking group, and a set's blocking pieces before the whole set, go first; a moved
+  piece keeps within 5 cm of what shows of walls, beams and posts (the Plains pool's intoWall) and of stations
+  (onStation); sets built of building pieces never move (a beam shelf moved into a tower room failed headroom);
+  station extensions (`_ext`) are no reach target in walkMap or lab/reach.js (they work by standing near their
+  station and are never used).
+- 90ca538, 4895d1f lanterns (decorate.js, lights track's file): no Dvergr wall lantern was ever put up. mountSpots
+  asked the wall to reach 1.2 m over a hung piece's hook; a hung lantern now needs the wall to the hook. clearOfRelief
+  refused every lantern: HUNG_CORPUS gets the lantern's corpus clip, 18.8 cm (data/kitbash-interior.json, 462
+  lanterns, 395 on the wall; D-127, marked as D-098 clips). Its back plate now sits at the wall's middle (it hung half
+  through the wall, back out the far side). Floors with a Dvergr wall lantern: 0 to 17 % (essentials, 378 floors).
+
+Reach, one seed (234 designs), round 4 tip then this round: main pieces out of reach 255 of 1,395 to 7 of 1,355
+(extensions no longer counted); room rects 24 to 4 of 323; pieces in entry zones 5 to 0. Full run (702 designs):
+769 of 4,067 to 42 of 3,848; 71 to 24 of 987; 37 to 1. What remains: 17 rooms and 25 pieces in 7 middle-eastern
+court-flat-stone homes and taverns (the court plan joins its rooms through 1 m gaps between thick stone walls inside
+the room rects; a plan matter, furniture is left as it is); 3 rooms and 6 pieces on the upper floor of workshop
+Mistlands s3 seed 528; 4 single rooms in Swamp and Mistlands longhouses; one double bed in a Mountain home; the upper
+bunk room of tavern Mistlands s3 seed 64 at one seed (beds that fit nowhere are never left out). The one entry-zone
+piece is a library set's half wall.
+
+Full checks at 3c20fd1 (round 4 in brackets); the lantern placement fix 4895d1f after it passed test_structure, the
+Plains pool and one check_interiors seed: check_set 224 of 225, overlap 1 (same); test_structure 36 hold; test_sizes
+0 off; check_interiors overlap 4 (3), floating 8 (7), bareFloors 9 (10), stairs 0, mountOnOpening 0, door 0, every
+checks.js column 0; furniture per design d2 22.1 (21.5), d3 39.9 (38.7); pools Norse Meadows pass (prefabsPerD3 13.2,
+setShare 0.342), norse-forest Black Forest FAIL setShare 0.324 under 0.34 (0.345; prefabsPerD3 11.7), middle-eastern
+Plains FAIL prefabsPerD3 10.5 under 11 (10.3); test_stands 3 --gate misses: flat bench 6.5 (6.3), flat chest 3.8
+outside 0 to 3.5 (4.4), wall station 29.4 (31.4), wall door 8.7 outside 2.1 to 6.6 (in), stands q3 23 outside 24.5 to
+73.5 (in); essentials: tables dressed 35.7 % (37.3), tables turned 23 (23.2), seats turned 31.8 (28.3), rugs layered
+18.6 (20.9), chests stacked 47.6 (47.2), homes with no light 39 % (36), longhouses 25 (25), taverns 6 (3), smithies 42
+(44), storehouses 50 (50); test_variance (at 6398565) hall 0.45 and 0.42, home-b s3d3 0.38 (closest 0.76); compare_page all same;
+gen-test 5 of 5 byte for byte; dotnet build 0 errors, 43 warnings. Pool audits report nestBroken 8 to 18 per pool
+(never gated, D-132; round 4 0): pieces moved between stages.
+
+Furniture per d3 design (item 3): 38.7 to 39.9 on the full run, one seed 42.3 to 42.8. Per d3 design (one seed, 78
+designs, measured at a29e5b1) the budgets leave out 3.5 lights and 1.3 rugs and openWays 1.8 pieces. In the 27 d3
+designs of the Plains pool (6398565) clearLanes moved 27 pieces aside and took 8 out; openWays moved 23 and left 41
+out. Round 3's 47 came before the light and rug budgets.
+
+Plains pool (item 2): what the d3 rooms lost against 5b03e83 (11.1) is mostly light kinds (wall torches 5 designs,
+standing torches 3, candles 2: the light budget, with all three woodworker stages and smithy s3 drawing a dark
+building at the corpus share of 21 %), chests and an armor stand (lanes), and library ledge sets. The lanterns bring
+10.3 to 10.6; openWays costs 0.2 (10.8 with it off). Light kinds are not what holds the pool down: 56 % of its
+designs with two lights or more use one kind against 30 % of 1,134 corpus builds (median two kinds;
+`~/vhrug/lightkinds.js`); a bonus in trimLights for a kind the building lacks changed nothing, as each room's kit
+places one kind. The gate is not lowered.
+
+Black Forest setShare: 444 set pieces of 1,319 decor (round 4) to 431 of 1,362. The woodworker loses its library
+dining set and stations at s2 and s3 (its door opens into a corner closed by furniture; openWays leaves them out
+under D-148); the decor kept by D-149 and by moving instead of removing is not from sets.
+
+Renders: /tmp/int5-renders (not kept): households-home-meadows-s2d3-7 and views-tavern-swamp-s3d3-11, after and
+round 4. The households house has one door (x 0, the long wall); the bed of neat and cosy stands 1.85 m or more to its
+side, out of the entry zone, in round 4 and now; the right-hand steps in the round 4 sheet are outside the plain end
+wall.
+
+Open:
+- Pools: middle-eastern Plains prefabsPerD3 10.5 under 11; norse-forest setShare 0.324 under 0.34.
+- Court-flat-stone plans (middle-eastern) hold most of what stays out of reach; the plan, not the furniture.
+- Decorator placers still fill doors' corners and lanes first and leave openWays to put them right; placing lanes and
+  entry zones before big furniture in lib/decorate.js and the library would cut the leave-outs (1.8 per d3 design).
+- test_stands wall door and stands q3 newly outside their bands; nestBroken reported 8 to 18 per pool.
+
 ## Rules for every helper (copy of /home/claude/briefs/common.md; /home/claude is not kept between sessions)
 
 A new session gives each helper these rules in its brief, with its own branch, working copy and file ownership.

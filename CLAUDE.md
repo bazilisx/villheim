@@ -38,7 +38,8 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 - **Vanilla pieces, approved designs.** Every design a village builds uses only pieces that ship with vanilla Valheim
   1.0, Deep North included (trader decorations, tents, awnings and the like count). Designs come from locations in
   the game or installed mods, PlanBuild blueprints, and blueprint-lab designs Tyler has marked Yes in the Generated
-  tab and copied to `blueprints/approved-generated`; generated designs must pass every check in `lib/checks.js`.
+  tab and copied to `blueprints/approved-generated`; generated designs must pass every check in `lib/checks.js`
+  (no vanilla-only check exists yet, see D-109).
   Villagers use vanilla models and items. Never make new models or textures (Tyler, 2026-11-08, D-013).
 - **Independent of other village mods.** VikingColonies and Innangard were studied for ideas
   (`docs/LEARNINGS.md`). Never copy their code, never depend on them. VikingColonies' license forbids publishing
@@ -47,18 +48,20 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   may be reused and changed in `src/Villheim.Logic`; note the source file in a comment and credit them in the README.
   The designs they ship (BiomeBlueprints houses, `anno_*` blueprints) stay out. Study notes: `docs/CITYBUILDER_STUDY.md`.
 - **Every mod in `Inspiration_v2.zip` is CC0** (`inspiration-v2` branch: ValheimVillages, VikingSettlements, Vikings
-  Village, Living Villages, Living World, Hearthfolk; Tyler 2026-11-10, D-095). Same terms: code may be reused in
+  Village, Living Villages, Living World, Hearthfolk; Tyler 2026-11-10, D-095). Same terms as the CityBuilder rule (a project convention): code may be reused in
   `src/Villheim.Logic` with the source file noted in a comment and a README credit. Innangard in `Inspiration.zip` on
   main stays study only until D-097 is answered.
 - **One village per site.** Each village is one primary village plus resource outposts. No daughter villages.
-  Villagers never move away and elders do not die of age. Growth is never capped by bosses felled; it follows
-  materials, people and needs (D-003, D-004, D-010).
+  Villagers never move away and elders do not die (D-003); how a villager's death is handled is open (D-122). Growth is never capped by bosses felled; it follows
+  materials, people and needs (D-003, D-004, D-010; MaxBuildings and MaxVillagers still cap it, see D-106).
 - **Village-built pieces take no water or rain damage** (D-038).
 - **Villages are a place of rest.** They are echoes of the old world in Valheim's afterlife. No raids, feuds, wars
   between villages, outlaws or thieves; villages never fine, turn away or guard against a player by default. A player who
   harms villagers is warned and banned for some days; one who kills a villager is never welcome there again (D-054).
   Local creatures may wander in and be fought off. Empty villages are settled again.
 - **Biome materials.** A village only builds designs whose materials exist in its biome (Meadows has no core wood).
+  The code also builds such a design once the chests hold the material, since anything brought in counts (D-007): see
+  D-125.
 - **Gathering order.** Material on the ground first, then half-harvested work (felled logs, cracked rocks), then
   fresh trees and rocks. Loose sticks and stones (one material each) only when there is nothing bigger to work, and
   only close by. Nobody harvests when the village needs nothing.
@@ -68,19 +71,19 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 - **Village chest.** One main chest by the hearth holds the building materials. Villagers and players fill it, the
   builder builds from it when it has enough. If it is destroyed, rebuilding it comes before anything else. Extra
   storage chests come with growth (one at s1d1, two at s1d2, four at s1d3, more with population and need), each
-  labelled with a sign and kept sorted by material (D-016). Anything brought into the village counts toward what it can
+  labeled with a sign and kept sorted by material (D-016; the code counts buildings standing, see D-104). Anything brought into the village counts toward what it can
   build, from villagers, outposts or players (D-007).
 - **Animals.** Village animals are born on a schedule (new stages, or to replace an adult that died); they never breed
   by themselves and real feed is never used, though villagers may act out feeding. Animals tamed by players behave as
   in vanilla (D-015).
 - **Stone in early villages.** Meadows and Black Forest villages build in wood at their early stages; stone only for
   advanced buildings and later stages (D-012).
-- **Materials as for a player.** Building pieces and paths costs materials; anything the village breaks down returns
+- **Materials as for a player.** Building pieces and paths cost materials; anything the village breaks down returns
   its full materials, straight into the chest with nothing dropped; trees, rocks and obstacles yield what they yield a
   player; changing a path returns nothing (D-088, Tyler 2026-11-10). Open questions on costs: D-100.
 - **Doorways.** Villagers always use doorways and never use indoor things from outside or through windows. Every door
   is usable by villagers and players. A villager at a blocked entrance opens the door, tries, then passes through the
-  blocked doorway; never through a closed door (D-096).
+  blocked doorway; never through a closed door (D-096; built in part).
 - **Homes and beds.** Beds and houses are assigned ahead of time by arrival order, never claimed. The roster is rolled
   ahead with family sizes; a first house is big enough for the family still to come. Families have at most 4 people
   in any mix. Four villagers at the start, with no fixed rule that the first ones are single. No house without beds
@@ -92,7 +95,7 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 
 - `src/Villheim` (core) holds prefabs, component shells, Harmony patches, commands and the logic loader. Changing it
   needs a game restart. Keep it thin and change it rarely.
-- `src/Villheim.Logic` holds all behaviour and reloads while the game runs. Put new behaviour here. New settings go in
+- `src/Villheim.Logic` holds all behavior and reloads while the game runs. Put new behavior here. New settings go in
   `LogicConfig.cs` so they also hot-reload.
 
 ## Communication style with Tyler
@@ -117,7 +120,8 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   for word and does not reword them. "Decision on record" restates only what the answer says, then where it is built
   (file) once it is built. A detail the answer leaves open becomes a new Open row.
 - **Status.** Open: asked. Answered: Tyler has answered. Done: built in the code, with the file named in "Decision on
-  record"; for a rule with no code, written into CLAUDE.md or the doc named there. Tyler sets rows to Answered; a
+  record"; for a rule with no code, written into CLAUDE.md or the doc named there. A row with an Open "Code differs"
+  row stays Answered until that row is settled. Tyler sets rows to Answered; a
   session sets Done once the work is built. Whether it works in the game is recorded in the Tests tab.
 - **Open rows.** Code does not treat an Open row as decided. When work needs a value before Tyler answers, the value is
   a setting and the row says which value is in use until he answers.
@@ -131,11 +135,12 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 - **Checking before reporting.** Before stating that something is built, fixed, decided or tested, check it at its
   source (the code, the tab, Tyler's words) and name that source. A conclusion from a command's output is checked
   against the raw output first.
-- **Dates** are US Mountain Time. "Asked" is the day the question was put to Tyler.
+- **Dates** are US Mountain Time. "Asked" is the day the question was put to Tyler, or the day he gave the answer
+  unasked.
 - **Wording.** Docs, notes, handoffs, comments and sheet rows state facts: what was done, what the code does, what
   was tried, what is open, with sources. They contain no descriptions of anyone's mood, tone or reactions, no
   narration of how a correction came about, and no judgments of earlier work. A correction is written as the
-  corrected fact with its source, for example "D-077 record set to match the answer of 2026-11-09 (chat)."
+  corrected fact with its source, for example "D-077 record set to match the answers of 2026-11-09 and 2026-11-10 (chat)."
 
 ## Logging every session
 

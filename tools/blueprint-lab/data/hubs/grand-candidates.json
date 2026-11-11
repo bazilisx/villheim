@@ -1,0 +1,213 @@
+{
+ "note": "Grand buildings in the corpus (Villheim-blueprints, valheimians downloads) as inspiration for each culture's hub s5. Counts and measures only (D-136). Titles and makers are credits; no corpus file is copied. Measured with the lab's blueprint parser over 668 candidate builds; the ranking uses vanilla builds only (no piece with a mod prefix).",
+ "method": {
+  "corpusBuilds": 2153,
+  "pool": "668 builds matched by a title word (hall, round, temple, keep, town hall, tavern), by folder (longhouse, temple, castle, tavern, village) or by form (3 or more storeys, 500 m2 or more of floor, 11 m or higher; round plan 250 m2 or more; 350 m2 or more in 3 storeys or fewer). Statue, bridge, arena, mini-game, portal-hub, farming and artistic folders are skipped unless a title word matches. 60 or more structural pieces.",
+  "measured": 668,
+  "withModPieces": 124,
+  "vanilla": 544,
+  "vanillaWithNamedKind": 287,
+  "rankedSet": 181,
+  "rankedSetRule": "vanilla, a named kind, at most 75 m long, 60 m high, 15,000 structural pieces, at least 5 m high and 150 pieces, with an open ground-floor room of 120 m2 or more (cells with a floor and no floor above) or a keep or castle title",
+  "unnamedLargeVanilla": 78,
+  "nearVanilla": "20 named builds have 1 to 12 mod pieces (decor such as torches, braziers, chains); they stay out of the ranking and are listed below with the prefab names",
+  "grandScore": "mean of the percentile ranks inside the ranked set of: floor area, height, storeys (capped at 8), structural pieces, downloads",
+  "cultureGroups": "culture sort of the research track (members.json, high and medium confidence) plus title words; a group with fewer than 5 hall-class builds gets stand-ins picked by form (see standIns in hubs.md section 'Grand buildings for s5')"
+ },
+ "rankedSetMeasures": {
+  "floorArea_m2": {"median": 722, "p75": 1371, "p90": 2514, "max": 6018},
+  "height_m": {"median": 12.5, "p75": 19, "p90": 26.5, "max": 48.8},
+  "storeys": {"median": 3, "p75": 4, "p90": 6, "max": 8},
+  "structuralPieces": {"median": 1443, "p75": 3220, "p90": 6225, "max": 12585},
+  "downloads": {"median": 23, "p75": 261, "p90": 440, "max": 932},
+  "topTenPercent": {"n": 19, "medianFloorArea_m2": 2066, "medianHeight_m": 28.8, "medianStoreys": 7, "medianPieces": 6697, "medianLong_m": 48.1, "medianShort_m": 35.8}
+ },
+ "featureRatesPercent": {
+  "note": "share of builds with the feature, top tenth by grand score against the rest of the ranked set",
+  "galleryRing": {"top": 11, "rest": 9},
+  "openMiddleToRoof": {"top": 16, "rest": 31},
+  "clerestory4OrMoreHighWindowsOverLowerRoof": {"top": 21, "rest": 4},
+  "roofTiers3OrMore": {"top": 68, "rest": 62},
+  "anyTower": {"top": 37, "rest": 36},
+  "towersAtBothEnds": {"top": 16, "rest": 4},
+  "porchOrColonnade6OrMoreColumns": {"top": 47, "rest": 17},
+  "aislePosts8OrMore": {"top": 89, "rest": 36},
+  "daisUnderHighSeat": {"top": 32, "rest": 7},
+  "highSeat": {"top": 79, "rest": 37},
+  "dragonPieces": {"top": 26, "rest": 19},
+  "mainFireInMiddle": {"top": 42, "rest": 29},
+  "threeOrMoreFires": {"top": 63, "rest": 17},
+  "arches4OrMore": {"top": 100, "rest": 48},
+  "banners2OrMore": {"top": 79, "rest": 49},
+  "roundPlan": {"top": 11, "rest": 9},
+  "upperFloor": {"top": 100, "rest": 86}
+ },
+ "byKindMedians": {
+  "hall": {"n": 38, "floorArea_m2": 855, "height_m": 11, "storeys": 3, "pieces": 1273, "inTopTenPercent": 3},
+  "round": {"n": 7, "floorArea_m2": 317, "height_m": 9, "storeys": 2, "pieces": 830, "inTopTenPercent": 0},
+  "temple": {"n": 16, "floorArea_m2": 776, "height_m": 17, "storeys": 2, "pieces": 2329, "inTopTenPercent": 1},
+  "keep": {"n": 83, "floorArea_m2": 498, "height_m": 13, "storeys": 3, "pieces": 1839, "inTopTenPercent": 12},
+  "tavern": {"n": 12, "floorArea_m2": 1061, "height_m": 15, "storeys": 4, "pieces": 2267, "inTopTenPercent": 0},
+  "folderLonghouse": {"n": 39, "floorArea_m2": 740, "height_m": 10.5, "storeys": 3, "pieces": 1262, "inTopTenPercent": 1},
+  "folderTemple": {"n": 13, "floorArea_m2": 803, "height_m": 17.8, "storeys": 2, "pieces": 3515, "inTopTenPercent": 2},
+  "folderCastle": {"n": 37, "floorArea_m2": 800, "height_m": 19, "storeys": 5, "pieces": 2651, "inTopTenPercent": 9}
+ },
+ "fields": "t title, by maker, dls downloads, dir corpus folder, bb bounding box short x long m, ground floor short x long m, h height m, st storeys, pc structural pieces, room = open ground-floor room m2 @ median height m, tiers = roof tiers, hs = high seats (at an end), tw = towers (at ends, top height m), rank = place in the ranked set of 181",
+ "cultures": {
+  "norse": {
+   "strongest": "MASSIVE Viking Hall - Valheim Build",
+   "candidates": [
+    {"t": "MASSIVE Viking Hall - Valheim Build", "by": "Olivanderr", "dls": 418, "dir": "other", "bb": "28 x 42", "ground": "22 x 36", "h": 23, "st": 4, "pc": 8947, "plan": "U/courtyard", "roof": "gable", "tiers": 2, "room": "668 @ 21", "tw": "2 (2, 27.8)", "porch": 10, "fires": 2, "hs": "1 (1), dais", "dragons": 4, "seats": 104, "mat": "stone walls, grausten roof, stone floor, iron frame", "rank": 11, "take": "tall open hall to the roof, two towers flanking one end, high seat on a dais at the end, wings round a court"},
+    {"t": "Einherjar's Throne Hall", "by": "AstridSinjesdottir", "dls": 263, "dir": "temple", "bb": "59 x 60", "ground": "55 x 59", "h": 21, "st": 4, "pc": 12585, "plan": "cross", "roof": "conical", "tiers": 2, "room": "1196 @ 10.6", "porch": 33, "aisle": 13, "fires": 1, "hs": "10 (2), dais", "dragons": 24, "mat": "ashwood walls, grausten roof, stone floor", "rank": 17, "take": "cross plan with a porch of 33 columns, ten high seats, floors at 2, 6 and 12 m, dragon heads"},
+    {"t": "Hall of the Dragon King", "by": "Winter", "dls": 386, "dir": "longhouse", "bb": "49 x 69", "ground": "32 x 52", "h": 23.3, "st": 5, "pc": 5533, "plan": "U/courtyard", "roof": "gable", "tiers": 8, "room": "152 @ 20", "porch": 18, "aisle": 63, "fires": 3, "hs": "2 (1), dais", "mat": "plank walls, darkwood roof, wood floor, timber frame", "rank": 7, "take": "eight roof tiers, 63 aisle posts, three fires, wings round a court, high seat on a dais"},
+    {"t": "viking hall", "by": "thepower3412", "dls": 451, "dir": "other", "bb": "32 x 50", "ground": "29 x 48", "h": 17.5, "st": 3, "pc": 6142, "plan": "irregular", "roof": "gable", "tiers": 5, "room": "796 @ 8.5", "aisle": 8, "fires": 3, "hs": "1 (1), dais", "dragons": 9, "mat": "stone walls, darkwood roof, wood floor, timber frame", "rank": 27, "take": "single long room of about 800 m2, main fire in the middle, three fires, high seat on a dais at the end"},
+    {"t": "Longhouse with crafting area", "by": "Dremka", "dls": 656, "dir": "longhouse", "bb": "38 x 46", "ground": "36 x 46", "h": 10.6, "st": 2, "pc": 3075, "plan": "T", "roof": "gable", "tiers": 5, "room": "680 @ 7.7", "porch": 10, "aisle": 51, "fires": 5, "hs": "1 (0), dais", "dragons": 4, "seats": 16, "mat": "plank walls, darkwood roof, wood floor, timber frame", "rank": 68, "take": "low T-plan hall, 51 aisle posts, five fires, a porch of 10 columns"}
+   ],
+   "nearVanilla": [
+    {"t": "Nuhedeby Longhus", "by": "Jarl_Bjorn_KrigsRavn", "dls": 824, "bb": "32 x 52", "h": 14.1, "st": 3, "pc": 5313, "room": "804 @ 6.5", "porch": 36, "aisle": 36, "fires": 7, "hs": "3 (3), dais", "mod": "6 pieces: h_trapdoor 1, MBRopeLadder 3, h_chain 2", "take": "36 aisle posts and 36 porch columns, seven fires, three high seats at the end on a dais"}
+   ],
+   "roundLine": "hub1's own s5 is the Hogan (about 30 x 31 m, 15.5 m). The corpus round halls (7 in the ranked set) have a median floor of 317 m2 and 9 m, so the Hogan is larger than all but the biggest of them."
+  },
+  "anglo-saxon": {
+   "strongest": "4 Part Rebuild Set - Duo Meadows to Deep",
+   "evidence": "The research sort has no anglo-saxon group; 7 medium-timber builds and long low gable halls stand in. Thin.",
+   "candidates": [
+    {"t": "4 Part Rebuild Set - Duo Meadows to Deep", "by": "DangerousDD", "dls": 113, "bb": "32 x 42", "ground": "33 x 42", "h": 12.5, "st": 3, "pc": 1874, "plan": "rectangle", "roof": "gable", "room": "272 @ 10.5", "aisle": 19, "hs": "1 (1)", "rank": 62, "take": "plain rectangle hall with a row of aisle posts and a high seat at the end"},
+    {"t": "Skeggox Manor (Bearded Axe Manor) For 3", "by": "Fluffy-n-Dana", "dls": 554, "bb": "42 x 42", "ground": "40 x 40", "h": 9.1, "st": 3, "pc": 2510, "plan": "cross", "roof": "cross-gable", "tiers": 4, "room": "488 @ 2.5", "tw": "1 (0, 13.5)", "porch": 26, "aisle": 91, "dragons": 56, "rank": 78, "take": "low wide hall with a porch of 26 columns and 91 aisle posts, main fire in the middle under a roof"},
+    {"t": "viking style longhouse", "by": "thepower3412", "dls": 500, "bb": "16 x 39", "ground": "14 x 37", "h": 11.5, "st": 2, "pc": 1561, "plan": "T", "roof": "cross-gable", "tiers": 4, "room": "404 @ 8.2", "hs": "1 (1)", "mat": "stone walls, darkwood roof, stone floor", "rank": 87, "take": "long hall (aspect 2.4), open to the roof, fire in the middle third, high seat at the end"},
+    {"t": "Viking Longhouse (AC Valhalla Inspired)", "by": "KindlyJustDj", "dls": 346, "bb": "18 x 34", "ground": "16 x 32", "h": 12, "st": 3, "pc": 1516, "plan": "rectangle", "roof": "gable", "tiers": 4, "room": "224 @ 8.5", "porch": 15, "fires": 1, "mat": "log walls, thatch roof, wood floor", "rank": 65, "take": "twice as long as wide, thatch gable, fire in the middle, porch of 15 columns"},
+    {"t": "Vinland Manor", "by": "RAIZEN", "dls": 652, "bb": "26 x 38", "ground": "18 x 37", "h": 21.2, "st": 4, "pc": 3269, "plan": "irregular", "roof": "cross-gable", "tiers": 4, "room": "24 @ 17.2", "porch": 6, "aisle": 19, "hs": "1 (1)", "rank": 21, "take": "hall with rooms in the upper storeys and a high seat at the end"}
+   ],
+   "outside": "Yeavering (hubs.md section 3) for the annexes at the ends and the tiered seating stand."
+  },
+  "frankish-norman": {
+   "strongest": "Alfheim",
+   "candidates": [
+    {"t": "Alfheim", "by": "Artyfacts", "dls": 850, "dir": "castle", "bb": "58 x 64", "ground": "57 x 63", "h": 26.9, "st": 5, "pc": 9091, "plan": "irregular", "roof": "cross-gable", "tiers": 5, "room": "568 @ 17.6", "aisle": 126, "fires": 5, "hs": "1 (0)", "dragons": 19, "mat": "stone walls, darkwood roof, wood floor, darkwood frame", "rank": 2, "take": "great hall 17.6 m high inside a stone castle block, main fire in the middle with 10 seats, five tiers of roof"},
+    {"t": "Merlin's Keep", "by": "Sven of Undenfell", "dls": 321, "dir": "other", "bb": "42 x 54", "ground": "36 x 57", "h": 21, "st": 6, "pc": 6697, "plan": "irregular", "roof": "cross-gable", "tiers": 6, "tw": "3 (3, 23.6)", "porch": 9, "aisle": 24, "fires": 7, "mat": "stone walls, darkwood roof, wood floor, timber frame", "rank": 10, "take": "keep with three towers at the ends, 30 tables, seven fires"},
+    {"t": "Mistvale Keep", "by": "Jaikanatar", "dls": 786, "dir": "castle", "bb": "21 x 30", "ground": "12 x 21", "h": 42, "st": 10, "pc": 3220, "plan": "T", "roof": "flat", "hs": "1 (1), dais", "rank": 6, "take": "tall keep tower of 10 storeys on a small footprint, high seat on a dais"},
+    {"t": "Bedheim Castle - Bedzin Castle Replica", "by": "Jaikanatar", "dls": 595, "dir": "castle", "bb": "44 x 58", "ground": "19 x 42", "h": 31, "st": 9, "pc": 6225, "plan": "L", "roof": "hip", "tiers": 7, "tw": "6 (6, 16)", "fires": 8, "hs": "2 (0)", "mat": "stone walls, thatch roof, stone floor, iron frame", "rank": 1, "take": "six towers of 16 m round a 31 m body, seven roof tiers"},
+    {"t": "JC Plain's Castle", "by": "Christin3vt", "dls": 429, "dir": "castle", "bb": "37 x 37", "h": 21.2, "st": 6, "pc": 7658, "plan": "irregular", "roof": "cross-gable", "porch": 63, "aisle": 47, "hs": "1 (1), dais", "rank": 3, "take": "porch or arcade of 63 columns, 47 aisle posts, dais at the end"}
+   ],
+   "nearVanilla": [
+    {"t": "Shadowhall Castle - 8000 Instances", "by": "Con Seannery", "dls": 524, "bb": "46 x 58", "h": 22.3, "st": 7, "pc": 6935, "plan": "L", "roof": "flat", "room": "880 @ 9", "tw": "3 (0)", "aisle": 21, "fires": 6, "hs": "4 (1), dais", "gallery": true, "mod": "CastleKit_braided_box01 x3", "take": "gallery ring round a hall of 880 m2, three towers"}
+   ]
+  },
+  "norse-forest": {
+   "strongest": "stave final",
+   "candidates": [
+    {"t": "stave final", "by": "Bjørn", "dls": 0, "dir": "temple", "bb": "34 x 52", "ground": "32 x 50", "h": 32.6, "st": 5, "pc": 7237, "plan": "irregular", "roof": "cross-gable", "tiers": 6, "room": "792 @ 11.5", "aisle": 26, "fires": 1, "dragons": 14, "mat": "plank walls, darkwood roof, wood floor, darkwood frame", "rank": 28, "take": "six roof tiers up to 40 m, 26 aisle posts, 14 dragon heads, floors at 5, 9, 15 and 19 m"},
+    {"t": "Stave Kirke", "by": "Jarl_Bjorn_KrigsRavn", "dls": 133, "dir": "temple", "bb": "20 x 20", "ground": "18 x 18", "h": 16.5, "st": 1, "pc": 946, "plan": "irregular", "roof": "cross-gable", "tiers": 6, "room": "272 @ 11.5", "tw": "1 (0, 19.5)", "aisle": 56, "dragons": 16, "mat": "plank walls, thatch roof, wood floor, iron frame", "rank": 120, "take": "one open room under six roof tiers, 56 posts, a central tower, 16 dragon heads"},
+    {"t": "Stave Church Home", "by": "aSoftPea", "dls": 149, "dir": "temple", "bb": "18 x 26", "ground": "16 x 24", "h": 23.3, "st": 2, "pc": 991, "plan": "irregular", "roof": "gable", "tiers": 4, "tw": "1 (0, 26.3)", "hs": "1 (1)", "fires": 1, "rank": 82, "take": "four tiers and a 26 m tower on a small plan, high seat at the end"}
+   ],
+   "nearVanilla": [
+    {"t": "Nordic stave church", "by": "ULRICH GamingAndMusic", "dls": 205, "bb": "25 x 53", "h": 38.5, "st": 1, "pc": 2031, "roof": "gable", "tiers": 5, "room": "520 @ 15.4", "aisle": 18, "hs": "4 (0), dais", "dragons": 8, "mod": "CastleKit_groundtorch x5", "take": "single room 15 m high, five tiers to 38.5 m"},
+    {"t": "Yggdrasil Sanctuary", "by": "User4445D", "dls": 264, "bb": "23 x 46", "h": 15.5, "st": 2, "pc": 1906, "roof": "gable", "tiers": 5, "room": "468 @ 14.5", "gallery": true, "tw": "1 (1)", "fires": 2, "mod": "CastleKit torches x9", "take": "gallery ring round an open middle, two fires in the middle"}
+   ]
+  },
+  "celtic": {
+   "strongest": "Swamp Fort",
+   "evidence": "The sort holds 6 celtic builds; 2 are hall-class. Round builds of any sort stand in.",
+   "candidates": [
+    {"t": "Swamp Fort", "by": "Create and Inspire", "dls": 312, "dir": "artistic", "bb": "42 x 43", "ground": "40 x 40", "h": 16.5, "st": 3, "pc": 1988, "plan": "octagon/round", "roof": "conical", "tiers": 5, "room": "944 @ 8", "fires": 9, "mat": "stone walls, thatch roof, stone floor, iron frame", "rank": 57, "take": "round plan 40 m across under a thatch cone of five tiers, main fire in the middle, floors at 8 and 9 m"},
+    {"t": "Community Portal Hub & Meeting Hall", "by": "IzzyRiz", "dls": 192, "dir": "building", "bb": "46 x 53", "ground": "45 x 51", "h": 10.5, "st": 3, "pc": 2510, "plan": "octagon/round", "roof": "conical", "tiers": 3, "room": "1216 @ 4", "tw": "2 (0, 13.6)", "porch": 4, "aisle": 55, "fires": 3, "hs": "2 (1), dais", "seats": 15, "tables": 5, "mat": "marble walls, darkwood roof, wood floor, iron frame", "rank": 63, "take": "round meeting hall with a ring of 55 posts, main fire in the middle, high seat on a dais, upper floor over the sides"},
+    {"t": "Stone Watch", "by": "aSoftPea", "dls": 454, "dir": "advanced-base", "bb": "37 x 37", "ground": "38 x 39", "h": 22.5, "st": 4, "pc": 5387, "plan": "octagon/round", "roof": "conical", "tiers": 6, "room": "336 @ 12.5", "tw": "1 (0, 19.1)", "porch": 12, "aisle": 49, "fires": 2, "hs": "1 (0)", "mat": "stone walls, grausten roof, ashwood floor", "rank": 14, "take": "round 38 m tower hall, six roof tiers, 49 posts, main fire in the middle, floors at 2 and 8 m"},
+    {"t": "A round house", "by": "smurfopax", "dls": 559, "dir": "starter-home", "bb": "20 x 20", "ground": "18 x 18", "h": 9, "st": 1, "pc": 551, "plan": "octagon/round", "roof": "conical", "tiers": 2, "room": "320 @ 6", "fires": 1, "hs": "1 (0)", "mat": "log walls, thatch roof, wood floor, timber frame", "rank": 140, "take": "20 m thatch cone, main fire in the middle under the roof (the s4 size)"}
+   ],
+   "nearVanilla": [
+    {"t": "Elven Feast Hall - 6.8k Instances", "by": "Con Seannery", "dls": 505, "bb": "27 x 32", "h": 14, "st": 3, "pc": 6052, "plan": "octagon/round", "roof": "cross-gable", "tiers": 3, "room": "356 @ 11.6", "porch": 9, "aisle": 38, "fires": 3, "hs": "6 (0)", "mod": "CastleKit_braided_box01 x4", "take": "round feast hall with 38 posts and six high seats"}
+   ],
+   "outside": "Navan Fort (hubs.md section 3) for the rings of posts round a central post."
+  },
+  "slavic": {
+   "strongest": "Great Hall (rabbitramen)",
+   "evidence": "No slavic-sorted hall in the vanilla set (the two Cyrillic-titled builds are towers with no hall room). Stand-ins by form: plank or log walls, 2 to 5 storeys, gable roofs.",
+   "standIns": [
+    {"t": "Great Hall", "by": "rabbitramen", "dls": 0, "dir": "longhouse", "bb": "24 x 42", "ground": "23 x 40", "h": 21, "st": 4, "pc": 3422, "plan": "irregular", "roof": "cross-gable", "tiers": 5, "room": "396 @ 14.8", "clerestory": 21, "tw": "1 (0, 25.8)", "porch": 17, "aisle": 9, "fires": 1, "hs": "2 (2), dais", "mat": "plank walls, darkwood roof, wood floor, plank frame", "rank": 60, "take": "21 high windows over a lower roof, a tower of 25.8 m, porch of 17 columns, two high seats on a dais at the end"},
+    {"t": "Thomashof and the legend of Thomas", "by": "Fluffy-n-Dana", "dls": 127, "dir": "temple", "bb": "26 x 51", "ground": "24 x 49", "h": 23, "st": 4, "pc": 3515, "plan": "cross", "roof": "cross-gable", "tiers": 6, "room": "516 @ 16", "tw": "1 (1, 19)", "porch": 5, "aisle": 21, "hs": "2 (0), dais", "mat": "plank walls, darkwood roof", "rank": 40, "take": "open hall 16 m high, a tower at one end, six roof tiers"}
+   ],
+   "outside": "A terem or boyar hall (D-135); not read yet."
+  },
+  "celtic-crannog": {
+   "strongest": null,
+   "evidence": "No hall-class build with lake or platform words in the vanilla set. Title matches (Island Harbor, Epic Lake House, island village) are houses and docks.",
+   "standIns": ["Swamp Fort", "Community Portal Hub & Meeting Hall", "Stone Watch (round, see celtic)"],
+   "outside": "Crannog Centre house (hubs.md table)."
+  },
+  "baltic": {
+   "strongest": null,
+   "evidence": "No build matched Baltic words (baltic, rija, lithuanian, latvian, estonian, prussian, hillfort). Stand-ins: log or plank walls, gable roof, long: Viking Longhouse (AC Valhalla Inspired), Great Hall (rabbitramen).",
+   "outside": "Baltic rija and hillfort pages (D-135); not read yet."
+  },
+  "fen-folk": {
+   "strongest": "viking style longhouse (thepower3412)",
+   "evidence": "2 hall-class builds in the fen-folk sort. Long low gable and hip halls stand in.",
+   "candidates": [
+    {"t": "Iron Villa Fort", "by": "Boom", "dls": 0, "bb": "24 x 50", "h": 19.5, "st": 6, "pc": 5887, "plan": "irregular", "roof": "cross-gable", "tiers": 4, "tw": "2 (2, 16.5)", "porch": 37, "fires": 6, "hs": "1 (1)", "mat": "stone walls, darkwood roof", "rank": 48, "take": "two towers at the ends, a porch of 37 columns"},
+    {"t": "Swamp Fort", "by": "Create and Inspire", "dls": 312, "take": "see celtic"},
+    {"t": "viking style longhouse", "by": "thepower3412", "dls": 500, "take": "see anglo-saxon (stand-in)"},
+    {"t": "Viking Longhouse (AC Valhalla Inspired)", "by": "KindlyJustDj", "dls": 346, "take": "see anglo-saxon (stand-in)"}
+   ],
+   "outside": "Old Frisian longhouse (hubs.md table)."
+  },
+  "norse-highland": {
+   "strongest": null,
+   "evidence": "5 highland-sorted builds are hall-class and none has a hall room over 220 m2 except Standing Stone Sanctuary, which is low (9.4 m). Mountain castles are towers.",
+   "candidates": [
+    {"t": "Standing Stone Sanctuary", "by": "HiccupTheHermit", "dls": 905, "dir": "starter-home", "bb": "52 x 75", "h": 9.4, "st": 3, "pc": 1697, "plan": "cross", "roof": "conical", "tiers": 4, "room": "220 @ 4", "tw": "1 (0, 12.4)", "porch": 8, "aisle": 16, "fires": 6, "mat": "plank walls, thatch roof, wood floor, timber frame", "rank": 73, "take": "low thatch cross plan on a wide footprint, main fire in the middle under a roof"},
+    {"t": "Mountain Stronghold", "by": "mobiobi", "dls": 857, "dir": "castle", "bb": "17 x 17", "h": 14, "st": 3, "pc": 1377, "roof": "hip", "tiers": 3, "tw": "1 (0, 16.9)", "rank": 70, "take": "tower on a stone base (no hall room)"}
+   ],
+   "alternative": "MWL_MountainsHogan1 (hubs.md section 1) and Stöng (hubs.md table)."
+  },
+  "saami": {
+   "strongest": null,
+   "evidence": "No saami-sorted build in the vanilla hall set and no tent, goahti or lavvu build with 60 or more pieces and a hall room. Round builds stand in.",
+   "standIns": ["A round house (smurfopax, log walls, 20 x 20 m, 9 m)", "Portalhub Dome (Thysicus, 20 x 21 m, 11.7 m, log walls, 1 storey, open room 336 m2)"],
+   "outside": "Goahti pages (D-135); not read yet."
+  },
+  "middle-eastern": {
+   "strongest": "Ottoman Turkish House with courtyard",
+   "evidence": "1 build sorted middle-eastern and it is a 6 x 10 m house. The courtyard plans in the pool are few.",
+   "candidates": [
+    {"t": "Ottoman Turkish House with courtyard", "by": "venoms3131", "dls": 18, "bb": "34 x 38", "h": 10, "st": 2, "pc": 1343, "plan": "U/courtyard", "roof": "hip or gable", "room": "900 @ 9", "take": "U plan round a court, the only courtyard-plan build found"},
+    {"t": "MASSIVE Viking Hall - Valheim Build", "by": "Olivanderr", "dls": 418, "take": "U/courtyard plan with two towers at one end (see norse)"}
+   ],
+   "outside": "Iwan and caravanserai pages (D-135); not read yet."
+  },
+  "byzantine": {
+   "strongest": "Cathedral (Maleficarum)",
+   "evidence": "No greco-roman-sorted hall in the vanilla set; church and temple builds stand in.",
+   "candidates": [
+    {"t": "Cathedral", "by": "Maleficarum", "dls": 161, "dir": "temple", "bb": "41 x 43", "ground": "46 x 48", "h": 31.1, "st": 5, "pc": 10888, "plan": "irregular", "roof": "gable", "tiers": 3, "room": "680 @ 25.9", "gallery": true, "aisle": 15, "seats": 12, "mat": "stone walls, darkwood roof, stone floor, timber frame", "rank": 12, "take": "open nave 26 m high with a gallery ring of upper floors at 2, 3, 5, 7, 9 and 12 m, stone"},
+    {"t": "Church of the Light", "by": "lazycat", "dls": 18, "dir": "building", "bb": "22 x 44", "ground": "19 x 24", "h": 18.4, "st": 4, "pc": 2373, "plan": "L", "roof": "flat", "room": "200 @ 19", "aisle": 35, "seats": 170, "hs": "3 (0)", "mat": "stone walls, stone floor", "rank": 54, "take": "open nave 19 m high with side floors, 35 posts, 170 seats"},
+    {"t": "Chapel 2", "by": "HellKat", "dls": 158, "dir": "temple", "bb": "24 x 30", "ground": "23 x 31", "h": 14.1, "st": 2, "pc": 1633, "plan": "rectangle", "roof": "gable", "tiers": 3, "room": "304 @ 10.3", "clerestory": 8, "tw": "1 (0, 15.3)", "seats": 34, "mat": "stone walls, grausten roof and floor", "rank": 83, "take": "eight high windows over a lower roof, a tower, 34 seats, stone and grausten"},
+    {"t": "Stor Katedral (Grand Cathedral Base)", "by": "Fluffy-n-Dana", "dls": 349, "dir": "temple", "bb": "33 x 48", "h": 20.5, "st": 7, "pc": 6224, "plan": "T", "roof": "cross-gable", "tiers": 8, "fires": 8, "hs": "3 (2), dais", "dragons": 28, "take": "eight roof tiers, high seat on a dais at the end"}
+   ],
+   "nearVanilla": [
+    {"t": "Monk Temple", "by": "Artyfacts", "dls": 578, "bb": "37 x 63", "h": 16.4, "st": 3, "pc": 5065, "plan": "T", "roof": "cross-gable", "tiers": 6, "room": "640 @ 7.5", "hs": "2 (2), dais", "mod": "rk_brazier x12"},
+    {"t": "The Black Dome", "by": "Isepic", "dls": 18, "bb": "34 x 34", "h": 20.2, "st": 4, "pc": 3155, "plan": "octagon/round", "roof": "hip", "tiers": 3, "room": "368 @ 8", "tw": "1 (0)", "mod": "kg_ItemDrawerPanel_Marble x1", "take": "round plan with a raised roof; the closest dome in the pool"}
+   ]
+  },
+  "steppe": {
+   "strongest": null,
+   "evidence": "1 steppe-sorted build and no yurt-class build with a hall room. Same stand-ins as saami.",
+   "standIns": ["A round house (smurfopax)", "Portalhub Dome (Thysicus)", "The Cursed Temple (AstridSinjesdottir, 29 x 29 m, 11.2 m, round, stone, open room 612 m2)"],
+   "outside": "Yurt pages (D-135); not read yet."
+  },
+  "lamari": {
+   "strongest": "Catharis' Hall: Wild Weapons 3.0",
+   "evidence": "No mistlands-sorted hall in the vanilla set. Marble and grausten builds stand in.",
+   "candidates": [
+    {"t": "Catharis' Hall: Wild Weapons 3.0 (cameo by @ConSeannery)", "by": "Fluffy-n-Dana", "dls": 281, "dir": "temple", "bb": "43 x 46", "ground": "43 x 43", "h": 19.7, "st": 3, "pc": 5678, "plan": "irregular", "roof": "conical", "tiers": 4, "room": "592 @ 8.7", "clerestory": 24, "aisle": 57, "fires": 30, "hs": "3 (0)", "mat": "marble walls, grausten roof and floor, timber frame", "rank": 34, "take": "24 high windows over a lower roof (drum and clerestory), open middle, 57 posts, marble"},
+    {"t": "LEGENDARY Fortress - Valheim Build", "by": "Olivanderr", "dls": 0, "bb": "25 x 70", "h": 26.5, "st": 3, "pc": 9118, "roof": "hip", "room": "392", "mat": "marble walls", "take": "long marble block with a hip roof"},
+    {"t": "Black Marble Fort", "by": "MonkeyMagicMan", "dls": 227, "bb": "27 x 28", "h": 11.5, "st": 2, "pc": 1305, "roof": "conical", "tiers": 2, "hs": "1 (1)", "fires": 2, "mat": "marble walls, floor and frame", "rank": 105, "take": "marble round-ish block, main fire in the middle"},
+    {"t": "Dvergr Military Barracks", "by": "Fluffy-n-Dana", "dls": 113, "bb": "30 x 58", "ground": "26 x 59", "h": 16.8, "st": 5, "pc": 3619, "plan": "L", "room": "340 @ 6", "rank": 94, "take": "long 5-storey block in Mistlands pieces"}
+   ]
+  }
+ },
+ "other": {
+  "roundBuildsBestByScore": ["Fluffy's Castle (Fluffy-n-Dana, 39 x 50 m, 22.2 m, 10 storeys, round conical)", "Stone Watch (aSoftPea)", "minas-tirith (PuP, 41 x 42 m, 32.9 m, 9 storeys, round, flat)", "Swamp Fort (Create and Inspire)", "Community Portal Hub & Meeting Hall (IzzyRiz)"],
+  "mostDownloadedInRankedSet": ["Asian style Mountain Castle (Artyfacts, 932)", "Standing Stone Sanctuary (HiccupTheHermit, 905)", "Mountain Stronghold (mobiobi, 857)", "Alfheim (Artyfacts, 850)", "Castle/Wall Tower (Maleficarum, 839)", "Mistvale Keep (Jaikanatar, 786)", "Medieval Fort and Gatehouse (Jaikanatar, 675)", "Longhouse with crafting area (Dremka, 656)", "Vinland Manor (RAIZEN, 652)", "Cute Mini Castle (Bri Games, 616)"],
+  "leftOut": ["The Lost Hall of Aegir (doublea1ron, 718): 122 x 126 m, 46 m, 16 storeys, 26,428 pieces; a whole base, over the 75 m cap", "Dawn Hill Retreat (AstridSinjesdottir, 832) and the charred version (785): no open ground-floor room of 120 m2", "Meeting Hall at the Portal Hub Hull (AstridSinjesdottir, 380): 22 x 23 m, 11 m, round, open ground-floor room 96 m2"]
+ }
+}

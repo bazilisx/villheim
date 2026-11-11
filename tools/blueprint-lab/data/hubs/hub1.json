@@ -1,0 +1,963 @@
+{
+ "note": "Measures of Tyler's hub1 board saves and drafts (Meadows hearth), read 2026-11-11 from his PC (BepInEx/config/Villheim/blueprints/inspiration/board, read only) with the lab parser (lib/blueprint.js, lib/pieces.js). Counts and dimensions only, no piece list. Positions are pivots in m; r is the distance from the fire on the plan, bearing in degrees from the plot's +z axis. byClass uses the measure script's own name rules (fire, light, seat, table, storage, bed, rug, decor, station, plants, clutter, roof, floor, stair, window, door, fence, post, beam, wall); byMaterial is lib/pieces.js material(). topY is the highest pivot plus the piece's height. File times in UTC: drafts 2026-11-08 01:54, s1d3 03:59, s1d2 04:04 (2026-11-07 18:54, 20:59 and 21:04 Mountain Time, matching the saves' own descriptions). No s1d1, s2d2, s2d1 or s5 file exists.",
+ "stages": {
+  "s1d2": {
+   "file": "hub1_s1d2.blueprint",
+   "meta": {
+    "description": "Meadows Hearth, stage 1, decor 2; from No. 2 Báz_villagenotice by way of d3; saved 2026-11-07 21:04",
+    "category": "Villheim saved"
+   },
+   "pieces": 73,
+   "pathMarkers": 4,
+   "terrainCells": 1264,
+   "boxPivots": {
+    "x": [
+     -5.9,
+     9.4
+    ],
+    "z": [
+     -8.6,
+     8.6
+    ],
+    "w": 15.2,
+    "d": 17.2
+   },
+   "topY": 4.1,
+   "byClass": {
+    "storage": 2,
+    "fire": 1,
+    "beam": 25,
+    "decor": 7,
+    "floor": 8,
+    "post": 13,
+    "roof": 13,
+    "seat": 3,
+    "station": 1
+   },
+   "byMaterial": {
+    "wood": 48,
+    "fire": 1,
+    "thatch": 12,
+    "corewood": 12
+   },
+   "prefabCount": 13,
+   "prefabs": {
+    "wood_beam_26": 14,
+    "wood_roof": 12,
+    "wood_beam_1": 8,
+    "wood_floor_1x1": 8,
+    "sign": 7,
+    "wood_pole": 7,
+    "wood_pole_log": 6,
+    "wood_wall_log_4x0.5": 3,
+    "piece_logbench01": 3,
+    "piece_chest_wood": 2,
+    "fire_pit": 1,
+    "piece_cookingstation": 1,
+    "wood_wall_roof_top": 1
+   },
+   "modPieces": [],
+   "fires": [
+    {
+     "name": "fire_pit",
+     "x": 0.6,
+     "y": 0,
+     "z": 0.6,
+     "offFromBoxCenter": 1.3
+    }
+   ],
+   "radiusFromFire": {
+    "roof": {
+     "n": 13,
+     "min": 6.2,
+     "med": 8.2,
+     "max": 9.2
+    },
+    "post": {
+     "n": 13,
+     "min": 5.4,
+     "med": 9.2,
+     "max": 9.7
+    },
+    "beam": {
+     "n": 25,
+     "min": 5.2,
+     "med": 8.8,
+     "max": 9.7
+    },
+    "floor": {
+     "n": 8,
+     "min": 9.2,
+     "med": 9.3,
+     "max": 9.5
+    },
+    "seat": {
+     "n": 3,
+     "min": 2.9,
+     "med": 3,
+     "max": 3.1
+    },
+    "storage": {
+     "n": 2,
+     "min": 9.2,
+     "med": 9.4,
+     "max": 9.4
+    },
+    "station": {
+     "n": 1,
+     "min": 0.1,
+     "med": 0.1,
+     "max": 0.1
+    },
+    "decor": {
+     "n": 7,
+     "min": 9,
+     "med": 9.1,
+     "max": 9.3
+    }
+   },
+   "floorLevels": {
+    "2.6": 4,
+    "1.6": 4
+   },
+   "useLevels": {
+    "0": 6,
+    "2": 6,
+    "3": 1
+   },
+   "roofLevels": {
+    "0": 6,
+    "1": 6,
+    "4": 1
+   },
+   "wallRoofYawMod90": {
+    "30": 4,
+    "50": 4,
+    "55": 1,
+    "80": 4
+   },
+   "seatsWithin6m": 3,
+   "lowRoofGroups": [
+    {
+     "pieces": 4,
+     "r": 7.2,
+     "bearing": -34
+    },
+    {
+     "pieces": 4,
+     "r": 7.6,
+     "bearing": 79
+    },
+    {
+     "pieces": 4,
+     "r": 7.7,
+     "bearing": -147
+    }
+   ]
+  },
+  "s1d3": {
+   "file": "hub1_s1d3.blueprint",
+   "meta": {
+    "description": "Meadows Hearth, stage 1, decor 3; from No. 2 Báz_villagenotice (61 % alike); saved 2026-11-07 20:59",
+    "category": "Villheim saved"
+   },
+   "pieces": 122,
+   "pathMarkers": 4,
+   "terrainCells": 1536,
+   "boxPivots": {
+    "x": [
+     -7.2,
+     9.4
+    ],
+    "z": [
+     -8.9,
+     9.1
+    ],
+    "w": 16.6,
+    "d": 18
+   },
+   "topY": 4.1,
+   "byClass": {
+    "post": 13,
+    "beam": 33,
+    "roof": 13,
+    "plants": 24,
+    "light": 8,
+    "rug": 6,
+    "station": 2,
+    "storage": 4,
+    "floor": 8,
+    "decor": 7,
+    "seat": 3,
+    "fire": 1
+   },
+   "byMaterial": {
+    "corewood": 12,
+    "wood": 59,
+    "thatch": 12,
+    "green": 24,
+    "fire": 9,
+    "fur": 6
+   },
+   "prefabCount": 18,
+   "prefabs": {
+    "wood_beam_1": 16,
+    "RaspberryBush": 15,
+    "wood_beam_26": 14,
+    "wood_roof": 12,
+    "piece_groundtorch_wood": 8,
+    "wood_floor_1x1": 8,
+    "wood_pole": 7,
+    "sign": 7,
+    "wood_pole_log": 6,
+    "rug_deer": 6,
+    "Pickable_Dandelion": 5,
+    "Pickable_Mushroom": 4,
+    "piece_chest_wood": 4,
+    "wood_wall_log_4x0.5": 3,
+    "piece_logbench01": 3,
+    "piece_cookingstation": 2,
+    "wood_wall_roof_top": 1,
+    "fire_pit": 1
+   },
+   "modPieces": [],
+   "fires": [
+    {
+     "name": "fire_pit",
+     "x": 0.6,
+     "y": 0,
+     "z": 0.6,
+     "offFromBoxCenter": 0.7
+    }
+   ],
+   "radiusFromFire": {
+    "roof": {
+     "n": 13,
+     "min": 6.2,
+     "med": 8.2,
+     "max": 9.2
+    },
+    "post": {
+     "n": 13,
+     "min": 5.4,
+     "med": 9.2,
+     "max": 9.7
+    },
+    "beam": {
+     "n": 33,
+     "min": 1.1,
+     "med": 7.2,
+     "max": 9.7
+    },
+    "floor": {
+     "n": 8,
+     "min": 9.2,
+     "med": 9.3,
+     "max": 9.5
+    },
+    "seat": {
+     "n": 3,
+     "min": 2.9,
+     "med": 3,
+     "max": 3.1
+    },
+    "storage": {
+     "n": 4,
+     "min": 9.2,
+     "med": 9.4,
+     "max": 9.6
+    },
+    "light": {
+     "n": 8,
+     "min": 5.7,
+     "med": 6.4,
+     "max": 9.8
+    },
+    "station": {
+     "n": 2,
+     "min": 0.3,
+     "med": 0.4,
+     "max": 0.4
+    },
+    "decor": {
+     "n": 7,
+     "min": 9,
+     "med": 9.1,
+     "max": 9.3
+    },
+    "plants": {
+     "n": 24,
+     "min": 6.4,
+     "med": 8.7,
+     "max": 10.5
+    }
+   },
+   "floorLevels": {
+    "1.6": 4,
+    "2.6": 4
+   },
+   "useLevels": {
+    "0": 15,
+    "2": 6,
+    "3": 1
+   },
+   "roofLevels": {
+    "0": 6,
+    "1": 6,
+    "4": 1
+   },
+   "wallRoofYawMod90": {
+    "30": 4,
+    "50": 4,
+    "55": 1,
+    "80": 4
+   },
+   "seatsWithin6m": 3,
+   "lowRoofGroups": [
+    {
+     "pieces": 4,
+     "r": 7.2,
+     "bearing": -34
+    },
+    {
+     "pieces": 4,
+     "r": 7.7,
+     "bearing": -147
+    },
+    {
+     "pieces": 4,
+     "r": 7.6,
+     "bearing": 79
+    }
+   ]
+  },
+  "s2d3": {
+   "file": "hub1_s2d3.blueprint",
+   "meta": {
+    "description": "",
+    "category": "Villheim draft"
+   },
+   "pieces": 61,
+   "pathMarkers": 0,
+   "terrainCells": 0,
+   "boxPivots": {
+    "x": [
+     -10.1,
+     10.1
+    ],
+    "z": [
+     -10.1,
+     10.1
+    ],
+    "w": 20.3,
+    "d": 20.3
+   },
+   "topY": 3,
+   "byClass": {
+    "wall": 29,
+    "roof": 32
+   },
+   "byMaterial": {
+    "wood": 29,
+    "thatch": 32
+   },
+   "prefabCount": 2,
+   "prefabs": {
+    "wood_roof_45": 32,
+    "woodwall": 29
+   },
+   "modPieces": [],
+   "fires": [],
+   "radiusFromFire": {
+    "wall": {
+     "n": 29,
+     "min": 10.1,
+     "med": 10.2,
+     "max": 10.2
+    },
+    "roof": {
+     "n": 32,
+     "min": 9.1,
+     "med": 9.1,
+     "max": 9.1
+    }
+   },
+   "floorLevels": {},
+   "useLevels": {},
+   "roofLevels": {
+    "2": 32
+   },
+   "wallRoofYawMod90": {
+    "5": 8,
+    "15": 8,
+    "25": 7,
+    "35": 8,
+    "50": 7,
+    "60": 7,
+    "70": 8,
+    "80": 8
+   },
+   "seatsWithin6m": 0,
+   "lowRoofGroups": [
+    {
+     "pieces": 32,
+     "r": 0,
+     "bearing": -7
+    }
+   ]
+  },
+  "s3d3": {
+   "file": "hub1_s3d3.blueprint",
+   "meta": {
+    "description": "",
+    "category": "Villheim draft"
+   },
+   "pieces": 1006,
+   "pathMarkers": 0,
+   "terrainCells": 0,
+   "boxPivots": {
+    "x": [
+     -12.5,
+     12.5
+    ],
+    "z": [
+     -14.1,
+     14.1
+    ],
+    "w": 25.1,
+    "d": 28.3
+   },
+   "topY": 11.5,
+   "byClass": {
+    "post": 148,
+    "stair": 41,
+    "beam": 287,
+    "roof": 180,
+    "floor": 154,
+    "wall": 64,
+    "station": 22,
+    "seat": 7,
+    "window": 18,
+    "table": 2,
+    "fence": 2,
+    "storage": 20,
+    "bed": 2,
+    "clutter": 6,
+    "rug": 21,
+    "decor": 28,
+    "other": 1,
+    "light": 2,
+    "fire": 1
+   },
+   "byMaterial": {
+    "corewood": 99,
+    "stone": 61,
+    "iron": 51,
+    "wood": 589,
+    "thatch": 188,
+    "fur": 15,
+    "fire": 3
+   },
+   "prefabCount": 63,
+   "prefabs": {
+    "wood_roof": 179,
+    "wood_beam": 152,
+    "wood_floor": 92,
+    "wood_wall_half": 60,
+    "wood_beam_26": 52,
+    "woodiron_pole": 48,
+    "wood_pole_log_4": 36,
+    "wood_beam_1": 36,
+    "stone_stair": 32,
+    "wood_floor_1x1": 32,
+    "wood_log_45": 30,
+    "stone_floor_2x2": 28,
+    "wood_pole2": 28,
+    "wood_pole": 20,
+    "wood_window": 18,
+    "wood_pole_log": 16,
+    "itemstand": 16,
+    "wood_wall_log_4x0.5": 15,
+    "piece_chest_wood": 13,
+    "rug_straw": 8,
+    "rug_fur": 8,
+    "itemstandh": 8,
+    "wood_stair": 7,
+    "piece_chair03": 5,
+    "piece_chest": 4,
+    "wood_stack": 4,
+    "ArmorStand": 4,
+    "piece_workbench_ext2": 3,
+    "rug_wolf": 3,
+    "CastleKit_braided_box01": 3,
+    "iron_floor_1x1_v2": 2,
+    "piece_workbench": 2,
+    "wood_fence": 2,
+    "wood_log_26": 2,
+    "wood_wall_quarter": 2,
+    "piece_workbench_ext1": 2,
+    "piece_bed02": 2,
+    "piece_workbench_ext3": 2,
+    "rug_deer": 2,
+    "piece_groundtorch_wood": 2,
+    "fermenter": 2,
+    "wood_stepladder": 2,
+    "woodwall": 2,
+    "piece_workbench_ext4": 1,
+    "cauldron_ext3_butchertable": 1,
+    "piece_table": 1,
+    "stone_pile": 1,
+    "bucket": 1,
+    "Cart": 1,
+    "MWL_PlainsTrainer1_Trainer": 1,
+    "piece_cookingstation_iron": 1,
+    "piece_bench01": 1,
+    "piece_bathtub": 1,
+    "forge_ext3": 1,
+    "forge": 1,
+    "forge_ext4": 1,
+    "piece_chair02": 1,
+    "forge_ext5": 1,
+    "forge_ext2": 1,
+    "wood_roof_top": 1,
+    "cauldron_ext4_pots": 1,
+    "piece_cauldron": 1,
+    "hearth": 1
+   },
+   "modPieces": [
+    "MWL_PlainsTrainer1_Trainer x1"
+   ],
+   "fires": [
+    {
+     "name": "hearth",
+     "x": 0.7,
+     "y": 0.4,
+     "z": 1,
+     "offFromBoxCenter": 1.2
+    }
+   ],
+   "radiusFromFire": {
+    "wall": {
+     "n": 64,
+     "min": 9.7,
+     "med": 10,
+     "max": 10.2
+    },
+    "roof": {
+     "n": 180,
+     "min": 1.1,
+     "med": 7.2,
+     "max": 11.2
+    },
+    "post": {
+     "n": 148,
+     "min": 6.3,
+     "med": 6.4,
+     "max": 12.4
+    },
+    "beam": {
+     "n": 287,
+     "min": 1.5,
+     "med": 7.4,
+     "max": 11.3
+    },
+    "floor": {
+     "n": 154,
+     "min": 1.1,
+     "med": 5.3,
+     "max": 9.2
+    },
+    "seat": {
+     "n": 7,
+     "min": 7.8,
+     "med": 8.1,
+     "max": 11.2
+    },
+    "storage": {
+     "n": 20,
+     "min": 8.1,
+     "med": 9,
+     "max": 12.5
+    },
+    "light": {
+     "n": 2,
+     "min": 12.4,
+     "med": 12.7,
+     "max": 12.7
+    },
+    "station": {
+     "n": 22,
+     "min": 0.1,
+     "med": 9.9,
+     "max": 12.5
+    },
+    "table": {
+     "n": 2,
+     "min": 2.4,
+     "med": 8.4,
+     "max": 8.4
+    },
+    "bed": {
+     "n": 2,
+     "min": 8.3,
+     "med": 8.5,
+     "max": 8.5
+    },
+    "decor": {
+     "n": 28,
+     "min": 1.2,
+     "med": 10.1,
+     "max": 10.2
+    }
+   },
+   "floorLevels": {
+    "2": 64,
+    "7": 56,
+    "0.5": 28,
+    "1.7": 2,
+    "3.1": 2,
+    "4.6": 2
+   },
+   "useLevels": {
+    "0": 4,
+    "1": 36,
+    "2": 35,
+    "3": 22,
+    "4": 1,
+    "5": 4
+   },
+   "roofLevels": {
+    "4": 48,
+    "5": 32,
+    "6": 24,
+    "9": 51,
+    "10": 17,
+    "11": 8
+   },
+   "wallRoofYawMod90": {
+    "0": 69,
+    "20": 51,
+    "45": 74,
+    "65": 50
+   },
+   "seatsWithin6m": 0,
+   "lowRoofGroups": []
+  },
+  "s4d3": {
+   "file": "hub1_s4d3.blueprint",
+   "meta": {
+    "description": "",
+    "category": "Villheim draft"
+   },
+   "pieces": 1006,
+   "pathMarkers": 0,
+   "terrainCells": 0,
+   "boxPivots": {
+    "x": [
+     -12.5,
+     12.5
+    ],
+    "z": [
+     -14.1,
+     14.1
+    ],
+    "w": 25.1,
+    "d": 28.3
+   },
+   "topY": 11.5,
+   "byClass": {
+    "rug": 21,
+    "clutter": 6,
+    "decor": 28,
+    "station": 22,
+    "other": 1,
+    "storage": 20,
+    "light": 2,
+    "beam": 287,
+    "seat": 7,
+    "roof": 180,
+    "post": 148,
+    "wall": 64,
+    "floor": 154,
+    "bed": 2,
+    "window": 18,
+    "stair": 41,
+    "fire": 1,
+    "fence": 2,
+    "table": 2
+   },
+   "byMaterial": {
+    "thatch": 188,
+    "wood": 589,
+    "fur": 15,
+    "iron": 51,
+    "fire": 3,
+    "corewood": 99,
+    "stone": 61
+   },
+   "prefabCount": 63,
+   "prefabs": {
+    "wood_roof": 179,
+    "wood_beam": 152,
+    "wood_floor": 92,
+    "wood_wall_half": 60,
+    "wood_beam_26": 52,
+    "woodiron_pole": 48,
+    "wood_beam_1": 36,
+    "wood_pole_log_4": 36,
+    "stone_stair": 32,
+    "wood_floor_1x1": 32,
+    "wood_log_45": 30,
+    "wood_pole2": 28,
+    "stone_floor_2x2": 28,
+    "wood_pole": 20,
+    "wood_window": 18,
+    "itemstand": 16,
+    "wood_pole_log": 16,
+    "wood_wall_log_4x0.5": 15,
+    "piece_chest_wood": 13,
+    "rug_straw": 8,
+    "rug_fur": 8,
+    "itemstandh": 8,
+    "wood_stair": 7,
+    "piece_chair03": 5,
+    "ArmorStand": 4,
+    "wood_stack": 4,
+    "piece_chest": 4,
+    "rug_wolf": 3,
+    "CastleKit_braided_box01": 3,
+    "piece_workbench_ext2": 3,
+    "rug_deer": 2,
+    "piece_groundtorch_wood": 2,
+    "fermenter": 2,
+    "piece_workbench_ext3": 2,
+    "piece_bed02": 2,
+    "wood_stepladder": 2,
+    "woodwall": 2,
+    "wood_fence": 2,
+    "wood_log_26": 2,
+    "wood_wall_quarter": 2,
+    "iron_floor_1x1_v2": 2,
+    "piece_workbench": 2,
+    "piece_workbench_ext1": 2,
+    "bucket": 1,
+    "Cart": 1,
+    "MWL_PlainsTrainer1_Trainer": 1,
+    "piece_cookingstation_iron": 1,
+    "piece_bench01": 1,
+    "piece_bathtub": 1,
+    "forge_ext3": 1,
+    "forge": 1,
+    "piece_chair02": 1,
+    "forge_ext4": 1,
+    "forge_ext2": 1,
+    "forge_ext5": 1,
+    "cauldron_ext4_pots": 1,
+    "wood_roof_top": 1,
+    "piece_cauldron": 1,
+    "hearth": 1,
+    "piece_workbench_ext4": 1,
+    "piece_table": 1,
+    "stone_pile": 1,
+    "cauldron_ext3_butchertable": 1
+   },
+   "modPieces": [
+    "MWL_PlainsTrainer1_Trainer x1"
+   ],
+   "fires": [
+    {
+     "name": "hearth",
+     "x": 0.7,
+     "y": 0.4,
+     "z": 1,
+     "offFromBoxCenter": 1.2
+    }
+   ],
+   "radiusFromFire": {
+    "wall": {
+     "n": 64,
+     "min": 9.7,
+     "med": 10,
+     "max": 10.2
+    },
+    "roof": {
+     "n": 180,
+     "min": 1.1,
+     "med": 7.2,
+     "max": 11.2
+    },
+    "post": {
+     "n": 148,
+     "min": 6.3,
+     "med": 6.4,
+     "max": 12.4
+    },
+    "beam": {
+     "n": 287,
+     "min": 1.5,
+     "med": 7.4,
+     "max": 11.3
+    },
+    "floor": {
+     "n": 154,
+     "min": 1.1,
+     "med": 5.3,
+     "max": 9.2
+    },
+    "seat": {
+     "n": 7,
+     "min": 7.8,
+     "med": 8.1,
+     "max": 11.2
+    },
+    "storage": {
+     "n": 20,
+     "min": 8.1,
+     "med": 9,
+     "max": 12.5
+    },
+    "light": {
+     "n": 2,
+     "min": 12.4,
+     "med": 12.7,
+     "max": 12.7
+    },
+    "station": {
+     "n": 22,
+     "min": 0.1,
+     "med": 9.9,
+     "max": 12.5
+    },
+    "table": {
+     "n": 2,
+     "min": 2.4,
+     "med": 8.4,
+     "max": 8.4
+    },
+    "bed": {
+     "n": 2,
+     "min": 8.3,
+     "med": 8.5,
+     "max": 8.5
+    },
+    "decor": {
+     "n": 28,
+     "min": 1.2,
+     "med": 10.1,
+     "max": 10.2
+    }
+   },
+   "floorLevels": {
+    "2": 64,
+    "7": 56,
+    "0.5": 28,
+    "3.1": 2,
+    "4.6": 2,
+    "1.7": 2
+   },
+   "useLevels": {
+    "0": 4,
+    "1": 36,
+    "2": 35,
+    "3": 22,
+    "4": 1,
+    "5": 4
+   },
+   "roofLevels": {
+    "4": 48,
+    "5": 32,
+    "6": 24,
+    "9": 51,
+    "10": 17,
+    "11": 8
+   },
+   "wallRoofYawMod90": {
+    "0": 69,
+    "20": 51,
+    "45": 74,
+    "65": 50
+   },
+   "seatsWithin6m": 0,
+   "lowRoofGroups": []
+  }
+ },
+ "read": {
+  "s1": "Open ring about 19 m across (pivots 15 to 17 m by 17 to 18 m), no walls. fire_pit in the middle with a cooking station over it. Three log benches 3 m from the fire, each in line with a lean-to. Three lean-tos 5.4 to 8.8 m out at bearings about -33, 79 and -147 (113 to 134 degrees apart), open side to the fire: two 2 m log posts at the front, a 4 m log beam on them at 2.1 m, four 26 degree thatch pieces in two rows sloping back to the ground, four 26 degree rafters. A notice board at 9.2 m, bearing about 151, between two lean-tos (posts, eight 1x1 floor boards, seven signs, a small gable top at 3.6 m) with chests beside it. Four path markers.",
+  "s1d2_to_s1d3": "d3 adds 49 pieces: a ring of eight 1 m beams 1.2 m round the fire, six deer rugs under the lean-tos (5.1 to 6.7 m), eight ground torches (5.7 to 9.8 m), two more chests by the notice board, a second cooking station, 15 raspberry bushes, 5 dandelions and 4 mushrooms at 6.4 to 10.5 m. Every prefab count in d2 is also in d3: d2 is d3 with decor taken away.",
+  "s2_draft": "A started ring: 29 plank walls (woodwall) at r 10.1 to 10.2 (a 32-wall ring 20.3 m across with two gaps, about one and two walls wide, at bearings near -154 and -36) and one ring of 32 45 degree thatch pieces at r 9.1, 2 m up. No fire, floor, roof above the first ring or furniture. The ring stands just outside the s1 lean-tos and notice board (all within 9.7 m of the fire).",
+  "s3_s4_drafts": "The same 1,006 pieces: 1,005 of 1,006 match by prefab, distance from the hearth and height (one differs by rounding); the files differ only in where the plot put them. A 16-sided round hall (wall and roof yaws in 22.5 degree steps), outer wall at r 10 (20 m across), 25 x 28 m with the outside stairs, top 11.5 m. Middle: hearth (0.4 m up) on a sunken stone floor (28 stone_floor_2x2 at 0.5 m, r 3 to 6) with a ring of 24 stone stairs at r 5.3 rising to the main floor, iron cooking station over the fire, cauldron, butcher table and pots beside it, a rack of four horizontal stands over the fire, four fur rugs at r 4. Inner ring of 16 posts at r 6.3 (woodiron poles to 4 m, then log poles) carrying a drum with 16 windows at 7.5 m and an upper ring floor at 7 m (r 3 to 6, open over the fire). Main ring floor at 2 m between the posts and the wall (64 wood_floor, r 7 to 9). Outer wall: half walls in two courses (about 1 to 3 m) on a log sill, posts to the 5 m eave beam. Two roofs: an outer ring roof from the 4 m eave at r 11 up to the drum at 6 m (104 thatch pieces), and an inner cone over the drum from 9 to 11.5 m (75 thatch pieces and a ridge top). Main door at bearing about 0: two stairs up from the ground at r 13 and 11, torches either side at r 12.5, fence rails. Back (bearing about 177): stepladders and stairs up to a loft at 3 to 4.6 m (chests) and on to the 7 m floor. On the 2 m ring floor: smithy corner (forge with four extensions, bearings -119 to -156), workbench corner (122 to 152), two beds (bearings -93 and 89, opposite each other), a table with five chairs (36 to 51), chests along the back, four armor stands, wolf and fur rugs, 16 item stands along the wall at 2.9 m. Outside on the ground at r 11 to 13: fermenters, bathtub, workbench extensions, chests, crates, cart, wood stacks, straw rugs. Seats: 7 (6 chairs on the ring floor, 1 bench outside); no seat within 6 m of the fire; the stone stair ring and the rugs at r 4 are the places round the fire. No throne, no door pieces (open doorways). One mod piece: MWL_PlainsTrainer1_Trainer (More World Locations) at r 3.5 by the hearth.",
+  "s3_intent": "Tyler (2026-11-11): s3 was being made from s4 by simplifying it: no inner roof and a simpler interior fire. The s3 draft does not show that yet (same pieces as s4).",
+  "materials_vs_biome": "s1: wood 48, thatch 12, core wood 12 (6 wood_pole_log, 3 wood_wall_log_4x0.5, 3 piece_logbench01); core wood is Black Forest. s4: wood 589, thatch 188, core wood 99, stone 61 (stone floor and stairs), iron 51 (48 woodiron_pole, 2 iron floor, iron cooking station); iron is Swamp."
+ },
+ "s5_candidates": {
+  "note": "Tyler (2026-11-11): 'S5 was a large round thatch roofed winter structure (largely broken) with icicles on it. A prefab I was gonna to fix up. Rocks and for trees too.' No s5 file exists. Candidates searched in the More World Locations AIO bundles installed in the Villheim Test profile (UnityPy 1.25.4 on the device, read only; children named JVLmock_<vanilla prefab> counted as pieces, positions are local). Vanilla game locations were not searched.",
+  "MWL_MountainsHogan1": {
+   "pieces": 1162,
+   "structurePieces": 1073,
+   "thatchRoof": 196,
+   "wood_roof": 85,
+   "wood_roof_45": 66,
+   "icicles": 38,
+   "caverock_ice_stalagtite": 31,
+   "fir_and_pine": 8,
+   "rocks": 9,
+   "span_m": [
+    29.6,
+    31.0
+   ],
+   "height_m": 15.5,
+   "woodwall_r": [
+    11.5,
+    13.4
+   ],
+   "wood_roof_r": [
+    3.6,
+    14.7
+   ],
+   "wood_floor_y": [
+    7.8,
+    11.8
+   ],
+   "wood_wall_log_y": [
+    4.1,
+    12.1
+   ],
+   "read": "Round wooden hall about 30 m across and 15 m high, thatch roof, log walls on an upper storey, icicles, fir trees and rocks: matches every part of Tyler's description. Best candidate."
+  },
+  "MWL_MountainsPagota1": {
+   "pieces": 922,
+   "thatchRoof": 71,
+   "icicles": 30,
+   "fir_and_pine": 9,
+   "rocks": 3,
+   "span_m": [
+    14.0,
+    21.5
+   ],
+   "height_m": 23.0,
+   "read": "Mostly stone walls (223 stone_wall_2x1) and arches; tall and narrow. Not round thatch."
+  },
+  "MWL_MountainsAedicule1": {
+   "pieces": 1143,
+   "thatchRoof": 70,
+   "icicles": 10,
+   "span_m": [
+    16.0,
+    16.0
+   ],
+   "height_m": 21.0,
+   "read": "Square, 16 m, stone and wood, 40 chairs. Not round."
+  },
+  "MWL_MountainsTower1": {
+   "pieces": 1043,
+   "thatchRoof": 72,
+   "icicles": 10,
+   "span_m": [
+    16.0,
+    16.0
+   ],
+   "height_m": 25.0,
+   "read": "Stone tower with dark wood roof. Not thatch."
+  }
+ }
+}

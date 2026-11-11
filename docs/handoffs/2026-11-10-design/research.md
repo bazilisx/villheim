@@ -1,9 +1,12 @@
 # Research track: corpus by culture, interior references
 
 Branch `design/wip-research`, from main 0604748. Data and docs only; no generator code changed.
-State on 2026-11-10 (Mountain Time): part (a) mined and sorted, counts written to
-`tools/blueprint-lab/data/culture-corpus/`; the per-culture write-up in `docs/CULTURE_STYLES.md` and all of part (b)
-are not done. Work stopped early at the lead's request (usage limit).
+State on 2026-11-11 (Mountain Time): part (a) done: counts in `tools/blueprint-lab/data/culture-corpus/`, the write-up
+in `docs/CULTURE_STYLES.md` "Corpus by culture" (commit 46ecbae) with a spot check of the low-confidence sort and
+outside sources for the thin cultures (D-135). Part (b) in part: `docs/INTERIOR_DESIGN.md` "Lived-in rooms: outside
+references (D-025)" (commit c630579): three valheimians builds from their photos, four historical households,
+Skyrim, Witcher 3, WoW housing, Enshrouded and a design talk, with options under the drivers and a table of
+on-purpose tricks with corpus counts (D-127).
 
 ## Files
 
@@ -105,18 +108,34 @@ lists from buildings only, furniture-only sill lists). These scripts should be c
 Caveats: the "inside" test, storeys and sill reach are coarse; some builds use mod pieces; counts are of whole builds
 (large bases dominate the totals), so medians and shares are the numbers to use.
 
+## Session 2026-11-11
+
+- Spot check: 25 low-confidence sorted builds and 3 unsorted, by title, description, materials and form (device query
+  of `out/builds.json` and `feat.jsonl`, spread through each group in slug order). 18 of 25 right, 3 partly, 4 wrong;
+  2 of 3 unsorted rightly so. Table in `docs/CULTURE_STYLES.md`.
+- frankish-norman's one match is a Frank Lloyd Wright style house (the `franks?` word matched "Frank"): the count is 0.
+  The saami group is two teepees and one description match.
+- Trick counts (D-127) over the 1,093 furnished buildings: a one-off node query on the device over `feat.jsonl` `items`
+  (regex groups for wood stacks, piles, treasure, candles, banners, item stands, armor stands, rugs, cauldron
+  extensions, barrels). `items` holds pieces inside only.
+- Valheimians photos: read in the cloud browser tool (`remote-browser`), read only, image URLs opened directly
+  (`static.valheimians.com/.../*_xl.webp`). WebFetch to valheimians build pages and to UESP was blocked (permission
+  prompt unanswered); after that no more pages needing approval were tried.
+- Web search and WebFetch for the D-135 sources; each is listed with its URL in `docs/CULTURE_STYLES.md`.
+
 ## Changes in other tracks' files
 
 None.
 
 ## What is left
 
-- Part (a): write the per-culture summary into `docs/CULTURE_STYLES.md` (a "Corpus by culture" section) from
-  summary.json; check a sample of low-confidence norse and unsorted builds by eye; per-room layouts by culture would
-  need the room finder of `lab/learn_interior.py` run per build.
-- Part (b), not started: valheimians.com interior photos (D-025, study only; WebFetch first, then Tyler's Chrome read
-  only), then Baldur's Gate 3, Witcher 3, Skyrim, ESO, WoW housing, Enshrouded; new sections at the end of
-  `docs/INTERIOR_DESIGN.md`, sources by title and URL.
+- Part (a): per-room layouts by culture would need the room finder of `lab/learn_interior.py` run per build. The
+  sort script's `franks?` word should get a guard for "Frank Lloyd Wright" when the miner is committed.
+- Part (b): Baldur's Gate 3 and ESO housing (no interior write-up read yet); more valheimians interiors (only three
+  builds viewed; captioned village builds such as the Valheimberg series give who-lives-where); UESP house pages for
+  Skyrim (who owns what in each home); the "not read" D-135 sources in `docs/CULTURE_STYLES.md`.
+- Measures that the references suggest and the corpus data lacks: chair angles off the table axis, beds in lofts,
+  rugs over beds, cloth hangings used as dividers, resource stacks set into wall bays.
 - For the essentials task first: findings 2 to 5 (bed kinds and their rug and chest rates, beds above the main floor,
   seats mostly away from tables, `itemstandh` as the main table and sill dressing, rug kinds and layering), from
   `summary.json` `kinds`, `rel`, `onTable`, `onSill`.

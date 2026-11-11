@@ -249,6 +249,18 @@ const NEEDS = {
   // black marble for the mortar, flametal for the rolling pins
   cauldron_ext1_spice: 'Swamp', cauldron_ext3_butchertable: 'Mountain', cauldron_ext4_pots: 'Plains',
   cauldron_ext5_mortarandpestle: 'Mistlands', cauldron_ext6_rollingpins: 'Ashlands',
+  // stations and pieces of the later biomes (bamboogaming.net and metabot.gg recipe pages, 2026-11-11): the galdr table
+  // and its upgrades and the black forge with its cooler and vise take Mistlands materials; the metal cutter (black
+  // marble, flametal, ashwood, charred bone), the gem cutter, the lava lantern (flametal, proustite, sulfur) and the
+  // bone throne (charred bone, flametal, grausten, charred skulls) Ashlands ones. The mead ketill came with the
+  // Ashlands update; its recipe was not found, so Ashlands is a guess.
+  piece_magetable: 'Mistlands', piece_magetable_ext: 'Mistlands', piece_magetable_ext2: 'Mistlands',
+  blackforge: 'Mistlands', blackforge_ext1: 'Mistlands', blackforge_ext2_vise: 'Mistlands',
+  blackforge_ext3_metalcutter: 'Ashlands', blackforge_ext4_gemcutter: 'Ashlands', piece_Lavalantern: 'Ashlands',
+  piece_bone_throne: 'Ashlands', piece_MeadCauldron: 'Ashlands',
+  // feasts by the biome their food comes from (the sailor's bounty from the ocean, reached by ship after the Swamp)
+  FeastMeadows: 'Meadows', FeastBlackforest: 'Black Forest', FeastSwamps: 'Swamp', FeastOceans: 'Swamp',
+  FeastMountains: 'Mountain', FeastPlains: 'Plains', FeastMistlands: 'Mistlands', FeastAshlands: 'Ashlands',
 };
 function needs(name) {
   if (NEEDS[name]) return NEEDS[name];
@@ -333,23 +345,31 @@ function support(n) { return SUPPORT[supportClass(n)]; }
 const MINOR = /^(rug_|jute_carpet|piece_banner\d|piece_pot\d|ashland_pot|piece_gift\d|piece_mistletoe|piece_xmas|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|Candle_resin|Skull\d|ancient_skull|cloth_hanging_long|fenrirhide_hanging|dvergrprops_(barrel|crate|crate_long|shelf|hooknchain|lantern|lantern_standing)$|treasure_stack$|sign$|sign_notext$|Feast[A-Z]|Mead[A-Z]|BarleyWine$|Bread$|CookedMeat$|Sausages$|Honey|MeatPlatter$|LoxPie$|PiquantPie$|RoastedCrustPie$|SerpentStew$|MashedMeat$|MarinatedGreens$|MisthareSupreme$|QueensJam$|Salad$|Eyescream$|ShocklateSmoothie$|SparklingShroomshake$|SizzlingBerryBroth$|ScorchingMedley$|SpicyMarmalade$|Blueberries$|Raspberry$|Cloudberry$|Carrot$|Onion$|Pukeberries$|Fish\d+$)/;
 function minor(name) { return MINOR.test(name); }
 
-// Decor reach (D-080, Tyler 2026-11-10): furniture and decor come from the village's biome and the next one (Meadows
-// draws on the Black Forest, the Black Forest on the Swamp, and so on), paid in local stand-ins from the chests (the
-// mod's DecorPaidWithAnalogs). Crafting stations, fires, chests and what is built (walls, floors, roofs) keep to the
-// village's own biome (D-066).
-function decorReach(biome) {
+// What a village may put up (D-065, D-126; Tyler, 2026-11-10: "there are no restrictions on any level of furniture,
+// decoration, or limits on whats shown for any decor... decor can be freely used across any biome, but build pieces
+// (walls, roofs, etc.) should (mostly) come from the relevant biome and surrounding biomes"). Furniture, decor, lights,
+// rugs, stations and what stands hold: any vanilla prefab in any biome, inside and out. Building pieces (walls, floors,
+// roofs, beams, posts, doors, windows, stairs): the village's biome and its neighbors (the earlier biomes and the next
+// one). D-080 is about payment only (the mod pays decor in local stand-ins, DecorPaidWithAnalogs), never placement.
+// D-012 (stone later in the Meadows and the Black Forest) is the styles' and the generator's.
+function buildReach(biome) {
   const i = Math.max(0, BIOME_ORDER.indexOf(biome));
   return BIOME_ORDER[Math.min(BIOME_ORDER.length - 1, i + 1)];
 }
+const decorReach = () => BIOME_ORDER[BIOME_ORDER.length - 1];
 function decorOk(name, biome) {
-  const info = piece(name), lim = BIOME_ORDER.indexOf(biome);
-  // storage keeps to the village's own biome too: the interior library's sets are laid out round the chest they were
-  // mined with, and a bigger iron chest from the next biome went into the workbench beside it
-  const station = info.structural || ['craft', 'fire', 'storage'].includes(info.role) || /^(piece_workbench|forge|piece_stonecutter|piece_artisanstation|blackforge|piece_magetable|piece_cauldron|piece_oven|smelter|charcoal_kiln|blastfurnace|eitrrefinery|windmill|piece_spinningwheel)/.test(name);
-  return BIOME_ORDER.indexOf(needs(name)) <= (station ? lim : BIOME_ORDER.indexOf(decorReach(biome)));
+  if (!piece(name).structural) return true;
+  return BIOME_ORDER.indexOf(needs(name)) <= BIOME_ORDER.indexOf(buildReach(biome));
 }
 
-const apiP = { piece, minor, decorReach, decorOk, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
+// D-131 (Tyler, 2026-11-11): "Wood hearths (s1) and then stone hearths (s2 and s3) acceptable in meadows onward."
+// The stone of a hearth (its stack, the alcove floor, the flags under the fire) is allowed from s2 in every biome. The
+// generator marks those pieces hearthStone where it places them (lib/generate.js hearthStack, hearthstone); the
+// materials check lets a marked piece pass here.
+const HEARTH_STONE = /^(stone_wall_(1x1|2x1|4x2)|stone_floor_2x2)$/;
+function hearthStoneOk(name, stage) { return HEARTH_STONE.test(name) && +String(stage || 's1').replace(/\D/g, '') >= 2; }
+
+const apiP = { piece, minor, decorReach, buildReach, decorOk, hearthStoneOk, support, supportClass, SUPPORT, needs, MAT, BIOME_ORDER, exportSize, NEEDS, DOORS, doorSpec, doorOpening, CLIMB, climbSpec };
 if (typeof module !== 'undefined') module.exports = apiP;
 else window.VHPieces = apiP;
 
@@ -1468,7 +1488,11 @@ const AT_KINDS = {
   mantel: { drink: 686, food: 91, trophy: 90, herbs: 53, weapon: 39, rare: 19 },
   sill: { drink: 55, food: 41, trophy: 41, weapon: 12, herbs: 8 },
   bench: { drink: 108, trophy: 34, food: 26, weapon: 13, shield: 11, herbs: 7 },
-  chest: { food: 30, trophy: 10, fish: 7, drink: 4, shield: 3 },
+  // (chest: read at the lid, the corpus rerun of 2026-11-11; counter: a low wall's top; stand: a stand set on or into
+  // another, a heap)
+  chest: { food: 31, fish: 25, drink: 20, trophy: 10, weapon: 4, shield: 3, herbs: 2 },
+  counter: { drink: 107, food: 76, hat: 68, trophy: 42, weapon: 29, tool: 13, shield: 6, herbs: 4, rare: 3, fish: 3 },
+  stand: { food: 306, drink: 138, herbs: 123, shield: 44, trophy: 30, weapon: 27, rare: 14, tool: 6, hat: 5, fish: 2 },
   workbench: { tool: 10, drink: 10, food: 6, rare: 4, weapon: 3 },
   rafter: { hat: 52, trophy: 38, weapon: 38, drink: 25, herbs: 15, fish: 11, rare: 8 },
   floor: { drink: 665, food: 432, herbs: 277, rare: 225, weapon: 116, trophy: 90, hat: 72, fish: 46 },
@@ -1507,11 +1531,36 @@ function kindLean(P) {
 // kit asked for (a kind such as 'drink' or 'trophy'), o.at where it stands ('table', 'shelf', 'sill', 'wall:hearth', ...).
 // Nothing here follows a trade: a work building's stands hold its own work (the smithy's tools and weapons), a home's
 // what its household collects, makes, grows and eats.
+// A household keeps a few things of each kind and puts them out again: the same mead in a row of mugs, the same
+// bread on two tables (the corpus's houses show a median of 7 distinct items on 19 stands). How often a stand takes
+// something already on show follows the household: a tidy one keeps to a few things, a collector shows more of its
+// own. Drink, food and herbs come again most, trophies and tools seldom; rare things, boss trophies and the serving
+// tray never.
+const NO_REPEAT = new Set(['rare', 'boss', 'tray', 'valuable']);
+const REPEAT_K = { drink: 1, food: 0.9, herbs: 1, fish: 0.8, hat: 0.8, shield: 0.85, weapon: 0.65, farm: 0.45, tool: 0.45, trophy: 0.6 };
+function repeatOf(P) {
+  if (!P) return 0.7;
+  return Math.min(0.95, Math.max(0.35, 0.75 + 0.6 * P.tidy - 0.5 * (P.hobby.collect || 0) - 0.2 * P.wealth + 0.2 * (P.plain ? 1 : 0)));
+}
+function fromStock(kind, biome, R, seen, P) {
+  const st = seen && !NO_REPEAT.has(kind) ? (seen._stock || (seen._stock = {})) : null;
+  const list = st && st[kind];
+  if (list && list.length && R() < repeatOf(P) * (REPEAT_K[kind] == null ? 0.5 : REPEAT_K[kind])) {
+    const w = {};
+    for (const n of list) w[n] = (w[n] || 0) + 1;
+    const got = pickWP(R, w);
+    list.push(got);
+    return got;
+  }
+  const got = itemFrom(kind, biome, R, 2, seen);
+  if (st && got) (st[kind] || (st[kind] = [])).push(got);
+  return got;
+}
 function standItem(P, kind, o, R) {
   const biome = o.biome || 'Meadows', role = o.role || 'home', want = o.want, seen = o.seen;
   const H = P ? P.hobby : { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3 };
-  if (want === 'tool' && R() < H.plants / (H.plants + H.crafts + 0.2)) return itemFrom('farm', biome, R, 2, seen);
-  if (want && ITEMS[want]) return itemFrom(want, biome, R, 2, seen);
+  if (want === 'tool' && R() < H.plants / (H.plants + H.crafts + 0.2)) return fromStock('farm', biome, R, seen, P);
+  if (want && ITEMS[want]) return fromStock(want, biome, R, seen, P);
   const lean = kindLean(P);
   const at = o.at || (kind === 'wall' ? 'wall' : 'table');
   const base = AT_KINDS[at] || AT_KINDS[kind === 'wall' ? 'wall' : 'table'];
@@ -1531,7 +1580,7 @@ function standItem(P, kind, o, R) {
     // a well-off collector may keep one great trophy
     if (P && H.collect > 0.6 && P.wealth > 0.6 && seen && !seen.boss && R() < 0.3) { seen.boss = 1; return itemFrom('boss', biome, R, 3, seen); }
   }
-  return itemFrom(pickWP(R, w), biome, R, 2, seen);
+  return fromStock(pickWP(R, w), biome, R, seen, P);
 }
 // The room a point lies in (a design's room rectangles) and its role, roughly: the main floor by the building's use,
 // upper floors sleeping or storage, as the decorator reads them.
@@ -2311,11 +2360,10 @@ function check(design, biome, opts = {}) {
   results.push({ check: 'ladders', ok: problems.length === 0,
     detail: ls.length ? (problems.length ? `${problems.length} problems: ${[...new Set(problems)].slice(0, 3).join('; ')}` : `${ls.length} ladder and stair pieces, all climbable`) : 'no ladders or stairs' });
 
-  // beds: every house and longhouse sleeps someone, in a bed its biome can make (Tyler, T-102)
+  // beds: every house and longhouse sleeps someone (Tyler, T-102); any vanilla bed in any biome (D-065)
   const kind = design.request && design.request.type;
   if (['home', 'longhouse'].includes(kind)) {
-    const ord = PC.BIOME_ORDER, limit = biome ? ord.indexOf(biome) : 99;
-    const beds = pieces.filter(p => PC.piece(p.name).role === 'bed' && ord.indexOf(PC.needs(p.name)) <= limit).length;
+    const beds = pieces.filter(p => PC.piece(p.name).role === 'bed').length;
     results.push({ check: 'beds', ok: beds > 0, detail: beds ? `${beds} beds` : `no bed in this ${kind}` });
   }
 
@@ -2324,11 +2372,10 @@ function check(design, biome, opts = {}) {
     [...near(ptBox(p.x, p.y + 0.5, p.y + 30, p.z), 0)].some(j => j !== i && (undersideOf(pieces[j], p.x, p.z, boxes[j]) ?? -1) > p.y + 0.5));
   results.push({ check: 'woodpiles', ok: piles.length === 0, detail: piles.length ? `${piles.length} woodpiles indoors` : 'no woodpiles indoors' });
 
-  // materials for the biome, building pieces and furnishing alike
+  // materials for the biome: building pieces from the village's biome and its neighbors; furniture and decor from any
+  // biome (D-065, Tyler 2026-11-10; lib/pieces.js decorOk)
   if (biome) {
-    const ord = PC.BIOME_ORDER, limit = ord.indexOf(biome);
-    // minor decor goes in any biome (D-066); other decor reaches one biome further, paid in local stand-ins (D-080)
-    const over = [...new Set(pieces.filter(p => ord.indexOf(PC.needs(p.name)) > limit && !(p.decor && (PC.minor(p.name) || PC.decorOk(p.name, biome)))).map(p => p.name))];
+    const over = [...new Set(pieces.filter(p => !PC.decorOk(p.name, biome) && !(p.hearthStone && PC.hearthStoneOk(p.name, design.request && design.request.stage))).map(p => p.name))];
     results.push({ check: 'materials', ok: over.length === 0, detail: over.length ? `needs later biomes: ${over.slice(0, 5).join(', ')}` : `all pieces available in ${biome}` });
   }
 
@@ -2412,6 +2459,8 @@ if (NODE_F) module.exports = { features, score, NAMES }; else window.VHFeatures 
 
 const NODE_D = typeof module !== 'undefined';
 const P = NODE_D ? require('./pieces.js') : window.VHPieces;
+// The pieces module under a name that a function's own P (a persona) cannot shadow.
+const PIECES = P;
 const SHD = NODE_D ? require('./shapes.js') : window.VHShapes;
 const PERS = () => (NODE_D ? require('./persona.js') : window.VHPersona);
 // what a piece shows, as boxes (lib/mesh.js): where a model stands proud of its collider (the 2x2 wood wall's bars)
@@ -2524,13 +2573,27 @@ const F = {
   stone_pile: { s: [1.6, 0.81, 1.6], c: [0.08, 0.07], at: 'out', b: 'Meadows', cat: 'clutter' },
   coal_pile: { s: [1.6, 0.82, 1.6], c: [0.02, 0.1], at: 'out', b: 'Black Forest', cat: 'clutter' },
 };
+// More of each kind the game ships, sized from the game's models (modelSizes) like the rest: the decorator picked from
+// a short list per kind, so every house had the same few rugs, tables and benches (Tyler, 2026-11-10: "Same exact
+// lox rug"). Each takes the placing rules of the piece it is listed under.
+const CLONES_D = {
+  rug_deer: ['rug_bogwitch_deer', 'rug_moose', 'rug_seal', 'rug_Bjorn'],
+  piece_banner01: ['piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09', 'piece_banner10', 'piece_banner11'],
+  piece_groundtorch_mist: ['piece_groundtorch_blue'],
+  piece_table: ['dvergrprops_table'],
+  piece_table_oak: ['piece_blackmarble_table'],
+  piece_bench01: ['piece_blackwood_bench01', 'piece_blackmarble_bench'],
+  piece_chair: ['dvergrprops_stool'],
+};
+for (const [t, list] of Object.entries(CLONES_D)) for (const n of list) if (!F[n]) { const o = { ...F[t], clone: true }; delete o.c; F[n] = o; }
 // Older names kept for callers that read the table.
 const ITEM_BIOME = {};
 for (const [k, v] of Object.entries(F)) ITEM_BIOME[k] = v.b;
 
 const bi = b => { const i = ORDER.indexOf(b); return i < 0 ? 0 : i; };
-// furniture and decor reach one biome further than the village's own, stations and fires none (D-080, lib/pieces.js)
-const ok = (name, biome) => !!F[name] && bi(F[name].b) <= bi(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
+// any furniture or decor in any biome (D-065, Tyler 2026-11-10; lib/pieces.js decorOk); F[name].b stays as the biome a
+// piece belongs to, for flavor only
+const ok = (name, biome) => !!F[name];
 const ok0 = ok;
 const size = name => (F[name] ? F[name].fp || F[name].s : P.piece(name).size);
 // The sizes above were measured in the corpus; the game's models (lib/mesh.js, data/piece-models.json) win where they
@@ -2557,7 +2620,7 @@ function modelSizes() {
     const body = [0, 1, 2].map(i => (Math.abs(old[i] - m[i]) > 0.1 ? +m[i].toFixed(2) : old[i]));
     // a piece set against a wall keeps no pad behind it: its back goes to the wall (the forge's tool rack, 0.2 m deep,
     // stood 0.3 m off its wall when its 0.8 m corpus depth was taken for its body)
-    const pad = [Math.max(0, old[0] - body[0]), ['wall', 'mount'].includes(f.at) ? 0 : Math.max(0, old[2] - body[2])];
+    const pad = f.clone ? [0, 0] : [Math.max(0, old[0] - body[0]), ['wall', 'mount'].includes(f.at) ? 0 : Math.max(0, old[2] - body[2])];
     f.corpus = old;
     f.s = body;
     if (pad[0] > 0.1 || pad[1] > 0.1) { f.pad = pad.map(v => +v.toFixed(2)); f.fp = [body[0] + pad[0], body[1], body[2] + pad[1]]; }
@@ -2569,13 +2632,13 @@ function modelSizes() {
 const KIT = {
   bed: ['bed', 'piece_bed02', 'ashwood_bed'],
   chest: ['piece_chest_wood', 'piece_chest_barrel', 'piece_chest', 'piece_chest_blackmetal'],
-  table: ['piece_table', 'piece_table_round', 'piece_table_oak'],
-  chair: ['piece_chair', 'piece_chair02', 'piece_chair03'],
-  bench: ['piece_bench01', 'piece_logbench01'],
-  rug: ['rug_deer', 'rug_wolf', 'jute_carpet', 'rug_fur', 'rug_straw', 'rug_hare', 'jute_carpet_blue', 'rug_asksvin'],
-  floorLight: ['piece_groundtorch_wood', 'piece_groundtorch', 'piece_groundtorch_green', 'piece_groundtorch_mist'],
+  table: ['piece_table', 'piece_table_round', 'piece_table_oak', 'dvergrprops_table', 'piece_blackmarble_table'],
+  chair: ['piece_chair', 'piece_chair02', 'piece_chair03', 'dvergrprops_stool'],
+  bench: ['piece_bench01', 'piece_logbench01', 'piece_blackwood_bench01', 'piece_blackmarble_bench'],
+  rug: ['rug_deer', 'rug_wolf', 'jute_carpet', 'rug_fur', 'rug_straw', 'rug_hare', 'jute_carpet_blue', 'rug_asksvin', 'rug_bogwitch_deer', 'rug_moose', 'rug_seal', 'rug_Bjorn'],
+  floorLight: ['piece_groundtorch_wood', 'piece_groundtorch', 'piece_groundtorch_green', 'piece_groundtorch_mist', 'piece_groundtorch_blue'],
   wallLight: ['piece_walltorch', 'piece_dvergr_lantern'],
-  banner: ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05'],
+  banner: ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09', 'piece_banner10', 'piece_banner11'],
   carving: ['wood_dragon1', 'darkwood_raven', 'darkwood_wolf'],
   stack: ['wood_stack', 'wood_fine_stack', 'wood_core_stack'],
 };
@@ -2590,6 +2653,59 @@ const CULTURE_TASTE = {
   byzantine: { banners: 1.3 },
   dwarven: { lights: 1.4 },
 };
+
+// Corpus counts per culture group (lab/culture_kinds.js from the research branch's data/culture-corpus/summary.json,
+// 2,153 builds, 1,224 furnished; D-136: the weights and rates below are these counts). Per group: n furnished
+// buildings; k the top prefabs per kind with their uses; t what lies on tables; r relations in percent of pieces (sa
+// seats at tables, sf seats by a fire, rl rugs layered, td tables dressed, cs chests stacked, sw seats by a wall, so
+// seats turned, to tables turned, ro rugs turned more than 10 degrees off the wall axes). 'all' is every group.
+const CORPUS_CULT = {"unsorted":{"n":139,"k":{"bed":[["bed",112],["piece_bed02",92]],"table":[["piece_table",140],["piece_table_round",91],["piece_magetable_ext2",68]],"seat":[["piece_chair",549],["piece_chair03",547],["piece_bench01",196]],"rug":[["jute_carpet",673],["rug_fur",460],["rug_deer",430]],"storage":[["piece_chest",853],["piece_chest_blackmetal",851],["piece_chest_wood",605]],"light":[["piece_dvergr_lantern",1542],["piece_groundtorch_mist",954],["piece_walltorch",793]]},"t":[["itemstandh",324],["Candle_resin",30],["piece_Lavalantern",26],["treasure_stack",19],["itemstand",17],["sign",14]],"r":{"sa":23,"sf":3,"rl":28,"td":47,"cs":46,"sw":37,"so":48,"to":34,"ro":40}},"norse":{"n":387,"k":{"bed":[["bed",389],["piece_bed02",375]],"table":[["piece_table",441],["piece_table_round",263],["cauldron_ext3_butchertable",181]],"seat":[["piece_chair",2232],["piece_chair03",1490],["piece_chair02",482]],"rug":[["rug_deer",2350],["rug_fur",1916],["jute_carpet",1506]],"storage":[["piece_chest_wood",6324],["piece_chest",2797],["piece_chest_blackmetal",1377]],"light":[["piece_walltorch",2540],["piece_dvergr_lantern",1721],["piece_groundtorch_wood",812]]},"t":[["itemstandh",1054],["itemstand",55],["treasure_stack",44],["piece_chest_private",44],["sign",38],["piece_jackoturnip",36]],"r":{"sa":28,"sf":4,"rl":23,"td":41,"cs":60,"sw":41,"so":41,"to":27,"ro":30}},"castle":{"n":176,"k":{"bed":[["piece_bed02",166],["bed",97]],"table":[["piece_table",225],["piece_blackmarble_table",106],["piece_table_round",98]],"seat":[["piece_chair",2314],["piece_chair03",688],["piece_bench01",195]],"rug":[["jute_carpet",1083],["rug_fur",911],["rug_deer",419]],"storage":[["piece_chest_blackmetal",919],["piece_chest",910],["piece_chest_wood",796]],"light":[["piece_walltorch",1411],["piece_dvergr_lantern",1269],["piece_groundtorch",438]]},"t":[["itemstandh",452],["treasure_stack",107],["Candle_resin",59],["piece_table",16],["sign",13],["itemstand",12]],"r":{"sa":18,"sf":7,"rl":25,"td":41,"cs":55,"sw":45,"so":50,"to":28,"ro":37}},"ashlands":{"n":119,"k":{"bed":[["piece_bed02",56],["bed",4]],"table":[["piece_table",86],["piece_table_round",81],["piece_table_oak",45]],"seat":[["piece_chair03",483],["piece_chair",329],["piece_chair02",97]],"rug":[["rug_fur",670],["jute_carpet",329],["rug_wolf",168]],"storage":[["piece_chest",1695],["piece_chest_blackmetal",359],["piece_chest_barrel",298]],"light":[["piece_groundtorch_mist",1605],["piece_dvergr_lantern",1327],["piece_walltorch",591]]},"t":[["itemstandh",126],["Candle_resin",33],["piece_Lavalantern",21],["sign",10],["treasure_stack",9],["piece_jackoturnip",8]],"r":{"sa":32,"sf":3,"rl":15,"td":41,"cs":73,"sw":31,"so":43,"to":27,"ro":19}},"norse-named":{"n":131,"k":{"bed":[["piece_bed02",192],["bed",168]],"table":[["piece_table",213],["piece_table_round",137],["piece_table_oak",99]],"seat":[["piece_chair",1579],["piece_chair03",780],["piece_bench01",256]],"rug":[["rug_deer",1302],["rug_fur",1211],["jute_carpet",657]],"storage":[["piece_chest",1729],["piece_chest_wood",1624],["piece_chest_blackmetal",904]],"light":[["piece_walltorch",1540],["piece_dvergr_lantern",952],["piece_groundtorch_mist",502]]},"t":[["itemstandh",527],["itemstand",41],["treasure_stack",30],["piece_Lavalantern",25],["piece_chest_private",21],["piece_jackoturnip",17]],"r":{"sa":25,"sf":3,"rl":22,"td":43,"cs":57,"sw":40,"so":34,"to":25,"ro":24}},"mistlands":{"n":44,"k":{"bed":[["piece_bed02",18]],"table":[["piece_table_round",28],["piece_magetable_ext2",19],["trader_wagon_destructable",19]],"seat":[["piece_chair03",129],["piece_throne02",87],["piece_chair",49]],"rug":[["jute_carpet",604],["rug_fur",94],["rug_asksvin",51]],"storage":[["piece_chest_blackmetal",558],["piece_chest",262],["dvergrprops_crate_long",91]],"light":[["piece_groundtorch_mist",666],["piece_dvergr_lantern",250],["piece_walltorch",134]]},"t":[["piece_dvergr_lantern",18],["piece_Lavalantern",13],["piece_throne02",9],["fermenter",3],["itemstand",3]],"r":{"sa":26,"sf":1,"rl":15,"td":35,"cs":45,"sw":31,"so":48,"to":49,"ro":25}},"stone-house":{"n":37,"k":{"bed":[["piece_bed02",7],["bed",4]],"table":[["piece_table",20],["cauldron_ext3_butchertable",16],["piece_table_round",9]],"seat":[["piece_chair",362],["piece_chair02",45],["piece_chair03",34]],"rug":[["rug_fur",54],["rug_hare",42],["rug_deer",36]],"storage":[["piece_chest_wood",329],["piece_chest",281],["piece_chest_blackmetal",106]],"light":[["piece_walltorch",111],["piece_groundtorch_wood",67],["piece_dvergr_lantern",51]]},"t":[["itemstandh",26],["itemstand",4],["treasure_stack",3],["piece_chest_private",2],["Candle_resin",2],["ArmorStand",1]],"r":{"sa":16,"sf":1,"rl":10,"td":29,"cs":58,"sw":65,"so":17,"to":28,"ro":32}},"norse-forest":{"n":44,"k":{"bed":[["bed",32],["piece_bed02",20]],"table":[["dvergrprops_table",580],["piece_table",59],["cauldron_ext3_butchertable",18]],"seat":[["piece_chair",952],["piece_chair03",112],["piece_chair02",59]],"rug":[["jute_carpet",149],["rug_deer",134],["rug_fur",68]],"storage":[["piece_chest_wood",622],["piece_chest",298],["piece_chest_barrel",133]],"light":[["piece_walltorch",265],["piece_groundtorch_wood",177],["piece_dvergr_lantern",142]]},"t":[["dvergrprops_table",418],["itemstandh",108],["Candle_resin",8],["treasure_stack",6],["piece_cookingstation",6],["itemstand",5]],"r":{"sa":11,"sf":5,"rl":7,"td":49,"cs":63,"sw":47,"so":17,"to":28,"ro":21}},"fantasy":{"n":31,"k":{"bed":[["piece_bed02",47],["bed",3]],"table":[["piece_table",82],["piece_table_round",38],["piece_blackmarble_table",29]],"seat":[["piece_chair03",233],["piece_chair",170],["piece_blackmarble_bench",36]],"rug":[["jute_carpet",369],["rug_fur",326],["rug_deer",318]],"storage":[["piece_chest",306],["piece_chest_blackmetal",211],["piece_chest_wood",175]],"light":[["piece_groundtorch_mist",1571],["dvergrprops_lantern_standing",641],["piece_dvergr_lantern",355]]},"t":[["itemstandh",118],["Candle_resin",30],["itemstand",15],["sign",13],["piece_jackoturnip",11],["piece_chest_treasure",9]],"r":{"sa":35,"sf":3,"rl":18,"td":53,"cs":60,"sw":41,"so":50,"to":34,"ro":30}},"medieval-timber":{"n":27,"k":{"bed":[["piece_bed02",28],["bed",18]],"table":[["piece_table_round",25],["piece_table",24],["piece_magetable_ext2",14]],"seat":[["piece_chair",502],["piece_chair03",114],["piece_bench01",35]],"rug":[["rug_fur",153],["jute_carpet",99],["rug_deer",53]],"storage":[["piece_chest",152],["piece_chest_blackmetal",140],["piece_chest_wood",133]],"light":[["piece_dvergr_lantern",301],["piece_walltorch",235],["piece_groundtorch_wood",77]]},"t":[["itemstandh",57],["Candle_resin",8],["itemstand",6],["sign",4],["treasure_stack",3],["piece_chest_barrel",2]],"r":{"sa":14,"sf":2,"rl":19,"td":37,"cs":48,"sw":56,"so":31,"to":11,"ro":12}},"norse-highland":{"n":23,"k":{"bed":[["piece_bed02",53],["bed",14]],"table":[["piece_table",55],["piece_table_round",31],["dvergrprops_table",26]],"seat":[["piece_chair03",167],["dvergrprops_stool",49],["piece_workbench",43]],"rug":[["rug_fur",218],["rug_wolf",149],["jute_carpet",128]],"storage":[["piece_chest",522],["piece_chest_wood",109],["piece_chest_blackmetal",65]],"light":[["piece_dvergr_lantern",248],["piece_walltorch",114]]},"t":[["itemstandh",13],["piece_jackoturnip",6],["sign",6],["piece_chest_private",4],["Candle_resin",4]],"r":{"sa":50,"sf":8,"rl":18,"td":24,"cs":63,"sw":26,"so":45,"to":28,"ro":26}},"east-asian":{"n":14,"k":{"bed":[["bed",6],["piece_bed02",4]],"table":[["piece_table",31],["piece_magetable_ext",2],["piece_magetable",2]],"seat":[["piece_chair",66],["piece_bench01",43],["piece_blackmarble_throne",20]],"rug":[["rug_asksvin",68],["rug_fur",41],["rug_wolf",37]],"storage":[["piece_chest_blackmetal",51],["piece_chest",35],["piece_chest_private",22]],"light":[["piece_groundtorch",160],["piece_dvergr_lantern",139],["piece_brazierceiling01",63]]},"t":[["itemstandh",40],["piece_chest_private",16],["piece_jackoturnip",2],["piece_chest_wood",1],["piece_groundtorch_mist",1]],"r":{"sa":27,"sf":1,"rl":11,"td":56,"cs":49,"sw":51,"so":11,"to":5,"ro":39}},"fen-folk":{"n":12,"k":{"bed":[["bed",17],["piece_bed02",8]],"table":[["piece_table",17],["piece_table_round",5],["cauldron_ext3_butchertable",3]],"seat":[["piece_chair03",18],["piece_chair02",15],["piece_chair",15]],"rug":[["rug_deer",78],["rug_straw",34],["rug_asksvin",20]],"storage":[["piece_chest",129],["piece_chest_wood",124],["piece_chest_barrel",19]],"light":[["piece_walltorch",244],["piece_groundtorch_green",220],["piece_groundtorch",59]]},"t":[["itemstandh",13],["treasure_stack",2],["piece_groundtorch",1]],"r":{"sa":24,"sf":5,"rl":27,"td":23,"cs":69,"sw":40,"so":55,"to":58,"ro":46}},"celtic":{"n":8,"k":{"bed":[["bed",2],["piece_bed02",2]],"table":[["piece_table",4],["piece_table_oak",3],["cauldron_ext3_butchertable",3]],"seat":[["piece_chair",11],["piece_chair03",8],["piece_workbench",4]],"rug":[["rug_hare",14],["rug_deer",11],["rug_fur",9]],"storage":[["piece_chest",27],["piece_chest_barrel",9],["piece_chest_wood",8]],"light":[["piece_groundtorch_wood",16],["piece_walltorch",12],["piece_groundtorch_green",4]]},"t":[["itemstandh",27],["sign",1],["piece_magetable_ext",1],["piece_chest_private",1]],"r":{"sa":34,"sf":9,"rl":12,"td":59,"cs":11,"sw":44,"so":59,"to":82,"ro":59}},"modern":{"n":10,"k":{"bed":[["piece_bed02",12],["bed",1]],"table":[["piece_table",11],["cauldron_ext3_butchertable",4],["piece_table_round",4]],"seat":[["piece_chair",66],["piece_bench01",26],["piece_chair03",25]],"rug":[["rug_fur",230],["jute_carpet",64],["rug_wolf",29]],"storage":[["piece_chest_blackmetal",28],["piece_chest",14]],"light":[["piece_walltorch",129],["piece_dvergr_lantern",91],["piece_groundtorch",12]]},"t":[["itemstandh",239],["sign",18],["itemstand",5],["Candle_resin",3],["piece_jackoturnip",2]],"r":{"sa":14,"sf":3,"rl":13,"td":47,"cs":27,"sw":50,"so":18,"to":5,"ro":1}},"greco-roman":{"n":5,"k":{"bed":[["bed",10]],"table":[],"seat":[["piece_chair02",5],["piece_bench01",3],["piece_blackwood_bench01",2]],"rug":[["jute_carpet_blue",175],["jute_carpet",67],["rug_deer",2]],"storage":[["piece_chest_wood",6]],"light":[["piece_groundtorch_mist",77],["piece_walltorch",68],["piece_dvergr_lantern",26]]},"t":[],"r":{"sa":0,"sf":0,"rl":10,"td":0,"cs":0,"sw":17,"so":33,"ro":2}},"tree-house":{"n":6,"k":{"bed":[["bed",25],["piece_bed02",15]],"table":[["piece_table",14],["piece_table_round",9],["cauldron_ext3_butchertable",8]],"seat":[["piece_chair",170],["piece_chair03",59],["piece_workbench",25]],"rug":[["rug_deer",132],["rug_wolf",90],["rug_fur",70]],"storage":[["piece_chest",121],["piece_chest_wood",74],["piece_chest_blackmetal",17]],"light":[["piece_walltorch",89],["piece_groundtorch_mist",88],["piece_groundtorch",74]]},"t":[["itemstandh",17],["piece_jackoturnip",3],["piece_Lavalantern",2],["blackforge_ext4_gemcutter",1]],"r":{"sa":16,"sf":13,"rl":25,"td":26,"cs":32,"sw":32,"so":60,"to":37,"ro":66}},"celtic-crannog":{"n":5,"k":{"bed":[["bed",5]],"table":[["cauldron_ext3_butchertable",3],["piece_table",2],["piece_preptable",1]],"seat":[["piece_chair",178],["piece_chair03",13],["piece_workbench",4]],"rug":[["rug_fur",84],["rug_deer",5],["jute_carpet",1]],"storage":[["piece_chest_wood",77],["piece_chest",12],["piece_chest_barrel",3]],"light":[["piece_groundtorch_mist",66],["piece_walltorch",32],["piece_dvergr_lantern",30]]},"t":[],"r":{"sa":7,"sf":1,"rl":2,"td":0,"cs":93,"sw":66,"so":60,"to":0,"ro":81}},"saami":{"n":2,"k":{"bed":[["bed",3]],"table":[],"seat":[["piece_workbench",1],["piece_workbench_ext4",1],["piece_workbench_ext2",1]],"rug":[["rug_deer",29]],"storage":[["piece_chest_wood",12],["piece_chest_private",1]],"light":[["piece_groundtorch",3],["piece_walltorch",2]]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0}},"slavic":{"n":1,"k":{"bed":[],"table":[],"seat":[["piece_chair02",2],["piece_workbench",1]],"rug":[],"storage":[["piece_chest_wood",2]],"light":[["piece_groundtorch_mist",17],["piece_groundtorch_green",4]]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0}},"frankish-norman":{"n":1,"k":{"bed":[],"table":[["piece_table",1]],"seat":[],"rug":[],"storage":[],"light":[["piece_groundtorch_mist",7],["piece_dvergr_lantern",6]]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0}},"middle-eastern":{"n":1,"k":{"bed":[],"table":[],"seat":[["piece_workbench",1],["piece_workbench_ext3",1],["piece_workbench_ext1",1]],"rug":[],"storage":[["piece_chest_wood",78]],"light":[]},"t":[],"r":{"sa":0,"sf":0,"rl":0,"td":0}},"steppe":{"n":1,"k":{"bed":[["piece_bed02",1]],"table":[["piece_table_round",1],["piece_magetable",1],["piece_cartographytable",1]],"seat":[["piece_chair",2],["piece_workbench_ext2",1],["piece_workbench",1]],"rug":[["jute_carpet",18]],"storage":[["piece_chest_blackmetal",10],["piece_chest_wood",4],["piece_chest",4]],"light":[["piece_dvergr_lantern",10],["piece_Lavalantern",1]]},"t":[["piece_Lavalantern",1],["piece_magetable_ext2",1],["goblinking_totemholder",1]],"r":{"sa":0,"sf":0,"rl":0,"td":43}},"all":{"n":1224,"k":{"bed":[["piece_bed02",1096],["bed",910]],"table":[["piece_table",1425],["piece_table_round",820],["dvergrprops_table",606],["cauldron_ext3_butchertable",236],["piece_table_oak",147],["piece_blackmarble_table",135],["piece_magetable_ext2",101],["trader_wagon_destructable",19]],"seat":[["piece_chair",9546],["piece_chair03",4900],["piece_bench01",754],["piece_chair02",705],["piece_throne02",87],["piece_workbench",80],["dvergrprops_stool",49],["piece_blackmarble_bench",36]],"rug":[["rug_fur",6515],["jute_carpet",5747],["rug_deer",5299],["rug_wolf",473],["jute_carpet_blue",175],["rug_asksvin",139],["rug_hare",56],["rug_straw",34]],"storage":[["piece_chest_wood",11102],["piece_chest",10147],["piece_chest_blackmetal",5596],["piece_chest_barrel",462],["dvergrprops_crate_long",91],["piece_chest_private",23]],"light":[["piece_dvergr_lantern",8460],["piece_walltorch",8310],["piece_groundtorch_mist",5553],["piece_groundtorch_wood",1149],["piece_groundtorch",746],["dvergrprops_lantern_standing",641],["piece_groundtorch_green",228],["piece_brazierceiling01",63]]},"t":[["itemstandh",3141],["dvergrprops_table",418],["treasure_stack",223],["Candle_resin",177],["itemstand",163],["sign",117],["piece_Lavalantern",88],["piece_chest_private",88]],"r":{"sa":25,"sf":4,"rl":21,"td":41,"cs":57,"sw":41,"so":41,"to":29,"ro":30}}};
+// the generator's cultures to the corpus groups (null: no group of its own, the whole corpus)
+const CULT_GROUP = { norse: 'norse', 'anglo-saxon': 'medieval-timber', 'frankish-norman': 'medieval-timber', 'norse-forest': 'norse-forest',
+  celtic: 'celtic', slavic: 'slavic', 'celtic-crannog': 'celtic-crannog', baltic: null, 'fen-folk': 'fen-folk', 'norse-highland': 'norse-highland',
+  saami: 'saami', byzantine: 'greco-roman', steppe: 'steppe', lamari: 'mistlands', 'middle-eastern': 'middle-eastern', 'black-forest': 'norse-forest',
+  swamp: 'fen-folk', mountain: 'norse-highland', 'east-asian': 'east-asian', 'castle-medieval': 'castle', dwarven: 'mistlands' };
+// a small group counts for less: its counts are blended with the whole corpus by n / (n + 40) furnished buildings
+const cultG = culture => { const g = CORPUS_CULT[CULT_GROUP[culture]]; return g && g.n ? { g, l: g.n / (g.n + 40) } : { g: null, l: 0 }; };
+// A culture's rate for a relation, in 0..1, blended with the whole corpus.
+function corpusRate(culture, key) {
+  const A = CORPUS_CULT.all.r[key] || 0, { g, l } = cultG(culture);
+  const v = g && g.r[key] != null ? l * g.r[key] + (1 - l) * A : A;
+  return v / 100;
+}
+// How much more (or less) a culture uses a prefab of a kind than the corpus does: the group's share of the kind's
+// listed uses over the whole corpus share, blended; a prefab the corpus lists that the group leaves out of its list
+// weighs a little less; anything else stays at 1. Weights only (D-126).
+const SLOT_KIND = { bed: 'bed', table: 'table', chair: 'seat', bench: 'seat', seat: 'seat', rug: 'rug', chest: 'storage', floorLight: 'light', wallLight: 'light' };
+function corpusTilt(culture, kind, name) {
+  const { g, l } = cultG(culture);
+  if (!g || !l) return 1;
+  const gl = g.k[kind] || [], al = CORPUS_CULT.all.k[kind] || [];
+  const gs = gl.reduce((a, [, c]) => a + c, 0), as = al.reduce((a, [, c]) => a + c, 0);
+  const ge = gl.find(([n]) => n === name), ae = al.find(([n]) => n === name);
+  if (ge && ae && gs && as) return Math.min(3, Math.max(0.3, 1 + l * ((ge[1] / gs) / (ae[1] / as) - 1)));
+  if (ge && gs) return 1 + l;
+  if (ae && gl.length) return 1 - 0.5 * l;
+  return 1;
+}
+// A draw among prefabs of one kind for a room kind (data/interior.json shares plus the floor, times the culture's tilt),
+// the given one twice as likely: the interior library's rug slots use it (lib/kitbash.js fillSlot).
+function corpusPick(R, list, learnKind, kind, culture, own) {
+  const L = learned().rooms || {};
+  const shares = new Map(((L[learnKind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
+  return pickW(R, list.map(n => [n, ((shares.get(n) || 0) + FLOOR_C) * corpusTilt(culture, kind, n) * (n === own ? 2 : 1)]));
+}
+// Whether a household keeps barrels in its living rooms: barrels are in 22 % of furnished corpus buildings (research
+// branch docs/INTERIOR_DESIGN.md, "Tricks builders use on purpose"), more often in a cluttered household; a tavern's bar
+// and store and work rooms keep theirs. Fixed by the household (its salt), so the decorator and the library agree.
+function keepsBarrels(P, type) {
+  if (['tavern', 'storage', 'farm', 'barn', 'smithy', 'workshop', 'sawmill', 'dock', 'stall'].includes(type)) return true;
+  if (!P) return true;
+  return ((P.salt >>> 5) % 1000) / 1000 < 0.22 * (0.6 + 0.8 * (P.clutter || 0));
+}
+// what a rare prefab weighs beside the room kind's shares (data/interior.json: share of rooms of the kind that use it),
+// so anything can show (D-126) and the corpus favorites lead
+const FLOOR_C = 0.04;
 
 // ---------------------------------------------------------------- small helpers
 const PI = Math.PI;
@@ -3265,6 +3381,13 @@ function mountSpots(room, name, o = {}) {
 // How far a hung piece may touch what shows of a wall: a board (a sign, a stand) 1.5 cm, where a bar through it shows;
 // a banner's cloth 3 cm, as it hangs against the 2x2 wood wall's bars in any build (lib/audit.js uses the same).
 const HUNG_CLIP = name => (/^piece_banner\d+$/.test(name) ? 0.03 : 0.015);
+// D-127 (Tyler: "if the corpus builders do it, its allowed and you should mirror their work"): what corpus builders hang
+// into a wall's relief on purpose, up to the median depth they use (data/kitbash-interior.json, lab/mine_kitbash.js):
+// a wall item stand 5.3 cm (15 mined sets with the stand clipped into the wall, max 28 cm; 7.7 cm median over all
+// 4,212 stands), a wall torch 8.6 cm (808 torches in 238 builds, 90th percentile 23 cm). Past HUNG_CLIP the piece
+// carries its depth as p.wclip, a clip made on purpose in the file's #VillheimClips (D-098).
+const HUNG_CORPUS = { itemstand: 0.053, piece_walltorch: 0.086 };
+const hungLimit = name => Math.max(HUNG_CLIP(name), HUNG_CORPUS[name] || 0);
 // Clear of the wall's own relief (lib/mesh.js), by what shows of the piece against what shows of the walls round it:
 // a height between the bars within 0.4 m (T-606, T-612). A hung piece keeps its collider against the wall's, which is
 // what holds it up in the game, so it never moves out onto the bars; with no clear height the spot is not used. Gives
@@ -3273,11 +3396,14 @@ function clearOfRelief(room, name, spot) {
   const face = spot.face, f = F[name] || {};
   if (!face.wallClip || spot.x0 == null) return spot;
   const clipAt = yy => { const [px, pz] = pivotOf(name, spot.x0 + face.nx * spot.off, spot.z0 + face.nz * spot.off, spot.yaw); return face.wallClip({ name, x: px, y: yy, z: pz, q: quatY(spot.yaw) }); };
-  const lim = HUNG_CLIP(name);
-  if (clipAt(spot.y) <= lim) return spot;
+  const lim = HUNG_CLIP(name), deep = hungLimit(name);
+  const c0 = clipAt(spot.y);
+  if (c0 <= lim) return spot;
   if (f.under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) {
     if (yy >= spot.lowY && yy <= spot.topY && clipAt(yy) <= lim) return { ...spot, y: +yy.toFixed(2) };
   }
+  // no clear height: as deep as corpus builders hang it, marked (D-127, D-098)
+  if (c0 <= deep) return { ...spot, clip: c0 };
   return null;
 }
 function putMount(room, name, spot) {
@@ -3291,7 +3417,9 @@ function putMount(room, name, spot) {
   const probe = obox(spot.x + spot.face.nx * 0.3, spot.z + spot.face.nz * 0.3, w, 0.6, spot.yaw);
   for (const q of room.placed) if (!q.rug && !q.mount && q.y1 > y0 && overlap(q.b, probe, 0)) return null;
   room.mounts.push({ face: spot.face, t: spot.t, w, y0, y1 });
-  return room.add(name, spot.x, spot.y, spot.z, spot.yaw, { mount: true, face: spot.face, t: spot.t, y0, y1: y0 + h });
+  const rec = room.add(name, spot.x, spot.y, spot.z, spot.yaw, { mount: true, face: spot.face, t: spot.t, y0, y1: y0 + h });
+  if (rec && spot.clip) rec.p.wclip = +(spot.clip + 0.005).toFixed(3);
+  return rec;
 }
 
 // ---------------------------------------------------------------- clusters
@@ -3427,6 +3555,7 @@ function placeBeds(room, k, n, d, row = 1.5) {
   if (P && P.bedRow) row = P.bedRow;
   const gap = P && P.bedGap ? P.bedGap : 0.7, fireNear = P && P.bedFire ? P.bedFire : 2.6;
   const L = learned().items || {};
+  const apart = k.bedRow === false && row < 1;
   for (let i = 0; i < n; i++) {
     const name = k.bed;
     const doorMin = Math.min(3.0, fr.D * 0.55);
@@ -3439,19 +3568,24 @@ function placeBeds(room, k, n, d, row = 1.5) {
       if (room.doorDist(s.x, s.z) < doorMin) v -= 3;
       if (room.sideCells && room.sideCells(s.x, s.z)) v += 1.5;
       if (room.fire && Math.hypot(s.x - room.fire.x, s.z - room.fire.z) < fireNear) v -= 2;
-      if (prev) { const dd = Math.hypot(s.x - prev.x, s.z - prev.z); v += (s.face === prev.spot.face ? row : 0) - Math.abs(dd - (size(name)[0] + gap)) * 0.6 * (row > 1 ? 1 : 0.3); }
+      // a household that keeps its beds apart puts the next one on another wall or well along this one (homes and
+      // bedrooms only; bunk rows in halls and guest rooms stay rows)
+      if (prev && apart) for (const q of out) { const dd = Math.hypot(s.x - q.x, s.z - q.z); v += (s.face === q.spot.face ? -0.6 : 0.5) - Math.max(0, size(name)[0] + 1.6 - dd) * 0.8; }
+      else if (prev) { const dd = Math.hypot(s.x - prev.x, s.z - prev.z); v += (s.face === prev.spot.face ? row : 0) - Math.abs(dd - (size(name)[0] + gap)) * 0.6 * (row > 1 ? 1 : 0.3); }
       if (s.win) v -= 0.3;
       return v + pb(room, 'bed', s, name);
     }, { noise: 0.25 });
     if (!rec) break;
     out.push(rec);
     void L;
-    // a chest at the foot (learned: 1.75 m out from the bed's pivot, same facing)
-    if (d >= 2 || i === 0) {
+    // a chest at the foot (learned: 1.75 m out from the bed's pivot, same facing): the d1 essential by the first bed,
+    // past that as often as the household's clutter draws it (corpus: a chest within 2.6 m of 17 to 38 % of beds)
+    if ((d === 1 && i === 0) || (d >= 2 && (!k.hR || k.hR() < k.bedChest))) {
       const ch = k.chest;
       const off = size(name)[2] / 2 + size(ch)[2] / 2 + 0.3;
       const ax = Math.sin(rec.yaw * PI / 180), az = Math.cos(rec.yaw * PI / 180);
-      if (i < (d >= 3 ? 3 : d >= 2 ? 2 : 1)) room.put(ch, rec.x + ax * off, rec.z + az * off, rec.yaw);
+      // past the d1 essential it is an extra: a library set by the bed (a nightstand, a bedside barrel) moves it aside
+      if (i < (d >= 3 ? 3 : d >= 2 ? 2 : 1)) { const c2 = room.put(ch, rec.x + ax * off, rec.z + az * off, rec.yaw); if (c2 && d >= 2) c2.p.extra = true; }
     }
   }
   if (!out.length && n > 0) {
@@ -3496,8 +3630,10 @@ function placeTable1(room, k, o = {}) {
   // middle spots on the grid, along the room's axes
   for (const c of room.cells) if (c.i % 2 === 0 && c.j % 2 === 0) for (const yaw of round ? [0] : [0, 90]) spots.push({ x: c.x, z: c.z, yaw, mid: true });
   if (!round && o.wall !== false) for (const s of wallSpots(room, name, { gap: 0.15 })) spots.push({ ...s, wallSide: true });
-  const seatsWanted = o.seats != null ? o.seats : 4;
+  const seatsWanted0 = o.seats != null ? o.seats : 4, seatsWanted = seatsWanted0;
   const longX = (room.x1 - room.x0) >= (room.z1 - room.z0);
+  const seatName = o.seat || k.seat, seatBack = seatName && (F[seatName] || {}).back ? 180 : 0;
+  const seatD = seatName ? size(seatName)[2] : 0, seatR = seatName ? tw / 2 + seatD / 2 + 0.15 : 0;
   const rec = best(room, name, spots, s => {
     let v = 0;
     const dd = room.doorDist(s.x, s.z);
@@ -3514,18 +3650,29 @@ function placeTable1(room, k, o = {}) {
     // room to sit: the spots for seats must be on the floor
     const ax = Math.sin(s.yaw * PI / 180), az = Math.cos(s.yaw * PI / 180);
     for (const sg of s.wallSide ? [1] : [1, -1]) if (!room.inside(s.x + ax * sg * (td / 2 + 0.7), s.z + az * sg * (td / 2 + 0.7))) v -= 2;
+    // and a seat fits there now, clear of the fire, the beds and what stands round (a table squeezed between the fire
+    // and a wall had no seat on either side, and the house went without a table)
+    if (seatsWanted > 0 && seatName) {
+      let room2 = 0;
+      if (round) { for (let i = 0; i < 4; i++) { const a = (s.yaw + i * 90) * PI / 180, sx = s.x + Math.sin(a) * seatR, sz = s.z + Math.cos(a) * seatR; if (room.fits(seatName, sx, sz, norm(yawOfDir(s.x - sx, s.z - sz) + seatBack), { tight: true })) room2++; } }
+      else for (const sg of s.wallSide ? [1] : [1, -1]) { const dist = td / 2 + seatD / 2 + 0.2; if (room.fits(seatName, s.x + ax * sg * dist, s.z + az * sg * dist, norm(yawOfDir(-ax * sg, -az * sg) + seatBack), { tight: true })) room2++; }
+      if (!room2) v -= 6;
+    }
     return v + pb(room, o.kind || 'table', s, name);
   }, { noise: 0.4 });
   if (!rec) return null;
-  // seats: benches along long sides (learned 1.0 m out), chairs round round tables (1.25 to 1.5 m)
+  // seats: benches along long sides (learned 1.0 m out), chairs round round tables (1.25 to 1.5 m); a table asked for
+  // more than two seats gets 40 to 90 % of them (corpus: a quarter of seats stand at a table, rel.seatsAtTables; the
+  // rest along walls and by stations, wallSeat)
   const seat = o.seat || k.seat;
+  const seatsTake = o.seats != null && o.seats > 2 ? Math.max(2, Math.round(o.seats * (0.4 + 0.5 * room.R()))) : seatsWanted0;
   const ax = Math.sin(rec.yaw * PI / 180), az = Math.cos(rec.yaw * PI / 180), bx = Math.cos(rec.yaw * PI / 180), bz = -Math.sin(rec.yaw * PI / 180);
   const sides = rec.spot && rec.spot.wallSide ? [1] : [1, -1];
   let n = 0;
   const backs = (F[seat] || {}).back ? 180 : 0;
   if (round) {
     const r = tw / 2 + size(seat)[2] / 2 + 0.15;
-    for (let i = 0; i < 4 && n < seatsWanted; i++) {
+    for (let i = 0; i < 4 && n < seatsTake; i++) {
       const a = (rec.yaw + i * 90) * PI / 180, sx = rec.x + Math.sin(a) * r, sz = rec.z + Math.cos(a) * r;
       if (room.put(seat, sx, sz, norm(yawOfDir(rec.x - sx, rec.z - sz) + backs), { tight: true })) n++;
     }
@@ -3537,17 +3684,17 @@ function placeTable1(room, k, o = {}) {
       const dist = td / 2 + sd / 2 + 0.2;
       const sx0 = rec.x + ax * sg * dist, sz0 = rec.z + az * sg * dist;
       const faceYaw = norm(yawOfDir(-ax * sg, -az * sg) + backs);
-      const perSide = Math.ceil(seatsWanted / sides.length);
+      const perSide = Math.ceil(seatsTake / sides.length);
       let onSide = 0;
       if (long) {
         const cnt = Math.max(1, Math.floor(tw / sw + 0.2));
-        for (let i = 0; i < cnt && n < seatsWanted && onSide < perSide; i++, onSide++) {
+        for (let i = 0; i < cnt && n < seatsTake && onSide < perSide; i++, onSide++) {
           const off = (i - (cnt - 1) / 2) * sw;
           if (room.put(seat, sx0 + bx * off, sz0 + bz * off, faceYaw, { tight: true })) n++;
         }
       } else {
         const per = Math.min(perSide, Math.max(1, Math.floor(tw / 1.0)));
-        for (let i = 0; i < per && n < seatsWanted; i++) {
+        for (let i = 0; i < per && n < seatsTake; i++) {
           const off = (i - (per - 1) / 2) * 1.0;
           if (room.put(seat, sx0 + bx * off, sz0 + bz * off, faceYaw, { tight: true })) n++;
         }
@@ -3680,7 +3827,7 @@ function placeLights(room, k, n, o = {}) {
   try { return lightsIn(room, k, n, o); } finally { room.R = R0; }
 }
 // Lights are decor: they follow the shared decor rule (lib/pieces.js decorOk; Tyler, 2026-11-10: decor from any biome).
-const lightOk = (name, biome) => !!F[name] && P.decorOk(name, biome);
+const lightOk = (name, biome) => !!F[name] && PIECES.decorOk(name, biome);
 // One stream per room for its lights, from the room's place and the household.
 function lightStream(room) {
   if (!room.lightR) room.lightR = rngFrom((Math.round(room.cx * 73 + room.cz * 131 + room.stand * 977) ^ ((room.persona && room.persona.salt) || 0x5eed)) >>> 0);
@@ -3798,6 +3945,28 @@ function placeOnTable(room, table, names) {
   return n;
 }
 
+// Whether a table is dressed at all, at the culture's corpus rate (rel.tablesDressed, 41 % of norse tables), more
+// often the more cluttered the household; and what lies on it, drawn by the corpus onTable counts (the culture's
+// blended with the whole corpus: horizontal item stands first, treasure and candles far behind), from what the
+// decorator sets on a top. Weights only (D-126, D-136).
+const TOP_OK = ['itemstandh', 'treasure_stack', 'Candle_resin'];
+function topWeights(culture) {
+  const { g, l } = cultG(culture);
+  const sh = list => { const m = new Map(list.filter(([n]) => TOP_OK.includes(n))); const t = [...m.values()].reduce((a, v) => a + v, 0) || 1; return n => (m.get(n) || 0) / t; };
+  const A = sh(CORPUS_CULT.all.t), Gs = g && g.t.length ? sh(g.t) : null;
+  return TOP_OK.map(n => [n, (Gs ? l * Gs(n) + (1 - l) * A(n) : A(n)) + 0.01]);
+}
+function topPick(R, culture, biome) { return pickW(R, topWeights(culture).filter(([nm]) => ok(nm, biome) || nm === 'itemstandh')); }
+function dressTable(room, t, c, n) {
+  if (!t) return 0;
+  const P = c.persona;
+  if (room.R() >= Math.min(0.95, corpusRate(c.culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1))) { t.topped = true; return 0; }
+  const W = topWeights(c.culture).filter(([nm]) => ok(nm, room.biome) || nm === 'itemstandh');
+  const names = [];
+  for (let i = 0; i < n; i++) names.push(pickW(room.R, W));
+  return placeOnTable(room, t, names);
+}
+
 // Seats facing the fire, a little way back from it.
 function placeFireSeats(room, k, n) {
   if (!room.fire) return 0;
@@ -3832,33 +4001,101 @@ function density(kind, decor) {
 
 // The building's kit: one choice of bed, chest, table, seats, rug and lights per building, seeded, from what the biome
 // can make, weighted by how often each shows in that kind of room in the corpus.
-function chooseKit(R, biome, culture, kind) {
+function chooseKit(R, biome, culture, kind, P) {
   const L = learned().rooms || {};
   const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s]) => [n, s]));
-  const pick = (list, floor = 0.15) => {
+  // the essentials by the room kind's shares and the culture's corpus counts (corpusTilt), a small floor for the rest;
+  // banners, carvings and stacks keep their earlier floors
+  const pick = (list, floor = FLOOR_C, slot) => {
     const ok2 = list.filter(n => ok(n, biome));
     if (!ok2.length) return null;
-    return pickW(R, ok2.map(n => [n, (shares.get(n) || 0) + floor]));
+    const kind = SLOT_KIND[slot];
+    return pickW(R, ok2.map(n => [n, ((shares.get(n) || 0) + floor) * (kind ? corpusTilt(culture, kind, n) : 1) * flavorD(n, biome) * tasteD(n, P)]));
   };
-  // lights by the shared decor rule (decorOk), the village's own biome's lights twice as likely as others
-  const pickLight = list => { const l2 = list.filter(n => P.decorOk(n, biome) && F[n]); return l2.length ? pickW(R, l2.map(n => [n, ((shares.get(n) || 0) + 0.3) * (ok(n, biome) && bi(F[n].b) <= bi(biome) ? 2 : 1)])) : null; };
   const taste = CULTURE_TASTE[culture] || {};
   const k = {
-    bed: pick(KIT.bed.filter(n => n !== 'piece_bed02' || R() < 0.5), 0.2),
-    chest: pick(KIT.chest, 0.2),
-    table: taste.noTable ? null : pick(KIT.table),
-    chair: pick(KIT.chair),
-    bench: pick(KIT.bench, 0.3),
-    rug: pick(KIT.rug, 0.2),
-    floorLight: pickLight(KIT.floorLight),
-    wallLight: pickLight(KIT.wallLight),
+    bed: pick(KIT.bed.filter(n => n !== 'piece_bed02' || R() < 0.5), FLOOR_C, 'bed'),
+    chest: pick(KIT.chest, FLOOR_C, 'chest'),
+    table: taste.noTable ? null : pick(KIT.table, FLOOR_C, 'table'),
+    chair: pick(KIT.chair, FLOOR_C, 'chair'),
+    bench: pick(KIT.bench, FLOOR_C, 'bench'),
+    rug: pick(KIT.rug, FLOOR_C, 'rug'),
+    floorLight: pick(KIT.floorLight, FLOOR_C, 'floorLight'),
+    wallLight: pick(KIT.wallLight, FLOOR_C, 'wallLight'),
     banner: pick(KIT.banner, 0.2),
     carving: pick(KIT.carving, 0.2),
     stack: pick(KIT.stack, 0.3),
+    culture,
     side: R() < 0.5 ? 1 : -1,
     taste,
   };
-  k.seat = taste.seat === 'bench' ? (k.bench || k.chair) : (R() < 0.45 ? k.bench || k.chair : k.chair || k.bench);
+  // a bigger household sits on benches more often, one or two people on chairs
+  k.seat = taste.seat === 'bench' ? (k.bench || k.chair) : (R() < (P ? 0.15 + 0.09 * P.size : 0.45) ? k.bench || k.chair : k.chair || k.bench);
+  return k;
+}
+
+// The household's taste on the kit's picks, weights only (D-126): comfort to pelts and furs over woven rugs and straw,
+// wealth to marble, blackwood, oak and Dvergr pieces over plain wood and logs, size to benches over chairs and stools.
+const PELTS_D = /^rug_(wolf|fur|deer|bogwitch_deer|moose|seal|Bjorn|asksvin|hare|bear)/;
+const WEAVES_D = /^(jute_carpet|jute_carpet_blue|rug_straw)$/;
+const FINE_D = /blackmarble|blackwood|_oak$|^dvergrprops_table$|^piece_chair0[23]$|^piece_bed02$/;
+const PLAIN_D = /^(piece_table|piece_table_round|piece_chair|dvergrprops_stool|piece_bench01|piece_logbench01|bed)$/;
+const hashD = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return h >>> 0; };
+function tasteD(n, P) {
+  if (!P) return 1;
+  let w = 1;
+  if (PELTS_D.test(n)) w *= 0.35 + 1.6 * P.comfort;
+  else if (WEAVES_D.test(n)) w *= 1.45 - 0.9 * P.comfort;
+  if (FINE_D.test(n)) w *= 0.3 + 1.8 * P.wealth;
+  else if (PLAIN_D.test(n)) w *= 1.4 - 0.8 * P.wealth;
+  const cat = (F[n] || {}).cat;
+  if (/bench/.test(n)) w *= 0.5 + 0.17 * P.size;
+  else if (cat === 'chair' || /chair|stool/.test(n)) w *= 1.3 - 0.1 * P.size;
+  return w;
+}
+
+// The household's own bed and how it lays its beds out, from the household's stream (D-126: any bed, any biome;
+// weights only). Culture corpus (2,153 builds, data/culture-corpus/summary.json on the research branch): bed 910 and
+// piece_bed02 1,096 uses, ashwood_bed none in the lists (a share of 0.05 as the kit's other floors, so it can show);
+// of the norse builds with a bed (71 % of furnished builds): beds side by side 21 % (3 in 10), a bed on a rug 30 %
+// (4 in 10), a chest by a bed 34 % (5 in 10); forest cabins side by side 45 against 70 (6 in 10). D-136: the rates are
+// these counts.
+const BED_W = { bed: 0.5, piece_bed02: 0.6, ashwood_bed: 0.05 };
+const BED_ROW = { 'norse-forest': 0.64 };
+function bedTaste(kit, R, biome, culture, P) {
+  const list = KIT.bed.filter(n => ok(n, biome));
+  if (list.length) kit.bed = pickW(R, list.map(n => [n, (BED_W[n] || 0.1) * corpusTilt(culture, 'bed', n) * flavorD(n, biome) * tasteD(n, P)]));
+  const tidy = P ? P.tidy : 0.5, comfort = P ? P.comfort : 0.5, clutter = P ? P.clutter : 0.5;
+  // a tidy household lines its beds up a little more often
+  kit.bedRow = R() < (BED_ROW[culture] != null ? BED_ROW[culture] : 0.3) * (0.7 + 0.6 * tidy);
+  kit.bedRug = 0.42 * (0.5 + comfort);
+  kit.bedChest = 0.3 + 0.36 * clutter;
+  kit.hR = R;
+}
+
+// Each room draws its own rug, seats, table, lights, banner and carving (Tyler, 2026-11-10: "Always the same tables...
+// Same exact lox rug"): the building's choice stays the likeliest, the rest of the kind come in weighted by how often
+// builders use them in that kind of room (data/interior.json), and what the house already shows weighs less. Beds and
+// chests stay the building's. From a stream of its own, so the rest of the design keeps its own.
+// the village's own biome, earlier ones and the next weigh fully; one further on less (flavor only, D-065)
+const flavorD = (n, biome) => { const d = bi((F[n] || {}).b || 'Meadows') - bi(biome); return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1)); };
+function varyKit(kit, R, kind, seen, biome, P, culture) {
+  const L = learned().rooms || {};
+  const shares = new Map(((L[kind] || L.home || {}).items || []).map(([n, s2]) => [n, s2]));
+  const k = { ...kit };
+  // a tidy household keeps the building's matched choice more often; a cluttered one mixes and repeats what it has
+  // (what the house shows already weighs less the tidier it is)
+  const keep = P ? 0.15 + 0.4 * P.tidy : 0.35, again = P ? 0.5 + 2 * (1 - P.clutter) : 1.5;
+  // chests and wall lights per room too (Tyler on the lab page: "Always the same tables. Candles."), the essentials by
+  // the culture's corpus counts with the small floor; banners and carvings as before
+  for (const slot of ['rug', 'chair', 'table', 'bench', 'floorLight', 'chest', 'wallLight', 'banner', 'carving']) {
+    if (!kit[slot] || !KIT[slot] || R() < keep) continue;
+    const list = KIT[slot].filter(n => F[n]);
+    const kd = SLOT_KIND[slot], fl = kd ? FLOOR_C : 0.25;
+    const got = pickW(R, list.map(n => [n, ((shares.get(n) || 0) + fl) * (kd ? corpusTilt(culture, kd, n) : 1) * (n === kit[slot] ? 2 : 1) * flavorD(n, biome) * tasteD(n, P) / (1 + again * (seen[n] || 0))]));
+    if (got) { k[slot] = got; seen[got] = (seen[got] || 0) + 1; }
+  }
+  k.seat = kit.seat === kit.bench ? (k.bench || k.chair) : (k.chair || k.bench);
   return k;
 }
 
@@ -3876,7 +4113,12 @@ function decorate(b, ctx) {
   const ys = [...byY.keys()].sort((a, c) => a - c);
   const counts = { bed: 0, table: 0 };
   const kitKind = { home: 'home', hall: type === 'tavern' ? 'tavern' : 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall', guard: 'sleeping', farm: 'storage', market: 'living' }[use] || 'home';
-  const kit = chooseKit(R, biome, ctx.culture, kitKind);
+  const HP = ctx.persona || null;
+  const kit = chooseKit(R, biome, ctx.culture, kitKind, HP);
+  // the rooms' own picks from a stream of the household's own (its traits), so two households in one house part
+  const hhSalt = HP ? hashD(JSON.stringify([HP.tidy, HP.busy, HP.comfort, HP.wealth, HP.size, HP.hobby, HP.likes])) : 0;
+  const kitR = rngFrom(((Math.floor(R() * 4294967296) ^ 0x6b17) ^ hhSalt) >>> 0), kitSeen = {};
+  bedTaste(kit, kitR, biome, ctx.culture, HP);
   const report = [], furnished = [];
   const usedTemplates = ctx.usedTemplates || new Set();
   // the layout plans' own stream, drawn once from the design's, so the plans can change without moving the rest
@@ -3917,7 +4159,7 @@ function decorate(b, ctx) {
       // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
-      furnish(room, role, { ...ctx, use, type, decor, biome, kit, counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
+      furnish(room, role, { ...ctx, use, type, decor, biome, kit: varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture), counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
       report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
       furnished.push({ room, role });
@@ -4088,17 +4330,17 @@ const LEARN_KIND = { lookout: 'sleeping', home: 'home', sleeping: 'sleeping', gu
 // and a light where the room is darkest (evenLights).
 const EXTRAS = {
   home: { trophies: 2, shelf: 2, barrels: 2, chest: 1, armor: 1, fermenter: 1, seating: 2, rug: 1, banners: 1, carving: 1, torches: 1, tabletop: 2,
-    footBench: 2, doorBench: 1, nook: 1, groupRug: 2, evenLights: 1, storeWall: 1 },
-  sleeping: { rug: 1, armor: 2, chest: 2, shelf: 1, trophies: 1, seating: 1, torches: 1, banners: 1, footBench: 3, nook: 1, groupRug: 1, evenLights: 1 },
+    footBench: 2, doorBench: 1, nook: 1, groupRug: 2, evenLights: 1, storeWall: 1, wallSeat: 2 },
+  sleeping: { rug: 1, armor: 2, chest: 2, shelf: 1, trophies: 1, seating: 1, torches: 1, banners: 1, footBench: 3, nook: 1, groupRug: 1, evenLights: 1, wallSeat: 1 },
   guest: { rug: 2, chest: 2, armor: 1, shelf: 1, torches: 1, seating: 1, footBench: 2, evenLights: 1 },
-  hall: { banners: 3, trophies: 2, shelf: 1, barrels: 2, armor: 2, rug: 1, tabletop: 2, torches: 2, carving: 1, chart: 1, bench: 2, ring: 2, doorBench: 1, groupRug: 2, evenLights: 2 },
-  tavern: { barrels: 3, fermenter: 2, shelf: 2, tabletop: 3, trophies: 1, rug: 1, seating: 3, torches: 1, banners: 1, doorBench: 1, groupRug: 2, evenLights: 2, nook: 1 },
-  smithy: { tools: 3, barrels: 2, chest: 1, armor: 2, shelf: 1, torches: 1, storeWall: 2, evenLights: 1 },
-  workshop: { tools: 3, barrels: 2, chest: 1, shelf: 2, torches: 1, bench: 1, storeWall: 2, evenLights: 1 },
+  hall: { banners: 3, trophies: 2, shelf: 1, barrels: 2, armor: 2, rug: 1, tabletop: 2, torches: 2, carving: 1, chart: 1, bench: 2, ring: 2, doorBench: 1, groupRug: 2, evenLights: 2, wallSeat: 2 },
+  tavern: { barrels: 3, fermenter: 2, shelf: 2, tabletop: 3, trophies: 1, rug: 1, seating: 3, torches: 1, banners: 1, doorBench: 1, groupRug: 2, evenLights: 2, nook: 1, wallSeat: 2 },
+  smithy: { tools: 3, barrels: 2, chest: 1, armor: 2, shelf: 1, torches: 1, storeWall: 2, evenLights: 1, wallSeat: 1 },
+  workshop: { tools: 3, barrels: 2, chest: 1, shelf: 2, torches: 1, bench: 1, storeWall: 2, evenLights: 1, wallSeat: 1 },
   storage: { chest: 2, barrels: 3, crates: 2, shelf: 2, torches: 1, storeWall: 3 },
   farm: { barrels: 2, chest: 2, fermenter: 1, shelf: 1 },
   temple: { banners: 3, carving: 2, torches: 2, rug: 1, bench: 2, evenLights: 1 },
-  kitchen: { barrels: 3, shelf: 3, tabletop: 2, chest: 2, fermenter: 1, crates: 1, storeWall: 1, evenLights: 1 },
+  kitchen: { barrels: 3, shelf: 3, tabletop: 2, chest: 2, fermenter: 1, crates: 1, storeWall: 1, evenLights: 1, wallSeat: 1 },
   guard: { armor: 2, trophies: 2, chest: 1, barrels: 1, torches: 1 },
   lookout: { chest: 1, barrels: 1, rug: 1 },
 };
@@ -4119,7 +4361,7 @@ function fill(room, role, c) {
   const target = Math.round(room.area / 10 * dens * share);
   if (c.fillOnly && room.count >= target * c.fillOnly / (c.fillShare || 1)) return;
   const floorUsed = () => room.placed.reduce((a, q) => a + (q.rug || q.mount || q.onTable || q.onFire ? 0 : q.b.hw * q.b.hd * 4), 0);
-  const barrel = ok('dvergrprops_barrel', biome) && room.R() < 0.4 ? 'dvergrprops_barrel' : ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : null;
+  const barrel = LIVING.has(role) && role !== 'tavern' && !keepsBarrels(c.persona, c.type) ? null : ok('dvergrprops_barrel', biome) && room.R() < 0.4 ? 'dvergrprops_barrel' : ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : null;
   const pairOn = (name, y, gap, n) => {
     // n pieces in a row centered on the freest plain wall face
     const faces = room.faces.filter(f => !f.edge).sort((a, b2) => (b2.len - room.mounts.filter(m => m.face === b2).length * 2) - (a.len - room.mounts.filter(m => m.face === a).length * 2));
@@ -4145,7 +4387,6 @@ function fill(room, role, c) {
     barrels: () => {
       if (!barrel) return 0;
       if (!LIVING.has(role)) return placeStorageRow(room, k, d >= 3 ? 3 : 2, { chest: barrel, back: 1 }).length;
-      if ((used.barrels || 0) > 0 || (!room.fire && role !== 'kitchen')) return 0;
       const P = c.persona, n = d >= 3 && room.R() < (P ? 0.25 + 0.5 * Math.max(P.clutter || 0, (P.hobby || {}).food || 0) : 0.5) ? 3 : 2;
       return placeStorageRow(room, k, n, { chest: barrel, back: 0.3, near: room.fire ? { x: room.fire.x, z: room.fire.z } : null, corner: 2.5 }).length;
     },
@@ -4160,7 +4401,7 @@ function fill(room, role, c) {
     },
     armor: () => placeAgainst(room, 'ArmorStand', s => (s.corner ? 0.5 : 0)) ? 1 : 0,
     fermenter: () => placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0)) ? 1 : 0,
-    seating: () => { if (!ok('piece_table_round', biome) || (k.taste || {}).noTable) return 0; const n0 = before(); const t = placeTable(room, k, { table: 'piece_table_round', seats: 2, seat: k.chair || k.seat, depth: 0.7, spread: 3.5 }); if (t && d >= 3) placeOnTable(room, t, [ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']); return room.count - n0; },
+    seating: () => { if (!ok('piece_table_round', biome) || (k.taste || {}).noTable) return 0; const n0 = before(); const t = placeTable(room, k, { table: 'piece_table_round', seats: 2, seat: k.chair || k.seat, depth: 0.7, spread: 3.5 }); if (t && d >= 3) dressTable(room, t, c, 1); return room.count - n0; },
     rug: () => (k.rug && placeRug(room, k, null) ? 1 : 0),
     banners: () => (k.banner && room.ceiling - room.stand >= 3.4 ? pairOn(k.banner, 0, 2.0, 2) : 0),
     carving: () => (k.carving ? pairOn(k.carving, 1.7, 0, 1) : 0),
@@ -4169,7 +4410,7 @@ function fill(room, role, c) {
       let n = 0;
       for (const t of room.placed.filter(q => (F[q.name] || {}).cat === 'table' && !q.topped)) {
         t.topped = true;
-        n += placeOnTable(room, t, [ok('treasure_stack', biome) && room.R() < 0.3 ? 'itemstandh' : 'itemstandh', ok('Candle_resin', biome) ? 'Candle_resin' : 'itemstandh']);
+        n += dressTable(room, t, c, 2);
         if (n) break;
       }
       return n;
@@ -4198,10 +4439,11 @@ function fill(room, role, c) {
     storeWall: () => placeStorageRow(room, k, d >= 3 ? 3 : 2, { sign: true, back: 1 }).length,
     groupRug: () => groupRug(room, k),
     evenLights: () => evenLights(room, k),
+    wallSeat: () => wallSeat(room, k, c.persona),
   };
   // how often one extra may repeat in a room, so a room is a mix and never twenty of one thing
   const MAX = { barrels: 2, crates: 1, chest: 2, armor: 2, fermenter: 1, seating: 2, rug: 2, banners: 1, carving: 2, torches: 1, tabletop: 4, tools: 2, chart: 1, bench: 2, trophies: 2, shelf: 2,
-    footBench: 2, doorBench: 1, nook: 1, ring: 1, storeWall: 1, groupRug: 2, evenLights: 2 };
+    footBench: 2, doorBench: 1, nook: 1, ring: 1, storeWall: 1, groupRug: 2, evenLights: 2, wallSeat: 3 };
   const used = {};
   // at d3 what goes up past the d2 rate waits for the third stage (D-071): those pieces carry ds 3
   const target2 = c.decor === 'd3' ? Math.round(room.area / 10 * density(LEARN_KIND[role] || 'home', 'd2') * tune * (c.persona && PERS() ? PERS().fillShare(c.persona) : 1) * 0.9) : Infinity;
@@ -4213,18 +4455,23 @@ function fill(room, role, c) {
     const key = pickW(room.R, live);
     const floor = !['trophies', 'shelf', 'banners', 'carving', 'tabletop', 'rug', 'groupRug'].includes(key);
     let got = 0;
-    const full = (used[key] || 0) >= (MAX[key] || 2) || (key === 'rug' && rugs() >= Math.max(1, Math.floor(room.area / 15)));
+    // no extra is held to a count (Tyler, 2026-11-10): each use halves its weight in this room, so a room is a mix; the
+    // corpus rate for the room kind and the household (target) and the free floor are the limits
+    const full = false;
     const pre = room.count, at = room.out ? room.out.length : 0;
     if (!full && !(floor && floorUsed() > room.area * 0.5)) got = run[key]();
     if (pre >= target2) late(at);
     used[key] = (used[key] || 0) + 1;
     if (!got || full) live.splice(live.findIndex(([kk]) => kk === key), 1);
+    // a cluttered household repeats an extra more readily than a tidy one (weights only)
+    else { const e = live.find(([kk]) => kk === key); if (e) e[1] *= (c.persona ? 0.3 + 0.45 * c.persona.clutter : 0.5) * (MAX[key] || 2) / ((MAX[key] || 2) + (used[key] || 0)); }
   }
 }
 
 // A bench across the foot of a bed, facing the room, where no chest stands there already.
 function footBench(room, k) {
-  const b = ok('piece_bench01', room.biome) ? 'piece_bench01' : k.bench;
+  // the household's own bench (a long seat), the plain bench where its pick is a chair
+  const b = k.bench && (F[k.bench] || {}).long && ok(k.bench, room.biome) ? k.bench : ok('piece_bench01', room.biome) ? 'piece_bench01' : k.bench;
   if (!b || !ok(b, room.biome)) return 0;
   let n = 0;
   for (const bed of room.placed.filter(q => (F[q.name] || {}).cat === 'bed' && !q.footed)) {
@@ -4244,7 +4491,8 @@ function footBench(room, k) {
 
 // A reading corner: a chair in a corner turned to the room, a light beside it, a rug in front where it fits.
 function nook(room, k) {
-  const chair = ok('piece_chair02', room.biome) ? 'piece_chair02' : k.chair || 'piece_chair';
+  // the room's own chair pick (a fixed piece_chair02 in every nook read as one more repeat)
+  const chair = k.chair && !(F[k.chair] || {}).long && ok(k.chair, room.biome) ? k.chair : 'piece_chair';
   if (!ok(chair, room.biome)) return 0;
   const spots = wallSpots(room, chair, { gap: 0.15 }).filter(s => s.corner);
   const rec = best(room, chair, spots, s => (room.doorDist(s.x, s.z) < 2.5 ? -99 : 0) + Math.min(4, room.doorDist(s.x, s.z)) * 0.2, { noise: 0.5 });
@@ -4256,6 +4504,21 @@ function nook(room, k) {
   n += placeLights(room, k, 1, { flank: [rec] });
   if (k.rug && room.R() < 0.6 && placeRug(room, k, rec, { mode: 'front' })) n++;
   return n;
+}
+
+// A seat along a wall away from the tables, by a station, a chest or a window where there is one (corpus
+// relx.seatsByWall: 41 % of seats within 1.1 m of a wall; rel.seatsAtTables about a quarter): the room's chair or
+// bench, as the household leans (a bigger household on benches).
+function wallSeat(room, k, P) {
+  const bench = k.bench && ok(k.bench, room.biome) ? k.bench : null, chair = k.chair && ok(k.chair, room.biome) ? k.chair : null;
+  const seat = bench && (!chair || room.R() < (P ? 0.15 + 0.09 * (P.size || 2) : 0.4)) ? bench : chair;
+  if (!seat) return 0;
+  const tables = room.placed.filter(q => (F[q.name] || {}).cat === 'table');
+  const by = room.placed.filter(q => ['craft', 'storage'].includes((F[q.name] || {}).cat));
+  const rec = placeAgainst(room, seat, s => -tables.reduce((v, t) => v + Math.max(0, 2.4 - Math.hypot(s.x - t.x, s.z - t.z)), 0) * 1.5 +
+    Math.max(0, ...by.map(q => 1.2 - 0.4 * Math.hypot(s.x - q.x, s.z - q.z))) + (s.win ? 0.5 : 0) -
+    (room.fire ? Math.max(0, 3.5 - Math.hypot(s.x - room.fire.x, s.z - room.fire.z)) * 0.6 : 0), { rel: (F[seat] || {}).back ? 180 : 0 });
+  return rec ? 1 : 0;
 }
 
 // A rug under the table or before the fire that has none.
@@ -4334,14 +4597,17 @@ function furnishPlan(room, role, c) {
       const t = table({ seats: d >= 3 ? 4 : 2 });
       if (t && k.rug && d >= 3) placeRug(room, k, t, { mode: 'under' });
       if (k.rug) placeRug(room, k, room.fire, { mode: 'fire' });
+      // a rug beside or under a bed as often as the household's comfort draws it (corpus: about 30 % of beds)
+      // (an extra, so a set's own rug takes its place where one fits)
+      for (const bd of beds) if (k.rug && k.hR && k.hR() < k.bedRug) { const r = placeRug(room, k, bd, { mode: k.hR() < 0.5 ? 'beside' : 'under' }); if (r) r.p.extra = true; }
       placeLights(room, k, lights(d >= 3 ? 3 : 1), { hang: d >= 3 ? 0.2 : 0 });
       placeMounts(room, mountsFor());
       if (d >= 3) {
-        if (t) placeOnTable(room, t, ['itemstandh', 'Candle_resin']);
+        if (t) dressTable(room, t, c, 2);
         // no bench by the fire in a home (Tyler, FP-002: bench not necessary)
         placeAgainst(room, 'ArmorStand', s => (beds[0] ? -Math.hypot(s.x - beds[0].x, s.z - beds[0].z) * 0.3 : 0));
         if (room_ok()) placeAgainst(room, 'fermenter', s => (s.corner ? 1 : 0) - fr().v(s.x, s.z) / fr().D);
-        if (room_ok()) placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
+        if (room_ok()) placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) && keepsBarrels(c.persona, c.type) ? 'piece_chest_barrel' : k.chest });
         if (room_ok()) placeStation(room, k, 'piece_workbench', ['piece_workbench_ext1'], { side: -k.side, back: 0.2 });
       }
     } else {
@@ -4359,7 +4625,7 @@ function furnishPlan(room, role, c) {
       placeLights(room, k, lights(d >= 3 ? 2 : 1), { flank: beds });
       placeMounts(room, d >= 3 ? ['itemstand', k.banner, 'itemstand'] : ['itemstand']);
       if (d >= 3) placeAgainst(room, 'ArmorStand', s => (beds[0] ? -Math.hypot(s.x - beds[0].x, s.z - beds[0].z) * 0.3 : 0));
-      if (d >= 3 && room_ok() && room.area > 20) { const t = table({ seats: 2, depth: 0.5 }); if (t) placeOnTable(room, t, ['Candle_resin']); }
+      if (d >= 3 && room_ok() && room.area > 20) { const t = table({ seats: 2, depth: 0.5 }); if (t) dressTable(room, t, c, 1); }
     }
     return;
   }
@@ -4386,7 +4652,7 @@ function furnishPlan(room, role, c) {
       const t = table({ table: tn, seats: tn === 'piece_table_round' ? 4 : 6, seat: tavern && tn === 'piece_table_round' ? (k.chair || k.seat) : (k.bench || k.seat), head: !tavern && d >= 3, depth: 0.5, nearFire: tavern ? 0.5 : 0, sideBias: 0.3, wallBias: tavern ? 0.6 : -0.3, spread: tavern ? 4.5 : 6, axis: tavern ? 0.4 : 1.5 });
       if (!t) break;
       tables.push(t);
-      if (d >= 3 && i < 2) placeOnTable(room, t, ['itemstandh', 'Candle_resin', 'itemstandh']);
+      if (d >= 3 && i < 2) dressTable(room, t, c, 3);
     }
     placeStorageRow(room, k, d >= 2 ? 2 : 1, { sign: d >= 2 });
     // a hall sleeps its household where the plan's scheme puts the beds: along the long walls or at the far end (the
@@ -4519,7 +4785,7 @@ function furnishPlan(room, role, c) {
     const t = table({ seats: 0, wallBias: 0, depth: 0.3 });
     placeStorageRow(room, k, 1);
     if (d >= 2) {
-      placeOnTable(room, t, ['itemstandh', 'itemstandh']);
+      dressTable(room, t, c, 2);
       if (ok('piece_chest_barrel', biome)) placeStorageRow(room, k, 2, { chest: 'piece_chest_barrel' });
       placeLights(room, k, 1);
       placeMounts(room, ['sign']);
@@ -4532,8 +4798,8 @@ function furnishPlan(room, role, c) {
     onFire(room, ok('piece_cauldron', biome) && room.R() < 0.6 ? 'piece_cauldron' : 'piece_cookingstation');
     planPaths(room);
     const t = table({ seats: 1, wallBias: 2, depth: 0.6 });
-    placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) ? 'piece_chest_barrel' : k.chest });
-    if (d >= 2) { placeLights(room, k, lights(1)); if (t) placeOnTable(room, t, ['itemstandh', 'itemstandh']); }
+    placeStorageRow(room, k, 1, { chest: ok('piece_chest_barrel', biome) && keepsBarrels(c.persona, c.type) ? 'piece_chest_barrel' : k.chest });
+    if (d >= 2) { placeLights(room, k, lights(1)); if (t) dressTable(room, t, c, 2); }
     return;
   }
   // anything else: one chest and a light
@@ -4679,8 +4945,8 @@ const tplExt = (name, yaw) => { const [w, , d] = size(name), a = yaw * PI / 180,
 function tplSwap(name, room, c, along) {
   const biome = c.biome;
   const f = F[name] || {};
-  // the biome as this table and the generator's own (pieces.js, which takes out what the biome cannot make) both read it
-  const ok = (n2, b) => ok0(n2, b) && P.BIOME_ORDER.indexOf(P.needs(n2)) <= Math.max(0, P.BIOME_ORDER.indexOf(b));
+  // the biome rule is pieces.js decorOk (decor in any biome, D-065, D-126)
+  const ok = (n2, b) => ok0(n2, b) && P.decorOk(n2, b);
   let n = name;
   if (n === 'piece_table_oak' && along != null && along < size(n)[0] + 2.4) n = 'piece_table';
   if (ok(n, biome)) return n;
@@ -4991,7 +5257,8 @@ function outside(b, c) {
   const ground = gfl.length ? Math.min(...gfl) : low;
   const walls = structs.filter(s => s.role === 'wall' && s.y0 < ground + 0.6 && s.y1 > ground + 1.2);
   const doors = structs.filter(s => s.role === 'door' || s.role === 'stair');
-  const placed = [];
+  // what the furnishing set out already (a woodpile the room put by the wall): a heap goes clear of it
+  const placed = b.pieces.filter(p => p.decor && F[p.name] && F[p.name].at !== 'rug').map(p => { const [w0, , d0] = size(p.name), yw = pyaw(p), [mx, mz] = middleOf(p.name, p.x, p.z, yw); return obox(mx, mz, w0, d0, yw); });
   // the middle of the floor plan, to tell outside from inside
   const floors = structs.filter(s => s.role === 'floor');
   if (!floors.length) return;
@@ -5068,7 +5335,9 @@ function audit(design, decor) {
       // Chests, stations and their extensions, beds and tables never reach into one another, whatever their source
       // builds did: in the game a chest half inside a chopping block reads as a mistake (Tyler's test, 2026-11-09).
       const solid = SOLID_CATS.has(a.f.cat) && SOLID_CATS.has(c.f.cat);
-      if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > (solid && a.p.kb !== c.p.kb ? 0.03 : Math.max(a.p.clip || 0, c.p.clip || 0)) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
+      // two chests of a kind pushed together as corpus builders do pass up to the corpus depth (CHEST_PAIR_D, D-127)
+      const pairOk = a.p.name === c.p.name && CHEST_PAIR_D[a.p.name] ? CHEST_PAIR_D[a.p.name] : 0;
+      if ((a.p.kb || c.p.kb) && SHD) { if (kbClip(a.p, c.p) > Math.max(pairOk, solid && a.p.kb !== c.p.kb ? 0.03 : Math.max(a.p.clip || 0, c.p.clip || 0)) + 0.02) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`); continue; }
       if (a.y0 > c.y1 - 0.05 || c.y0 > a.y1 - 0.05) continue;
       if (overlap(a.b, c.b, -0.06)) res.overlap.push(`${a.p.name} / ${c.p.name} at ${a.p.x.toFixed(1)},${a.p.z.toFixed(1)}`);
     }
@@ -5107,6 +5376,8 @@ function audit(design, decor) {
     let under = -Infinity;
     for (const s of floorsAt) { const st = s.p.y + standOf(s.p.name); if (st <= it.p.y + 0.05 && st > under && ptDist(s.b, it.p.x, it.p.z) < 0.45) under = st; }
     if (it.f.base && isFinite(under) && under - yb > 0.3) { res.torchHeight.push(it.p.name); continue; }
+    // a chest stacked on a chest (lib/kitbash.js stackChests, storeStacks) rests on the one under it
+    if (it.f.cat === 'storage' && items.some(o => o !== it && o.f.cat === 'storage' && ptDist(o.b, it.p.x, it.p.z) < 0.3 && Math.abs(o.y1 - yb) < 0.12)) continue;
     const onFloor = Math.abs(yb - ground) < 0.15 || (isFinite(under) && Math.abs(under - yb) < 0.12);
     if (!onFloor) res.floating.push(`${it.p.name} at ${it.p.x.toFixed(1)},${it.p.y.toFixed(2)},${it.p.z.toFixed(1)}`);
   }
@@ -5195,6 +5466,8 @@ function auditContext(pieces) {
 // in the game; against a brace, a window or a door what shows of both counts (a brace through the fur). The
 // furnishing keeps furniture within SHOWS_MAX; lib/audit.js fails a pool past 15 cm.
 const SHOWS_MAX = 0.12, SHOWS_DEEP = new Set(['bed', 'table', 'storage', 'seat', 'craft']);
+// corpus medians of chests into walls (lib/kitbash.js CHEST_WALL, D-127)
+const CHEST_WALL_D = { piece_chest_wood: 0.121, piece_chest: 0.142, piece_chest_blackmetal: 0.142 }, CHEST_PAIR_D = { piece_chest_wood: 0.114 };
 const SHOWS_FLAT = new Set(['wall', 'halfwall', 'gable', 'pole']), SHOWS_THIN = new Set(['window', 'beam', 'door']);
 // A piece as it will stand in the file: the generator keeps the middle of a piece set on its pivot (a quarter wall)
 // until generate.js finish turns it to its foot, so the furnishing would test that wall 0.25 m higher than it stands.
@@ -5243,18 +5516,26 @@ function auditOne(p, ctx, extra, allow) {
   let used = 0;
   if (SHOWS_DEEP.has(it.f.cat)) {
     const d = showsInto(p, A.struct.map(sb => sb.p));
-    if (d > Math.max(SHOWS_MAX, allow || 0)) { ONE_WHY = 'shows'; return false; }
+    // a chest may go into a wall as deep as corpus builders set them (lib/kitbash.js CHEST_WALL, D-127)
+    if (d > Math.max(SHOWS_MAX, allow || 0, CHEST_WALL_D[p.name] || 0)) { ONE_WHY = 'shows'; return false; }
     if (d > SHOWS_MAX) used = Math.max(used, d);
   }
-  // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612)
-  if (it.f.at === 'mount' || p.rest === 'wall') {
-    const d = hungInto(p, A.struct.map(sb => sb.p).concat(more));
-    if (d > Math.max(HUNG_CLIP(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
+  // what hangs on a wall stays out of what shows of the walls round it (the cross bars, T-606, T-612); the pool
+  // audit's mountClip reads every stand, sign and banner that way wherever it rests (a flat stand on a shelf top went
+  // 9 cm into a stone wall's relief)
+  // (one that stands on something is judged against the building's own shell only, as the audit does at d2 and d3:
+  // the shelf or ledge under it is no wall)
+  const hung = it.f.at === 'mount' || p.rest === 'wall';
+  if (hung || MOUNT_LIKE.test(p.name)) {
+    const d = hungInto(p, hung ? A.struct.map(sb => sb.p).concat(more) : A.struct.map(sb => sb.p).filter(q => !q.decor));
+    if (d > Math.max(hungLimit(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
     if (d > HUNG_CLIP(p.name)) used = Math.max(used, d);
   }
   if (used) p.wclip = +(used + 0.005).toFixed(3);
   return true;
 }
+// the names lib/audit.js MOUNT measures for mountClip
+const MOUNT_LIKE = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
 // which of auditOne's tests turned the last piece down (lab/richness.js)
 let ONE_WHY = '';
 // Furniture inside furniture as the pool audit measures it (lib/audit.js furnClip: the decorator's boxes, turned, more
@@ -5369,7 +5650,7 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+const api = { corpusPick, corpusRate, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;
 
@@ -5919,6 +6200,7 @@ function relief(name) {
 }
 
 const normD = a => ((a % 360) + 360) % 360;
+const SILL_PLANTS = ['Pickable_Dandelion', 'Pickable_Thistle', 'Pickable_Mushroom', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Carrot', 'Pickable_Onion', 'Pickable_Turnip', 'Pickable_Dandelion', 'Pickable_Mushroom_blue'];
 const quatD = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_D = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
 const reachesD = (biome, b) => BIOMES_D.indexOf(biome) >= BIOMES_D.indexOf(b);
@@ -6213,7 +6495,9 @@ function exterior(b, ctx) {
     const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
     const as = quarter ? [-sd * 0.5] : [-0.5, 0.5], lip = K.beam1 || 'wood_beam_1';
     const kept = [];
-    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], ['Pickable_Dandelion', a, 0.6, -0.25, 0, 'flower', 0]);
+    // what grows in each box: any flower, herb or vegetable (Tyler, 2026-11-10: no one plant per sill), by the box's
+    // place so it is the same at every decor stage
+    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], [SILL_PLANTS[(Math.abs(Math.round((e.x + ux * a) * 7 + (e.z + uz * a) * 13 + y0 * 3)) + (makeHash({ ...ctx, decor: '' }) >>> 0)) % SILL_PLANTS.length], a, 0.6, -0.25, 0, 'flower', 0]);
     const c = { m: { id: 'window-box', kind: 'box', fit: {} }, kept };
     const placed = MotifsD.place(b, c, { x: e.x, y: y0 + 1, z: e.z, nx: ox, nz: oz }, null, { ground: 0, dry: true, minShare: 1 });
     if (placed.length) { hold(b, placed); added.boxes = (added.boxes || 0) + 1; }
@@ -6675,7 +6959,8 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
   // gable motif apex piece or carving is in the way and the gable is tall enough that it clears the wall under it
   // (on a low gable it hangs on down the wall under it, where that wall has no opening in its middle bays)
   if (X.gableBanner && w === ctx.wings[0] && !gw && !apex && !ctx.dragonsHere && capY - top >= 1.9) {
-    const B = reachesD(ctx.biome, 'Plains') ? ['piece_banner01', 'piece_banner02', 'piece_banner05', 'piece_banner07'] : ['piece_banner03', 'piece_banner04', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
+    // any banner in any biome (D-065); the gable's colors by the culture's lean are a style's, the list is whole
+    const B = ['piece_banner01', 'piece_banner02', 'piece_banner03', 'piece_banner04', 'piece_banner05', 'piece_banner06', 'piece_banner07', 'piece_banner08', 'piece_banner09'];
     // the cloth hangs 2.95 m under its rod: its foot no more than 0.6 m over the ground floor, so it reads as hung on
     // the house and not in the air (T-606: the purple banner, piece_banner09, hung with its foot 1.3 m up). The rod
     // touches the wall (that holds it up in the game), so the cloth hangs 0.25 m out: it may lie against bars up to 3 cm
@@ -6747,7 +7032,7 @@ function benchByDoor(b, ctx) {
   for (const o of b.openings || []) {
     if (o.kind !== 'door' || o.back || o.storey > 0 || o.gallery) continue;
     const { e } = o, { ux, uz, ox, oz } = axes(e);
-    const name = reachesD(ctx.biome, 'Black Forest') && ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
+    const name = ctx.R() < 0.4 ? 'piece_logbench01' : 'piece_bench01';
     const faceOut = name === 'piece_logbench01' ? outYaw(-ox, -oz) : outYaw(ox, oz); // the log bench faces its local -z
     for (const s of ctx.R() < 0.5 ? [1, -1] : [-1, 1]) {
       const cand = { name, x: +(e.x + ux * s * 3 + ox * 0.45).toFixed(3), y: F + 0.1, z: +(e.z + uz * s * 3 + oz * 0.45).toFixed(3), yaw: faceOut, q: quatD(faceOut) };
@@ -6869,16 +7154,11 @@ const checksB = () => (NODE_B ? require('./checks.js') : window.VHChecks);
 const personaB = () => (NODE_B ? require('./persona.js') : window.VHPersona);
 const quatB = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_B = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
-// in reach of the village (D-080): its own biome for stations, one further for furniture and decor (lib/pieces.js)
+// what a village may put up (lib/pieces.js decorOk): any decor in any biome, building pieces its biome and the next (D-065)
 const can = (biome, name) => PB.decorOk(name, biome);
-// minor decor goes in any biome (D-066): it costs nothing or is paid in the village's own materials
-// what a village makes: by the piece's materials and, for furniture, by the decorator's table too (the stricter)
-const canMake = (biome, name) => {
-  if (!can(biome, name)) return false;
-  const F = NODE_B ? require('./decorate.js').FURNITURE : (window.VHDecorate && window.VHDecorate.FURNITURE) || {};
-  // furniture one biome further than the village's, stations and fires none (D-080, as decorate.js)
-  return !F[name] || BIOMES_B.indexOf(F[name].b) <= BIOMES_B.indexOf(biome) + (['craft', 'fire', 'storage'].includes(F[name].cat) ? 0 : 1);
-};
+// any decor in any biome; building pieces of a set (a half wall, a beam) the village's biome and the next (D-065,
+// lib/pieces.js decorOk)
+const canMake = (biome, name) => can(biome, name);
 const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 
 // ---------------------------------------------------------------- the interior library (data/kitbash-interior.json)
@@ -6886,6 +7166,8 @@ const canDecor = (biome, name) => canMake(biome, name) || PB.minor(name);
 // and an iron chest in the same place count as one assembly; the placer fills each slot with what the village's biome
 // makes. Pieces with no class here are their own slot. Small building pieces count when they carry something (a beam
 // shelf, a half-wall counter).
+// the furniture roles the pool audit measures (lib/audit.js FURN)
+const FURN_B = new Set(['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter']);
 const CLASSES = {
   chest: ['piece_chest_wood', 'piece_chest', 'piece_chest_blackmetal', 'piece_chest_private'],
   barrel: ['piece_chest_barrel'],
@@ -7051,8 +7333,11 @@ function stalls(b, ctx, zones) {
     if (solid.some(({ p, o }) => inner(o) && !(onWall(p) && ['wall', 'window', 'pole'].includes(PB.piece(p.name).role)))) continue;
     if (doors.some(p => inner(Ck.aabb(p)) || (onWall(p) && (s.along === 'x' ? p.x > box.x0 - 1 && p.x < box.x1 + 1 : p.z > box.z0 - 1 && p.z < box.z1 + 1)))) continue;
     if (zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < y + 2 && z.y1 > y && !z.flue)) continue;
-    // clear the stalls' floor of furnishing
-    b.pieces = b.pieces.filter(p => !(p.decor && inner(Ck.aabb(p))));
+    // clear the stalls' floor of furnishing, and what stands against the end partitions' outer faces (a chest by the
+    // last half wall went into it)
+    const pad = s.along === 'x' ? { x0: box.x0 - 0.3, x1: box.x1 + 0.3, z0: box.z0, z1: box.z1 } : { x0: box.x0, x1: box.x1, z0: box.z0 - 0.3, z1: box.z1 + 0.3 };
+    const near = o => o.x0 < pad.x1 && o.x1 > pad.x0 && o.z0 < pad.z1 && o.z1 > pad.z0 && o.y1 > y + 0.2 && o.y0 < y + 2.4;
+    b.pieces = b.pieces.filter(p => !(p.decor && near(Ck.aabb(p))));
     const at = (a, d) => (s.along === 'x' ? [a, s.wall + s.n * d] : [s.wall + s.n * d, a]);
     const T = { decor: true, trim: true };
     const yawAcross = s.along === 'x' ? 90 : 0, yawAlong = s.along === 'x' ? 0 : 90;
@@ -7156,7 +7441,9 @@ function vignettes(b, ctx, zones) {
         z0: e.z + Math.min(0, nz * 1.6) - (uz ? 1.3 : 0.05) + nz * half, z1: e.z + Math.max(0, nz * 1.6) + (uz ? 1.3 : 0.05) + nz * half };
       const inPlane = p => !p.decor && Math.abs((p.x - e.x) * nx + (p.z - e.z) * nz) < half + 0.35; // the wall's own posts, trim and courses
       const busy = b.pieces.some(p => { if (p === wall || inPlane(p) || ['floor', 'rug'].includes(PB.piece(p.name).role)) return false; const o = Ck.aabb(p); return o.x0 < box.x1 && o.x1 > box.x0 && o.z0 < box.z1 && o.z1 > box.z0 && o.y0 < room.y + 2.2 && o.y1 > room.y + 0.15; })
-        || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y);
+        || zones.some(z => z.x0 < box.x1 && z.x1 > box.x0 && z.z0 < box.z1 && z.z1 > box.z0 && z.y0 < room.y + 2 && z.y1 > room.y)
+        // a stair along this wall counts though it stands in the wall's plane, with the audit's 0.6 m round its foot
+        || b.pieces.some(p => { if (p.decor || PB.piece(p.name).role !== 'stair') return false; const o = Ck.aabb(p); return o.x0 - 0.6 < box.x1 && o.x1 + 0.6 > box.x0 && o.z0 - 0.6 < box.z1 && o.z1 + 0.6 > box.z0 && o.y0 < room.y + 2.2 && o.y1 > room.y - 0.3; });
       if (busy) continue;
       const fl = b.pieces.find(p => !p.decor && PB.piece(p.name).role === 'floor' && (() => { const o = Ck.aabb(p); const cx = e.x + nx * (half + 0.5), cz = e.z + nz * (half + 0.5); return cx > o.x0 && cx < o.x1 && cz > o.z0 && cz < o.z1 && Math.abs(o.y1 - (room.y + 0.1)) < 0.6; })());
       if (!fl) continue;
@@ -7230,6 +7517,7 @@ const ROOM_KINDS = {
 const SKIP_N = /^(piece_xmas|piece_gift|piece_mistletoe|piece_jackoturnip|piece_(Celebration|Fairylight)Garland|goblin|Morkhalla|piece_asksvinskeleton|lox_ribs|piece_barber|piece_icecube|Skull|ancient_skull|wood_(fine_|core_)?stack|treasure_pile|treasure_stack|Pickable|TreasureChest|loot_chest|piece_chest_private|piece_chest_treasure)/;
 // a 1 x 1 floor counts as a floor to stand on in the checks; shelves use beams
 const NO_BUILT = ['floor1'];
+const VARY_SLOTS = new Set(['rug', 'pot']);
 
 // Which prefab fills a slot in this village: the source's own when the biome makes it (minor decor goes anywhere),
 // else the first of its class that it does. Null leaves the slot out.
@@ -7246,11 +7534,63 @@ function fillSlot(m, biome, ctx) {
   }
   if (m.k === 'feast') return okN(FEAST[biome]) ? FEAST[biome] : null;
   if (m.any && CLASSES[m.k] && ctx._R2) { const l = CLASSES[m.k].filter(okN); if (l.length) return l[Math.floor(ctx._R2() * l.length)]; }
+  // a rug or a pot of a set is any of its kind, the source's own twice as likely (Tyler, 2026-11-10: "Same exact lox
+  // rug"); flat or round, it takes the same place
+  // a rug by the room kind's corpus shares and the culture's counts (lib/decorate.js corpusPick; a uniform draw put
+  // hare and straw rugs as often as deer and fur), the source's own twice as likely
+  if (m.k === 'rug' && ctx._R2) {
+    const l = CLASSES.rug.filter(okN);
+    const LK = { home: 'home', longhouse: 'hall', tavern: 'tavern', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall' }[ctx.type] || 'home';
+    if (l.length) return decorB().corpusPick(ctx._R2, l, LK, 'rug', ctx.culture || ctx.cultureKey, m.n);
+  }
+  if (VARY_SLOTS.has(m.k) && CLASSES[m.k] && ctx._R2) {
+    const l = CLASSES[m.k].filter(okN);
+    if (l.length) { let r = ctx._R2() * (l.length + (l.includes(m.n) ? 1 : 0)); for (const n of l) { r -= n === m.n ? 2 : 1; if (r <= 0) return n; } return l[l.length - 1]; }
+  }
   if (okN(m.n)) return m.n;
   const list = CLASSES[m.k];
   return list ? list.find(okN) || null : null;
 }
 
+// The hand-made kits (BK-) were written with one prefab per place (a pine table, plain benches, a candle on every
+// table), so in them the essentials are drawn like the decorator's own: chairs, benches, a long table and chests by
+// the room kind's corpus shares and the culture's counts (lib/decorate.js corpusPick), one draw per kit so a set
+// matches; what lies on a table only as often as corpus tables are dressed (rel.tablesDressed) and drawn by the
+// corpus onTable counts. Only prefabs of about the same footprint stand in for each other. Undefined keeps the fill.
+const BUILT_SWAP = {
+  chair: ['piece_chair', 'piece_chair03', 'dvergrprops_stool', 'dvergrprops_chair'],
+  bench: ['piece_bench01', 'piece_logbench01', 'piece_blackmarble_bench'],
+  piece_table: ['piece_table', 'piece_blackmarble_table'],
+  chest: ['piece_chest_wood', 'piece_chest'],
+};
+const BUILT_LK = { home: 'home', longhouse: 'hall', tavern: 'tavern', smithy: 'smithy', workshop: 'workshop', storage: 'storage', temple: 'hall' };
+function builtPick(a, mm, ctx, picks, name) {
+  if (!name) return undefined;
+  const D = decorB(), culture = ctx.culture || ctx.cultureKey, LK = BUILT_LK[ctx.type] || 'home', R = ctx._R2;
+  const onTable = (mm.rest === 'on' && a.pieces[mm.on] && /table/.test(a.pieces[mm.on].n)) || (mm.rest === 'anchor' && a.anchor === 'table');
+  if (onTable && !mm.key) {
+    if (picks._dressed == null) { const P = ctx.persona; picks._dressed = R() < Math.min(0.95, D.corpusRate(culture, 'td') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1)); }
+    if (!picks._dressed) return null;
+    if (/^Candle_resin/.test(name)) return D.topPick(R, culture, ctx.biome);
+    return undefined;
+  }
+  // barrels only where the household keeps them (lib/decorate.js keepsBarrels)
+  if (mm.k === 'barrel' && !mm.key && !D.keepsBarrels(ctx.persona, ctx.type)) return null;
+  const grp = BUILT_SWAP[mm.k] ? mm.k : BUILT_SWAP[mm.n] ? mm.n : null;
+  if (!grp) return undefined;
+  const list = BUILT_SWAP[grp].filter(n => canDecor(ctx.biome, n) && (shapesB().has(n) || D.FURNITURE[n]));
+  if (!list.length) return undefined;
+  const kind = grp === 'chest' ? 'storage' : grp === 'piece_table' ? 'table' : 'seat';
+  return picks['_' + grp] || (picks['_' + grp] = D.corpusPick(R, list, LK, kind, culture, mm.n));
+}
+
+// How deep corpus builders push chests into each other and into walls (D-127; the mined sets' clip lists in
+// data/kitbash-interior.json, medians): piece_chest_wood into piece_chest_wood 11.4 cm over 17 sets (max 27.9 cm);
+// into a wall piece_chest_wood 12.1 cm over 53 sets, piece_chest 14.2 cm over 18, piece_chest_blackmetal 14.2 cm over
+// 14. A library chest may go that deep by the fitter's solids test; past the decorator's 12 cm it carries the depth
+// as a clip made on purpose (p.fclip, p.wclip, #VillheimClips, D-098).
+const CHEST_PAIR = { piece_chest_wood: 0.114 };
+const CHEST_WALL = { piece_chest_wood: 0.121, piece_chest: 0.142, piece_chest_blackmetal: 0.142 };
 // A small grid of boxes for the fitter: everything in the building, and what it adds as it goes. A piece is filed in
 // every 2 m cell its reach from its pivot can touch (its solids, or its catalog size, by prefab); its box is worked out
 // the first time a query comes near it (most of a building never is).
@@ -7458,9 +7798,10 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     const fail = () => { if (needed.has(i)) return true; dropped++; return false; };
     // a random pick (banners) is made once per assembly, so a pair matches
     let name = mm.any ? (picks[mm.k] || (picks[mm.k] = fillSlot(mm, ctx.biome, ctx))) : fillSlot(mm, ctx.biome, ctx);
-    // decor goes in any biome (Tyler, 2026-11-10); a creative set's building piece (a post kept in its own prefab)
-    // the village does not make is left out
-    if (name && a.creative && PB.piece(name).structural && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome)) name = null;
+    if (a.built && ctx._R2) { const bp = builtPick(a, mm, ctx, picks, name); if (bp !== undefined) name = bp; }
+    // a creative set's piece the village does not make itself is left out: the last pass (generate.js biomeSafe) would
+    // swap it for a stand-in of another size (a barrel of a stack turned into a chest)
+    if (name && !can(ctx.biome, name)) name = null;
     if (!name || (mm.rest === 'on' && !made[mm.on])) { if (!name) WHY_B = 30; if (fail()) return null; continue; }
     let lx = mirror ? -mm.x : mm.x;
     if (a.byWidth && anc.w) lx = Math.sign(lx) * (anc.w / 2 + Math.abs(lx));
@@ -7545,6 +7886,9 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       if (!okP) { p.y = y0; bx = Ck.aabbShapes(p); WHY_B = why0; }
     }
     if (!okP) { LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
+    // two of the set's pieces filled with one name in one place (two slots of a creative set both drawn as a beam) are
+    // one piece in the game: the second is left out
+    if (made.some(q => q && q.name === p.name && Math.abs(q.x - p.x) < 0.06 && Math.abs(q.y - p.y) < 0.06 && Math.abs(q.z - p.z) < 0.06 && Math.abs(((q.yaw - p.yaw) % 360 + 540) % 360 - 180) < 3)) { dropped++; continue; }
     if (p.rest === 'floor' && made.lvl != null && made.level == null) made.level = made.lvl;
     made[i] = p;
   }
@@ -7605,7 +7949,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
 // The tests for one piece.
 // why the last piece was turned down (for lab/bench.js and tuning)
 let WHY_B = 0, LAST_B = '', LASTQ_B = '', STATS_B = null;
-const no = k => { WHY_B = k; return false; };
+const no = k => { WHY_B = k; if (globalThis.__kbNo) globalThis.__kbNo[k] = (globalThis.__kbNo[k] || 0) + 1; return false; };
 const MOVABLE = ['storage', 'seat', 'deco', 'clutter', 'light'];
 function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a) {
   const Ck = checksB(), SH = shapesB(), D = decorB(), m = room.m;
@@ -7715,10 +8059,24 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   for (const [q, deep] of D.furnClash(p, nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean)))) {
     const j = made.indexOf(q);
     if (j >= 0 && ownP && (!a.pieces[j].n || a.pieces[j].n === q.name)) { fdeep = Math.max(fdeep, deep); continue; }
+    // two chests of a kind pushed together as corpus builders push them (CHEST_PAIR, D-127): the solids test below
+    // holds them to the corpus depth; the mark lets the pool audit's box measure pass (D-098)
+    if (CHEST_PAIR[p.name] && q.name === p.name && !q.stacked) { fdeep = Math.max(fdeep, deep); continue; }
     if (movable(q)) { mine.push(q); continue; }
     return no(31);
   }
   if (fdeep) p.fclip = +(fdeep + 0.005).toFixed(3); else delete p.fclip;
+  // furniture the decorator has no size for (a mead ketill) the pool audit measures by its catalog box (furnClip) and
+  // by what shows when a crafting station is one of the pair (onStation): the same here, with nothing passed by a mark
+  if (FURN_B.has(info.role)) {
+    const pc = Ck.catBox(p);
+    for (const q of nearP(0.3).map(r => r.p).filter(q => q.decor && !displace.has(q)).concat(made.filter(Boolean))) {
+      if (q === p || (decorB().FURNITURE[p.name] && decorB().FURNITURE[q.name]) || !FURN_B.has(PB.piece(q.name).role) || /_ext\d/.test(q.name) || /_ext\d/.test(p.name)) continue;
+      if ([p.name, q.name].some(n => /^(fire_pit|hearth|bonfire)$/.test(n))) continue;
+      const qc = Ck.catBox(q), ov = k => Math.min(pc[k + '1'], qc[k + '1']) - Math.max(pc[k + '0'], qc[k + '0']);
+      if (ov('x') > 0.12 && ov('y') > 0.12 && ov('z') > 0.12 && !movable(q)) return no(31);
+    }
+  }
   // the audit's own tests (what it rests on is there, plain wall behind, out of what shows of the walls) come last,
   // as the dearest
   const audited = () => {
@@ -7742,7 +8100,8 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     if (d <= 0.01) continue;
     if (movable(q)) { mine.push(q); continue; }
     let allow = 0;
-    if (!q.decor && ['wall', 'window', 'gable', 'beam', 'pole'].includes(role)) allow = clipOf(i, 'w');
+    if (!q.decor && ['wall', 'window', 'gable', 'beam', 'pole'].includes(role)) allow = Math.max(clipOf(i, 'w'), role === 'wall' ? CHEST_WALL[p.name] || 0 : 0);
+    if (q.decor && CHEST_PAIR[p.name] && q.name === p.name && !q.stacked) allow = Math.max(allow, CHEST_PAIR[p.name]);
     if (anc.of && q === anc.of) allow = Math.max(allow, clipOf(i, 'a'));
     if (d > allow + 0.01) { LASTQ_B = `${q.name}${q.decor ? '*' : ''} ${d.toFixed(2)}`; if (STATS_B) { const H = STATS_B.clip || (STATS_B.clip = {}); const k = `${q.decor ? (q.kb ? (/^KB-/.test(q.kb) ? 'mined' : 'kit') : 'decorator') : 'building'} ${PB.piece(q.name).role}`; H[k] = (H[k] || 0) + 1; } return no(17); }
     deepest = Math.max(deepest, d);
@@ -7767,6 +8126,20 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   return true;
 }
 
+// Flavor, never a limit (D-065; Tyler 2026-11-10: the village's own biome may weigh a little more): a set of the
+// village's biome, an earlier one or the next weighs fully, one from further on less the further it is (a Dvergr
+// dining set in a Meadows house is possible, not common).
+function flavorB(a, biome) {
+  if (a._fl === undefined) {
+    const core = a.pieces.filter(m => m.key);
+    let hi = 0;
+    for (const m of core.length ? core : a.pieces) if (m.n && !PB.piece(m.n).structural) hi = Math.max(hi, PB.BIOME_ORDER.indexOf(PB.needs(m.n)));
+    a._fl = hi;
+  }
+  const d = a._fl - PB.BIOME_ORDER.indexOf(biome);
+  return d <= 1 ? 1 : 1 / (1 + 0.8 * (d - 1));
+}
+
 // What a set mostly is, for the room's layout plan (lib/layout.js zones): storage, a bench, a work station, a table.
 function setKind(a) {
   if (a._kind !== undefined) return a._kind;
@@ -7786,8 +8159,9 @@ function setKind(a) {
 // 55 % of the room.
 function budget(decor, area) {
   if (decor === 'd1') return area >= 30 ? 1 : 0;
-  if (decor === 'd2') return Math.max(1, Math.min(3, Math.round(area / 22)));
-  return Math.max(2, Math.min(8, Math.round(area / 12)));
+  // by the room's size, with no ceiling: the floor kept free (half the room) and the room's spots are the limit
+  if (decor === 'd2') return Math.max(1, Math.round(area / 22));
+  return Math.max(2, Math.round(area / 12));
 }
 
 // What a household keeps under its stairs (lib/persona.js underStair): one choice per building, from the household's
@@ -7812,10 +8186,10 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const need = new Set(a.pieces.filter(m => m.rest === 'on').map(m => m.on));
     a.pieces.forEach((m, i) => { if (m.key) need.add(i); });
     // (a set with a random pick, a pair of banners, draws from the stream inside the fitter: left to it)
-    const v = !a.pieces.some(m => m.any) && a.pieces.some((m, i) => {
-      if (!need.has(i) || m.any) return false;
+    const v = !a.pieces.some(m => m.any || VARY_SLOTS.has(m.k)) && a.pieces.some((m, i) => {
+      if (!need.has(i) || m.any || VARY_SLOTS.has(m.k)) return false;
       const name = fillSlot(m, ctx.biome, ctx);
-      return !name || (a.creative && PB.piece(name).structural && PB.BIOME_ORDER.indexOf(PB.needs(name)) > PB.BIOME_ORDER.indexOf(ctx.biome));
+      return !name || !can(ctx.biome, name);
     });
     hopeK.set(a, v);
     return v;
@@ -7829,10 +8203,7 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const fires = b.pieces.filter(p => p.decor && /^(hearth|fire_pit|fire_pit_iron)$/.test(p.name)).map(p => ({ p, b: Ck.aabb(p) }));
     // candidates: assemblies for this room's kind that some anchor here takes, weighted by score and how well the
     // room kind fits; a building's own anchor first (the forge corner, the bed corner, the serving corner)
-    // each built kit once in a building (shelves, cabinets and drapes twice), each mined assembly twice
-    // each built kit once in a building (shelves, cabinets, drapes, bedsides, alcoves twice), each mined assembly
-    // twice; dining sets one to a room, a grid of them in a tavern's or a hall's main room (one per 25 m2)
-    const many = ['BK-shelf', 'BK-cabinet', 'BK-drapes', 'BK-bedside', 'BK-bedside2', 'BK-alcove', 'BK-alcove2', 'BK-understair', 'BK-understair2'];
+    // dining sets one to a room, a grid of them in a tavern's or a hall's main room
     let sets = ['tavern', 'hall', 'temple'].includes(room.role) ? Math.max(1, Math.min(6, Math.floor(room.m.area / 16)))
       : ['smithy', 'workshop'].includes(room.role) ? Math.max(1, Math.min(3, Math.floor(room.m.area / 24))) : 1;
     // the room's layout plan (lib/layout.js): how many sets its scheme takes, and where the floor spots rank
@@ -7840,17 +8211,20 @@ function furnishRooms(b, ctx, zones, R2, extra, rooms) {
     const plan = Lay ? Lay.planFor(b, room.m) : null;
     if (plan && plan.sets != null) sets = Math.max(1, Math.min(sets, plan.sets));
     let setsHere = 0;
-    const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : a.built ? (many.includes(a.id) ? 2 : 1) : 2);
+    // no set is held to a count in a building (Tyler, 2026-11-10: no limits on any decor): repeats weigh less (below);
+    // dining sets follow the room's plan of how many tables it holds
+    const cap = a => (a.dining ? (setsHere < sets ? 9 : 0) : Infinity);
     const cands = lib.filter(a => (used[a.id] || 0) < cap(a) && (a.rooms || []).some(k => kinds.includes(k) || k === 'any') && anchors.some(an => takes(an, a)) &&
       (!a.types || a.types.includes(ctx.type)) && (!a.roles || a.roles.includes(room.role)) && (!a.decor || a.decor.includes(ctx.decor)) &&
-      // a creative set only where the village makes the building pieces it needs (decor goes in any biome)
-      (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(ctx.biome)))
+      // a creative set only where the village makes the building pieces it keeps in their own prefab (pieces.js buildReach,
+      // the rule decorOk reads); its decor goes in any biome
+      (!a.creative || PB.BIOME_ORDER.indexOf(a.from) <= PB.BIOME_ORDER.indexOf(PB.buildReach(ctx.biome))))
       .map(a => {
         // more kinds of piece weigh more; a pair of chests is common in the corpus and dull in every room
         const ks = new Set(a.pieces.map(p => p.k).filter(k => !BUILT_SLOTS.includes(k)));
         const store = [...ks].every(k => ['chest', 'barrel', 'crate', 'sign'].includes(k));
         const w = Math.log(1 + a.score) * (kinds.includes((a.rooms || [])[0]) ? 1.5 : 1) * (a.built ? 2.5 : 1) * (1 + 0.35 * (ks.size - 1)) * (store && room.role !== 'storage' ? 0.3 : 1)
-          * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
+          * flavorB(a, ctx.biome) * Math.pow(PS.kitWeight(P, a), 2); // the household's taste, squared so it shows (six households in one house
           // came out with the same rooms, lab/test_variance.js)
         return { a, w, sig: [...ks].sort().join(',') };
       });
@@ -8243,8 +8617,11 @@ function liveIn(b, ctx, zones) {
   const problems = p => {
     const out = new Set(), bx = Ck.aabbShapes(p), it = D.itemOf(p), sp = p._sp;
     const flat = !!sp.rug;
+    // what stands near: by the game's solids and by the audit's furniture box, whichever reaches further (a barrel's
+    // solids are smaller than its box, and a chair by it went unseen)
+    const reach = { ...bx, x0: Math.min(bx.x0, it.b.x - it.b.r), x1: Math.max(bx.x1, it.b.x + it.b.r), z0: Math.min(bx.z0, it.b.z - it.b.r), z1: Math.max(bx.z1, it.b.z + it.b.r) };
     if (!flat) for (const z of zones) if (z.x0 < bx.x1 && z.x1 > bx.x0 && z.z0 < bx.z1 && z.z1 > bx.z0 && z.y0 < bx.y1 && z.y1 > bx.y0) out.add('z' + zones.indexOf(z));
-    for (const r of idx.near(bx, 0.1)) {
+    for (const r of idx.near(reach, 0.1)) {
       const q = r.p;
       if (q === p) continue;
       const role = PB.piece(q.name).role;
@@ -8292,6 +8669,7 @@ function liveIn(b, ctx, zones) {
   const bears = p => { const o = Ck.aabb(p); return b.pieces.some(q => q !== p && q.decor && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > p.y + 0.15 && q.y < o.y1 + 0.3); };
   const amp = 0.12 + 0.88 * P.clutter;
   let moved = 0;
+  moved += turnLikeCorpus(b, ctx, idx, problems, bears);
   for (const p of b.pieces.slice()) {
     // a piece standing as its source build stood it, marked for the pool audit (D-098), stays put
     if (!p.decor || p.trim || p.yard || p.outside || (p.rest && ['wall', 'hang'].includes(p.rest)) || p.fclip || p.wclip) continue;
@@ -8324,6 +8702,71 @@ function liveIn(b, ctx, zones) {
   return moved;
 }
 
+// Tables, seats and rugs turned off the wall axes as often as corpus builders turn them (relx: 29 % of tables, 41 % of
+// seats and 30 % of rugs more than 10 degrees, per culture group, lib/decorate.js corpusRate), more in a cluttered
+// household and less in a tidy one. A table turns with what lies on it and the seats drawn up to it; a turn that
+// makes a problem the pieces did not have is taken back, and two more angles are tried. Library pieces count as the
+// decorator's do (most tables and seats come from the library); hung pieces and pieces marked as clips stay as they are.
+const TURN = { table: ['to', 12, 30], seat: ['so', 12, 40], rug: ['ro', 12, 45] };
+function turnLikeCorpus(b, ctx, idx, problems, bears) {
+  const P = ctx.persona, D = decorB(), I = D._int, F = D.FURNITURE, culture = ctx.culture || ctx.cultureKey, corpusRate = D.corpusRate;
+  const R = rngB(((P.salt || 0) ^ 0x7e11) >>> 0);
+  const kindOf = p => { const c = (F[p.name] || {}).cat; return c === 'table' ? 'table' : c === 'seat' ? 'seat' : c === 'rug' ? 'rug' : null; };
+  const free = p => p.decor && !p.trim && !p.yard && !p.outside && !(p.rest && ['wall', 'hang'].includes(p.rest)) && !p.fclip && !p.wclip && !p.stacked;
+  const axis = (() => { const h = new Map(); for (const q of b.pieces) if (!q.decor && PB.piece(q.name).role === 'wall') { const k = Math.round(normB(I.pyaw(q)) % 90); h.set(k, (h.get(k) || 0) + 1); } const t = [...h.entries()].sort((a, c) => c[1] - a[1])[0]; return t ? t[0] : 0; })();
+  const off = p => { const m = normB(I.pyaw(p) - axis) % 90; return Math.min(m, 90 - m); };
+  const lean = 0.5 + (P.clutter || 0);
+  const turned = new Set();
+  let n = 0;
+  const tryTurn = (members, cx, cz) => {
+    const [, lo, hi] = TURN[kindOf(members[0])];
+    for (let t = 0; t < 3; t++) {
+      const dr = (R() < 0.5 ? -1 : 1) * (lo + R() * (hi - lo)), a = dr * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+      const olds = members.map(p => ({ p, x: p.x, z: p.z, yaw: p.yaw, q: p.q }));
+      const before = members.map(p => { p._sp = jitterSpec(p) || { rot: 0, off: 0 }; return problems(p); });
+      for (const p of members) {
+        idx.remove(p);
+        // world turn about (cx, cz): yaw grows clockwise seen from above (local +z is (sin, cos))
+        const dx = p.x - cx, dz = p.z - cz;
+        p.x = +(cx + dx * c + dz * sn).toFixed(3); p.z = +(cz - dx * sn + dz * c).toFixed(3);
+        p.yaw = +normB(I.pyaw(p) + dr).toFixed(2); p.q = quatB(p.yaw);
+        idx.add(p);
+      }
+      const ok = members.every((p, i) => [...problems(p)].every(k => before[i].has(k)));
+      for (const p of members) delete p._sp;
+      if (ok) { for (const p of members) turned.add(p); return true; }
+      for (const o of olds) { idx.remove(o.p); o.p.x = o.x; o.p.z = o.z; o.p.yaw = o.yaw; o.p.q = o.q; idx.add(o.p); }
+    }
+    return false;
+  };
+  // how many of a kind to turn: the corpus share of all of them (stochastic rounding), less those turned already; the
+  // candidates in a seeded order until that many have turned, so a turn taken back moves on to the next piece
+  const quota = kind => {
+    const all = b.pieces.filter(p => p.decor && !p.outside && !p.yard && kindOf(p) === kind);
+    const want = corpusRate(culture, TURN[kind][0]) * lean * all.length, q = Math.floor(want) + (R() < want % 1 ? 1 : 0);
+    return Math.max(0, q - all.filter(p => off(p) > 10).length);
+  };
+  const order = kind => b.pieces.filter(p => free(p) && kindOf(p) === kind && off(p) <= 10).map(p => [p, R()]).sort((x, y) => x[1] - y[1]).map(([p]) => p);
+  let left = quota('table');
+  for (const t of order('table')) {
+    if (left <= 0) break;
+    const ob = D.itemOf(t).b;
+    const on = b.pieces.filter(q => q !== t && q.decor && I.ptDist(ob, q.x, q.z) < 0.05 && q.y > t.y + 0.3 && q.y < t.y + 1.6);
+    if (on.some(q => !free(q))) continue;
+    const seats = b.pieces.filter(q => free(q) && kindOf(q) === 'seat' && Math.abs(q.y - t.y) < 0.5 && I.ptDist(ob, q.x, q.z) < 0.9);
+    if (tryTurn([t, ...on, ...seats], t.x, t.z)) { n++; left--; }
+  }
+  for (const kind of ['seat', 'rug']) {
+    left = quota(kind);
+    for (const p of order(kind)) {
+      if (left <= 0) break;
+      if (turned.has(p) || (kind !== 'rug' && bears(p))) continue;
+      if (tryTurn([p], p.x, p.z)) { n++; left--; }
+    }
+  }
+  return n;
+}
+
 function apply(b, ctx, zones) {
   if (ctx.decor === 'd3' && !['barn', 'storage', 'dock', 'farm'].includes(ctx.type)) vignettes(b, ctx, zones || []);
   if (ctx.decor !== 'd1' && ['longhouse', 'temple'].includes(ctx.type)) dais(b, ctx, zones || []);
@@ -8343,6 +8786,10 @@ function apply(b, ctx, zones) {
     const Lay = NODE_B ? require('./layout.js') : window.VHLayout;
     if (Lay) Lay.clearLanes(b, ctx, rooms);
   }
+  if (X.interiorKit !== false && ctx.decor !== 'd1') {
+    const st = stackChests(b, ctx);
+    if (st) b.notes.push(`${st} chests stacked on chests.`);
+  }
   // things on item stands round the house, from a stream of their own (lib/stands.js)
   const St = NODE_B ? require('./stands.js') : window.VHStands;
   if (St && X.stands !== false) St.dressTops(b, ctx, zones || []);
@@ -8351,6 +8798,72 @@ function apply(b, ctx, zones) {
     const m = liveIn(b, ctx, zones || []);
     if (m) b.notes.push(`${m} movable things set a little off square, as a household leaves them.`);
   }
+  dropFalling(b);
+}
+
+// Chests stacked on chests as corpus builders stack them (relx.chestsStacked: 58 % of chests stand on or under another
+// chest, 0.3 to 1.5 m apart in height and within 0.6 m across, per culture group, lib/decorate.js corpusRate): a second
+// chest of the same kind on a chest within 1.2 m of a wall, where nothing stands over it and 0.3 m stays clear above
+// (never on a set's chest framed by beams or posts, or within 1.8 m of a door);
+// as many as bring the design's share to the culture's rate, more in a cluttered household. Store rooms stack their
+// own first (decorate.js storeStacks). From a stream of its own, so the rest of the design is unchanged.
+const STACKABLE = /^(piece_chest_wood|piece_chest|piece_chest_blackmetal|piece_chest_barrel)$/;
+function stackChests(b, ctx) {
+  const D = decorB(), Ck = checksB(), P = ctx.persona, culture = ctx.culture || ctx.cultureKey;
+  const R = rngB((((P && P.salt) || 7) ^ 0x57ac) >>> 0);
+  const chests = b.pieces.filter(p => p.decor && !p.outside && !p.yard && !p.trim && STACKABLE.test(p.name));
+  if (!chests.length) return 0;
+  const inStack = p => chests.some(q => q !== p && Math.hypot(q.x - p.x, q.z - p.z) < 0.6 && Math.abs(q.y - p.y) >= 0.3 && Math.abs(q.y - p.y) <= 1.5);
+  const share = Math.min(0.9, D.corpusRate(culture, 'cs') * (P ? 0.6 + 0.8 * (P.clutter || 0) : 1));
+  // a chest set on a lone one makes two in a stack: (k + 2m) / (N + m) = share
+  let m = Math.round((share * chests.length - chests.filter(inStack).length) / (2 - share));
+  if (m <= 0) return 0;
+  const idx = boxIndex(b.pieces);
+  const hit = (a, c) => a.x0 < c.x1 - 0.02 && c.x0 < a.x1 - 0.02 && a.z0 < c.z1 - 0.02 && c.z0 < a.z1 - 0.02 && a.y0 < c.y1 - 0.02 && c.y0 < a.y1 - 0.02;
+  // not a chest of a set built round it (framed by beams or posts), and not by a door, where the door lights go later
+  // (generate.js doorLights)
+  const framed = new Set(b.pieces.filter(q => q.kb && PB.piece(q.name).structural).map(q => q.kb));
+  const doors = b.pieces.filter(q => !q.decor && PB.piece(q.name).role === 'door');
+  const cand = chests.filter(p => !inStack(p) && !p.stacked && (!p.rest || p.rest === 'floor') && !p.fclip && !(p.kb && framed.has(p.kb)) &&
+    !doors.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 1.8)).map(p => [p, R()]).sort((x, y) => x[1] - y[1]).map(([p]) => p);
+  let n = 0;
+  for (const p of cand) {
+    if (m <= 0) break;
+    const it = D.itemOf(p), h = it.y1 - it.y0;
+    if (!(h > 0.3)) continue;
+    const q = { name: p.name, x: p.x, y: +(p.y + h).toFixed(3), z: p.z, q: p.q, decor: true, stacked: true };
+    if (p.yaw != null) q.yaw = p.yaw;
+    if (p.ds != null) q.ds = p.ds;
+    if (p.extra) q.extra = true;
+    const bx = Ck.aabbShapes(q), reach = { ...bx, x0: bx.x0 - 1.2, x1: bx.x1 + 1.2, z0: bx.z0 - 1.2, z1: bx.z1 + 1.2 };
+    if (!idx.near(reach, 0).some(r => !r.p.decor && ['wall', 'window', 'door'].includes(PB.piece(r.p.name).role) && r.b.y1 > bx.y0 && r.b.y0 < bx.y1)) continue;
+    const clear = { ...bx, y1: bx.y1 + 0.3 };
+    // (decor by its catalog box as well: a ground torch's solids are thinner than the torch)
+    if (idx.near(clear, 0.1).some(r => r.p !== p && PB.piece(r.p.name).role !== 'rug' && (hit(r.b, clear) || (r.p.decor && hit(Ck.catBox(r.p), clear))))) continue;
+    b.pieces.push(q);
+    idx.add(q);
+    m--; n++;
+  }
+  return n;
+}
+
+// A set's building piece the game would let fall (a creative set's hanging pole whose source build held it by a piece
+// the set left out) goes, with what then has nothing under it; the structure check (lib/checks.js stability) is the
+// judge. Only the library's own pieces go.
+function dropFalling(b) {
+  const Ck = checksB();
+  if (!b.pieces.some(p => p.kb && PB.piece(p.name).structural)) return 0;
+  let n = 0;
+  for (let pass = 0; pass < 3; pass++) {
+    const boxes = b.pieces.map(Ck.gameBox), near = Ck.index(boxes);
+    const ys = boxes.filter(x => x.info.structural).map(x => x.y0).sort((a, c) => a - c);
+    const ground = b.ground != null ? b.ground : ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;
+    const out = new Set(Ck.stability(b.pieces, boxes, near, ground).map(i => b.pieces[i]).filter(p => p.kb));
+    if (!out.size) break;
+    b.pieces = b.pieces.filter(p => !out.has(p));
+    n += out.size;
+  }
+  return n;
 }
 
 // ---------------------------------------------------------------- built-up furniture
@@ -8609,6 +9122,7 @@ const PSs = () => (NODE_S ? require('./persona.js') : window.VHPersona);
 const Cks = () => (NODE_S ? require('./checks.js') : window.VHChecks);
 const Ds = () => (NODE_S ? require('./decorate.js') : window.VHDecorate);
 const Mes = () => (NODE_S ? require('./mesh.js') : window.VHMesh);
+const SHs = () => (NODE_S ? require('./shapes.js') : window.VHShapes);
 
 function rngS(seed) {
   let s = (seed >>> 0) || 1;
@@ -8723,6 +9237,18 @@ const SETS = [
   set('KS-hi-herbs', 'wall', [sp('wood_ledge', 0, 2.3, 0.3, 0, 'wall', { key: true }), sp('itemstandh', -0.32, 2.35, 0.3, 68, 'on', { on: 0, want: 'herbs', at: 'rafter' }),
     sp('itemstandh', 0, 2.35, 0.3, 68, 'on', { on: 0, want: 'herbs', at: 'rafter' }), sp('itemstandh', 0.32, 2.35, 0.3, 68, 'on', { on: 0, want: 'herbs', at: 'rafter' })],
   { ctx: ['table', 'hearth', 'chest', 'plain'], lean: { plants: 0.9, food: 0.4 }, high: 2.85, min: 2 }),
+  // on a low wall's top (a counter, a divider, the half wall behind a bench): the corpus's counter stands are mostly
+  // one alone (151 of 200 groups), now and then a pair, three or a row of four drinks; they hold drink, food, a hat, a
+  // trophy or a weapon (data/stands-corpus.json counter, anchorKinds itemstandh|counter)
+  set('KS-co-one', 'counter', [H(0, 0, 30, { at: 'counter' })], { lean: {} }),
+  set('KS-co-two', 'counter', [H(-0.22, 0, 0, { want: 'drink', at: 'counter' }), H(0.2, 0, 45, { at: 'counter' })], { lean: { messy: 0.4, food: 0.3 }, min: 2 }),
+  set('KS-co-three', 'counter', [H(-0.35, 0, 90, { want: 'food', at: 'counter' }), H(0, 0, 0, { want: 'drink', at: 'counter' }), H(0.33, 0, 45, { at: 'counter' })], { lean: { food: 0.6, messy: 0.3 }, min: 3, len: 1.0 }),
+  set('KS-co-row', 'counter', [H(-0.45, 0, 90, { want: 'drink', at: 'counter' }), H(-0.15, 0, 90, { want: 'drink', at: 'counter' }), H(0.15, 0, 90, { want: 'drink', at: 'counter' }),
+    H(0.45, 0, 90, { want: 'drink', at: 'counter' })], { lean: { games: 0.6, food: 0.4 }, min: 3, len: 1.2 }),
+  // a heap on the floor against a wall (a pantry corner): stands set into one another, food or drink (the corpus's heaps
+  // of stands stand on the floor more than anywhere, 168 of 376; data/stands-corpus.json stacks pileOn), made by the
+  // households that heap things (pileStands)
+  set('KS-f-heap', 'wall', [sp('itemstandh', 0, 0, 0.28, 30, 'floor', { want: 'food@stand' })], { ctx: ['plain', 'chest', 'table', 'hearth', 'door'], lean: { food: 0.8, messy: 0.5 }, heap: true, min: 1 }),
   // a mug or a dish left on the floor by a bed or a seat (a cluttered house)
   set('KS-f-mug', 'bed', [sp('itemstandh', 1.15, 0, 0.55, 30, 'floor', { want: 'drink', at: 'floor' })], { lean: { messy: 1.4 }, stage: 3 }),
 ];
@@ -8735,6 +9261,28 @@ for (const s0 of SETS.slice()) {
     if (Math.min(...ys) < 1.0 || Math.max(...ys) > 2.3) continue;
     SETS.push(Object.assign({}, s0, { pieces: s0.pieces.map(q => Object.assign({}, q, { y: +(q.y + dy).toFixed(2) })) }));
   }
+}
+// D-127 (Tyler, 2026-11-11): "if the corpus builders do it, its allowed and you should mirror their work". Corpus
+// builders hang wall stands into what shows of the wall (the 2x2 wood wall's planks, a stone wall's bevels): of 4,318
+// wall stands measured, the depth into what is behind them is 0 up to the 75th percentile and 4 cm at the 90th
+// (data/stands-corpus.json clips, lab/mine_stands.js: the stand's shape into the collider of what is behind it). A stand
+// hung that way against the collider goes into what shows of the wall by the depth of its relief: 4 to 11 cm on the
+// generator's walls (measured over the d3 houses of lab/test_stands.js). So a wall stand of these sets may go up to
+// WALL_SHOW into what shows (the fitter keeps the depth used on the stand as p.wclip, which lib/blueprint.js writes in
+// '#VillheimClips', D-098), and dressTops refuses one that goes more than WALL_COLL into a collider.
+const WALL_SHOW = 0.12, WALL_COLL = 0.04;
+for (const s0 of SETS) if (s0.anchor === 'wall') s0.clips = s0.pieces.map((q, i) => (q.n === 'itemstand' ? [i, 'w', WALL_SHOW] : null)).filter(Boolean);
+// how deep a wall stand goes into the colliders of the building round it (as the corpus miner measures it)
+function intoCollider(p, idx) {
+  const SH = SHs(), Ck = Cks(), A = SH.world(p);
+  if (!A || !A.length) return 0;
+  let m = 0;
+  for (const r of idx.near(Ck.aabb(p), 0.05)) {
+    if (r.p === p || (r.p.decor && !r.p.trim)) continue;
+    const B = Ck.aabb(r.p).sol;
+    if (B && B.length) m = Math.max(m, SH.clipDepth(A, B));
+  }
+  return m;
 }
 // on the sill of a window: stands set on the wall below the opening (made for each window, see sillSet)
 const SILL = [[{ x: -0.25, want: 'herbs', yaw: 20 }, { x: 0.22, yaw: 300 }], [{ x: 0, yaw: 0 }], [{ x: -0.3, want: 'food', yaw: 90 }, { x: 0.05, want: 'drink', yaw: 0 }, { x: 0.33, want: 'herbs', yaw: 45 }]];
@@ -8762,6 +9310,84 @@ const FEAST_S = { Meadows: 'FeastMeadows', 'Black Forest': 'FeastBlackforest', S
   Mistlands: 'FeastMistlands', Ashlands: 'FeastAshlands', 'Deep North': 'FeastMountains' };
 const ROOMS_S = ['home', 'sleeping', 'guest', 'hall', 'tavern', 'kitchen', 'temple', 'smithy', 'workshop', 'storage', 'guard', 'market'];
 
+// ---------------------------------------------------------------- how much a household shows
+// The corpus's house-like builds with stands hold a median of 19 stands (quartiles 5 and 49) and 7 distinct items (2
+// and 20): a few builds show a great deal, many show a handful (lab/mine_stands.js, data/stands-corpus.json perBuild).
+// Here that spread comes from the household and the village: a cluttered household, a collector, a well-off or cosy
+// one shows more, a tidy or plain one little; the village's culture leans it a little (a setting: the corpus is not
+// split by culture yet); and every household has its own share of chance on top. Never a fixed count per room.
+const CULTURE_SHOW = { dwarven: 1.3, 'castle-medieval': 1.25, byzantine: 1.2, lamari: 1.15, norse: 1.1, slavic: 1.1, 'middle-eastern': 1.1,
+  'norse-forest': 1.05, 'norse-highland': 0.95, mountain: 0.95, 'celtic-crannog': 0.85, 'fen-folk': 0.85, swamp: 0.9, steppe: 0.8,
+  'east-asian': 0.8, saami: 0.75 };
+const gaussS = R => { let s = 0; for (let i = 0; i < 4; i++) s += R(); return (s - 2) / 0.577; };
+function showOf(P, ctx, R) {
+  const H = (P && P.hobby) || {};
+  const clutter = P ? P.clutter : 0.45, tidy = P ? P.tidy : 0.5, wealth = P ? P.wealth : 0.4, comfort = P ? P.comfort : 0.5;
+  let s = 0.8 * (0.3 + 1.5 * clutter + 0.7 * (H.collect || 0) + 0.35 * (H.food || 0) + 0.25 * (H.plants || 0) + 0.3 * wealth + 0.2 * comfort - 0.4 * tidy);
+  s *= CULTURE_SHOW[ctx.cultureKey || ctx.culture] || 1;
+  if (P && P.plain) s *= 0.35;
+  if (ctx.type === 'tavern') s *= 1.15;
+  s *= Math.exp(0.7 * gaussS(R));
+  return Math.min(4, Math.max(0.08, s));
+}
+// A flat stand on a table may be sunk into its top so only the item shows (a third of the corpus's flat stands sit
+// over 6 cm into what they stand on). The depths are the corpus's (data/stands-corpus.json sinks: the 75th percentile
+// 9.7 cm, the 90th 21.6 cm); deeper than its 90th percentile is never used. Some households (some builders) do it,
+// most of the time; others never.
+const SINK_Q = [[0, 0.06], [0.23, 0.097], [0.69, 0.216], [1, 0.216]]; // depth over 6 cm by its share among sunk stands
+function sinkDepth(R) {
+  const u = R();
+  for (let i = 1; i < SINK_Q.length; i++) if (u <= SINK_Q[i][0]) { const [u0, d0] = SINK_Q[i - 1], [u1, d1] = SINK_Q[i]; return +(d0 + (d1 - d0) * (u - u0) / Math.max(1e-6, u1 - u0)).toFixed(3); }
+  return 0.216;
+}
+// What kind of place a set dresses: each kind gets its own share of the picks, so having more sets or more anchors of
+// one kind does not make it come up more often. The shares lean on where the corpus's stands are (data/stands-corpus.json
+// anchors, stands holding something: of flat stands table 14.9 %, shelf 17.0, ledge 10.3, mantel 9.3, counter 3.3,
+// bench 2.0, sill 1.7, rafter 1.7, chest 0.5; of wall stands wall and beam 29 %, over a workbench or bench 15, by the
+// hearth 12, over a chest 7, a table 7, a bed 4, by a door 4). The interior library and the decorator already put up
+// most of the shelf, mantel and wall stands, so this pass gives tables the largest share. Tyler, 2026-11-10: "I rarely
+// see stands on rafters. I sometimes see stands on sills. I constantly see stands on tables."
+// Read at the lid (the corpus rerun of 2026-11-11), chests carry 1.5 % of the corpus's flat stands at these places and
+// counters 6.6 %.
+const CLASS_W = { table: 1.6, wall: 1.4, shelf: 0.8, bench: 0.45, hearth: 0.3, rafter: 0.22, chest: 0.06, sill: 1.1, floor: 0.15, counter: 1.0,
+  wtable: 0.08, wbed: 0.05, wdoor: 0.2 };
+function classOf(s, an) {
+  if (s.anchor === 'table') return 'table';
+  if (s.anchor === 'bench' || s.anchor === 'seat') return 'bench';
+  if (s.anchor === 'chest') return 'chest';
+  if (s.anchor === 'counter') return 'counter';
+  if (s.anchor === 'bed' || s.heap) return 'floor';
+  if (s.anchor === 'window') return 'sill';
+  if (s.anchor === 'beam' || s.high) return 'rafter';
+  if (s.id === 'KS-mantel' || (an && an.ctxW === 'hearth')) return 'hearth';
+  // a wall set counts where the corpus miner counts it: by what stands under it
+  if (an && (an.ctxW === 'bench' || an.ctxW === 'workbench')) return 'bench';
+  if (an && an.ctxW === 'chest') return 'chest';
+  if (/^KS-s-/.test(s.id)) return 'shelf';
+  // the wall over a table, over a bed and by a door each its own share: in small rooms most wall spots are within the
+  // miner's reach of a table or a bed, and a share split only among the room's wall spots would put most there
+  if (an && an.ctxW === 'table') return 'wtable';
+  if (an && an.ctxW === 'bed') return 'wbed';
+  if (an && an.ctxW === 'door') return 'wdoor';
+  return 'wall';
+}
+const isStand = p => /^itemstandh?$/.test(p.name);
+// the chance a household puts things at each kind of place, before its traits (favLean)
+const FAV_P = { table: 0.7, wall: 0.65, shelf: 0.5, bench: 0.4, hearth: 0.25, rafter: 0.2, chest: 0.12, sill: 0.45, floor: 0.25, counter: 0.55 };
+// how a household's traits lean those chances (lib/persona.js: likes are about 0.3 to 1.8, hobbies 0 to 1): pots and
+// things on the sill, things hung up, shelves, food and drink on the table, tools by the bench
+function favLean(P, cl) {
+  if (!P) return 1;
+  const L = P.likes || {}, Hb = P.hobby || {};
+  const k = { sill: 0.4 + 0.6 * (L.sill || 0.8), rafter: 0.4 + 0.6 * (L.hung || 0.8), wall: 0.6 + 0.4 * (L.hung || 0.8) + 0.3 * (Hb.collect || 0),
+    shelf: 0.5 + 0.6 * (L.shelves || 0.8), counter: 0.6 + 0.4 * (L.shelves || 0.8) + 0.3 * (Hb.food || 0), table: 0.8 + 0.5 * (Hb.food || 0) + 0.3 * (Hb.games || 0), bench: 0.6 + 0.8 * (Hb.crafts || 0),
+    hearth: 0.6 + 0.6 * (P.comfort || 0.5), chest: 0.6 + 0.6 * (P.clutter || 0.45) }[cl];
+  return k == null ? 1 : k;
+}
+// a stand's place (lib/persona.js standAt) as one of those kinds
+const AT_CLASS = at => /^(table|sidetable)$/.test(at) ? 'table' : /^(bench|workbench|wall:bench|wall:workbench)$/.test(at) ? 'bench' : /^(chest|wall:chest)$/.test(at) ? 'chest'
+  : at === 'wall:hearth' || at === 'mantel' ? 'hearth' : at === 'rafter' ? 'rafter' : at === 'sill' ? 'sill' : at === 'shelf' ? 'shelf' : at === 'counter' ? 'counter' : 'wall';
+
 /**
  * Dresses the house with item stands. ctx: the furnishing's context (biome, decor, persona, type). Returns the number
  * of sets placed.
@@ -8772,15 +9398,95 @@ function dressTops(b, ctx, zones, rooms) {
   if (!PBs.decorOk('itemstandh', ctx.biome)) return 0;
   const P = ctx.persona;
   const R = rngS(((P ? P.salt : 7) ^ 0x57a4d5) >>> 0);
+  // how many stands the whole house shows: the household's share (showOf) of a number that grows with the floor
+  const show = showOf(P, ctx, R);
+  const roomList = (rooms || KB.roomsB(b, ctx)).filter(room => ROOMS_S.includes(room.role) && room.m.area >= 4);
+  const area = roomList.reduce((s, room) => s + room.m.area, 0);
+  const budget = Math.round(show * (8 + area / 2.8));
+  // the kinds of place the household puts things (a builder who sets every table and one who keeps to a shelf and
+  // the wall over the hearth): each kind by the corpus's share of houses with it, more of them in a house that shows
+  // more; this pass leaves the others alone. So a few places get clusters, as in the corpus, where a spread of single stands
+  // over every place would not.
+  const fav = {};
+  for (const [cl, p0] of Object.entries(FAV_P)) fav[cl] = R() < 1 - Math.pow(1 - Math.min(0.95, p0 * favLean(P, cl)), Math.sqrt(show)) ? 1 : 0;
+  // the stands already up (the decorator's and the interior library's) count toward it. Where they are more than
+  // about half of it, the household takes some away, so the rest goes to this pass's sets: those in places it does
+  // not favor first, the decorator's single stands before the stands of a library set that keeps something else (a
+  // ledge left bare, a table with its candle). A set made of stands alone stays whole.
+  const others = b.pieces.filter(p => p.decor && isStand(p));
+  const keep = Math.round(budget * 0.4);
+  {
+    const kits = new Map();
+    for (const p of b.pieces) if (p.kb) { const k = kits.get(p.kb) || { stands: 0, other: 0 }; if (isStand(p)) k.stands++; else k.other++; kits.set(p.kb, k); }
+    // (wall stands on plain wall stay: most wall spots in the generator's rooms read as over a table or a bed, and the
+    // corpus has a third of its wall stands on plain wall and beams)
+    const plainWall = p => p.name === 'itemstand' && wallAtS(b, p) === 'wall';
+    const loose = others.filter(p => !p.kb && !p.trim && !plainWall(p)), inSets = others.filter(p => p.kb && !/^KS-/.test(p.kb) && kits.get(p.kb).other > 0 && !plainWall(p));
+    const near = p => b.pieces.filter(q => Math.abs(q.x - p.x) < 2.5 && Math.abs(q.z - p.z) < 2.5 && Math.abs(q.y - p.y) < 2.5);
+    const key = (p, k) => { const favd = fav[AT_CLASS(PS.standAt(b, p, near(p)))] === 1; return { p, favd, r: R() + k + (favd ? 2 : 0) }; };
+    let have = others.length;
+    const drop = new Set();
+    const order = loose.map(p => key(p, 0)).concat(inSets.map(p => key(p, 1))).sort((a, c) => a.r - c.r);
+    // what stands where the household does not put things mostly goes, whatever the count; then more, down to the
+    // share kept
+    // (a household that shows little takes most of them away, one that shows a lot keeps most)
+    const dropP = Math.min(0.85, Math.max(0, 0.9 - 0.45 * show));
+    for (const o of order) if (!o.favd && R() < dropP) { drop.add(o.p); have--; }
+    for (const o of order) { if (have <= keep) break; if (drop.has(o.p)) continue; drop.add(o.p); have--; }
+    // and past that, for a household that shows little, whole sets of stands alone from the library (a pair of
+    // trophies, a row of shields), last
+    if (have > keep) {
+      const alone = [...new Set(others.filter(p => p.kb && !/^KS-/.test(p.kb) && kits.get(p.kb).other === 0).map(p => p.kb))].map(kb => ({ kb, r: R() })).sort((x, y) => x.r - y.r);
+      for (const g of alone) { if (have <= keep) break; for (const q of others) if (q.kb === g.kb && !drop.has(q)) { drop.add(q); have--; } }
+    }
+    // wall stands over a bed, a table, a chest, by the hearth or a door, past the corpus's share of a house's wall
+    // stands at that place (WALL_SHARE) times the household's draw (1.2 to 1.8): the extra go, a whole set at a time
+    // (the decorator's single stands one by one). The interior library and the decorator hang most of theirs over beds
+    // and tables; the corpus's builders hang most on plain wall and beams.
+    const walls = b.pieces.filter(p => p.decor && p.name === 'itemstand' && !drop.has(p) && !/^KS-/.test(p.kb || '') && !p.trim);
+    const byCtx = {};
+    for (const p of walls) { const at = wallAtS(b, p); if (WALL_SHARE[at] != null) (byCtx[at] = byCtx[at] || []).push(p); }
+    for (const [at, ps] of Object.entries(byCtx)) {
+      const allowed = Math.floor(walls.length * WALL_SHARE[at] * (1.2 + 0.6 * R()) + R());
+      const groups = [];
+      for (const p of ps) { const g = p.kb ? groups.find(x => x.kb === p.kb) : null; if (g) g.ps.push(p); else groups.push({ kb: p.kb, ps: [p], r: R() }); }
+      groups.sort((x, y) => x.r - y.r);
+      let n0 = ps.length;
+      for (const g of groups) { if (n0 <= allowed) break; for (const q of b.pieces) if (g.kb ? q.kb === g.kb : q === g.ps[0]) { if (!g.kb || isStand(q) || kits.get(g.kb).other === 0) drop.add(q); } n0 -= g.ps.length; }
+    }
+    if (drop.size) b.pieces = b.pieces.filter(p => !drop.has(p));
+  }
+  // some households sink the stands on their tables into the top, most of the time; the depth is their habit
+  const sinker = R() < 0.5, sinkShare = 0.55 + 0.4 * R(), sinkAt = sinkDepth(R);
   const idx = KB.boxIndex(b.pieces);
+  // the same household sinks the stands already on its tables (the interior library's and the decorator's) the same way
+  if (sinker) for (const p of b.pieces) {
+    if (p.name !== 'itemstandh' || !p.decor || p.sunk || p.fclip || /^KS-/.test(p.kb || '')) continue;
+    // on a table: its top (the collider's, as the corpus miner reads it) at the stand's foot or a little over it
+    const t = idx.near(Ck.aabb(p), 0.02).find(r => { if (r.p === p || !TABLES.test(r.p.name)) return false; const o = Ck.aabb(r.p), top = o.sol ? SHs().topAt(o.sol, p.x, p.z) : null; return top != null && top - p.y > -0.03 && top - p.y < 0.03; });
+    if (!t || R() > sinkShare) continue;
+    const d = Math.min(0.216, Math.max(0.061, sinkAt + (R() - 0.5) * 0.03));
+    p.y = +(p.y - d).toFixed(3);
+    p.fclip = +(d + 0.005).toFixed(3);
+    p.sunk = true;
+  }
+  // some households heap things: two or more stands set into one another (a pile of turnips, mugs crowded together).
+  // In the corpus 21 % of house-like builds with stands have one, and 6.8 % of flat stands stand on another
+  // (data/stands-corpus.json houses.stand, anchors itemstandh.stand).
+  const heaper = R() < HEAP.houses * (P ? 0.6 + 0.8 * P.clutter : 1), heapShare = HEAP.share[0] + (HEAP.share[1] - HEAP.share[0]) * R();
   const fires = b.pieces.filter(p => p.decor && FIRES_S.test(p.name)).map(p => ({ p, b: Ck.aabb(p) }));
   const clutter = P ? P.clutter : 0.45, size = P ? P.size : 3;
   const P2 = Object.assign({}, P || {}, { hobby: (P && P.hobby) || { crafts: 0.3, collect: 0.3, plants: 0.3, food: 0.3, games: 0.3, maps: 0.3 } });
-  let placed = 0;
-  for (const room of rooms || KB.roomsB(b, ctx)) {
-    if (!ROOMS_S.includes(room.role)) continue;
+  let placed = 0, placedStands = 0;
+  // the house's wall stands by what is under them (as the miner reads it), kept up as this pass hangs more: a wall set
+  // over a table or a bed waits while those already hold more than the corpus's share of the
+  // house's wall stands (WALL_SHARE times CAPPED, and 0.4 more for some households). In small rooms nearly every wall
+  // spot is within the miner's reach of a table or a bed, so without it a room that wants many stands fills those once
+  // its plain wall is taken.
+  const wallN = { all: 0 }, capK = 0.4 * R();
+  for (const p of b.pieces) if (p.decor && p.name === 'itemstand') { wallN.all++; const at = wallAtS(b, p); wallN[at] = (wallN[at] || 0) + 1; }
+  for (const room of roomList) {
     const m = room.m;
-    if (m.area < 4) continue;
     const inR = p => m.inside(p.x, p.z) && Math.abs(p.y - m.stand) < 0.9;
     // the room's furniture and anchors
     const furn = b.pieces.filter(p => p.decor && inR(p));
@@ -8789,10 +9495,9 @@ function dressTops(b, ctx, zones, rooms) {
     const add = (s, anc, w) => { if (w > 0) cands.push({ s, anc, w }); };
     const kitAnchors = KB.anchorsOf(room, b);
     const wallAnchors = kitAnchors.filter(an => an.anchor === 'wall');
-    const doors = b.pieces.filter(p => !p.decor && PBs.piece(p.name).role === 'door' && Math.abs(p.y - m.stand - 1) < 1.2);
     // a feast at most once in a room, never where one is laid out already
     const feasted = b.pieces.some(p => /^Feast[A-Z]/.test(p.name) && inR(p));
-    const sets = SETS.filter(s => (!s.n || size >= s.n) && (!s.feast || (ctx.decor === 'd3' && !feasted)));
+    const sets = SETS.filter(s => (!s.n || size >= s.n) && (!s.feast || (ctx.decor === 'd3' && !feasted)) && (!s.heap || heaper));
     for (const p of furn) {
       const yaw = normS(p.yaw || 0);
       if (TABLES.test(p.name)) {
@@ -8814,11 +9519,16 @@ function dressTops(b, ctx, zones, rooms) {
         for (const s of sets) if (s.anchor === 'bed') add(s, { anchor: 'bed', x: p.x, z: p.z, yaw, of: p }, 0.6);
       }
     }
+    // low walls: their top as a counter
+    for (const c of countersIn(b, m, idx)) for (const s of sets) if (s.anchor === 'counter' && (!s.len || c.len >= s.len)) add(s, { anchor: 'counter', x: c.p.x, z: c.p.z, yaw: normS(c.p.yaw || 0), of: c.p }, 1);
     // wall spots by what stands in front of them (the corpus's wall stands over a workbench, a bed, the hearth...)
     for (const an of wallAnchors) {
-      const ctxW = wallContext(an, furn, fires, doors);
+      // what is under the spot as the corpus miner reads it (wallAtS), so this pass's shares compare with the corpus's
+      const at = wallAtS(b, { name: 'itemstand', x: an.x, y: m.stand + 1.75, z: an.z, yaw: an.yaw });
+      const ctxW = at === 'wall' ? 'plain' : at.slice(5);
       for (const s of sets) {
         if (s.anchor !== 'wall' || !s.ctx || !s.ctx.includes(ctxW)) continue;
+      if (s.heap && !/^(home|kitchen|storage|tavern)$/.test(room.role)) continue;
         // plain wall the whole width of the set and a little more (no window, door or opening, not past the wall's end)
         const half = Math.max(...s.pieces.map(q => Math.abs(q.x))) + 0.35;
         const st = D._int.stretch(an.face, an.t - half, an.t + half);
@@ -8826,7 +9536,7 @@ function dressTops(b, ctx, zones, rooms) {
         // and clear of the wall's ends (the next wall round the corner, a partition's end)
         if (an.t - half - 0.6 < an.face.a0 || an.t + half + 0.6 > an.face.a1) continue;
         if (s.high && m.ceilAt(an.x + Math.sin(an.yaw * Math.PI / 180) * 0.15, an.z + Math.cos(an.yaw * Math.PI / 180) * 0.15) - m.stand < s.high) continue;
-        add(s, Object.assign({ ctxW }, an), (ctxW === 'plain' ? 0.25 : 0.6) * (s.high ? 0.6 * (P ? 0.4 + P.likes.hung * 0.6 : 1) : 1));
+        add(s, Object.assign({ ctxW }, an), (CTX_W[ctxW] || 0.4) * (s.high ? 0.6 * (P ? 0.4 + P.likes.hung * 0.6 : 1) : 1));
       }
     }
     // windows: their sill
@@ -8840,14 +9550,21 @@ function dressTops(b, ctx, zones, rooms) {
       add(s, { anchor: 'beam', x: bm.p.x, z: bm.p.z, yaw: normS(bm.p.yaw || 0), of: bm.p }, 0.7 * (P ? 0.4 + P.likes.hung * 0.6 : 1));
     }
     if (!cands.length) continue;
-    for (const c of cands) c.w *= leanWeight(P2, c.s) * (c.s.feast ? 0.12 : 1);
-    // how many sets: by floor area, the household's clutter, and the stage (a share at d2, the rest at d3)
-    const per = ['tavern', 'hall'].includes(room.role) ? 9 : ['smithy', 'workshop', 'storage'].includes(room.role) ? 14 : 8;
-    const want3 = Math.max(1, Math.round(m.area / per * (0.55 + 0.9 * clutter) * (P && P.plain ? 0.7 : 1) + R() * 1.2));
-    const want2 = Math.max(1, Math.round(want3 * (0.45 + 0.2 * R())));
-    let n = 0, tries = 0;
+    // each kind of place its own share of the picks, shared among its candidates
+    const inClass = {};
+    for (const c of cands) { c.cl = classOf(c.s, c.anc); inClass[c.cl] = (inClass[c.cl] || 0) + c.w; }
+    for (const c of cands) c.w *= (CLASS_W[c.cl] || 0.5) * (fav[c.cl] == null ? 1 : fav[c.cl]) / inClass[c.cl] * leanWeight(P2, c.s) * (c.s.feast ? 0.12 : 1);
+    for (let k = cands.length - 1; k >= 0; k--) if (!(cands[k].w > 0)) cands.splice(k, 1);
+    if (!cands.length) continue;
+    // how many stands this room shows: its share of the house's, less what stands here already; a share at d2, the
+    // rest at d3
+    const inRoom = b.pieces.filter(p => p.decor && isStand(p) && m.inside(p.x, p.z) && p.y > m.stand - 0.3 && p.y < m.stand + 3.5).length;
+    const want3 = Math.round(budget * m.area / Math.max(1, area) - inRoom + (R() - 0.5) * 1.5);
+    if (want3 < 1) continue;
+    const want2 = Math.round(want3 * (0.4 + 0.25 * R()));
+    let n = 0, tries = 0, got3 = 0;
     const usedAnc = [], usedSet = {};
-    while (n < want3 && tries < 80 && cands.length) {
+    while (got3 < want3 && tries < 80 && cands.length) {
       tries++;
       const wt = c => c.w / (1 + 1.5 * (usedSet[c.s.id] || 0));
       let tot = 0;
@@ -8858,6 +9575,10 @@ function dressTops(b, ctx, zones, rooms) {
       const an = pick.anc;
       if (usedAnc.some(u => (an.of && u.of === an.of) || (an.anchor === u.anchor && Math.hypot(u.x - an.x, u.z - an.z) < (an.anchor === 'wall' ? 1.6 : 0.6)))) continue;
       if (an.anchor === 'wall' && wallBusy(an, idx, m, pick.s)) continue;
+      if (an.ctxW) {
+        const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = pick.s.pieces.filter(q => q.n === 'itemstand').length;
+        if (CAPPED[at] && (wallN[at] || 0) + k > (wallN.all + k) * WALL_SHARE[at] * (CAPPED[at] + capK) + 0.5) continue;
+      }
       const s = pick.s;
       if (s.feast && !PBs.decorOk(FEAST_S[ctx.biome] || 'FeastMeadows', ctx.biome)) continue;
       let got = null;
@@ -8868,8 +9589,10 @@ function dressTops(b, ctx, zones, rooms) {
         DEBUG_S[k] = (DEBUG_S[k] || 0) + 1;
       }
       if (!got) continue;
+      // a wall stand into the wall's relief stays against its collider, as the corpus's builders hang them (D-127)
+      if (got.some(p => p.name === 'itemstand' && p.wclip && intoCollider(p, idx) > WALL_COLL + 0.005)) continue;
       // never before what it stands on (a bench of a set that comes at the third stage)
-      const ds = Math.max(s.stage === 3 || n >= want2 ? 3 : 2, (an.of && an.of.decor && an.of.ds) || 0);
+      const ds = Math.max(s.stage === 3 || got3 >= want2 ? 3 : 2, (an.of && an.of.decor && an.of.ds) || 0);
       // a flat stand on a wall's or a beam's top sits on what shows of it (the half wall's planks stand a few
       // centimeters over its collider), as the pool audit's mountClip measures it
       const Me = Mes();
@@ -8886,6 +9609,20 @@ function dressTops(b, ctx, zones, rooms) {
         }
         if (deep > 0.01) p.y = +(p.y + deep + 0.005).toFixed(3);
       }
+      // stands on a table sunk into its top, so only the item shows; each is a clip made on purpose, as deep as the
+      // corpus's builders sink them, marked in the file's '#VillheimClips' (furniture depth, lib/blueprint.js; D-098)
+      if (sinker && an.anchor === 'table') for (const p of got) {
+        if (p.name !== 'itemstandh' || R() > sinkShare) continue;
+        const d = Math.min(0.216, Math.max(0.061, sinkAt + (R() - 0.5) * 0.03));
+        p.y = +(p.y - d).toFixed(3);
+        p.fclip = +(d + 0.005).toFixed(3);
+        p.sunk = true;
+      }
+      // a household that heaps things sets more stands into some of these (a heap on the floor always)
+      if (heaper) for (const p of got.slice()) {
+        if (p.name !== 'itemstandh' || (!s.heap && R() > heapShare)) continue;
+        for (const q of pileStands(b, idx, m, p, R, s.heap)) { got.push(q); }
+      }
       for (const p of got) {
         p.ds = ds;
         // a wall stand's place, from the wall's context, where its set did not say
@@ -8898,6 +9635,8 @@ function dressTops(b, ctx, zones, rooms) {
       usedAnc.push(an);
       usedSet[s.id] = (usedSet[s.id] || 0) + 1;
       if (s.feast) for (let k = cands.length - 1; k >= 0; k--) if (cands[k].s.feast) cands.splice(k, 1);
+      got3 += got.filter(isStand).length; placedStands += got.filter(isStand).length;
+      if (an.ctxW) { const at = an.ctxW === 'plain' ? 'wall' : `wall:${an.ctxW}`, k = got.filter(p => p.name === 'itemstand').length; wallN.all += k; wallN[at] = (wallN[at] || 0) + k; }
       n++; placed++;
     }
   }
@@ -8905,22 +9644,44 @@ function dressTops(b, ctx, zones, rooms) {
   return placed;
 }
 
-// What stands in front of a wall spot: the corpus's wall stands by what is under them.
-function wallContext(an, furn, fires, doors) {
-  const nx = Math.sin(an.yaw * Math.PI / 180), nz = Math.cos(an.yaw * Math.PI / 180), ux = Math.cos(an.yaw * Math.PI / 180), uz = -Math.sin(an.yaw * Math.PI / 180);
-  let best = null, bd = Infinity;
-  for (const p of furn) {
-    const dx = p.x - an.x, dz = p.z - an.z, out = dx * nx + dz * nz, along = dx * ux + dz * uz;
-    if (out < -0.1 || out > 1.6 || Math.abs(along) > 1.0) continue;
-    const r = PBs.piece(p.name).role;
-    const k = WORK_S.test(p.name) ? 'workbench' : r === 'bed' ? 'bed' : r === 'table' ? 'table' : r === 'seat' ? 'bench' : r === 'storage' ? 'chest' : null;
-    if (k && out + Math.abs(along) < bd) { bd = out + Math.abs(along); best = k; }
-  }
-  if (best) return best;
-  if (fires.some(f => Math.hypot((f.b.x0 + f.b.x1) / 2 - an.x, (f.b.z0 + f.b.z1) / 2 - an.z) < 2.6)) return 'hearth';
-  if ((doors || []).some(d => Math.hypot(d.x - an.x, d.z - an.z) < 1.6)) return 'door';
-  return 'plain';
+// The corpus's wall stands by what is under them, as a share of those at a known place (anchors: plain wall and
+// beams 1,405 of 4,259, over a workbench or bench 719, by the hearth 558, a rafter 533, over a chest 333, a table 328,
+// a bed 208, by a door 175)
+const CAPPED = { 'wall:table': 1.3, 'wall:bed': 1.0 };
+const WALL_SHARE = { 'wall:bed': 208 / 4259, 'wall:table': 328 / 4259, 'wall:chest': 333 / 4259, 'wall:hearth': 558 / 4259, 'wall:door': 175 / 4259,
+  'wall:workbench': 578 / 4259, 'wall:bench': 141 / 4259 };
+// What is under a wall stand, as the corpus miner reads it (lab/mine_stands.js), so the shares compare: furniture
+// standing on the floor round the point half a metre out from the stand (0.9 m, in the miner's 2 m grid cells); then a
+// fire within 2.2 m; then a door within 1.3 m.
+function wallAtS(b, p) {
+  const Ck = Cks(), y = p.yaw * Math.PI / 180, fx = Math.sin(y), fz = Math.cos(y);
+  // which side the wall is on: the first of 5 to 30 cm behind the stand, then in front of it, with structure there
+  const solid = (x, z) => b.pieces.some(q => !q.decor && q !== p && (() => { const o = Ck.aabb(q); return o.x0 <= x && o.x1 >= x && o.z0 <= z && o.z1 >= z && o.y0 <= p.y && o.y1 >= p.y; })());
+  let side = 1;
+  for (const d of [0.05, 0.1, 0.18, 0.3, -0.05, -0.1, -0.18, -0.3]) if (solid(p.x - fx * d, p.z - fz * d)) { side = Math.sign(d); break; }
+  const ox = p.x + fx * 0.5 * side, oz = p.z + fz * 0.5 * side;
+  // the floor it is over: the highest room floor under it
+  const rooms = (b.rooms || []).filter(q => p.x > q.x0 - 0.3 && p.x < q.x1 + 0.3 && p.z > q.z0 - 0.3 && p.z < q.z1 + 0.3 && q.y <= p.y - 0.3);
+  const ft = rooms.length ? Math.max(...rooms.map(q => q.y)) : p.y - 1.8;
+  // the miner's own reach (lib/checks.js index): any piece in the 2 m grid cells the square touches, at those heights
+  const C = v => Math.floor(v / 2);
+  const box = (q, x, z, r, y0, y1) => { const o = Ck.aabb(q); return C(o.x0) <= C(x + r) && C(o.x1) >= C(x - r) && C(o.z0) <= C(z + r) && C(o.z1) >= C(z - r) && o.y1 > y0 && o.y0 < y1 ? o : null; };
+  const under = b.pieces.filter(q => q !== p && !/^itemstand/.test(q.name)).filter(q => { const o = box(q, ox, oz, 0.9, ft - 0.1, p.y - 0.1); return o && o.y0 < ft + 0.4; });
+  const has = t => under.some(q => t(q.name, PBs.piece(q.name).role));
+  if (has(n => WORK_S.test(n))) return 'wall:workbench';
+  if (has((n, r) => r === 'table')) return 'wall:table';
+  if (has((n, r) => r === 'seat' && /bench|sofa/i.test(n))) return 'wall:bench';
+  if (has((n, r) => r === 'bed')) return 'wall:bed';
+  if (b.pieces.some(q => (/^(hearth|fire_pit|bonfire|piece_brazier|piece_groundtorch)/.test(q.name) || PBs.piece(q.name).role === 'fire') && box(q, p.x, p.z, 2.2, ft - 0.2, ft + 0.6))) return 'wall:hearth';
+  if (has((n, r) => r === 'storage')) return 'wall:chest';
+  if (b.pieces.some(q => PBs.piece(q.name).role === 'door' && box(q, p.x, p.z, 1.3, ft, ft + 2))) return 'wall:door';
+  return 'wall';
 }
+// How often this pass dresses a wall spot by what stands in front of it. The corpus's wall stands (anchors): plain
+// wall and beams 1,405, over a workbench or bench 719, by the hearth 558, over a chest 333, a table 328, a bed 208, by
+// a door 175. The library's and the decorator's wall stands already sit mostly over tables and beds, so this pass leans
+// to plain wall.
+const CTX_W = { plain: 0.9, workbench: 0.18, bench: 0.12, hearth: 0.4, chest: 0.35, table: 0.05, bed: 0.03, door: 0.45 };
 // Is a wall spot taken: something hung within 0.9 m either side of the set at 1.0 to 2.5 m, or tall furniture in front
 function wallBusy(an, idx, m, s) {
   const half = Math.max(...s.pieces.map(q => Math.abs(q.x))) + 0.6;
@@ -8979,8 +9740,82 @@ function rafterSet(bm, R) {
   const pick = opts[Math.floor(R() * opts.length)] || RAFTER[0];
   return set('KS-rafter', 'beam', pick.map(q => sp('itemstandh', q.x, 2.5, 0, Math.floor(R() * 8) * 45, 'anchor', { want: q.want, at: 'rafter' })), { lean: { collect: 0.4, plants: 0.3 } });
 }
+// Low walls in a room, their top a counter: a wall piece standing on the room's floor whose top is 0.4 to 1.5 m over
+// it (the corpus's counter stands sit at a median 0.51 m, the 90th percentile 1.0 m; data/stands-corpus.json heights
+// itemstandh|counter), at least 0.5 m long, nothing standing on it yet.
+function countersIn(b, m, idx) {
+  const out = [];
+  for (const p of b.pieces) {
+    const r = PBs.piece(p.name).role;
+    if (r !== 'wall' && r !== 'halfwall') continue;
+    const q = p.q || [0, 0, 0, 1];
+    if (Math.abs(q[0]) > 0.01 || Math.abs(q[2]) > 0.01) continue;
+    const o = Cks().aabb(p);
+    if (o.y0 > m.stand + 0.15 || o.y0 < m.stand - 0.3 || o.y1 < m.stand + 0.4 || o.y1 > m.stand + 1.5) continue;
+    const a = (p.yaw || 0) * Math.PI / 180, nx = Math.sin(a), nz = Math.cos(a);
+    if (!m.inside(p.x, p.z) && !m.inside(p.x + nx * 0.4, p.z + nz * 0.4) && !m.inside(p.x - nx * 0.4, p.z - nz * 0.4)) continue;
+    const len = Math.abs(Math.cos(a)) > 0.7 ? o.x1 - o.x0 : o.z1 - o.z0;
+    if (len < 0.5) continue;
+    if (idx.near({ x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1 }, 0).some(r2 => r2.p !== p && r2.p.decor && r2.b.y0 > o.y1 - 0.08 && r2.b.y0 < o.y1 + 0.4 && r2.p.x > o.x0 && r2.p.x < o.x1 && r2.p.z > o.z0 && r2.p.z < o.z1)) continue;
+    out.push({ p, o, len });
+  }
+  return out;
+}
+// Heaps (data/stands-corpus.json stacks): a stand set on or into another, a few centimeters off it (the level offset's
+// 25th, 50th and 75th percentile 4, 11 and 16 cm; both read as on a stand once one covers the other), at about its
+// height (rise median 0). Heaps of two are most (274 of 376), then five (28), three (41), four (18), six or more (15).
+// They mostly hold one kind: food under food 209 of the pairs read, drink 94, herbs 65.
+const HEAP = { houses: 0.3, share: [0.15, 0.5], more: [[1, 274], [2, 41], [3, 18], [4, 28], [5, 15]],
+  kinds: { food: 306, drink: 138, herbs: 123, shield: 44, trophy: 30, weapon: 27, rare: 14 } };
+function pileStands(b, idx, m, base, R, always) {
+  const Ck = Cks(), SH = SHs(), out = [];
+  // what the base stands on: the highest top under its foot that is not a stand
+  const supportAt = (x, z, y) => {
+    let t = null;
+    for (const r of idx.near({ x0: x - 0.02, x1: x + 0.02, z0: z - 0.02, z1: z + 0.02 }, 0)) {
+      if (isStand(r.p) || r.b.pass || r.b.x0 > x || r.b.x1 < x || r.b.z0 > z || r.b.z1 < z) continue;
+      const top = SH.lidAt(r.p, x, z) ?? (r.b.sol ? SH.topAt(r.b.sol, x, z) : null) ?? r.b.y1;
+      if (top == null || top > y + 0.25 || top < y - 0.05) continue;
+      if (t == null || top > t) t = top;
+    }
+    if (t == null && Math.abs(y - m.stand) < 0.05 && m.inside(x, z)) t = m.stand;
+    return t;
+  };
+  const t0 = supportAt(base.x, base.z, base.y);
+  if (t0 == null) return out;
+  // the heap's kind: what the base was asked for, else a kind heaped in the corpus
+  const [k0, at0] = (base.want || '').split('@');
+  let kind = k0;
+  if (!kind) { let tot = 0; for (const v of Object.values(HEAP.kinds)) tot += v; let r = R() * tot; for (const [k, v] of Object.entries(HEAP.kinds)) { r -= v; if (r <= 0) { kind = k; break; } } }
+  base.want = `${kind}@${at0 || ''}`;
+  let tot = 0;
+  for (const [, v] of HEAP.more) tot += v;
+  let r = R() * tot, n = 1;
+  for (const [k, v] of HEAP.more) { r -= v; if (r <= 0) { n = k; break; } }
+  const pile = [base];
+  for (let i = 0; i < n * 3 && out.length < n; i++) {
+    const from = pile[Math.floor(R() * pile.length)], a = R() * Math.PI * 2, d = 0.04 + 0.09 * R();
+    const x = +(from.x + Math.cos(a) * d).toFixed(3), z = +(from.z + Math.sin(a) * d).toFixed(3);
+    const t = supportAt(x, z, base.y);
+    if (t == null || Math.abs(t - t0) > 0.02) continue;
+    const yaw = Math.floor(R() * 8) * 45 + Math.round((R() - 0.5) * 30);
+    const y = +(base.y + (R() - 0.3) * 0.03).toFixed(3);
+    const q = { name: 'itemstandh', x, y, z, yaw: normS(yaw), decor: true, kb: base.kb, rest: 'on', want: `${kind}@${at0 || ''}`, heap: true };
+    { const h = q.yaw * Math.PI / 360; q.q = [0, +Math.sin(h).toFixed(6), 0, +Math.cos(h).toFixed(6)]; }
+    const o = Ck.aabb(q);
+    // clear of everything but the heap and what it stands on
+    if (idx.near(o, 0).some(r2 => !pile.includes(r2.p) && !isStand(r2.p) ? (r2.b.y1 > y + 0.01 && r2.b.y0 < o.y1 && r2.b.x0 < o.x1 && r2.b.x1 > o.x0 && r2.b.z0 < o.z1 && r2.b.z1 > o.z0 && !r2.b.pass) : (!pile.includes(r2.p) && r2.b.x0 < o.x1 - 0.01 && r2.b.x1 > o.x0 + 0.01 && r2.b.z0 < o.z1 - 0.01 && r2.b.z1 > o.z0 + 0.01 && r2.b.y0 < o.y1 && r2.b.y1 > o.y0))) continue;
+    // a clip made on purpose (D-098): the stands go into one another by up to their own height
+    q.fclip = Math.max(base.sunk ? base.fclip || 0 : 0, 0.045);
+    if (base.sunk) { q.sunk = true; }
+    base.fclip = Math.max(base.fclip || 0, 0.045);
+    base.heap = true;
+    pile.push(q); out.push(q); idx.add(q);
+  }
+  return out;
+}
 let DEBUG_S = null;
-const apiS = { debug: d => { DEBUG_S = d; }, dressTops, SETS, SILL, RAFTER, leanWeight, wallContext };
+const apiS = { debug: d => { DEBUG_S = d; }, dressTops, SETS, SILL, RAFTER, leanWeight, wallAtS };
 if (NODE_S) module.exports = apiS; else window.VHStands = apiS;
 
 })();
@@ -9434,9 +10269,10 @@ function clearLanes(b, ctx, rooms) {
           const list = units.get(u) || [];
           const drop = new Set(list);
           // what stands on these pieces goes too; when it may not go (the room's first chest), neither does what holds
-          // it up (a chest was left in the air over a bench taken out of a lane)
+          // it up (a chest was left in the air over a bench taken out of a lane); the set grows as it is walked, so what
+          // stands on a rider goes too (a bar counter's beam on its half wall)
           let keep = false;
-          for (const p of list) {
+          for (const p of drop) {
             const o = Ck.aabbShapes(p);
             for (const q of b.pieces) if (q.decor && !drop.has(q) && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > o.y0 + 0.2 && q.y < o.y1 + 0.6) {
               const qu = units.get(unitOf.get(q)) || [q];
@@ -9515,7 +10351,7 @@ if (NODE_L) module.exports = apiL; else window.VHLayout = apiL;
 //
 // Everything stands on the ground (y = 0, the design's lowest pivot, so the game sets it on the terrain). Nothing goes
 // in a doorway or the 2 m in front of a door, at the foot of a stair, or in front of the woodshed. Pieces made by the
-// generator's kit follow the biome's materials; the props (bushes, crops, flowers) are free in the game (D-066), and
+// generator's kit follow the biome's materials; props (bushes, crops, flowers, decor) go in any biome (D-065), and
 // every piece passes the materials check for the biome.
 const NODE_Y = typeof module !== 'undefined';
 const PY = NODE_Y ? require('./pieces.js') : window.VHPieces;
@@ -9561,7 +10397,7 @@ const CROP = [['Ashlands', 'Pickable_Barley'], ['Plains', 'Pickable_Barley'], ['
 // bushes that stay within about 1.5 m across (shrub_2 spreads 3.6 m and swallows a fence)
 const BUSHES = { 'Meadows': ['Bush01', 'RaspberryBush'], 'Black Forest': ['BlueberryBush', 'Bush02_en'], 'Swamp': ['Bush02_en'],
   'Mountain': ['Bush01_heath'], 'Plains': ['CloudberryBush', 'Bush01_heath'], 'Mistlands': ['Bush02_en'], 'Ashlands': ['AshlandsBush1', 'AshlandsBush2'] };
-const FLOWERS = ['Pickable_Dandelion', 'Pickable_Dandelion', 'Pickable_Mushroom', 'Pickable_Thistle'];
+const FLOWERS = ['Pickable_Dandelion', 'Pickable_Dandelion', 'Pickable_Mushroom', 'Pickable_Thistle', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Mushroom_blue'];
 
 function pickW(R, w) {
   const e = Object.entries(w).filter(([, v]) => v > 0), t = e.reduce((s, [, v]) => s + v, 0);
@@ -9881,7 +10717,10 @@ function add(b, ctx) {
   const solidNow = () => [...S.solid, ...placed.map(p => Ck.aabb(p))];
   // under the eaves (they reach 1 m past the walls, with braces under them) only low things: beds, benches, flowers
   const eave = o => o.y1 > G0 + 1.05 && o.x0 < S.W.x1 + 1.2 && o.x1 > S.W.x0 - 1.2 && o.z0 < S.W.z1 + 1.2 && o.z1 > S.W.z0 - 1.2;
-  const soft = p => { const o = Ck.aabb({ ...p, y: p.y + G0 }), c = { ...o, x0: o.x0 + 0.3, x1: o.x1 - 0.3, z0: o.z0 + 0.3, z1: o.z1 - 0.3 }; return !keep.some(z => hitBox(c, z, 0)) && inYard(c) && !placed.some(q => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < 0.35); };
+  // a plant's spread on the ground (half its widest side), so two of one kind keep out of one another
+  const sizeY = (NODE_Y ? require('./decorate.js') : window.VHDecorate)._int.size;
+  const spread = n => { const sz = sizeY(n); return Math.max(0.225, Math.max(sz[0], sz[2]) / 2); };
+  const soft = p => { const o = Ck.aabb({ ...p, y: p.y + G0 }), c = { ...o, x0: o.x0 + 0.3, x1: o.x1 - 0.3, z0: o.z0 + 0.3, z1: o.z1 - 0.3 }; return !keep.some(z => hitBox(c, z, 0)) && inYard(c) && !placed.some(q => q.name === p.name && Math.hypot(q.x - p.x, q.z - p.z) < Math.max(0.35, 2 * spread(p.name) - 0.1)); };
   const free = (p, pad = 0.1) => {
     const o = Ck.aabb({ ...p, y: p.y + G0 });
     const why = solidNow().some(z => hitBox(o, z, pad)) ? 'solid' : keep.some(z => hitBox(o, z, 0)) ? 'keep' : !inYard(o) ? 'out' : eave(o) ? 'eave' : null;
@@ -10022,7 +10861,10 @@ function add(b, ctx) {
     // a bush spreads about 3 m: 1.4 m in from the fence and 3 m from the next one
     const apart = s => !placed.some(q => bushes.includes(q.name) && Math.hypot(q.x - s.x, q.z - s.z) < 3);
     got.push(['bush', tryAt(fenceSpots(1.4).filter(apart), s => (apart(s) ? [{ name: bushes[Math.floor(R() * bushes.length)], x: s.x, y: 0, z: s.z, yaw: Math.floor(R() * 16) * 22.5, pad: 0.05 }] : null), big ? 3 : 2)]);
-    got.push(['flowers', tryAt(wallSpots(0.45), s => [0, 0.45, -0.45].map(a => ({ name: 'Pickable_Dandelion', x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
+    // three flowers in a row, spaced by their own spread so a fern and its neighbor do not grow into one another
+    const row = s => { const nm = a => FLOWERS[Math.abs(Math.round(s.x * 7 + s.z * 13 + a * 11)) % FLOWERS.length], m = nm(0), r = nm(0.45), l = nm(-0.45);
+      return [[m, 0], [r, spread(m) + spread(r)], [l, -(spread(m) + spread(l))]]; };
+    got.push(['flowers', tryAt(wallSpots(0.45), s => row(s).map(([name, a]) => ({ name, x: s.x + (s.n[1] ? a : 0), y: 0, z: s.z + (s.n[0] ? a : 0), yaw: Math.floor(R() * 4) * 90, soft: true, pad: 0 })), big ? 2 : 1)]);
   }
   // what the culture keeps in its yard (docs/CULTURE_STYLES.md): stone builders a pile of field stone, log builders a
   // second stack of logs, kitchen-garden cultures a second bed, the steppe a cart
@@ -10043,7 +10885,7 @@ function add(b, ctx) {
   dsNow = 2;
   if (decorOn('yardProps', 'd2') && kind === 'work') {
     const F = (NODE_Y ? require('./decorate.js') : window.VHDecorate).FURNITURE;
-    const okW = n => canY(ctx.biome, n) && (!F[n] || BIOMES_Y.indexOf(F[n].b) <= BIOMES_Y.indexOf(ctx.biome));
+    const okW = n => PY.decorOk(n, ctx.biome); // decor in any biome, building pieces the village's and the next (D-065)
     const along = (spots, list) => tryAt(spots, s => list.filter(([n]) => okW(n)).map(([n, a, d, turn, y]) => ({ name: n, x: s.x + Math.cos(s.yaw * Math.PI / 180) * a + s.n[0] * d,
       y: y || 0, z: s.z - Math.sin(s.yaw * Math.PI / 180) * a + s.n[1] * d, yaw: normY(s.yaw + (turn || 0)), pad: 0.05 })));
     const W = fenceSpots(0.8);
@@ -10138,7 +10980,7 @@ function tryPlan(runs, kit, S, door, clear) {
     if (dedup.some(p => { const o = Ck.aabb(p); return hitBox(o, gzIn, 0) && Math.hypot(p.x - g.x, p.z - g.z) > 1.05 && Math.abs((p.x - g.x) * -u[1] + (p.z - g.z) * u[0]) > 0.3; })) { dbg('gate fence'); continue; }
     // every fence piece clear of what is there and of the doorways, stairs and woodpiles
     const bad = dedup.find(p => !clear(p, 0.08, S.zones));
-    if (bad) { const o = Ck.aabb(bad); const by = clear.by; clear.by = null; const zz = S.zones.find(z => hitBox(o, z, 0.08)); dbg('fence ' + (bad.attach ? 'attach ' : '') + (by ? by.info.name : zz ? 'zone' + (zz.door ? ' door' : zz.tag || '') : '?') + (global.YV && by ? ' ' + JSON.stringify([bad.x, bad.z, bad.yaw, [o.x0, o.x1, o.z0, o.z1].map(v => +v.toFixed(2)), [by.x0, by.x1, by.y0, by.y1, by.z0, by.z1].map(v => +v.toFixed(2))]) : '')); continue; }
+    if (bad) { const o = Ck.aabb(bad); const by = clear.by; clear.by = null; const zz = S.zones.find(z => hitBox(o, z, 0.08)); dbg('fence ' + (bad.attach ? 'attach ' : '') + (by ? by.info.name : zz ? 'zone' + (zz.door ? ' door' : zz.tag || '') : '?') + (typeof global !== 'undefined' && global.YV && by ? ' ' + JSON.stringify([bad.x, bad.z, bad.yaw, [o.x0, o.x1, o.z0, o.z1].map(v => +v.toFixed(2)), [by.x0, by.x1, by.y0, by.y1, by.z0, by.z1].map(v => +v.toFixed(2))]) : '')); continue; }
     void Ck;
     if (!clear(gate, 0.05, S.zones.filter(z => !z.door))) { dbg('gate'); continue; }
     if (S.zones.some(z => z.door && hitBox(Ck.aabb(gate), z, -0.1))) continue;
@@ -10644,6 +11486,10 @@ function generate(req) {
   const early = (biome === 'Meadows' || biome === 'Black Forest') && (stage === 's1' || (stage === 's2' && !['longhouse', 'tavern', 'temple', 'tower'].includes(type)));
   C.early = early;
   const stoneOK = !!K.stoneWall && biome !== 'Meadows' && !early;
+  // the hearth's own stone from s2 in every biome (D-131); the Meadows makes no stone, so its hearths take the Black
+  // Forest's blocks and floors (marked hearthStone for the materials check, lib/pieces.js hearthStoneOk)
+  const KH = +stage[1] >= 2 && !K.stoneWall ? { ...K, stoneWall: 'stone_wall_2x1', stoneBlock: 'stone_wall_1x1', stoneFloor: 'stone_floor_2x2' } : K;
+  const hearthStoneOK = +stage[1] >= 2 && !!KH.stoneWall;
   // a request may name the storeys (1 to 3) and ask for a porch or none; otherwise the culture and type decide
   const askedStoreys = req.storeys >= 1 && req.storeys <= 3 ? Math.round(req.storeys) : null;
   const storeysOf = () => askedStoreys || (C.storeys && C.storeys[type] && C.storeys[type][stage]) || T.storeys[stage];
@@ -10902,10 +11748,13 @@ function generate(req) {
   if (ventAt && hipMain) ventAt = { x: Math.max(w0.cx - (w0.W - w0.D), Math.min(w0.cx + (w0.W - w0.D), ventAt.x)), z: w0.cz }; // over a hip ridge
   // a home's fire against a wall (hearthPlan): at a gable end under the ridge, half in the gable wall with a stone
   // stack outside, or against the back wall with a shaft out through the roof
-  const hearth = lit && ventAt ? hearthPlan({ T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK, F, stage, K, cells,
-    doors: [door, backDoor].filter(Boolean) }) : { spot: 'middle' };
+  const hearth = lit && ventAt ? hearthPlan({ T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK: hearthStoneOK, F, stage, K: KH, cells,
+    doors: [door, backDoor].filter(Boolean), area: cells.size * 4 * storeys, type }) : { spot: 'middle' };
   if (req.hearth === 'middle') hearth.spot = 'middle';
   info.hearth = hearth.spot;
+  if (hearth.why) info.hearthWhy = hearth.why;
+  if (hearth.moved) info.hearthMoved = hearth.moved;
+  if (hearth.movedHere) b.notes.push('The household moved the fire when the house was reworked at this stage; the roof over its old place is closed.');
   if (hearth.spot === 'end') ventAt = { x: hearth.x, z: hearth.z };
   if (hearth.spot === 'side' || hearth.spot === 'stack') ventAt = null;
   let flue = lit && ventAt ? flueRect(w0, ventAt, hipMain ? w0.W - w0.D : w0.W - 1) : null;
@@ -10928,10 +11777,18 @@ function generate(req) {
     const walled = ([x, z]) => [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => !roomCell(x + dx, z + dz));
     // a home keeps its fire against a wall most of the time (hearthPlan's odds for the culture, from the household's
     // own stream): a cell along an outer wall, the far corner first
-    const wtF = HEARTHS[cultureKey] || HEARTHS.default, homeWall = T.use === 'home' && !thick && rng((lineage * 92821 + strHash(cultureKey) * 7 + 5) >>> 0)() >= wtF.middle;
-    if (homeWall) info.hearth = 'wall';
-    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && walled([x, z]) ? 50 : 0) +
-      (homeWall && !walled([x, z]) ? 8 : 0) + (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz);
+    // (the stage's draw, hearthDraw: the fire may move between stages, D-132). A thick stone wall takes the fire in a
+    // niche: it stands half a cell out from the wall, under an opening over its cell and the next (the wall hearth of
+    // the stone houses of the Levant and Arabia, a fire niche with a flue in the wall)
+    const fd = hearthDraw(lineage, cultureKey, stage, M, cells.size * 4 * storeys, T.use === 'hall', T.use === 'hall' ? strHash(type) : 0, 4 * w0.W * w0.D), homeWall = fd.spot0 !== 'middle';
+    { info.hearth = homeWall ? 'wall' : 'middle'; if (!homeWall) info.hearthWhy = 'drawn'; if (fd.moved) info.hearthMoved = fd.moved; if (fd.moved === stage) b.notes.push('The household moved the fire when the house was reworked at this stage; the roof over its old place is closed.'); }
+    const score = ([x, z]) => (doorEdges.some(e => Math.hypot(e.x - x, e.z - z) < 2.5) ? 100 : 0) + (thick && !homeWall && walled([x, z]) ? 50 : 0) +
+      (homeWall && !walled([x, z]) ? 8 : 0) + (plan === 'court' ? -1 : 1) * Math.hypot(x - doorX, z - w0.cz) * (homeWall && fd.moved ? 0.25 : 1) +
+      (homeWall && fd.moved ? fd.sg * (x - w0.cx) * 0.5 : 0) +
+      // where the wing opens into the next one people walk through: a wall fire keeps off that cell
+      (homeWall && [[2, 0], [-2, 0], [0, 2], [0, -2]].some(([dx, dz]) => roomCell(x + dx, z + dz) && !inside(w0, x + dx, z + dz)) ? 12 : 0) +
+      // in a thick-walled corner a long iron spit fits along neither wall: a niche in one wall comes first
+      (thick && homeWall && [[2, 0], [-2, 0]].some(([dx]) => !roomCell(x + dx, z)) && [[0, 2], [0, -2]].some(([, dz]) => !roomCell(x, z + dz)) ? 6 : 0);
     flatCell = [...cells.values()].filter(([x, z]) => inside(w0, x, z) && !gallery.has(`${x},${z}`)).sort((a, c) => score(a) - score(c))[0] || null;
     if (flatCell) flue = cellRect(flatCell);
     // beside a thick wall the fire would reach into it: it goes between this cell and the next one away from the
@@ -10945,8 +11802,8 @@ function generate(req) {
       const over = [[x, z], [x + sx, z], [x, z + sz], [x + sx, z + sz]].filter(([cx, cz], i, a) => a.findIndex(([ax, az]) => ax === cx && az === cz) === i);
       if (near.length && over.every(([cx, cz]) => cells.has(`${cx},${cz}`) && !gallery.has(`${cx},${cz}`) && !doorEdges.some(d => Math.hypot(d.x - cx, d.z - cz) < 1.1))) {
         flue = { x0: Math.min(x, x + sx) - 1, x1: Math.max(x, x + sx) + 1, z0: Math.min(z, z + sz) - 1, z1: Math.max(z, z + sz) + 1 };
-        flatCell = [x + sx / 2, z + sz / 2];
-      }
+        flatCell = homeWall ? [x + sx / 4, z + sz / 4] : [x + sx / 2, z + sz / 2];
+      } else if (homeWall && !near.length) { info.hearth = 'middle'; info.hearthWhy = 'thick wall, no room'; }
     }
   }
   const doorCell = [door.cell[0], door.cell[1]];
@@ -10956,7 +11813,9 @@ function generate(req) {
   // last one up to a hatch
   const climbsUp = storeys - 1 + (flat && !lookout ? 1 : 0);
   const cellsG = loggia ? new Map([...cells].filter(([, c]) => !inLoggia(c))) : cells; // the ground rooms' cells
-  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue: stackKeep || flue }) : [];
+  // (a ladder keeps a cell off a wall hearth where it can: the spit on the fire reaches a metre either side)
+  const fireRing = ['side', 'end'].includes(hearth.spot) ? cellRect([hearth.x, hearth.z]) : null;
+  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue: stackKeep || flue, ring: fireRing }) : [];
   // a straight stair along a wall in place of the first ladder, where a long enough wall has room for it (most of the
   // best-liked builds climb by stairs; bench: req.details.stair true or false)
   const stairWanted = req.details && req.details.stair != null ? req.details.stair
@@ -10979,7 +11838,7 @@ function generate(req) {
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
   dctx.profile.overhang = req.details && req.details.overhang != null ? req.details.overhang : true;
   dctx.profile.dormers = +stage[1] >= 2 && ['frankish-norman', 'anglo-saxon', 'castle-medieval', 'slavic', 'norse-highland', 'baltic'].includes(cultureKey) &&
-    ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45;
+    ['home', 'tavern', 'longhouse', 'storage', 'workshop'].includes(type) && dctx.R() < 0.45 && plan !== 'gables'; // (a gable row's long walls meet in valleys)
   dctx.profile.dormerPair = dctx.R() < 0.5;
   // a gate as the front door of work and store buildings (coverage audit: gates on 65 % of the best-liked builds)
   dctx.profile.gateDoor = +stage[1] >= 2 && !T.bigDoor && ['longhouse', 'storage', 'workshop', 'smithy', 'sawmill', 'farm'].includes(type) && SH >= 3 && dctx.R() < 0.6;
@@ -11312,14 +12171,27 @@ function generate(req) {
   if (wantOut && ['gable', 'hip'].includes(roofKind) && !flat && F < 1.01 && !T.tower && !C.stoneWalls) outshut(b, K, C, wings, edges, F, SH, dctx.R, decor);
   // a stone chimney stack against a gable end, from the ground to past the ridge (bench: req.details.stack)
   const wantStack = dctx.profile.stack != null ? dctx.profile.stack
-    : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.6;
+    : stoneOK && stage !== 's1' && ['home', 'longhouse', 'tavern', 'smithy', 'temple'].includes(type) && dctx.R() < 0.6
+    // the stack on a middle-fire home is part of its stone hearth (D-131: wood at s1, stone from s2 in the Meadows and
+    // later biomes); drawn from a stream of its own so the rest of the house comes out as before
+    || (!stoneOK && hearthStoneOK && type === 'home' && rng((lineage * 4099 + strHash(cultureKey) * 13 + 0x57ac) >>> 0)() < 0.6);
   // (a home with a wall hearth has its chimney already: the stack it was rebuilt with, or the hood's shaft)
-  if (hearth.spot === 'stack' && !hearthStack(b, K, C, w0, hearth, { F, SH, storeys, top: roofTop, notes: b.notes })) { hearth.spot = 'middle'; info.hearth = 'middle'; }
-  if (wantStack && hearth.spot === 'middle' && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '')) chimneyStack(b, K, wings, edges, dctx.profile, dctx.R, { C, SH, F, storeys });
+  if (hearth.spot === 'stack' && !hearthStack(b, KH, C, w0, hearth, { F, SH, storeys, top: roofTop, notes: b.notes })) {
+    // something stands outside that gable (a deck, a lean-to): the fire goes to the middle, under ridge caps taken out
+    // over it, clear of the climbs
+    hearth.spot = 'middle'; info.hearth = 'middle'; info.hearthWhy = 'stack blocked';
+    const at = { x: Math.max(w0.cx - w0.W + 1, Math.min(w0.cx + w0.W - 1, doorX)), z: w0.cz }, fr = flueRect(w0, at, w0.W - 1);
+    const climbs = ladders.flatMap(l => [l.hole, l.land, l.stand, ...(l.run || [])].filter(Boolean));
+    if (fr && !climbs.some(c => inRect(fr, c[0], c[1], -0.1))) {
+      const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && inRect(fr, p.x, p.z) && p.y > F + storeys * SH - 0.3);
+      if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y, rect: rectOf(caps), from: storeys > 1 ? F + SH : caps[0].y });
+    }
+  }
+  if (wantStack && hearth.spot === 'middle' && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && F < 1.01 && !/stone|marble|grausten/.test(C.wallStyle || '')) chimneyStack(b, stoneOK ? K : KH, wings, edges, dctx.profile, dctx.R, { C, SH, F, storeys, hearthStone: !stoneOK });
   // a balcony on a gable end, from the upper room (coverage audit: on 46 % of the best-liked builds; bench: req.details.balcony)
   const wantBalc = dctx.profile.balcony != null ? dctx.profile.balcony
     : stage !== 's1' && storeys >= 2 && ['home', 'tavern', 'longhouse', 'workshop'].includes(type) && dctx.R() < 0.5;
-  if (wantBalc && !b.gallery && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && !loggia) balcony(b, K, C, wings[0], edges, { F, SH, ladders, cells, hearthSg: ['end', 'stack'].includes(hearth.spot) || (hearth.spot === 'side' && hearth.corner) ? hearth.sg : null });
+  if (wantBalc && !b.gallery && roofKind === 'gable' && plan !== 'gables' && !flat && !T.tower && !loggia) balcony(b, K, C, wings[0], edges, { F, SH, ladders, cells, hearthSg: ['end', 'stack'].includes(hearth.spot) || (hearth.spot === 'side' && hearth.corner) ? hearth.sg : flueEnd(hearth, flue, w0) });
   Details.exterior(b, dctx);
   clearDoorways(b);
   // the fire's place for the decorator: under the ridge vent, or a cell of a flat roof (a chimney goes up from it),
@@ -11330,11 +12202,18 @@ function generate(req) {
   if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt, persona: household, layout: layoutCtx });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
   if (!req.skipDecor) tidyFurniture(b);
-  if (!req.skipDecor && stoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, K);
+  if (!req.skipDecor && hearthStoneOK && F < 0.01 && !C.stoneWalls) hearthstone(b, KH);
   if (!req.skipDecor) { const zones = keepClear(b); Details.interior(b, { ...dctx, zones }); Kitbash.apply(b, { ...dctx, decor, layout: layoutCtx }, zones); doorLights(b, { biome, decor, F }); }
   else Details.commitMotifs(b, dctx); // bare builds (ranked before furnishing) carry the same wall trim
   if (Yards.wants(req, type, stage)) Yards.add(b, { K, C, type, stage, biome, cultureKey, decor: req.skipDecor ? 'd1' : decor, seed, opts: req.yard, details: req.details, persona: household }); // a yard round stage 2 and 3 homes and farms (lib/yards.js, D-060)
   return finish(b, info);
+}
+
+// The gable end a middle fire's chimney stands near (within 2.5 m of the gable), or null: the balcony keeps to the other
+// end (a fire in line with the door of a short wing put the plank chimney across the balcony's door).
+function flueEnd(hearth, flue, w0) {
+  if (hearth.spot !== 'middle' || !flue || !w0) return null;
+  return [-1, 1].find(sg => Math.abs(w0.cx + sg * w0.W - (sg > 0 ? flue.x1 : flue.x0)) < 2.5) || null;
 }
 
 // A balcony on a gable end: the upper storey's middle bay becomes a door onto a 2 m square floor with a hand rail on
@@ -11488,9 +12367,8 @@ const hits = (bx, z) => bx.x0 < z.x1 && bx.x1 > z.x0 && bx.y0 < z.y1 && bx.y1 > 
 // chimney.
 function settle(b, ctx) {
   const Ck = checksLib(), ord = P.BIOME_ORDER, limit = ord.indexOf(ctx.biome);
-  // (lights and the fire's dressing follow the shared decor rule, lib/pieces.js decorOk: Tyler, 2026-11-10)
-  const dressing = p => P.piece(p.name).role === 'light' || /^(fire_pit|hearth|piece_cookingstation|piece_cookingstation_iron|piece_cauldron)$/.test(p.name);
-  b.pieces = b.pieces.filter(p => !p.decor || ord.indexOf(P.needs(p.name)) <= limit || (dressing(p) && P.decorOk(p.name, ctx.biome)));
+  // decor goes in any biome; building pieces the biome and the next (D-065, D-126: lib/pieces.js decorOk, the one rule)
+  b.pieces = b.pieces.filter(p => !p.decor || P.decorOk(p.name, ctx.biome));
 
   const isFire = p => p.decor && /^(fire_pit|hearth)$/.test(p.name);
   const ground = b.rooms.filter(r => !r.upper);
@@ -11527,7 +12405,10 @@ function settle(b, ctx) {
     // 0.75 m toward the room's middle; a hearth (4 x 3 m in the game) that still does not fit becomes a fire pit
     const walls = b.pieces.filter(p => !p.decor && ['wall', 'pole', 'stair'].includes(P.piece(p.name).role)).map(p => Ck.aabb(p));
     const clear0 = keepClear(b).filter(z => !(fire.x > z.x0 && fire.x < z.x1 && fire.z > z.z0 && fire.z < z.z1)); // doorways and climbs, not the zone it is in already
-    const clips = () => { const o = Ck.aabb(fire); return walls.some(w => w.x0 < o.x1 - 0.05 && w.x1 > o.x0 + 0.05 && w.z0 < o.z1 - 0.05 && w.z1 > o.z0 + 0.05 && w.y0 < o.y1 && w.y1 > o.y0 + 0.05) ||
+    // (the pot or spit on the fire moves with it, and an iron spit is wider than the fire pit: it must clear the walls too)
+    const pots = b.pieces.filter(p => p.decor && p !== fire && /cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - fire.x, p.z - fire.z) < 0.4);
+    const inWall = o => walls.some(w => w.x0 < o.x1 - 0.05 && w.x1 > o.x0 + 0.05 && w.z0 < o.z1 - 0.05 && w.z1 > o.z0 + 0.05 && w.y0 < o.y1 && w.y1 > o.y0 + 0.05);
+    const clips = () => { const o = Ck.aabb(fire); return inWall(o) || pots.some(p => inWall(Ck.aabb({ ...p, x: fire.x, z: fire.z }))) ||
       clear0.some(z => hits({ ...o, x0: o.x0 + 0.15, x1: o.x1 - 0.15, z0: o.z0 + 0.15, z1: o.z1 - 0.15 }, z)); };
     if (clips()) {
       const rm = mainRoom || { x0: fire.x - 1, x1: fire.x + 1, z0: fire.z - 1, z1: fire.z + 1 };
@@ -11540,9 +12421,29 @@ function settle(b, ctx) {
         const tries = [[0, 0]];
         for (const t of [0.25, 0.5, 0.75, 1]) for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) tries.push([dx * t, dz * t]);
         tries.sort((p1, p2) => Math.hypot(...p1) - Math.hypot(...p2) || ((p2[0] * (cx - x0) + p2[1] * (cz - z0)) - (p1[0] * (cx - x0) + p1[1] * (cz - z0))));
-        for (const [dx, dz] of tries) {
-          fire.x = +(x0 + dx).toFixed(3); fire.z = +(z0 + dz).toFixed(3);
-          if (!clips()) { ok = true; break; }
+        const slide = () => {
+          for (const [dx, dz] of tries) {
+            fire.x = +(x0 + dx).toFixed(3); fire.z = +(z0 + dz).toFixed(3);
+            if (!clips()) return true;
+          }
+          return false;
+        };
+        ok = slide();
+        // a long iron spit by a wall turns along the other wall, or a short wooden spit takes its place, or the fire
+        // stays bare
+        if (!ok && pots.length) {
+          for (const p of pots) { p.yaw = ((p.yaw || 0) + 90) % 360; p.q = quat(p.yaw); }
+          ok = slide();
+          if (!ok && pots.some(p => p.name === 'piece_cookingstation_iron')) {
+            for (const p of pots) if (p.name === 'piece_cookingstation_iron') { p.name = 'piece_cookingstation'; p.yaw = ((p.yaw || 0) + 270) % 360; p.q = quat(p.yaw); }
+            ok = slide();
+          }
+          if (!ok) {
+            const gone = new Set(pots);
+            b.pieces = b.pieces.filter(p => !gone.has(p));
+            pots.length = 0;
+            ok = slide();
+          }
         }
         if (!ok) { fire.x = x0; fire.z = z0; }
         if (ok) break;
@@ -11685,7 +12586,7 @@ function hangBraziers(b, ctx, fire) {
 function bedIfNone(b, ctx, fire, zones) {
   const Ck = checksLib(), ord = P.BIOME_ORDER, limit = ord.indexOf(ctx.biome);
   const fits = n => ord.indexOf(P.needs(n)) <= limit;
-  if (b.pieces.some(p => P.piece(p.name).role === 'bed' && fits(p.name))) return;
+  if (b.pieces.some(p => P.piece(p.name).role === 'bed' && P.decorOk(p.name, ctx.biome))) return; // any bed counts (D-126)
   // the best bed first, the narrow wooden one where the best does not fit (between a hall's aisle posts); head to the
   // wall, else along the wall (a hall's side benches)
   const names = ['ashwood_bed', 'piece_bed02', 'bed'].filter(n => fits(n) && (n !== 'ashwood_bed' || ctx.biome === 'Ashlands'));
@@ -11764,7 +12665,7 @@ function hearthstone(b, K) {
     const o = Ck.aabb(fire);
     for (const p of b.pieces) {
       if (p.decor || p.name !== K.floor || Math.abs(p.y - fire.y) > 0.4 || p.y > 0.3) continue;
-      if (p.x - 1 < o.x1 - 0.1 && p.x + 1 > o.x0 + 0.1 && p.z - 1 < o.z1 - 0.1 && p.z + 1 > o.z0 + 0.1) { p.name = stone; p.y = +(p.y - 0.4).toFixed(3); p.hearth = true; }
+      if (p.x - 1 < o.x1 - 0.1 && p.x + 1 > o.x0 + 0.1 && p.z - 1 < o.z1 - 0.1 && p.z + 1 > o.z0 + 0.1) { p.name = stone; p.y = +(p.y - 0.4).toFixed(3); p.hearth = true; p.hearthStone = true; }
     }
   }
   if (b.pieces.some(p => p.hearth)) b.notes.push('Stone flags under the fire.');
@@ -11832,13 +12733,12 @@ function dropOrphans(b) {
 const STAND_IN = { piece_chest_barrel: 'piece_chest_wood', piece_logbench01: 'piece_bench01', piece_groundtorch: 'piece_groundtorch_wood',
   piece_chest: 'piece_chest_wood', piece_cookingstation_iron: 'piece_cookingstation', hearth: 'fire_pit' };
 function biomeSafe(b, biome) {
-  const ord = P.BIOME_ORDER, limit = ord.indexOf(biome), fits = n => ord.indexOf(P.needs(n)) <= limit;
+  const ord = P.BIOME_ORDER, limit = ord.indexOf(biome) + 1, fits = n => ord.indexOf(P.needs(n)) <= limit;
   const Ck = checksLib(), gone = [];
   b.pieces = b.pieces.filter(p => {
-    // minor decor goes anywhere (D-066); other decor one biome further, as the furnishing chose it (D-080,
-    // lib/pieces.js decorOk: a log bench of a Meadows couch was swapped here for a plank bench that went into the
-    // couch's half wall)
-    if (fits(p.name) || P.piece(p.name).structural || (p.decor && (P.minor(p.name) || P.decorOk(p.name, biome)))) return true;
+    // decor goes in any biome (D-065, Tyler 2026-11-10), as the furnishing chose it (a log bench of a couch swapped
+    // here for a plank bench went into the couch's half wall); building pieces the village's biome and the next
+    if (fits(p.name) || P.piece(p.name).structural || (p.decor && P.decorOk(p.name, biome))) return true;
     const alt = STAND_IN[p.name];
     if (alt && fits(alt)) { p.name = alt; return true; }
     if (p.decor) gone.push(Ck.aabb(p));
@@ -11936,21 +12836,92 @@ const HEARTHS = {
   slavic: { middle: 0, end: 0.15, side: 0.85, stack: 0.3, front: true, corner: 0.9 },
   'east-asian': { middle: 0.5, end: 0.2, side: 0.3, stack: 0.2 },
   byzantine: { middle: 0.2, end: 0.4, side: 0.4, stack: 0 },
+  // a Svan house keeps the middle hearth more often (the machub's hearth stood in the room); the stone houses of the
+  // Levant and Arabia put the fire in a niche in the thick wall (flat roofs: the wall cell, generate)
+  lamari: { middle: 0.35, end: 0.4, side: 0.25, stack: 0 },
+  'middle-eastern': { middle: 0.15, end: 0.45, side: 0.4, stack: 0 },
 };
-// The plan is drawn from the household's own stream (the lineage), so the fire keeps its place from stage to stage;
-// the end is the one the house does not grow toward. A blocked end falls back to the corner at that end, then to the
-// middle. Returns { spot, sg, u, sv, x, z, stack } in world metres for the main wing.
+// Where the household lays its fire at a stage (D-132, Tyler: "Fireplaces can move spots"). The first fire is drawn at
+// s1 from the household's own stream, at the end the house does not grow toward. At each later stage the household
+// may rework it and draw again from the culture's odds: 30 % at a stage that changes the house (a wing, more length,
+// a storey), 8 % at one that keeps the same shell. Moving a fire means a new hood or shaft and patching the roof over
+// the old one, so a household mostly does it while the builders are in anyway; a stage that only furnishes and
+// dresses the house seldom does. These rates are a choice (the corpus has no house seen at two stages). There is no
+// fixed interval: each stage draws on its own. Returns { spot0, sg, corner, stackDraw, moved, before } where moved names
+// the stage the fire last moved at (or null) and before is the draw it moved from.
+const HEARTH_MOVE = { grew: 0.3, kept: 0.08 };
+// The culture's stack odds scaled to the corpus: a stone stack past the roof over 13 of 443 home wall fires (3 %,
+// corpus-hearths-lights.json ventByKind). With stone hearths open to every biome from s2 (D-131) the unscaled odds gave
+// 9 % of s2 and s3 wall fires, half of them 3 % (lab/hearths/spotmix.js, 14 seeds).
+const STACK_SHARE = 0.5;
+// A hall or tavern where people gather: in the corpus 32 % of the fires in halls and taverns over 80 m2 stand in the
+// middle, 29 % half in the wall, 16 % against it and 16 % in an alcove (docs/INTERIOR_DESIGN.md). The middle odds are
+// set under a third because halls whose wings leave no free wall keep the middle anyway (lab/hearths/hallmix.js: 37 %
+// of those over 80 m2 in all). The stone stack odds stay the culture's.
+// The middle odds in a home whose main room is under 80 m2: about 2 % of those homes draw the middle (lab/hearths/
+// roommix.js), against 3 of 204 in the corpus.
+const MID_SMALL_ROOM = 0.05;
+const HALL_HEARTH = { middle: 0.22, end: 0.4, side: 0.25, front: false, corner: 0.3 };
+function hearthDraw(lineage, cultureKey, stage, M, area, hall, salt = 0, room = null) {
+  const wt = hall ? { ...(HEARTHS[cultureKey] || HEARTHS.default), ...HALL_HEARTH } : HEARTHS[cultureKey] || HEARTHS.default;
+  // the culture's middle odds by the room the fire serves: in the corpus 3 of 204 home fires in rooms under 80 m2 stand
+  // in the middle (none of 67 at 35 to 80 m2), 74 of 325 in rooms of 80 m2 or more (corpus-hearths-lights.json
+  // homePlaceByServedRoom); over that, a big house's hall gathers round it more often (floor area)
+  const mid = hall ? wt.middle : wt.middle * (room != null && room < 80 ? MID_SMALL_ROOM : area == null ? 1 : area < 120 ? 0.3 : area < 250 ? 0.6 : 0.9);
+  const draw = (R, sgFirst) => {
+    const spot0 = pick(R, { middle: mid, end: wt.end, side: wt.side });
+    const sgR = R() < 0.5 ? -1 : 1;
+    return { spot0, sg: sgFirst || sgR, corner: R() < (wt.corner != null ? wt.corner : 0.5), stackDraw: R(), moved: null };
+  };
+  let d = draw(rng((lineage * 92821 + strHash(cultureKey) * 7 + 5 + salt) >>> 0), M && M.fam.growSide ? -M.fam.growSide : 0);
+  const order = ['s1', 's2', 's3'], upTo = Math.max(0, order.indexOf(stage));
+  const sig = st => st ? `${st.W}x${st.D}|${st.specs.length}|${st.storeys}|${st.round ? 1 : 0}` : null;
+  for (let i = 1; i <= upTo; i++) {
+    const R = rng((lineage * 92821 + strHash(cultureKey) * 7 + 5 + salt + i * 7919) >>> 0);
+    const grew = !M || sig(M.states[order[i]]) !== sig(M.states[order[i - 1]]);
+    if (R() >= (grew ? HEARTH_MOVE.grew : HEARTH_MOVE.kept)) continue;
+    const n = draw(R, 0);
+    // a stone rebuild keeps its draw (the stack odds are the household's), and the new place must differ from the old
+    if (n.spot0 === d.spot0 && n.sg === d.sg) n.sg = -n.sg;
+    d = { ...n, stackDraw: d.stackDraw, moved: order[i], before: d };
+  }
+  return d;
+}
+
+// The plan for the stage comes from hearthDraw. A blocked end falls back to the corner at that end, then to the
+// middle. Returns { spot, sg, u, sv, x, z, stack } in world metres for the main wing, or { spot: 'middle', why }.
 function hearthPlan(o) {
   const { T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK, F, doors, stage, K, cells } = o;
   const w0 = wings[0];
-  const none = { spot: 'middle' };
-  if (T.use !== 'home' || T.tower || flat || !['gable', 'hip'].includes(roofKind) || plan === 'gables' || w0.alpha !== 0 || form || w0.W < 3 || w0.D < 3) return none;
-  const HR = rng((lineage * 92821 + strHash(cultureKey) * 7 + 5) >>> 0);
-  const wt = HEARTHS[cultureKey] || HEARTHS.default;
-  const spot0 = pick(HR, { middle: wt.middle, end: wt.end, side: wt.side });
-  const sg = M && M.fam.growSide ? -M.fam.growSide : (HR() < 0.5 ? -1 : 1);
-  const corner = HR() < (wt.corner != null ? wt.corner : 0.5), stackDraw = HR();
-  if (spot0 === 'middle') return none;
+  const why = w => ({ spot: 'middle', why: w });
+  const hall = T.use === 'hall';
+  if (T.use !== 'home' && !hall) return why('not a home');
+  if (T.tower) return why('tower');
+  if (flat) return why('flat');
+  if (!['gable', 'hip'].includes(roofKind)) return why(`roof ${roofKind}`);
+  if (form && !['svan', 'gables'].includes(form)) return why(`form ${form}`);
+  if (w0.W < 3 || w0.D < 3) return why('small');
+  const wt = hall ? { ...(HEARTHS[cultureKey] || HEARTHS.default), ...HALL_HEARTH } : HEARTHS[cultureKey] || HEARTHS.default;
+  const hd = hearthDraw(lineage, cultureKey, stage, M, o.area, hall, hall ? strHash(o.type || '') : 0, 4 * w0.W * w0.D);
+  const { spot0, corner, stackDraw, moved } = hd;
+  let sg = hd.sg;
+  // the stage the fire moved at, when the move changes where it stands (a row of gable houses has one wall place)
+  const movedHere = hd.moved === stage && hd.before && (plan === 'gables' ? (hd.before.spot0 === 'middle') !== (spot0 === 'middle') : form === 'svan' ? hd.before.spot0 !== spot0 : true);
+  if (spot0 === 'middle') return { ...why('drawn'), moved, movedHere };
+  // a row of gable houses (Icelandic): the fire against the back gable of the main row, under its ridge, the door in
+  // the front gable (the hearth in a turf house's own row by the back wall)
+  if (plan === 'gables') {
+    const ends = [-1, 1].map(s1 => {
+      const [x, z] = toWorld(w0, s1 * (w0.W - 1), 0, 0).map(c => Math.round(c) + 0);
+      return { s1, x, z };
+    }).filter(e => cells.has(`${e.x},${e.z}`) && !doors.some(d => Math.hypot(d.x - e.x, d.z - e.z) < 2.2) && !wings.some(w => w !== w0 && inside(w, e.x, e.z, -0.1)));
+    ends.sort((a, c) => c.z - a.z);
+    if (!ends.length) return { ...why('gables: no free back end'), moved };
+    return { spot: 'end', sg: ends[0].s1, x: ends[0].x, z: ends[0].z, xW: NaN, rot: true, moved, movedHere };
+  }
+  if (w0.alpha !== 0) return why('turned wing');
+  // a Svan house: the tower stands at the back corner of the +x end from s2, so the fire keeps to the other end
+  if (form === 'svan') sg = -1;
   const hip = roofKind === 'hip';
   const sv0 = wt.front ? -1 : 1;
   const nearDoor = (x, z, d = 2.4) => doors.some(e => Math.hypot(e.x - x, e.z - z) < d);
@@ -11960,16 +12931,23 @@ function hearthPlan(o) {
     const xW = w0.cx + s1 * w0.W, x = xW - s1, z = w0.cz;
     if (hip || wings.some(w => w !== w0 && (inside(w, xW + s1 * 1.5, z, 0.3) || inside(w, x, z, 0.3)))) return null;
     if (!cell(x, z) || nearDoor(x, z, 2.2)) return null;
-    const stack = stoneOK && !C.stoneWalls && F < 1.01 && stage !== 's1' && K.stoneWall && /2x1/.test(K.stoneWall) && stackDraw < (wt.stack || 0);
+    const stack = stoneOK && !C.stoneWalls && F < 1.01 && stage !== 's1' && K.stoneWall && /2x1/.test(K.stoneWall) && stackDraw < (wt.stack || 0) * STACK_SHARE;
     return { spot: stack ? 'stack' : 'end', sg: s1, x, z, xW };
   };
-  const sideAt = (u, sv) => {
+  // a wing that runs the main wing on at the same depth and turn carries its walls and roof on (a nave, an annex)
+  const runsOn = w => w.alpha === w0.alpha && Math.abs(w.cz - w0.cz) < 0.01 && Math.abs(w.D - w0.D) < 0.01;
+  const sideAt = (u, sv, loose) => {
     if (Math.abs(u) > w0.W - 1) return null;
     const x = w0.cx + u, z = w0.cz + sv * (w0.D - 1);
-    if (!cell(x, z) || nearDoor(x, z)) return null;
+    if (!cell(x, z) || nearDoor(x, z, loose ? 2.2 : 2.4)) return null;
     // nothing joins the wall behind it (a back wing, a cross wing), and the cells beside it are this wing's
-    if (wings.some(w => w !== w0 && (inside(w, x, z + sv * 2, 0.5) || inside(w, x + 2, z, 0.2) || inside(w, x - 2, z, 0.2)))) return null;
-    return { spot: 'side', sg: Math.sign(u) || sg, sv, u, x, z, corner: Math.abs(Math.abs(u) - (w0.W - 1)) < 0.01 };
+    if (wings.some(w => w !== w0 && inside(w, x, z + sv * 2, 0.5))) return null;
+    const by = dx => wings.some(w => w !== w0 && !(loose && runsOn(w)) && inside(w, x + dx, z, 0.2));
+    // the last pass (loose) takes a wall cell with another wing's floor on one side: the hearth stands at the wall
+    // beside the opening into that wing, its shaft out through whatever roof is over its cell; the wall bay next to a
+    // door will do (2.2 m, as for an end hearth)
+    if (loose ? by(2) && by(-2) : by(2) || by(-2)) return null;
+    return { spot: 'side', sg: Math.sign(u) || sg, sv, u, x, z, corner: Math.abs(Math.abs(u) - (w0.W - 1)) < 0.01, loose: !!loose };
   };
   // the household's first choice, then the nearest others: the other wall at the same end, the end itself, and only
   // then the other end (a wing built on later can take the gable a hearth stood against)
@@ -11983,8 +12961,10 @@ function hearthPlan(o) {
   for (let u = -w0.W + 1; u <= w0.W - 1; u += 2) bays.push(u);
   bays.sort((a, c) => Math.abs(a - sg * w0.W) - Math.abs(c - sg * w0.W));
   tries.push(...bays.map(u => () => sideAt(u, sv0)), ...bays.map(u => () => sideAt(u, -sv0)));
-  for (const t of tries) { const h = t(); if (h) return h; }
-  return none;
+  // then the same bays beside another wing's floor (s3 cross, T and U plans whose wings take every other wall cell)
+  tries.push(...bays.map(u => () => sideAt(u, sv0, true)), ...bays.map(u => () => sideAt(u, -sv0, true)));
+  for (const t of tries) { const h = t(); if (h) return { ...h, moved, movedHere }; }
+  return { ...why('no free wall'), moved, movedHere };
 }
 
 // The chimney's footprint: the ridge caps within a metre of the vent (caps sit every 2 m from -maxU to maxU), the
@@ -12037,6 +13017,7 @@ function ladderPlan(cells, n, o = {}) {
       if (prev && (same(L.hole, prev.hole) || same(L.stand, prev.hole) || same(L.land, prev.hole))) continue;
       if (k === 0 && [o.door, o.back].some(d => d && (near(L.stand, d, 0) || near(L.hole, d, 0)))) continue;
       let score = (L.wallSide ? 10 : 0);
+      if (o.ring && [L.stand, L.hole, L.land].some(c => inRect(o.ring, c[0], c[1], 1.1))) score -= 12;
       if (prev && same(L.stand, prev.land)) score += 30;
       if (k === 0 && o.door) score += Math.min(8, Math.hypot(L.hole[0] - o.door[0], L.hole[1] - o.door[1]));
       if (score > bestScore + 1e-9) { best = L; bestScore = score; }
@@ -12805,18 +13786,18 @@ function hearthStack(b, K, C, w0, h, o) {
   takeOut(b, p => !p.decor && (/roof/.test(role(p)) || rakeTrim(p)) && hit(Ck.aabb(p), F + 2));
   // the opening: the ground storey's middle bay out, then a lintel beam at 2 m and planks over it to the wall top
   takeOut(b, p => !p.decor && Math.abs(p.x - xW) < 0.6 && Math.abs(p.z - z) < 0.95 && ['wall', 'window', 'door', 'beam'].includes(role(p)) && (a => a.y1 <= F + SH + 0.02 && a.y1 > F + 0.05)(Ck.aabb(p)));
-  const T2 = { trim: true };
+  const T2 = { trim: true }, TS = { trim: true, hearthStone: true }; // (stone pieces marked for D-131)
   b.put(K.beam || 'wood_beam', xW, F + 1.9, z, 90);
   for (let y = F + 2.2; y < F + SH - 0.01; y += 1) b.put(K.wallHalf, xW, Math.min(y + 0.5, F + SH - 0.5), z, 90);
   // the alcove's floor: 1 m stone floors down to the ground, the top one flush with the house floor
-  for (let y = F - 0.4; y + 0.5 > 0.05; y -= 1) b.put(K.stoneFloor || 'stone_floor_2x2', xi0 + sg, y, z);
+  for (let y = F - 0.4; y + 0.5 > 0.05; y -= 1) b.put(K.stoneFloor || 'stone_floor_2x2', xi0 + sg, y, z, 0, { hearthStone: true });
   // cheeks, back and corners, course by course from the ground; over the opening the cheeks step in a metre a side
   // (the shoulders), so the stack narrows to a flue 1 m wide and 2 m deep
   const shoulder = Math.round(F + 2);
   for (let y = 0; y < yTop - 0.01; y += 1) {
     const zc = y < shoulder ? 1.5 : 1;
-    for (const s2 of [-1, 1]) { b.put(block, xi0 + sg, y + 0.5, z + s2 * zc, 0, T2); if (y < shoulder) b.put(cube, xi1 + sg * 0.5, y + 0.5, z + s2 * 1.5, 0, T2); }
-    b.put(block, xi1 + sg * 0.5, y + 0.5, z, 90, T2);
+    for (const s2 of [-1, 1]) { b.put(block, xi0 + sg, y + 0.5, z + s2 * zc, 0, TS); if (y < shoulder) b.put(cube, xi1 + sg * 0.5, y + 0.5, z + s2 * 1.5, 0, TS); }
+    b.put(block, xi1 + sg * 0.5, y + 0.5, z, 90, TS);
   }
   // the house side of the shaft over the gable: planks on the gable's top
   const gableTop = Math.max(F + SH, ...b.pieces.filter(p => Math.abs(p.x - xW) < 0.3 && Math.abs(p.z - z) < 0.9 && ['wall', 'gable'].includes(role(p))).map(p => Ck.aabb(p).y1));
@@ -12876,7 +13857,7 @@ function chimneyStack(b, K, wings, edges, X, R, o = {}) {
     if (!tops.length) continue;
     const ridge = Math.max(...tops.map(p => Ck.aabb(p).y1)); // the top of the ridge pieces, not their pivots
     const yTop = Math.ceil(ridge + 0.8);
-    const T2 = { trim: true };
+    const T2 = o.hearthStone ? { trim: true, hearthStone: true } : { trim: true }; // (marked for D-131 where the biome builds no stone yet)
     const shoulder = X.stackShoulder ? 2 : 0; // a wider foot only when asked (it read as a stray block, round 4 review)
     for (let y = 0; y < yTop; y++) {
       b.put(block, xs, y + 0.5, e.z, 90, T2);
@@ -13404,8 +14385,12 @@ if (NODE_FP) module.exports = apiFP; else window.VHFloorplan = apiFP;
 // Node and in the game's bundle (Jint), so the lab and the game judge a pool the same way.
 //
 // What it measures, per design and per line:
-//   nest      decor stages nest: every piece of d1 is in d2, every piece of d2 in d3 (D-070)
-//   lineage   share of a stage's shell (structural pieces) still standing in the next stage (D-069)
+//   nest      decor stages nest: every piece of d1 is in d2, every piece of d2 in d3 (D-070); reported, never gated
+//             (D-132, Tyler: "Its not mandatory that everything there in s1 and different d1 to d3 phases carry over")
+//   lineage   share of a stage's shell (structural pieces) still standing in the next stage (D-069); reported only
+//   shape     the plan's shape family at each stage: square-cornered (rectangle, L, T, U, cross) or angled (octagon,
+//             round), by the share of the ground floor's walls off the 90 degree grid; a line whose family changes
+//             between stages fails (D-132: "A rectangular house cant likely turn into an octagonal house")
 //   furnClip  pairs of furniture pieces whose boxes overlap by more than 12 cm on every axis (chests in chests,
 //             benches in tables: T-6xx "chests clipping each other")
 //   stacked   furniture standing on furniture that is not a chest stack or a table setting
@@ -13446,14 +14431,27 @@ const SH = NODE_A ? require('./shapes.js') : window.VHShapes;
 // and the second sample (lab/make_testpool.js --sample: Norse Meadows 12.2, 0.443, 1.07; norse-forest Black Forest 14,
 // 0.455, 1.78; middle-eastern Plains 13.4, 0.397, 1.08 on 2026-11-10), so they guard against slipping back. Gated on
 // pools of six lines or more: a single line ranges widely (a barn holds no corpus set, a smithy six prefabs).
-const RICH_FLOOR = { prefabsPerD3: 11, setShare: 0.36, corpusSetsPerD3: 0.9 }, RICH_LINES = 6;
-const GATE = ['richness', 'homeAlike', 'nestBroken', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
+// 2026-11-11: beds, bed rugs and foot chests at the corpus rates (decorate.js bedTaste) put Norse Meadows at 14.6,
+// 0.355, 1.62 (0.371 and 1.81 with the earlier rates, the same pool); setShare's floor moved to 0.34 to stay under it.
+const RICH_FLOOR = { prefabsPerD3: 11, setShare: 0.34, corpusSetsPerD3: 0.9 }, RICH_LINES = 6;
+const GATE = ['richness', 'homeAlike', 'shapeChange', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
 // Watched only: printed with the totals; to be gated once the generator clears them.
 const WATCH = ['outside', 'intoWallSoft'];
+// Reported only, never gated (D-132): decor stages that do not nest.
+const REPORTED = ['nestBroken'];
 const MOUNT = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
 const BANNER = /^piece_banner\d+$/;
 // Heights of the middle of a sign or a wall item stand over the floor under it (m): read at eye height, reached by hand.
-const MID = { sign: [1.0, 2.3], sign_notext: [1.0, 2.3], itemstand: [0.7, 2.4] };
+// A wall stand may go as high as corpus builders hang them on walls and rafters (D-127): the higher of the 90th
+// percentiles of 'itemstand|wall' and 'itemstand|rafter' in data/stands-corpus.json heights (stand height over the
+// room's floor; 3.8 m on the stands branch, 2026-11-11); 2.4 m where the file is not there (the web page).
+const STAND_HI = (() => {
+  let H = null;
+  try { H = NODE_A ? require('../data/stands-corpus.json').heights : (typeof window !== 'undefined' && window.VH_STANDS ? window.VH_STANDS.heights : null); } catch (e) { H = null; }
+  const v = H ? ['itemstand|wall', 'itemstand|rafter'].map(k => H[k] && H[k][4]).filter(Number.isFinite) : [];
+  return v.length ? Math.max(2.4, ...v) : 2.4;
+})();
+const MID = { sign: [1.0, 2.3], sign_notext: [1.0, 2.3], itemstand: [0.7, STAND_HI] };
 const STRUCT_VIS = ['wall', 'halfwall', 'window', 'beam', 'pole', 'gable', 'door'];
 const FLAT = ['wall', 'halfwall', 'gable', 'pole'];
 const OVERHEAD = ['roof', 'roofTop', 'roofCorner', 'floor', 'beam'];
@@ -13476,6 +14474,20 @@ const HANG = /^(piece_banner\d+|sign|sign_notext|itemstand|cloth_hanging_|fenrir
 const key = p => `${p.name}@${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}@${p.q.map(v => v.toFixed(2)).join(',')}`;
 const role = p => PC.piece(p.name).role;
 const structural = p => PC.piece(p.name).structural;
+// The plan's shape family from its ground floor walls: 'angled' when more than a quarter of them stand off the 90
+// degree grid (an octagon's or a round house's facets), else 'square' (rectangle, L, T, U and cross grow into one
+// another). The plan's name from the design's own name (type_biome_culture_plan-roof-walls_stage_seed) is reported.
+function shapeOf(pieces) {
+  const walls = pieces.filter(p => !p.decor && ['wall', 'halfwall', 'window', 'door'].includes(role(p)) && PC.piece(p.name).structural !== false);
+  if (!walls.length) return { family: null, plan: null };
+  const y0 = Math.min(...walls.map(p => p.y));
+  const low = walls.filter(p => p.y < y0 + 2.2);
+  const off = low.filter(p => { const q = p.q || [0, 0, 0, 1], yaw = Math.atan2(2 * q[1] * q[3], 1 - 2 * q[1] * q[1]) * 180 / Math.PI; const r = ((yaw % 90) + 90) % 90; return r > 10 && r < 80; }).length;
+  const meta = pieces.meta || {};
+  const m = /villheim:.*design (\S+)/.exec(meta.Description || '') || [null, meta.Name || ''];
+  const f = String(m[1] || '').split('_');
+  return { family: off > 0.25 * low.length ? 'angled' : 'square', plan: f.length >= 6 ? f[3].split('-')[0] : null };
+}
 const ov = (a, b, ax) => Math.min(a[ax + '1'], b[ax + '1']) - Math.max(a[ax + '0'], b[ax + '0']);
 
 function hull(points) { // convex hull, monotone chain
@@ -13527,6 +14539,11 @@ function audit(pieces, shell) {
       if (!fine) r.stacked.push(`${upper.name} on ${lower.name}`);
     }
   }
+  // a sign set on a chest's front as a label (corpus: 371 of 4,450 signs rest on another piece, D-127) is read where the
+  // chest is: its middle within 0.25 m of a storage piece's box and no higher than the chest's top
+  const store = pieces.map((q, j) => j).filter(j => role(pieces[j]) === 'storage');
+  const onChest = i => { const b = visBox[i] || boxes[i], mx = (b.x0 + b.x1) / 2, mz = (b.z0 + b.z1) / 2, my = (b.y0 + b.y1) / 2;
+    return store.some(j => { const c = boxes[j]; return mx > c.x0 - 0.25 && mx < c.x1 + 0.25 && mz > c.z0 - 0.25 && mz < c.z1 + 0.25 && my > c.y0 && my < c.y1 + 0.1; }); };
   // hangings over openings
   const open = pieces.map((p, i) => i).filter(i => ['window', 'door'].includes(role(pieces[i])));
   pieces.forEach((p, i) => {
@@ -13592,7 +14609,7 @@ function audit(pieces, shell) {
       if (b.y0 < floor - 0.03) r.hang.push(`${p.name} ${Math.round((floor - b.y0) * 100)} cm into the floor`);
       else if (b.y0 > floor + 1.0) r.hang.push(`${p.name} foot ${(b.y0 - floor).toFixed(1)} m over the floor`);
       if (ceil != null && b.y1 > ceil + 0.03) r.hang.push(`${p.name} ${Math.round((b.y1 - ceil) * 100)} cm into the roof`);
-    } else if (MID[p.name] && role(p) !== 'floor') {
+    } else if (MID[p.name] && role(p) !== 'floor' && !(/^sign/.test(p.name) && onChest(i))) {
       const h = mid - floor, [lo, hi] = MID[p.name];
       // a horizontal stand (itemstandh) is a table piece and has no entry here
       if (h < lo || h > hi) r.hang.push(`${p.name} middle ${h.toFixed(1)} m over the floor`);
@@ -13672,9 +14689,19 @@ function pool(input, name) {
   const dir = name || '';
   const report = { pool: dir, designs: Object.values(designs).reduce((s, d) => s + Object.keys(d).length, 0), lines: {}, totals: {} };
   const MEASURES = ['furnClip', 'stacked', 'overWin', 'outside', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall', 'intoWallSoft'];
-  const tot = Object.fromEntries([...MEASURES, 'nestBroken'].map(k => [k, 0]));
+  const tot = Object.fromEntries([...MEASURES, 'nestBroken', 'shapeChange'].map(k => [k, 0]));
   for (const [line, d] of Object.entries(designs)) {
-    const L = report.lines[line] = { nest: {}, lineage: {}, issues: {} };
+    const L = report.lines[line] = { nest: {}, lineage: {}, shape: {}, issues: {} };
+    // the shape family at each stage (from its first decor stage written), and the gate on a change between stages
+    let prev = null;
+    for (let s = 1; s <= 3; s++) {
+      const st = ['d1', 'd2', 'd3'].map(x => d[`s${s}${x}`]).find(Boolean);
+      if (!st) continue;
+      const sh = st.shape || (st.shape = shapeOf(st.pieces));
+      L.shape[`s${s}`] = sh.family + (sh.plan ? ` (${sh.plan})` : '');
+      if (prev && sh.family && prev.family && sh.family !== prev.family) { tot.shapeChange++; (L.issues[`s${s}`] = L.issues[`s${s}`] || []).push(`shapeChange: ${prev.family} at s${s - 1}, ${sh.family} at s${s}`); }
+      if (sh.family) prev = sh;
+    }
     for (let s = 1; s <= 3; s++) {
       for (const [a, b] of [[1, 2], [2, 3]]) {
         const A = d[`s${s}d${a}`], Bd = d[`s${s}d${b}`];
@@ -13737,6 +14764,7 @@ function pool(input, name) {
   report.failed = GATE.filter(k => tot[k] > 0);
   report.gate = report.failed.length ? 'fail' : 'pass';
   report.watch = Object.fromEntries(WATCH.map(k => [k, tot[k]]));
+  report.reported = Object.fromEntries(REPORTED.map(k => [k, tot[k]]));
   return report;
 }
 
@@ -13782,6 +14810,7 @@ function summary(report, n = 3) {
   if (report.richLow && report.richLow.length) out.push(`  richness: ${report.richLow.join('; ')}`);
   if (report.rich) out.push(`richness: ${Object.entries(report.rich).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   out.push(`watched: ${Object.entries(report.watch).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+  if (report.reported) out.push(`reported (never gated, D-132): ${Object.entries(report.reported).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   return out.join('\n');
 }
 
@@ -13791,12 +14820,15 @@ function group(files, parse) {
   for (const [f, text] of Object.entries(files)) {
     const m = f.match(/^(.*)_s(\d)d(\d)(\.blueprint)?$/);
     const [line, stage] = m ? [m[1], `s${m[2]}d${m[3]}`] : [f.replace(/\.blueprint$/, ''), 'one'];
-    (out[line] = out[line] || {})[stage] = parse(text).pieces;
+    const bp = parse(text);
+    // the file's name and description go with its pieces (the plan's name for the shape report)
+    if (bp.meta) Object.defineProperty(bp.pieces, 'meta', { value: bp.meta, enumerable: false });
+    (out[line] = out[line] || {})[stage] = bp.pieces;
   }
   return out;
 }
 
-const apiA = { audit, pool, summary, group, likeness, signature, GATE, WATCH };
+const apiA = { STAND_HI, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
 if (NODE_A) module.exports = apiA; else window.VHAudit = apiA;
 
 })();

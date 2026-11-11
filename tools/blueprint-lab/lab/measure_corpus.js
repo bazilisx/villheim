@@ -112,7 +112,7 @@ function analyse(f) {
 
   // ---------------------------------------------------------------- 1. tilted trim
   const trim = ps.map((p, i) => i).filter(i => (R(i) === 'beam' || R(i) === 'pole') && TRIM_NAME.test(ps[i].name) && info[i].shape !== 'prop');
-  const T = { trimAll: trim.length, tilted: 0, kinds: {}, pitch: {}, yaw: {}, place: {}, kindPlace: {}, len: [], names: {}, byKindN: {}, crossings: 0 };
+  const T = { trimAll: trim.length, yawRef: { wall: 0, axis: 0 }, tilted: 0, kinds: {}, pitch: {}, yaw: {}, place: {}, kindPlace: {}, len: [], names: {}, byKindN: {}, crossings: 0 };
   const tl = [];
   for (const i of trim) {
     const inf = info[i], s = ps[i].s || [1, 1, 1];
@@ -126,7 +126,15 @@ function analyse(f) {
     // pitch: beams from horizontal, poles from vertical
     const pitch = kind === 'pole' ? Math.atan2(hz, Math.abs(a[1])) * deg : Math.atan2(Math.abs(a[1]), hz) * deg;
     // turn of the direction (the lean for a pole) away from the walls
-    const yaw = Math.abs(foldDir(Math.atan2(a[2], a[0]) * deg - axis));
+    // turn away from the nearest wall within 1.5 m (its direction), the main axis where no wall is near
+    let wallDir = null, wd = 9;
+    for (const j of near({ x0: ps[i].x - 1.5, x1: ps[i].x + 1.5, z0: ps[i].z - 1.5, z1: ps[i].z + 1.5 }, 0)) {
+      if (R(j) !== 'wall' || tiltedQ(j) || Math.abs(A[j].ax[1]) > 0.1) continue;
+      const b = boxes[j], d = Math.hypot(Math.max(b.x0 - ps[i].x, 0, ps[i].x - b.x1), Math.max(b.z0 - ps[i].z, 0, ps[i].z - b.z1), Math.max(b.y0 - ps[i].y, 0, ps[i].y - b.y1));
+      if (d < 1.5 && d < wd) { wd = d; wallDir = Math.atan2(A[j].ax[2], A[j].ax[0]) * deg; }
+    }
+    const yaw = Math.abs(foldDir(Math.atan2(a[2], a[0]) * deg - (wallDir == null ? axis : wallDir)));
+    T.yawRef = T.yawRef || { wall: 0, axis: 0 }; T.yawRef[wallDir == null ? 'axis' : 'wall']++;
     const offAxis = kind === 'pole' ? pitch > 3 : (pitch > 3 || (hz > 0.05 && yaw > 3));
     if (kind === 'slopeBeam') { /* sloped by its model */ }
     const isTilt = kind === 'slopeBeam' ? true : offAxis;
@@ -178,7 +186,7 @@ function analyse(f) {
       else place = 'loose';
     }
     t.place = place;
-    const pb = t.pitch < 10 ? '03-10' : t.pitch < 20 ? '10-20' : t.pitch < 35 ? '20-35' : t.pitch < 55 ? '35-55' : t.pitch < 75 ? '55-75' : '75-90';
+    const pb = t.pitch < 3 ? '00-03' : t.pitch < 10 ? '03-10' : t.pitch < 20 ? '10-20' : t.pitch < 35 ? '20-35' : t.pitch < 55 ? '35-55' : t.pitch < 75 ? '55-75' : '75-90';
     const yb = t.yaw < 3 ? '00-03' : t.yaw < 10 ? '03-10' : t.yaw < 25 ? '10-25' : t.yaw < 40 ? '25-40' : '40-45';
     inc(T.kinds, t.kind); inc(T.pitch, t.kind + '|' + pb); inc(T.yaw, t.kind + '|' + yb); inc(T.place, place); inc(T.kindPlace, t.kind + '|' + place);
     T.len.push(r2(t.L));
@@ -271,7 +279,7 @@ function analyse(f) {
     const front = Object.entries(doorSides).sort((a, b) => b[1] - a[1])[0];
     const frontSide = front ? front[0] : null;
     const opposite = s => (s[0] === '+' ? '-' : '+') + s[1];
-    const sideName = s => !frontSide ? 'noDoor' : s === frontSide ? 'front' : s === opposite(frontSide) ? 'back' : 'side';
+    const sideName = s => !frontSide ? ((s[1] === 'z') === (hx >= hz) ? 'longSide' : 'endSide') : s === frontSide ? 'front' : s === opposite(frontSide) ? 'back' : 'side';
     const reachBox = { x0: ix0 - 20, x1: ix1 + 20, z0: iz0 - 20, z1: iz1 + 20 };
     const near_int = (x, z, d) => { for (let dz = -d; dz <= d; dz++) for (let dx = -d; dx <= d; dx++) { const xx = x + dx, zz = z + dz; if (xx >= 0 && zz >= 0 && xx < W && zz < H && interior[zz * W + xx]) return true; } return false; };
     rec.frontSide = frontSide || 'none';
@@ -326,23 +334,24 @@ function analyse(f) {
     for (let i = 0; i < ps.length; i++) {
       if (tiltedQ(i)) continue;
       const r = R(i), b = boxes[i], bb = bx(i), nm = ps[i].name;
-      let cls = null, len = 0;
+      let cls = null, len = 0, railH = null;
       const topG = b.y1 - g, botG = b.y0 - g;
       const mx = cx(X[i]), mz = cz(Z[i]);
       if (mx < 0 || mz < 0 || mx >= W || mz >= H || interior[mz * W + mx]) continue;
       if (!near_int(mx, mz, 24)) continue;
       const dk = deckCells.get(mz * W + mx);
+      const ph = b.y1 - b.y0;
       if (r === 'fence' && !/sharpstakes|stake_wall|stakewall/.test(nm)) { cls = 'fence'; len = info[i].size[0] * (ps[i].s || [1, 1, 1])[0]; }
-      else if (r === 'wall' && topG <= 1.7 && topG >= 0.3 && botG <= 1.2 && !near_int(mx, mz, 1) && !/fence/.test(nm)) { cls = 'lowWall'; len = Math.max(bb.x1 - bb.x0, bb.z1 - bb.z0); }
-      else if (r === 'beam' && info[i].shape === 'box' && !BEAMNN.test(nm) && Math.abs(A[i].ax[1]) < 0.1 && topG >= 0.5 && topG <= 5.5 && !near_int(mx, mz, 1)) {
-        // a rail: horizontal beam 0.5 to 1.5 m over a deck top or over the ground, with a post within 1 m
-        const base = dk ? dk.top : 0, h = (b.y0 + b.y1) / 2 - g - base;
-        if (h >= 0.5 && h <= 1.5 && hit([ps[i].x, (b.y0 + b.y1) / 2, ps[i].z], 1.0, j => R(j) === 'pole' && !tiltedQ(j)) >= 0) { cls = dk ? 'deckRail' : 'yardRail'; len = info[i].size[0] * (ps[i].s || [1, 1, 1])[0]; }
+      else if (r === 'wall' && ph <= 1.7 && ph >= 0.3 && !near_int(mx, mz, 1) && !/fence/.test(nm) && (dk ? b.y0 >= dk.y - 0.3 && b.y1 - dk.y <= 1.7 : botG <= 1.5)) { cls = 'lowWall'; len = Math.max(bb.x1 - bb.x0, bb.z1 - bb.z0); }
+      else if (r === 'beam' && info[i].shape === 'box' && !BEAMNN.test(nm) && Math.abs(A[i].ax[1]) < 0.1 && !near_int(mx, mz, 1)) {
+        // a rail: horizontal beam 0.5 to 1.5 m over its post's foot, with a post within 1 m
+        const pj = hit([ps[i].x, (b.y0 + b.y1) / 2, ps[i].z], 1.0, j => R(j) === 'pole' && !tiltedQ(j));
+        if (pj >= 0) { const h = (b.y0 + b.y1) / 2 - boxes[pj].y0; if (h >= 0.5 && h <= 1.5) { cls = dk ? 'deckRail' : 'yardRail'; len = info[i].size[0] * (ps[i].s || [1, 1, 1])[0]; railH = h; } }
       }
       if (!cls) continue;
       if (cls === 'lowWall' && dk) cls = 'deckWall';
       if (cls === 'fence' && dk) cls = 'deckRail';
-      runPieces.push({ i, cls, len, mx, mz, top: topG, name: nm, onDeck: !!dk, base: dk ? dk.top : 0 });
+      runPieces.push({ i, cls, len, mx, mz, top: railH != null ? railH : ph, name: nm, onDeck: !!dk, base: 0 });
     }
     // runs: pieces of one class joined within 1.2 m
     const used = new Array(runPieces.length).fill(false);
@@ -360,7 +369,7 @@ function analyse(f) {
       }
       const sides = {}, names = {}, tops = [];
       let len = 0;
-      for (const p of run) { inc(sides, sideOfCell(p.mx, p.mz)); inc(names, p.name); tops.push(p.cls === 'deckRail' ? p.top - p.base : p.top); len += p.len; }
+      for (const p of run) { inc(sides, sideOfCell(p.mx, p.mz)); inc(names, p.name); tops.push(p.top); len += p.len; }
       const dom = Object.entries(sides).sort((x, y) => y[1] - x[1])[0][0];
       const cls = run[0].cls;
       D.runs.push({ cls, n: run.length, len: r2(len), top: r2(q(tops, 0.5)), where: Object.keys(sides).length >= 3 ? 'round' : sideName(dom), names });
@@ -394,7 +403,8 @@ function analyse(f) {
     const fl = (floorsBy.get(c.id) || []).filter(f => f.y - ground >= 2.0 && f.y - ground <= 40);
     const lv = new Map();
     for (const f of fl) { const k = Math.round(f.y * 2) / 2; lv.set(k, (lv.get(k) || 0) + f.area); }
-    const ups = [...lv.entries()].filter(([, a]) => a >= 6).map(([y]) => y).sort((a, b) => a - b);
+    // a level counts when walls or posts stand on it (4 pieces or more), so landings, decks and flat roofs do not
+    const ups = [...lv.entries()].filter(([y, a]) => a >= 6 && wl.filter(i => boxes[i].y0 >= y - 0.6 && boxes[i].y0 <= y + 0.8).length >= 4).map(([y]) => y).sort((a, b) => a - b);
     const levels = [ground];
     for (const y of ups) if (y - levels[levels.length - 1] >= 2.4) levels.push(y);
     const eave = wl.length ? Math.max(...wl.map(i => boxes[i].y1)) - ground : null;

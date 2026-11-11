@@ -41,7 +41,7 @@ const withTilt = B.filter(r => r.trim.tilted > 0), withFree = B.filter(r => free
 T.countPerBuild = { tiltedAll_builds_with_any: Q(withTilt.map(r => r.trim.tilted)), freeTilt_builds_with_any: Q(withFree.map(r => freeOf(r))), slopeBeam_builds_with_any: Q(B.filter(r => slopeOf(r) > 0).map(slopeOf)),
   tiltedAll_every_build: Q(B.map(r => r.trim.tilted)), freeShareOfTrim_pct_builds_with_any: Q(withFree.map(r => 100 * freeOf(r) / r.trim.trimAll)) };
 const sumMaps = (rs, key) => { const m = {}; for (const r of rs) for (const [k, v] of Object.entries(r.trim[key])) sum(m, k, v); return m; };
-const PB = ['03-10', '10-20', '20-35', '35-55', '55-75', '75-90'], YB = ['00-03', '03-10', '10-25', '25-40', '40-45'];
+const PB = ['00-03', '03-10', '10-20', '20-35', '35-55', '55-75', '75-90'], YB = ['00-03', '03-10', '10-25', '25-40', '40-45'];
 T.pitchBins = {}; T.yawBins = {};
 for (const k of ['beam', 'slopeBeam', 'pole']) {
   const pm = sumMaps(B, 'pitch'), ym = sumMaps(B, 'yaw');
@@ -57,6 +57,7 @@ const placeBlock = rs => {
   return o;
 };
 T.places = placeBlock(B);
+T.yawReference = { wall: B.reduce((s, r) => s + r.trim.yawRef.wall, 0), axis: B.reduce((s, r) => s + r.trim.yawRef.axis, 0) };
 T.lengths = Q(withTilt.flatMap(r => r.trim.len));
 const groupBy = (rs, f) => { const g = {}; for (const r of rs) (g[f(r)] = g[f(r)] || []).push(r); return g; };
 const trimGroup = rs => ({ builds: rs.length, anyTilted: pct(rs.filter(r => r.trim.tilted > 0).length, rs.length), anyFreeTilt: pct(rs.filter(r => freeOf(r) > 0).length, rs.length), anySlopeBeam: pct(rs.filter(r => slopeOf(r) > 0).length, rs.length),
@@ -137,8 +138,8 @@ for (const [k, rs] of Object.entries(groupBy(DB, r => r.type))) Dd.byType[k] = d
 md.push('### Decks, low walls and railings', '');
 md.push(`Builds with a walled room (full-height walls enclosing 6 m2 or more): ${DB.length} of ${B.length}; ${Dd.singleBuilding} of them hold one main building.`, '');
 table(['Share of builds with', '%'], Object.entries(Dd.shareBuilds).map(([k, v]) => [k, v]));
-table(['Floor outside the walls', 'components', 'area m2 (25th / median / 75th)', 'top over ground m (25th / median / 75th)', 'per build (25th / median / 75th)', 'where: ' + 'front / back / side / round / noDoor'],
-  ['ground', 'low', 'high'].map(b => [b, Dd.deckSize[b].components, qs(Dd.deckSize[b].areaM2), qs(Dd.deckSize[b].heightM), qs(Dd.deckSize[b].perBuildWithAny), ['front', 'back', 'side', 'round', 'noDoor'].map(w => Dd.where[b].pct[w] || 0).join(' / ') + ' %']));
+table(['Floor outside the walls', 'components', 'area m2 (25th / median / 75th)', 'top over ground m (25th / median / 75th)', 'per build (25th / median / 75th)', 'where %: front / back / side / round / longSide / endSide / noDoor'],
+  ['ground', 'low', 'high'].map(b => [b, Dd.deckSize[b].components, qs(Dd.deckSize[b].areaM2), qs(Dd.deckSize[b].heightM), qs(Dd.deckSize[b].perBuildWithAny), ['front', 'back', 'side', 'round', 'longSide', 'endSide', 'noDoor'].map(w => Dd.where[b].pct[w] || 0).join(' / ') + ' %']));
 table(['Band', 'top floor pieces (% of floor cells)'], ['ground', 'low', 'high'].map(b => [b, Dd.piecesByBand[b].map(([k, v]) => k + ' ' + v).join(', ')]));
 table(['Run', 'runs', 'length m (25th / median / 75th)', 'height m (25th / median / 75th)', 'pieces per run', 'runs per build', 'total m per build', 'where %', 'top pieces %'],
   Object.entries(Dd.runs).map(([c, v]) => [c, v.runs, qs(v.lengthM), qs(v.heightM), qs(v.piecesPerRun), qs(v.runsPerBuildWithAny), qs(v.totalLengthPerBuildM), Object.entries(v.wherePct).map(([k, p]) => k + ' ' + p).join(', '), v.pieces.map(([k, p]) => k + ' ' + p).join(', ')]));

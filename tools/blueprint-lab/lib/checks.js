@@ -343,6 +343,345 @@ function stability(pieces, boxes, near, ground) {
   return out;
 }
 
+// Passages (Tyler, showcase review 2026-11-11, a hard rule): "Anything small passageway must be at minimum two
+// wood_floor pieces wide. Wider hallways can be 3 or more. But 1 of them is far too narrow for anything besides a
+// small closet or hidden passageway." Measured on each floor level in floor pieces: the floor under a roof between
+// walls on three sides or more, and floors 0.6 m or more over the ground (balconies, galleries, decks, raised porches). Walls and windows count at
+// their middle line (a stone wall's thickness is the builder's choice, the floor between is what the rule names);
+// stairs and ladders count as they stand (a post stands in open floor). A point is in a passage of full width when a circle PASSAGE_W wide
+// (less a little for rounding) fits round it on that floor. What is left over, in pieces of more than PASSAGE_CLOSET
+// m2, is a passage too narrow when it runs PASSAGE_LONG m or more: a closet of one piece across stays under that, and
+// the corners of a room are short. Furniture is left out here; the space
+// beside furniture is the furnishing's own check.
+const PASSAGE_W = 4, PASSAGE_CLOSET = 6, PASSAGE_LONG = 3, PASSAGE_CELL = 0.25;
+function passages(pieces, opts = {}) {
+  // (the walls' band takes a quarter metre off each side)
+  const G = PASSAGE_CELL, R = PASSAGE_W / 2 - 0.4;
+  const boxes = pieces.map(catBox);
+  const ys0 = boxes.filter(b => b.info.structural).map(b => b.y0).sort((a, c) => a - c);
+  const ground = opts.ground != null ? opts.ground : Math.max(0, ys0.length ? ys0[Math.floor(ys0.length * 0.02)] : 0);
+  const floors = [];
+  pieces.forEach((p, i) => { const b = boxes[i]; if (b.info.role === 'floor' && !p.decor && !tilted(p.q)) floors.push(i); });
+  const levels = new Map();
+  for (const i of floors) { const k = Math.round(boxes[i].y1 * 4) / 4; if (!levels.has(k)) levels.set(k, []); levels.get(k).push(i); }
+  const out = [];
+  for (const [y, list] of levels) {
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const i of list) { const b = boxes[i]; x0 = Math.min(x0, b.x0); x1 = Math.max(x1, b.x1); z0 = Math.min(z0, b.z0); z1 = Math.max(z1, b.z1); }
+    x0 -= 1; z0 -= 1; x1 += 1; z1 += 1;
+    const nx = Math.ceil((x1 - x0) / G), nz = Math.ceil((z1 - z0) / G), N = nx * nz;
+    if (N > 600000) continue;
+    const free = new Uint8Array(N), wallm = new Uint8Array(N), cx = i => x0 + (i + 0.5) * G, cz = j => z0 + (j + 0.5) * G;
+    const raised = y > ground + 0.6;
+    for (const n of list) {
+      const b = boxes[n];
+      for (let i = Math.max(0, Math.floor((b.x0 - x0) / G)); i < Math.min(nx, Math.ceil((b.x1 - x0) / G)); i++)
+        for (let j = Math.max(0, Math.floor((b.z0 - z0) / G)); j < Math.min(nz, Math.ceil((b.z1 - z0) / G)); j++) {
+          const x = cx(i), z = cz(j);
+          if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1) continue;
+          free[i * nz + j] = 1;
+        }
+    }
+    // what stands on this floor: walls at their middle line, climbs, posts
+    pieces.forEach((p, n) => {
+      const b = boxes[n], role = b.info.role;
+      if (p.decor || b.y1 < y + 0.3 || b.y0 > y + 1.8) return;
+      if (['wall', 'window', 'gable'].includes(role)) {
+        if (tilted(p.q)) return;
+        const s = p.s || [1, 1, 1], w = b.info.size[0] * s[0], a = yawDeg(p) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a);
+        // (a block a metre wide or less standing alone is a jamb or a column, as a hearth's surround)
+        if (w <= 1.01 && !pieces.some((q, m) => m !== n && ['wall', 'window', 'door'].includes(boxes[m].info.role) && boxes[m].info.size[0] > 1.01 && Math.hypot(q.x - p.x, q.z - p.z) < 1.6 && boxes[m].y0 < y + 1.6 && boxes[m].y1 > y + 0.3)) return;
+        // a band a cell wide each way of the line, so a wall at an angle leaves no gap a ray could pass
+        for (let t = -w / 2; t <= w / 2 + 1e-6; t += G / 4) for (const [ex, ez] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+          const i = Math.floor((p.x + ux * t + ex * G / 2 - x0) / G), j = Math.floor((p.z + uz * t + ez * G / 2 - z0) / G);
+          if (i >= 0 && j >= 0 && i < nx && j < nz) { free[i * nz + j] = 0; wallm[i * nz + j] = 1; }
+        }
+      } else if (role === 'stair' || (role === 'fence' && b.y0 > y - 0.3)) {
+        for (let i = Math.max(0, Math.floor((b.x0 - x0) / G)); i < Math.min(nx, Math.ceil((b.x1 - x0) / G)); i++)
+          for (let j = Math.max(0, Math.floor((b.z0 - z0) / G)); j < Math.min(nz, Math.ceil((b.z1 - z0) / G)); j++) free[i * nz + j] = 0;
+      }
+    });
+    // only the floor under a roof or an upper floor (rooms, halls, porches), or raised floor outside
+    const use = new Uint8Array(N);
+    const over = new Uint8Array(N);
+    if (!raised) pieces.forEach((p, n) => {
+      const b = boxes[n], role = b.info.role;
+      if (p.decor || !['roof', 'roofTop', 'roofCorner', 'floor'].includes(role) || b.y0 < y + 1.5 || b.y0 > y + 14) return;
+      for (let i = Math.max(0, Math.floor((b.x0 - x0) / G)); i < Math.min(nx, Math.ceil((b.x1 - x0) / G)); i++)
+        for (let j = Math.max(0, Math.floor((b.z0 - z0) / G)); j < Math.min(nz, Math.ceil((b.z1 - z0) / G)); j++) over[i * nz + j] = 1;
+    });
+    // (roof pieces turned round a crown leave thin gaps between their boxes: a metre round each closes them)
+    if (!raised) {
+      const o2 = new Uint8Array(N);
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+        if (!over[i * nz + j]) continue;
+        for (let a = Math.max(0, i - 4); a <= Math.min(nx - 1, i + 4); a++) for (let c = Math.max(0, j - 4); c <= Math.min(nz - 1, j + 4); c++) o2[a * nz + c] = 1;
+      }
+      over.set(o2);
+    }
+    // on the ground, a floor between walls on three sides or more (rooms, halls, a passage with a door at its end);
+    // an open porch or stoop with the house wall behind it is an entrance, its depth the porch's own choice
+    const walled = (i, j) => {
+      let n = 0;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        for (let t = 1; t <= 56; t++) { const a = i + di * t, c = j + dj * t; if (a < 0 || c < 0 || a >= nx || c >= nz) break; if (wallm[a * nz + c]) { n++; break; } }
+      }
+      return n >= 3;
+    };
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const k = i * nz + j; if (free[k] && (raised || (over[k] && walled(i, j)))) use[k] = 1; }
+    // distance (chamfer 3-4, in metres) from every usable cell to the nearest unusable one
+    const dist = (src, edge) => {
+      const d = new Float32Array(N);
+      for (let k = 0; k < N; k++) d[k] = src[k] ? 1e9 : 0;
+      const a = G, bD = G * Math.SQRT2;
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+        const k = i * nz + j; if (!d[k]) continue;
+        let v = d[k];
+        if (i > 0) { v = Math.min(v, d[k - nz] + a); if (j > 0) v = Math.min(v, d[k - nz - 1] + bD); if (j < nz - 1) v = Math.min(v, d[k - nz + 1] + bD); } else if (edge) v = Math.min(v, a);
+        if (j > 0) v = Math.min(v, d[k - 1] + a); else if (edge) v = Math.min(v, a);
+        d[k] = v;
+      }
+      for (let i = nx - 1; i >= 0; i--) for (let j = nz - 1; j >= 0; j--) {
+        const k = i * nz + j; if (!d[k]) continue;
+        let v = d[k];
+        if (i < nx - 1) { v = Math.min(v, d[k + nz] + a); if (j > 0) v = Math.min(v, d[k + nz - 1] + bD); if (j < nz - 1) v = Math.min(v, d[k + nz + 1] + bD); } else if (edge) v = Math.min(v, a);
+        if (j < nz - 1) v = Math.min(v, d[k + 1] + a); else if (edge) v = Math.min(v, a);
+        d[k] = v;
+      }
+      return d;
+    };
+    const dIn = dist(use, true);
+    const notCentre = new Uint8Array(N);
+    for (let k = 0; k < N; k++) notCentre[k] = use[k] && dIn[k] >= R ? 0 : 1;
+    const dC = dist(notCentre, false);
+    const narrow = new Uint8Array(N);
+    for (let k = 0; k < N; k++) if (use[k] && dC[k] > R + G) narrow[k] = 1;
+    // pieces of narrow floor
+    const seen = new Uint8Array(N);
+    for (let k0 = 0; k0 < N; k0++) {
+      if (!narrow[k0] || seen[k0]) continue;
+      const st = [k0]; seen[k0] = 1; let n = 0, bx0 = Infinity, bx1 = -Infinity, bz0 = Infinity, bz1 = -Infinity;
+      while (st.length) {
+        const k = st.pop(); n++;
+        const i = Math.floor(k / nz), j = k % nz;
+        bx0 = Math.min(bx0, cx(i)); bx1 = Math.max(bx1, cx(i)); bz0 = Math.min(bz0, cz(j)); bz1 = Math.max(bz1, cz(j));
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const a = i + di, c = j + dj;
+          if (a < 0 || c < 0 || a >= nx || c >= nz) continue;
+          const kk = a * nz + c;
+          if (narrow[kk] && !seen[kk]) { seen[kk] = 1; st.push(kk); }
+        }
+      }
+      const area = n * G * G;
+      // a passage runs on: leftovers in the corners of a room, by a post or a doorway are short
+      const len = Math.max(bx1 - bx0, bz1 - bz0) + G;
+      if (area > (opts.min != null ? opts.min : PASSAGE_CLOSET) && len >= PASSAGE_LONG) out.push({ y, area: +area.toFixed(1), x0: +bx0.toFixed(1), x1: +bx1.toFixed(1), z0: +bz0.toFixed(1), z1: +bz1.toFixed(1), raised });
+    }
+  }
+  return out;
+}
+
+// Doorways clear and stepped (D-096; Tyler, showcase review 2026-11-11: a beam across a doorway stopped him at the door of a
+// Meadows home, "something we discussed and resolved days ago"). Through every door and every opening a door piece
+// stands in, a lane 0.9 m wide from a metre outside to a metre inside: with the game's colliders, nothing solid from
+// 0.25 m over the walking surface to the opening's top (2 m) or DOOR_CLEAR beyond the frame, and the surface itself
+// steps no more than DOOR_STEP from one 0.2 m sample to the next (a beam laid across the threshold, a log or a raised
+// sill). A stair is a way up and counts as surface. Returns a list of problems: { door, at, what }.
+// DOOR_STEP is the rise the generator builds treads to; the check fails a step over DOOR_STEP_MAX (a log across a
+// threshold stood 0.45 to 0.64 m over the ground outside it).
+const DOOR_STEP = 0.3, DOOR_STEP_MAX = 0.4;
+function doorways(pieces, opts = {}) {
+  const boxes = pieces.map(gameBox), near = index(boxes), out = [];
+  // the game's ground: the mod sets a design's lowest pivot on the terrain (src/Villheim.Logic/Designs/Blueprints.cs,
+  // the lowest piece at y = 0), so a bush or a stone floor sunk under the house floor lifts the house that much over it
+  const ground = opts.ground != null ? opts.ground : Math.min(0, ...pieces.map(p => p.y));
+  pieces.forEach((d, n) => {
+    if (boxes[n].info.role !== 'door') return;
+    const o = PC.doorOpening(d);
+    if (o.w < 1.2) return;
+    // the walking surface along the lane's middle line, and what stands over it
+    let last = null;
+    for (let si = -5; si <= 5; si++) {
+      const s = si / 5, inPlane = Math.abs(s) < 0.55, top = o.y + (inPlane ? Math.min(o.h, DOOR_CLEAR) : DOOR_CLEAR);
+      let surf = -Infinity;
+      for (const t of [-0.3, 0, 0.3]) {
+        const x = o.x + o.nx * s + o.ux * t, z = o.z + o.nz * s + o.uz * t;
+        const col = ptBox(x, o.y - 0.8, o.y + 0.6, z, 0.02);
+        let here = Math.abs(s) < 0.3 ? o.y : ground; // the sill of the opening itself
+        for (const j of near(col, 0)) {
+          if (j === n) continue;
+          const b = boxes[j];
+          if (b.pass || ['rug', 'nature', 'misc', 'door', 'light', 'deco'].includes(b.info.role) || pieces[j].decor && !b.info.structural) continue;
+          const tp = b.sol && b.sol.length ? SHP.topAt(b.sol, x, z) : (b.x0 <= x && x <= b.x1 && b.z0 <= z && z <= b.z1 ? b.y1 : null);
+          if (tp != null && tp <= o.y + 0.6 && tp > here) here = tp;
+        }
+        surf = Math.max(surf, here);
+      }
+      if (last != null && surf - last > DOOR_STEP_MAX && !opts.noStep) out.push({ door: d.name, at: +s.toFixed(1), what: `a step of ${(surf - last).toFixed(2)} m` });
+      if (last != null && last - surf > DOOR_STEP_MAX && !opts.noStep) out.push({ door: d.name, at: +s.toFixed(1), what: `a drop of ${(last - surf).toFixed(2)} m` });
+      last = surf;
+      // nothing solid over the surface up to the top
+      for (const t of [-0.45, 0, 0.45]) {
+        const x = o.x + o.nx * s + o.ux * t, z = o.z + o.nz * s + o.uz * t;
+        const col = ptBox(x, surf + 0.25, top - 0.03, z, 0.02);
+        for (const j of near(col, 0)) {
+          if (j === n) continue;
+          const b = boxes[j], role = b.info.role;
+          if (b.pass || ['rug', 'door', 'nature', 'misc'].includes(role)) continue;
+          if (role === 'stair') continue;
+          if (blocks(col, b, -0.01)) { out.push({ door: d.name, at: +s.toFixed(1), what: pieces[j].name }); break; }
+        }
+      }
+    }
+  });
+  const seen = new Set();
+  return out.filter(p => { const k = p.door + p.what; if (seen.has(k)) return false; seen.add(k); return true; });
+}
+
+// Pasture fences (Tyler, showcase review 2026-11-11): wood_fence is "really only intended for pastures, garden fences,
+// maybe village perimeter fencing. Never for building fences atop towers, etc. and certainly never indoors." A
+// wood_fence whose foot is 0.6 m or more over the ground, or that stands under a roof or floor, fails.
+function pastureFences(pieces, opts = {}) {
+  const boxes = pieces.map(catBox), near = index(boxes), out = [];
+  // (the lab's ground: a design lifted by a piece sunk under it is the ground check's matter, lab/shell_ground.js)
+  const ground = opts.ground != null ? opts.ground : 0;
+  pieces.forEach((p, i) => {
+    if (p.name !== 'wood_fence') return;
+    if (boxes[i].y0 > ground + 0.6) { out.push(`${p.name} ${(boxes[i].y0 - ground).toFixed(1)} m up`); return; }
+    const col = ptBox(p.x, boxes[i].y1 + 0.3, boxes[i].y1 + 12, p.z, 0.05);
+    for (const j of near(col, 0)) {
+      const r = boxes[j].info.role;
+      if (['roof', 'roofTop', 'roofCorner', 'floor'].includes(r) && !pieces[j].decor && touch(col, boxes[j], 0)) { out.push(`${p.name} under a ${r}`); break; }
+    }
+  });
+  return out;
+}
+
+// Crossed boards on a gable (wood_wall_roof_top_45, wood_wall_roof_top): corpus builders run their boards on in line
+// with the sloped bargeboards beside them (lab/shell_mine.js: of 5,042 sloped 45 degree beams in a cross's plane
+// within 3.2 m, 1,881 lie on a board's line and nearly all the rest 2 m or more off it, the next bargeboard row). A
+// cross with sloped beams of its pitch in its plane and none on a board's line fails (showcase 13: a metre under it).
+function crossedBoards(pieces) {
+  const out = [];
+  for (const c of pieces) {
+    const m = c.name === 'wood_wall_roof_top_45' ? 1 : c.name === 'wood_wall_roof_top' ? 0.5 : 0;
+    if (!m) continue;
+    const a = yawDeg(c) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a), nx = Math.sin(a), nz = Math.cos(a);
+    let any = 0, inLine = 0;
+    for (const q of pieces) {
+      if (q === c || !(m === 1 ? /beam_45$/ : /beam_26$/).test(q.name)) continue;
+      const dx = q.x - c.x, dz = q.z - c.z, dy = q.y - c.y;
+      if (Math.hypot(dx, dz) > 3.2 || Math.abs(dy) > 3.2) continue;
+      const along = dx * ux + dz * uz, norm = dx * nx + dz * nz, rel = ((yawDeg(q) - yawDeg(c)) % 360 + 360) % 360;
+      if (Math.abs(norm) > 0.35 || Math.round(rel) % 180 !== 0) continue;
+      // a wood beam's pivot is its middle; the board's line through the crossing (m over the pivot) at slope +-m
+      const sg = Math.round(rel) % 360 === 0 ? 1 : -1;
+      const yMid = /^wood_beam_26$/.test(q.name) ? dy + 0.5 : dy;
+      any++;
+      if (Math.abs(yMid - sg * m * along - m) < 0.2) inLine++;
+    }
+    if (any && !inLine) out.push(`${c.name} at ${c.x.toFixed(1)},${c.y.toFixed(1)},${c.z.toFixed(1)}`);
+  }
+  return out;
+}
+
+// The game's own support rule (WearNTear.UpdateSupport in assembly_valheim, decompiled 2026-11-12). A piece looks at
+// every collider that reaches into its own colliders grown by 0.15 m on each side. The ground gives the material's
+// max. From each touching piece it may take that piece's support less its own material's horizontal loss times the
+// distance between the two pivots (plus 0.1 m), whichever way the other piece lies, above included; from a piece whose
+// nearest point lies under its pivot, the loss is blended toward the vertical loss by how steeply down that point
+// lies, again times the distance. Two such points on opposite sides (100 degrees or more apart seen from above) give
+// the mean of their vertical values (a span between two posts). It falls under its material's min. Because the loss
+// grows with the distance between pivots, a 2 m piece loses twice what a 1 m piece loses per step, and long pieces
+// hung off one end (a roof row, a beam out from a wall) lose the most. Pivots stand in for the centre of mass (the
+// prefabs' m_comOffset is not measured). Returns the support per piece (NaN for pieces the rule skips) and the ones
+// that fall.
+const GAME_LOSS = {
+  wood: { max: 100, min: 10, v: 0.125, h: 0.2 }, hardwood: { max: 140, min: 10, v: 0.1, h: 1 / 6 },
+  stone: { max: 1000, min: 100, v: 0.125, h: 1 }, iron: { max: 1500, min: 20, v: 1 / 13, h: 1 / 13 },
+  marble: { max: 1500, min: 100, v: 0.125, h: 0.5 }, ashstone: { max: 2000, min: 100, v: 0.1, h: 1 / 3 },
+};
+function gameSupport(pieces, opts = {}) {
+  const n = pieces.length, sol = new Array(n), grown = new Array(n), mat = new Array(n), bb = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const p = pieces[i], info = PC.piece(p.name);
+    if (!info.structural || p.decor) continue;
+    let W = SHP && SHP.world(p);
+    if (!W || !W.length) W = SHP ? [SHP.boxOf(catBox(p))] : null;
+    if (!W) continue;
+    sol[i] = W;
+    mat[i] = GAME_LOSS[PC.supportClass(p.name)] || GAME_LOSS.wood;
+    grown[i] = W.map(o => { const h = o.h.map(v => v + 0.15), g = { c: o.c, a: o.a, h }; const e = [0, 1, 2].map(k => Math.abs(o.a[0][k]) * h[0] + Math.abs(o.a[1][k]) * h[1] + Math.abs(o.a[2][k]) * h[2]); return Object.assign(g, { x0: o.c[0] - e[0], x1: o.c[0] + e[0], y0: o.c[1] - e[1], y1: o.c[1] + e[1], z0: o.c[2] - e[2], z1: o.c[2] + e[2] }); });
+    const b = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity, z0: Infinity, z1: -Infinity };
+    for (const o of grown[i]) { b.x0 = Math.min(b.x0, o.x0); b.x1 = Math.max(b.x1, o.x1); b.y0 = Math.min(b.y0, o.y0); b.y1 = Math.max(b.y1, o.y1); b.z0 = Math.min(b.z0, o.z0); b.z1 = Math.max(b.z1, o.z1); }
+    bb[i] = b;
+  }
+  const list = [];
+  for (let i = 0; i < n; i++) if (sol[i]) list.push(i);
+  const ys = list.map(i => Math.min(...sol[i].map(o => o.y0))).sort((a, b) => a - b);
+  // the lab's ground is y = 0 (floors on the ground stand there; stone floors and footings go half into it), or lower
+  // when the whole design stands lower
+  const ground = opts.ground != null ? opts.ground : Math.max(0, ys.length ? ys[Math.floor(ys.length * 0.02)] : 0);
+  const boxes = new Array(n);
+  for (const i of list) boxes[i] = bb[i];
+  const fake = boxes.map(b => b || { x0: 1e9, x1: 1e9, z0: 1e9, z1: 1e9 });
+  const near = index(fake);
+  // the ways each piece can take support: [other, horizontal factor, vertical factor or -1, support point dir x, z]
+  const ways = new Array(n), grounded = new Uint8Array(n);
+  const closest = (o, q) => { const d = [q[0] - o.c[0], q[1] - o.c[1], q[2] - o.c[2]]; const r = [...o.c]; for (let k = 0; k < 3; k++) { const t = Math.max(-o.h[k], Math.min(o.h[k], d[0] * o.a[k][0] + d[1] * o.a[k][1] + d[2] * o.a[k][2])); r[0] += o.a[k][0] * t; r[1] += o.a[k][1] * t; r[2] += o.a[k][2] * t; } return r; };
+  for (const i of list) {
+    const p = pieces[i], m = mat[i], com = [p.x, p.y, p.z], W = [];
+    if (bb[i].y0 <= ground + 0.02) grounded[i] = 1;
+    for (const j of near(bb[i], 0)) {
+      if (j === i || !sol[j]) continue;
+      const q = pieces[j], dist = Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) + 0.1;
+      for (const o of sol[j]) {
+        if (!grown[i].some(g => SHP.hit(g, o))) continue;
+        const hf = 1 - m.h * dist;
+        const pt = closest(o, com);
+        let vf = -1, dx = 0, dz = 0, item = -1;
+        if (pt[1] < com[1] + 0.05) {
+          const d = [pt[0] - com[0], pt[1] - com[1], pt[2] - com[2]], l = Math.hypot(d[0], d[1], d[2]) || 1;
+          if (d[1] / l < 0) { const t = Math.acos(1 - Math.abs(d[1] / l)) / (Math.PI / 2); vf = 1 - (m.h + (m.v - m.h) * t) * dist; }
+          item = 1 - m.v * dist; dx = d[0]; dz = d[2];
+        }
+        W.push([j, hf, vf, item, dx, dz]);
+      }
+    }
+    ways[i] = W;
+  }
+  const s = new Float64Array(n).fill(NaN);
+  for (const i of list) s[i] = grounded[i] ? mat[i].max : 0;
+  for (let sweep = 0; sweep < 400; sweep++) {
+    let moved = 0;
+    for (const i of list) {
+      if (grounded[i]) continue;
+      let best = 0;
+      const pts = [];
+      for (const [j, hf, vf, item, dx, dz] of ways[i]) {
+        const sj = s[j];
+        if (!(sj > 0)) continue;
+        best = Math.max(best, sj * hf);
+        if (vf > -1) best = Math.max(best, sj * vf);
+        if (item > -1) pts.push([sj * item, dx, dz]);
+      }
+      for (let a = 0; a < pts.length - 1; a++) for (let c = a + 1; c < pts.length; c++) {
+        const mean = (pts[a][0] + pts[c][0]) / 2;
+        if (mean <= best) continue;
+        const la = Math.hypot(pts[a][1], pts[a][2]), lc = Math.hypot(pts[c][1], pts[c][2]);
+        if (la < 1e-6 || lc < 1e-6) continue;
+        const cos = (pts[a][1] * pts[c][1] + pts[a][2] * pts[c][2]) / (la * lc);
+        if (Math.acos(Math.max(-1, Math.min(1, cos))) * 180 / Math.PI >= 100) best = mean;
+      }
+      const v = Math.min(best, mat[i].max);
+      if (Math.abs(v - s[i]) > 1e-4) { moved++; s[i] = v; }
+    }
+    if (!moved) break;
+  }
+  const fall = list.filter(i => s[i] < mat[i].min - 1e-6);
+  return { support: s, fall, ground };
+}
+
 // A loft under the roof (storeys track, 2026-11-11): on an upper floor, a point under a roof slope may be lower than
 // the headroom where people stand up close by: the roof over it is at least LOFT_LOW over the floor, and a point of
 // the same floor with full headroom (and walls) lies within LOFT_REACH. People walk where they can stand; the low
@@ -578,9 +917,23 @@ function check(design, biome, opts = {}) {
   }
   const free = area ? 1 - used / area : 1;
   results.push({ check: 'space', ok: free >= 0.45, detail: `${Math.round(free * 100)} % of the floor is free to walk` });
+
+  // the shell rules of the showcase review (2026-11-12), each from one of Tyler's notes; opts.shell false leaves them out
+  if (opts.shell !== false) {
+    const gs = gameSupport(pieces);
+    results.push({ check: 'game support', ok: gs.fall.length === 0, detail: gs.fall.length ? `${gs.fall.length} pieces the game would let fall (${[...new Set(gs.fall.map(i => pieces[i].name))].slice(0, 4).join(', ')})` : 'every piece holds by the game\'s support rule' });
+    const ps = passages(pieces);
+    results.push({ check: 'passages', ok: ps.length === 0, where: ps, detail: ps.length ? `${ps.length} walks narrower than ${PASSAGE_W} m (${ps.slice(0, 3).map(p => `${p.area} m2 at y ${p.y}`).join('; ')})` : `every walk at least ${PASSAGE_W} m wide` });
+    const dw = doorways(pieces);
+    results.push({ check: 'doorways', ok: dw.length === 0, detail: dw.length ? `${dw.length} problems (${dw.slice(0, 3).map(p => `${p.door}: ${p.what} at ${p.at}`).join('; ')})` : 'every doorway clear and stepped' });
+    const pf = pastureFences(pieces);
+    results.push({ check: 'railings', ok: pf.length === 0, detail: pf.length ? `${pf.length} pasture fences used as rails (${pf.slice(0, 3).join('; ')})` : 'no pasture fence raised or indoors' });
+    const cb = crossedBoards(pieces);
+    results.push({ check: 'crossed boards', ok: cb.length === 0, detail: cb.length ? `${cb.length} out of line with the bargeboards (${cb.slice(0, 2).join('; ')})` : 'crossed boards in line' });
+  }
   return results;
 }
 
-const apiC = { check, CLIP_MAX, stability, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
+const apiC = { check, CLIP_MAX, stability, gameSupport, GAME_LOSS, passages, PASSAGE_W, PASSAGE_CLOSET, doorways, DOOR_STEP, DOOR_STEP_MAX, pastureFences, crossedBoards, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
   setShapes(on) { SHAPES_DEFAULT = !!on; }, get shapes() { return SHAPES_DEFAULT; } };
 if (NODE_C) module.exports = apiC; else window.VHChecks = apiC;

@@ -1,0 +1,1834 @@
+{
+ "meta": {
+  "made": "2026-11-12",
+  "source": "lab/rooms_corpus_extract.js and lab/rooms_corpus_stats.js on compact.json (2,128 builds)",
+  "builds": 2128,
+  "vanillaBuilds": 1520,
+  "likedBuilds": 380,
+  "likedRule": "top quarter of vanilla builds by votes (votes >= 10), ties by downloads",
+  "rooms": 20400,
+  "roomsLiked": 11945,
+  "families": "prefab first cut (lab/rooms_corpus_lib.js FAMILY_PREFAB)",
+  "roomRule": "reader room (lib/decorate.js readLevel) with half or more of its floor under a roof, 4 to 400 m2, vanilla build, no mod piece inside; floor furniture: pivot under 0.5 m over the floor"
+ },
+ "fields": {
+  "corridor": "rooms of kind corridor with a ceiling 1.9 m or more (all rooms below too) (at most one floor piece, long: long side 2.5 times the short or clear width 3 m or less and 6 m long): clearWidth, m, the median over its floor of the local clear width (the shorter free run along x and z on a 0.25 m grid, walls and posts blocking); wMax in the examples is the widest; clearWidthTiles: the same in 2 m wood_floor tiles; widthHist: share by clear width rounded to 0.5 m",
+  "hall": "corridors (as above) that join two or more doors or stairs, ceiling 1.9 m or more: the walk-through halls",
+  "wing": "other rooms long and narrow (long side 2.2 times the short, short side 5 m or less) with two or more floor pieces",
+  "porch": "ground level rooms under a roof with 30 % or more of their edge open, short side 4.5 m or less",
+  "gallery": "the same 1.5 m or more over the lowest floor of the build (balconies, galleries)",
+  "doorClearDepth": "m straight in from each door to the first furniture or wall, by room kind",
+  "doorNearestFurniture": "m from a door middle to the nearest floor furniture box (rugs left out), share under 1 m, and what stands within 1.2 m",
+  "throughWidth": "m, the narrowest point of the widest way from the main door to each other door or stair with the furniture in place; structure: the same with no furniture",
+  "toFocalWidth": "m, the narrowest point of the widest way from the main door to the focal piece",
+  "stairToFurniture": "m from a stair or ladder pivot to the nearest floor furniture box"
+ },
+ "corridor": {
+  "n": 1797,
+  "clearWidth": {
+   "n": 1797,
+   "p10": 1,
+   "p25": 1,
+   "p50": 1.5,
+   "p75": 2,
+   "p90": 3
+  },
+  "clearWidthTiles": {
+   "n": 1797,
+   "p10": 0.5,
+   "p25": 0.5,
+   "p50": 0.75,
+   "p75": 1,
+   "p90": 1.5
+  },
+  "boxShortSide": {
+   "n": 1797,
+   "p10": 1,
+   "p25": 1.5,
+   "p50": 2,
+   "p75": 3.97,
+   "p90": 6
+  },
+  "length": {
+   "n": 1797,
+   "p10": 4,
+   "p25": 6,
+   "p50": 8,
+   "p75": 12,
+   "p90": 20
+  },
+  "under2m": 0.54,
+  "under2mLiked": 0.577,
+  "widthHist": {
+   "1": 0.265,
+   "2": 0.302,
+   "3": 0.029,
+   "4": 0.045,
+   "5": 0.001,
+   "6": 0.01,
+   "1.5": 0.199,
+   "0.5": 0.077,
+   "2.5": 0.047,
+   "3.5": 0.021,
+   "5.5": 0.003,
+   "4.5": 0.003
+  }
+ },
+ "hall": {
+  "n": 750,
+  "liked": 327,
+  "clearWidth": {
+   "n": 750,
+   "p10": 1,
+   "p25": 1,
+   "p50": 2,
+   "p75": 2,
+   "p90": 3.5
+  },
+  "clearWidthLiked": {
+   "n": 327,
+   "p10": 1,
+   "p25": 1,
+   "p50": 1.5,
+   "p75": 2,
+   "p90": 3.5
+  },
+  "clearWidthTiles": {
+   "n": 750,
+   "p10": 0.5,
+   "p25": 0.5,
+   "p50": 1,
+   "p75": 1,
+   "p90": 1.75
+  },
+  "length": {
+   "n": 750,
+   "p10": 4,
+   "p25": 6,
+   "p50": 9,
+   "p75": 14.01,
+   "p90": 23.39
+  },
+  "under2m": 0.473,
+  "atLeast4m": 0.075,
+  "widthHist": {
+   "1": 0.212,
+   "2": 0.323,
+   "3": 0.032,
+   "4": 0.049,
+   "5": 0.003,
+   "6": 0.019,
+   "1.5": 0.193,
+   "0.5": 0.068,
+   "2.5": 0.057,
+   "3.5": 0.04,
+   "4.5": 0.004
+  },
+  "examples": [
+   {
+    "w": 0.5,
+    "W": 3,
+    "L": 43,
+    "liked": true,
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "lvl": 1,
+    "cx": 3.94,
+    "cz": 0,
+    "doors": 3
+   },
+   {
+    "w": 1,
+    "W": 1,
+    "L": 8,
+    "liked": true,
+    "file": "advanced-base/the-lost-hall-of-aegir.blueprint",
+    "lvl": 8.65,
+    "cx": 23.5,
+    "cz": 153,
+    "doors": 2
+   },
+   {
+    "w": 1,
+    "W": 1,
+    "L": 4,
+    "liked": true,
+    "file": "castle/wooden-castle-20000inst__PuP_wooden_castle.blueprint",
+    "lvl": 5.9,
+    "cx": -7,
+    "cz": 54.5,
+    "doors": 4
+   },
+   {
+    "w": 1,
+    "W": 10,
+    "L": 29.5,
+    "liked": true,
+    "file": "other/ship.blueprint",
+    "lvl": -1.69,
+    "cx": 27.51,
+    "cz": 2.19,
+    "doors": 5
+   },
+   {
+    "w": 1.5,
+    "W": 1.5,
+    "L": 4,
+    "liked": true,
+    "file": "castle/gold-castle__Å¿»¬¿¡_gold_castle.blueprint",
+    "lvl": 1.1,
+    "cx": 0,
+    "cz": -41.25,
+    "doors": 2
+   },
+   {
+    "w": 1.5,
+    "W": 1.5,
+    "L": 4.5,
+    "liked": true,
+    "file": "portal-hub/three-tier-portal-hub.blueprint",
+    "lvl": 0.5,
+    "cx": 28.58,
+    "cz": 15.5,
+    "doors": 6
+   },
+   {
+    "w": 2,
+    "W": 8,
+    "L": 28,
+    "liked": true,
+    "file": "artistic/yubaba-s-bathhouse-from-spirited-away.blueprint",
+    "lvl": 24.78,
+    "cx": -0.2,
+    "cz": -17.43,
+    "doors": 3
+   },
+   {
+    "w": 2,
+    "W": 3.5,
+    "L": 7.5,
+    "liked": true,
+    "file": "castle/mordach-castle-and-town.blueprint",
+    "lvl": 9.5,
+    "cx": -17.65,
+    "cz": -108.85,
+    "doors": 2
+   },
+   {
+    "w": 2,
+    "W": 2,
+    "L": 6,
+    "liked": true,
+    "file": "tavern/a-medieval-fantasy-tavern-8500inst__PuP_Fantasy-tavern.blueprint",
+    "lvl": 10.56,
+    "cx": 3,
+    "cz": 9,
+    "doors": 2
+   },
+   {
+    "w": 3,
+    "W": 4.74,
+    "L": 18.18,
+    "liked": true,
+    "file": "other/the-main-building-of-the-estate-for-10-players__Å¿»¬¿¡_fazend.blueprint",
+    "lvl": 17.47,
+    "cx": -15.55,
+    "cz": -15.59,
+    "doors": 4
+   }
+  ]
+ },
+ "wing": {
+  "n": 573,
+  "clearWidth": {
+   "n": 573,
+   "p10": 1,
+   "p25": 1,
+   "p50": 1.5,
+   "p75": 2,
+   "p90": 3.5
+  },
+  "boxShortSide": {
+   "n": 573,
+   "p10": 1,
+   "p25": 1.1,
+   "p50": 1.7,
+   "p75": 2.13,
+   "p90": 4
+  },
+  "byKind": [
+   [
+    "storage",
+    240
+   ],
+   [
+    "other",
+    163
+   ],
+   [
+    "kitchen",
+    55
+   ],
+   [
+    "sitting",
+    19
+   ],
+   [
+    "display",
+    16
+   ],
+   [
+    "feast hall",
+    14
+   ],
+   [
+    "workshop",
+    14
+   ],
+   [
+    "smithy",
+    13
+   ],
+   [
+    "throne hall",
+    10
+   ],
+   [
+    "bedroom",
+    8
+   ]
+  ]
+ },
+ "porch": {
+  "n": 1471,
+  "clearWidth": {
+   "n": 1471,
+   "p10": 1,
+   "p25": 1.5,
+   "p50": 2,
+   "p75": 4,
+   "p90": 4
+  },
+  "boxShortSide": {
+   "n": 1471,
+   "p10": 1.11,
+   "p25": 2,
+   "p50": 3.09,
+   "p75": 4,
+   "p90": 4
+  },
+  "length": {
+   "n": 1471,
+   "p10": 4,
+   "p25": 4,
+   "p50": 4.03,
+   "p75": 6.03,
+   "p90": 10.02
+  }
+ },
+ "gallery": {
+  "n": 4875,
+  "clearWidth": {
+   "n": 4875,
+   "p10": 1,
+   "p25": 2,
+   "p50": 2,
+   "p75": 4,
+   "p90": 4
+  },
+  "boxShortSide": {
+   "n": 4875,
+   "p10": 1.5,
+   "p25": 2.06,
+   "p50": 4,
+   "p75": 4,
+   "p90": 4.1
+  },
+  "length": {
+   "n": 4875,
+   "p10": 4,
+   "p25": 4,
+   "p50": 4.24,
+   "p75": 6,
+   "p90": 8.35
+  }
+ },
+ "doorClearDepth": {
+  "storage": {
+   "n": 808,
+   "p10": 0,
+   "p25": 0,
+   "p50": 0.5,
+   "p75": 2.75,
+   "p90": 8
+  },
+  "empty": {
+   "n": 13236,
+   "p10": 1.5,
+   "p25": 2,
+   "p50": 2.5,
+   "p75": 4,
+   "p90": 5
+  },
+  "corridor": {
+   "n": 2423,
+   "p10": 0.5,
+   "p25": 1,
+   "p50": 1.5,
+   "p75": 2.5,
+   "p90": 4.75
+  },
+  "smithy": {
+   "n": 792,
+   "p10": 0,
+   "p25": 0,
+   "p50": 2,
+   "p75": 6,
+   "p90": 8
+  },
+  "display": {
+   "n": 1023,
+   "p10": 1,
+   "p25": 1.5,
+   "p50": 2,
+   "p75": 4,
+   "p90": 6.5
+  },
+  "other": {
+   "n": 1610,
+   "p10": 0,
+   "p25": 0.25,
+   "p50": 2,
+   "p75": 3.5,
+   "p90": 5.75
+  },
+  "bath": {
+   "n": 71,
+   "p10": 0,
+   "p25": 0,
+   "p50": 1.25,
+   "p75": 2.38,
+   "p90": 4.5
+  },
+  "kitchen": {
+   "n": 684,
+   "p10": 0,
+   "p25": 0,
+   "p50": 1.5,
+   "p75": 4,
+   "p90": 8
+  },
+  "workshop": {
+   "n": 406,
+   "p10": 0,
+   "p25": 0.5,
+   "p50": 2.25,
+   "p75": 6,
+   "p90": 8
+  },
+  "bedroom": {
+   "n": 1058,
+   "p10": 0,
+   "p25": 0.75,
+   "p50": 2.5,
+   "p75": 5.25,
+   "p90": 8
+  },
+  "hearth room": {
+   "n": 296,
+   "p10": 0,
+   "p25": 0,
+   "p50": 3.25,
+   "p75": 6,
+   "p90": 8
+  },
+  "sitting": {
+   "n": 228,
+   "p10": 0.5,
+   "p25": 1.5,
+   "p50": 3,
+   "p75": 6.5,
+   "p90": 8
+  },
+  "dormitory": {
+   "n": 217,
+   "p10": 0,
+   "p25": 0.5,
+   "p50": 2,
+   "p75": 6.25,
+   "p90": 8
+  },
+  "throne hall": {
+   "n": 617,
+   "p10": 0,
+   "p25": 1.25,
+   "p50": 3.5,
+   "p75": 6.75,
+   "p90": 8
+  },
+  "feast hall": {
+   "n": 254,
+   "p10": 0.5,
+   "p25": 1.5,
+   "p50": 2.88,
+   "p75": 6.44,
+   "p90": 8
+  },
+  "home": {
+   "n": 691,
+   "p10": 0,
+   "p25": 0.25,
+   "p50": 1.75,
+   "p75": 5.5,
+   "p90": 8
+  },
+  "dining": {
+   "n": 227,
+   "p10": 0,
+   "p25": 0.75,
+   "p50": 2,
+   "p75": 5,
+   "p90": 8
+  },
+  "portal room": {
+   "n": 148,
+   "p10": 0.18,
+   "p25": 0.5,
+   "p50": 1.25,
+   "p75": 3.75,
+   "p90": 5.33
+  },
+  "shrine": {
+   "n": 385,
+   "p10": 1,
+   "p25": 1.75,
+   "p50": 3,
+   "p75": 4.75,
+   "p90": 8
+  },
+  "tavern hall": {
+   "n": 164,
+   "p10": 0,
+   "p25": 1.25,
+   "p50": 3,
+   "p75": 5.5,
+   "p90": 8
+  }
+ },
+ "doorNearestFurniture": {
+  "storage": {
+   "d": {
+    "n": 808,
+    "p10": 0,
+    "p25": 0.04,
+    "p50": 0.32,
+    "p75": 1.65,
+    "p90": 4.7
+   },
+   "under1m": 0.652,
+   "what": [
+    [
+     "piece_chest_wood",
+     219
+    ],
+    [
+     "piece_chest",
+     143
+    ],
+    [
+     "piece_chest_blackmetal",
+     128
+    ],
+    [
+     "piece_chest_barrel",
+     14
+    ],
+    [
+     "hearth",
+     9
+    ],
+    [
+     "piece_chest_grausten",
+     7
+    ]
+   ]
+  },
+  "smithy": {
+   "d": {
+    "n": 792,
+    "p10": 0,
+    "p25": 0.17,
+    "p50": 1.08,
+    "p75": 2.42,
+    "p90": 4.73
+   },
+   "under1m": 0.461,
+   "what": [
+    [
+     "piece_chest",
+     34
+    ],
+    [
+     "blackforge",
+     32
+    ],
+    [
+     "piece_workbench",
+     26
+    ],
+    [
+     "blastfurnace",
+     24
+    ],
+    [
+     "charcoal_kiln",
+     23
+    ],
+    [
+     "forge_ext1",
+     22
+    ]
+   ]
+  },
+  "display": {
+   "d": {
+    "n": 181,
+    "p10": 0.45,
+    "p25": 1.03,
+    "p50": 2.13,
+    "p75": 4.81,
+    "p90": 8.41
+   },
+   "under1m": 0.249,
+   "what": [
+    [
+     "piece_chest_wood",
+     13
+    ],
+    [
+     "ArmorStand",
+     5
+    ],
+    [
+     "piece_throne01",
+     4
+    ],
+    [
+     "piece_chair",
+     3
+    ],
+    [
+     "portal_wood",
+     2
+    ],
+    [
+     "piece_chest_barrel",
+     2
+    ]
+   ]
+  },
+  "other": {
+   "d": {
+    "n": 1527,
+    "p10": 0,
+    "p25": 0.23,
+    "p50": 1.18,
+    "p75": 2.4,
+    "p90": 4.76
+   },
+   "under1m": 0.461,
+   "what": [
+    [
+     "piece_chest",
+     117
+    ],
+    [
+     "piece_chest_wood",
+     90
+    ],
+    [
+     "blackforge_ext1",
+     86
+    ],
+    [
+     "piece_chest_blackmetal",
+     63
+    ],
+    [
+     "goblinking_totemholder",
+     62
+    ],
+    [
+     "blackmarble_head01",
+     47
+    ]
+   ]
+  },
+  "bath": {
+   "d": {
+    "n": 71,
+    "p10": 0,
+    "p25": 0.12,
+    "p50": 1.11,
+    "p75": 1.94,
+    "p90": 3.19
+   },
+   "under1m": 0.479,
+   "what": [
+    [
+     "piece_bathtub",
+     30
+    ],
+    [
+     "piece_table_round",
+     2
+    ],
+    [
+     "piece_bench01",
+     2
+    ],
+    [
+     "piece_blackwood_bench01",
+     1
+    ],
+    [
+     "ArmorStand",
+     1
+    ]
+   ]
+  },
+  "kitchen": {
+   "d": {
+    "n": 684,
+    "p10": 0,
+    "p25": 0.17,
+    "p50": 0.83,
+    "p75": 2.57,
+    "p90": 6.31
+   },
+   "under1m": 0.535,
+   "what": [
+    [
+     "fermenter",
+     142
+    ],
+    [
+     "hearth",
+     61
+    ],
+    [
+     "piece_oven",
+     55
+    ],
+    [
+     "cauldron_ext5_mortarandpestle",
+     22
+    ],
+    [
+     "piece_chest_wood",
+     22
+    ],
+    [
+     "piece_chest_blackmetal",
+     16
+    ]
+   ]
+  },
+  "workshop": {
+   "d": {
+    "n": 406,
+    "p10": 0,
+    "p25": 0.32,
+    "p50": 1.4,
+    "p75": 3.19,
+    "p90": 6.2
+   },
+   "under1m": 0.416,
+   "what": [
+    [
+     "piece_workbench",
+     26
+    ],
+    [
+     "piece_chest_warderobe",
+     17
+    ],
+    [
+     "piece_chest_wood",
+     16
+    ],
+    [
+     "piece_magetable",
+     12
+    ],
+    [
+     "portal_wood",
+     10
+    ],
+    [
+     "fermenter",
+     10
+    ]
+   ]
+  },
+  "bedroom": {
+   "d": {
+    "n": 1058,
+    "p10": 0.16,
+    "p25": 0.65,
+    "p50": 1.53,
+    "p75": 2.63,
+    "p90": 4.72
+   },
+   "under1m": 0.338,
+   "what": [
+    [
+     "piece_bed02",
+     125
+    ],
+    [
+     "bed",
+     82
+    ],
+    [
+     "piece_chest_blackmetal",
+     30
+    ],
+    [
+     "piece_chest",
+     23
+    ],
+    [
+     "ashwood_bed",
+     22
+    ],
+    [
+     "piece_table",
+     20
+    ]
+   ]
+  },
+  "corridor": {
+   "d": {
+    "n": 98,
+    "p10": 0.18,
+    "p25": 0.95,
+    "p50": 1.81,
+    "p75": 3.65,
+    "p90": 8.08
+   },
+   "under1m": 0.265,
+   "what": [
+    [
+     "portal_wood",
+     4
+    ],
+    [
+     "piece_chest_wood",
+     4
+    ],
+    [
+     "piece_chest",
+     3
+    ],
+    [
+     "piece_pot3",
+     2
+    ],
+    [
+     "piece_chest_treasure",
+     2
+    ],
+    [
+     "piece_workbench_ext3",
+     1
+    ]
+   ]
+  },
+  "hearth room": {
+   "d": {
+    "n": 296,
+    "p10": 0,
+    "p25": 0.01,
+    "p50": 2.94,
+    "p75": 6,
+    "p90": 8.27
+   },
+   "under1m": 0.389,
+   "what": [
+    [
+     "hearth",
+     78
+    ],
+    [
+     "fire_pit",
+     16
+    ],
+    [
+     "bonfire",
+     11
+    ],
+    [
+     "fire_pit_iron",
+     9
+    ],
+    [
+     "fire_pit_hildir",
+     4
+    ],
+    [
+     "piece_chest",
+     3
+    ]
+   ]
+  },
+  "sitting": {
+   "d": {
+    "n": 228,
+    "p10": 0.35,
+    "p25": 1.06,
+    "p50": 2.17,
+    "p75": 4.38,
+    "p90": 6.74
+   },
+   "under1m": 0.232,
+   "what": [
+    [
+     "piece_bench01",
+     15
+    ],
+    [
+     "piece_chair",
+     7
+    ],
+    [
+     "piece_blackmarble_bench",
+     6
+    ],
+    [
+     "piece_chair03",
+     5
+    ],
+    [
+     "piece_workbench_ext2",
+     4
+    ],
+    [
+     "piece_chest",
+     3
+    ]
+   ]
+  },
+  "dormitory": {
+   "d": {
+    "n": 217,
+    "p10": 0,
+    "p25": 0.57,
+    "p50": 1.27,
+    "p75": 2.72,
+    "p90": 4.59
+   },
+   "under1m": 0.438,
+   "what": [
+    [
+     "ashwood_bed",
+     36
+    ],
+    [
+     "piece_chest",
+     22
+    ],
+    [
+     "piece_bathtub",
+     13
+    ],
+    [
+     "piece_bed02",
+     7
+    ],
+    [
+     "bed",
+     4
+    ],
+    [
+     "piece_table",
+     3
+    ]
+   ]
+  },
+  "throne hall": {
+   "d": {
+    "n": 617,
+    "p10": 0.21,
+    "p25": 0.8,
+    "p50": 1.83,
+    "p75": 3.35,
+    "p90": 5
+   },
+   "under1m": 0.297,
+   "what": [
+    [
+     "piece_table_round",
+     22
+    ],
+    [
+     "piece_table",
+     14
+    ],
+    [
+     "piece_throne02",
+     13
+    ],
+    [
+     "piece_chair03",
+     13
+    ],
+    [
+     "piece_chest_wood",
+     13
+    ],
+    [
+     "hearth",
+     12
+    ]
+   ]
+  },
+  "feast hall": {
+   "d": {
+    "n": 254,
+    "p10": 0.26,
+    "p25": 0.81,
+    "p50": 1.94,
+    "p75": 3.12,
+    "p90": 6.81
+   },
+   "under1m": 0.299,
+   "what": [
+    [
+     "piece_bench01",
+     25
+    ],
+    [
+     "piece_pot2",
+     15
+    ],
+    [
+     "dvergrprops_table",
+     10
+    ],
+    [
+     "piece_oven",
+     7
+    ],
+    [
+     "piece_table",
+     6
+    ],
+    [
+     "piece_chair",
+     5
+    ]
+   ]
+  },
+  "home": {
+   "d": {
+    "n": 691,
+    "p10": 0,
+    "p25": 0.23,
+    "p50": 1.07,
+    "p75": 2.37,
+    "p90": 4.01
+   },
+   "under1m": 0.472,
+   "what": [
+    [
+     "hearth",
+     52
+    ],
+    [
+     "piece_bed02",
+     48
+    ],
+    [
+     "bed",
+     25
+    ],
+    [
+     "piece_chest_blackmetal",
+     23
+    ],
+    [
+     "piece_chest",
+     21
+    ],
+    [
+     "ashwood_bed",
+     17
+    ]
+   ]
+  },
+  "dining": {
+   "d": {
+    "n": 227,
+    "p10": 0,
+    "p25": 0.51,
+    "p50": 1.74,
+    "p75": 2.99,
+    "p90": 5.22
+   },
+   "under1m": 0.335,
+   "what": [
+    [
+     "hearth",
+     22
+    ],
+    [
+     "piece_chest_blackmetal",
+     10
+    ],
+    [
+     "piece_chest_wood",
+     6
+    ],
+    [
+     "piece_table",
+     5
+    ],
+    [
+     "piece_oven",
+     5
+    ],
+    [
+     "piece_chair03",
+     4
+    ]
+   ]
+  },
+  "portal room": {
+   "d": {
+    "n": 148,
+    "p10": 0,
+    "p25": 0.41,
+    "p50": 0.77,
+    "p75": 2.78,
+    "p90": 4.44
+   },
+   "under1m": 0.642,
+   "what": [
+    [
+     "portal_wood",
+     94
+    ],
+    [
+     "piece_chest_wood",
+     5
+    ],
+    [
+     "portal_stone",
+     1
+    ],
+    [
+     "piece_blackmarble_bench",
+     1
+    ]
+   ]
+  },
+  "shrine": {
+   "d": {
+    "n": 50,
+    "p10": 0,
+    "p25": 0.87,
+    "p50": 2.58,
+    "p75": 7.71,
+    "p90": 17.45
+   },
+   "under1m": 0.26,
+   "what": [
+    [
+     "piece_chest_wood",
+     3
+    ],
+    [
+     "coal_pile",
+     2
+    ],
+    [
+     "grausten_pile",
+     2
+    ],
+    [
+     "piece_blackwood_bench01",
+     2
+    ],
+    [
+     "TreasureChest_trollcave",
+     1
+    ],
+    [
+     "stone_pile",
+     1
+    ]
+   ]
+  },
+  "tavern hall": {
+   "d": {
+    "n": 164,
+    "p10": 0,
+    "p25": 0.78,
+    "p50": 1.34,
+    "p75": 2.4,
+    "p90": 3.5
+   },
+   "under1m": 0.305,
+   "what": [
+    [
+     "piece_chair03",
+     16
+    ],
+    [
+     "piece_table_round",
+     10
+    ],
+    [
+     "fermenter",
+     8
+    ],
+    [
+     "piece_bench01",
+     5
+    ],
+    [
+     "guard_stone",
+     4
+    ],
+    [
+     "hearth",
+     4
+    ]
+   ]
+  }
+ },
+ "throughWidth": {
+  "corridor": {
+   "n": 1372,
+   "p10": 0.5,
+   "p25": 1,
+   "p50": 1,
+   "p75": 2,
+   "p90": 3,
+   "under1_2": 0.503,
+   "structure": {
+    "n": 1372,
+    "p10": 0.5,
+    "p25": 1,
+    "p50": 1.5,
+    "p75": 2,
+    "p90": 3.5
+   }
+  },
+  "empty": {
+   "n": 4721,
+   "p10": 1,
+   "p25": 1.5,
+   "p50": 2,
+   "p75": 3.5,
+   "p90": 5,
+   "under1_2": 0.15,
+   "structure": {
+    "n": 4721,
+    "p10": 1,
+    "p25": 1.5,
+    "p50": 2,
+    "p75": 3.5,
+    "p90": 5
+   }
+  },
+  "smithy": {
+   "n": 1035,
+   "p10": 0.25,
+   "p25": 1,
+   "p50": 2,
+   "p75": 3.5,
+   "p90": 4.75,
+   "under1_2": 0.344,
+   "structure": {
+    "n": 1035,
+    "p10": 1,
+    "p25": 2,
+    "p50": 3.5,
+    "p75": 5.5,
+    "p90": 7.5
+   }
+  },
+  "workshop": {
+   "n": 446,
+   "p10": 0.5,
+   "p25": 1,
+   "p50": 2.25,
+   "p75": 3.75,
+   "p90": 5.5,
+   "under1_2": 0.274,
+   "structure": {
+    "n": 446,
+    "p10": 1,
+    "p25": 2,
+    "p50": 3.5,
+    "p75": 5.5,
+    "p90": 8
+   }
+  },
+  "other": {
+   "n": 849,
+   "p10": 0.5,
+   "p25": 1,
+   "p50": 2,
+   "p75": 3,
+   "p90": 4,
+   "under1_2": 0.292,
+   "structure": {
+    "n": 849,
+    "p10": 1,
+    "p25": 1.5,
+    "p50": 2.5,
+    "p75": 4,
+    "p90": 5
+   }
+  },
+  "kitchen": {
+   "n": 603,
+   "p10": 0,
+   "p25": 0.5,
+   "p50": 2,
+   "p75": 3.5,
+   "p90": 5,
+   "under1_2": 0.363,
+   "structure": {
+    "n": 603,
+    "p10": 0.5,
+    "p25": 1.5,
+    "p50": 2.5,
+    "p75": 5,
+    "p90": 7
+   }
+  },
+  "storage": {
+   "n": 503,
+   "p10": 0,
+   "p25": 0.5,
+   "p50": 1.5,
+   "p75": 3,
+   "p90": 4.9,
+   "under1_2": 0.414,
+   "structure": {
+    "n": 503,
+    "p10": 1,
+    "p25": 1.5,
+    "p50": 2.5,
+    "p75": 4,
+    "p90": 6
+   }
+  },
+  "sitting": {
+   "n": 506,
+   "p10": 0.88,
+   "p25": 2,
+   "p50": 3,
+   "p75": 5.5,
+   "p90": 8.25,
+   "under1_2": 0.142,
+   "structure": {
+    "n": 506,
+    "p10": 1.25,
+    "p25": 2,
+    "p50": 3.5,
+    "p75": 6.5,
+    "p90": 10
+   }
+  },
+  "throne hall": {
+   "n": 977,
+   "p10": 0.5,
+   "p25": 1,
+   "p50": 1.75,
+   "p75": 2.75,
+   "p90": 4,
+   "under1_2": 0.281,
+   "structure": {
+    "n": 977,
+    "p10": 1,
+    "p25": 2,
+    "p50": 3,
+    "p75": 4.5,
+    "p90": 7.5
+   }
+  },
+  "dormitory": {
+   "n": 230,
+   "p10": 0.5,
+   "p25": 1,
+   "p50": 2,
+   "p75": 3.5,
+   "p90": 4.27,
+   "under1_2": 0.296,
+   "structure": {
+    "n": 230,
+    "p10": 1,
+    "p25": 2,
+    "p50": 3.5,
+    "p75": 5.5,
+    "p90": 8
+   }
+  },
+  "hearth room": {
+   "n": 276,
+   "p10": 1,
+   "p25": 1.5,
+   "p50": 2,
+   "p75": 4,
+   "p90": 6,
+   "under1_2": 0.217,
+   "structure": {
+    "n": 276,
+    "p10": 1,
+    "p25": 1.88,
+    "p50": 3,
+    "p75": 4.13,
+    "p90": 8
+   }
+  },
+  "bedroom": {
+   "n": 802,
+   "p10": 0.25,
+   "p25": 0.75,
+   "p50": 2,
+   "p75": 3,
+   "p90": 4.75,
+   "under1_2": 0.328,
+   "structure": {
+    "n": 802,
+    "p10": 1.5,
+    "p25": 2.5,
+    "p50": 4,
+    "p75": 6.5,
+    "p90": 8
+   }
+  },
+  "feast hall": {
+   "n": 317,
+   "p10": 0.5,
+   "p25": 1,
+   "p50": 1.5,
+   "p75": 3,
+   "p90": 4.5,
+   "under1_2": 0.413,
+   "structure": {
+    "n": 317,
+    "p10": 1,
+    "p25": 2,
+    "p50": 3,
+    "p75": 4.5,
+    "p90": 7.5
+   }
+  },
+  "bath": {
+   "n": 42,
+   "p10": 0.25,
+   "p25": 1,
+   "p50": 1.5,
+   "p75": 2.5,
+   "p90": 4,
+   "under1_2": 0.357,
+   "structure": {
+    "n": 42,
+    "p10": 1.05,
+    "p25": 3.13,
+    "p50": 4,
+    "p75": 5.5,
+    "p90": 7
+   }
+  },
+  "home": {
+   "n": 787,
+   "p10": 0.5,
+   "p25": 0.75,
+   "p50": 1.75,
+   "p75": 3,
+   "p90": 4,
+   "under1_2": 0.316,
+   "structure": {
+    "n": 787,
+    "p10": 1.5,
+    "p25": 2,
+    "p50": 3.5,
+    "p75": 5.5,
+    "p90": 8
+   }
+  },
+  "dining": {
+   "n": 279,
+   "p10": 0.25,
+   "p25": 1.25,
+   "p50": 1.5,
+   "p75": 2.75,
+   "p90": 3.55,
+   "under1_2": 0.244,
+   "structure": {
+    "n": 279,
+    "p10": 1.5,
+    "p25": 2,
+    "p50": 3.5,
+    "p75": 5,
+    "p90": 6
+   }
+  },
+  "display": {
+   "n": 732,
+   "p10": 0.5,
+   "p25": 1,
+   "p50": 2,
+   "p75": 3.5,
+   "p90": 5,
+   "under1_2": 0.354,
+   "structure": {
+    "n": 732,
+    "p10": 0.5,
+    "p25": 1,
+    "p50": 2,
+    "p75": 3.5,
+    "p90": 5
+   }
+  },
+  "portal room": {
+   "n": 196,
+   "p10": 0.5,
+   "p25": 0.5,
+   "p50": 1.5,
+   "p75": 2.25,
+   "p90": 2.5,
+   "under1_2": 0.372,
+   "structure": {
+    "n": 196,
+    "p10": 0.5,
+    "p25": 0.88,
+    "p50": 2,
+    "p75": 3,
+    "p90": 3.5
+   }
+  },
+  "tavern hall": {
+   "n": 234,
+   "p10": 0.75,
+   "p25": 1.5,
+   "p50": 2,
+   "p75": 3,
+   "p90": 5.18,
+   "under1_2": 0.226,
+   "structure": {
+    "n": 234,
+    "p10": 1.5,
+    "p25": 3,
+    "p50": 4,
+    "p75": 6.5,
+    "p90": 9.2
+   }
+  },
+  "shrine": {
+   "n": 392,
+   "p10": 0.5,
+   "p25": 1,
+   "p50": 2,
+   "p75": 3.25,
+   "p90": 3.5,
+   "under1_2": 0.281,
+   "structure": {
+    "n": 392,
+    "p10": 1,
+    "p25": 1.5,
+    "p50": 2,
+    "p75": 3.5,
+    "p90": 3.5
+   }
+  }
+ },
+ "toFocalWidth": {
+  "storage": {
+   "n": 374,
+   "p10": 0,
+   "p25": 0.25,
+   "p50": 0.5,
+   "p75": 2,
+   "p90": 3.75,
+   "under1_2": 0.618
+  },
+  "smithy": {
+   "n": 245,
+   "p10": 0.5,
+   "p25": 1,
+   "p50": 2.25,
+   "p75": 4,
+   "p90": 5,
+   "under1_2": 0.265
+  },
+  "bath": {
+   "n": 32,
+   "p10": 1,
+   "p25": 1.5,
+   "p50": 2.75,
+   "p75": 3.63,
+   "p90": 4.5,
+   "under1_2": 0.156
+  },
+  "kitchen": {
+   "n": 247,
+   "p10": 0.25,
+   "p25": 0.5,
+   "p50": 1.75,
+   "p75": 2.5,
+   "p90": 4,
+   "under1_2": 0.372
+  },
+  "workshop": {
+   "n": 177,
+   "p10": 0.9,
+   "p25": 1.75,
+   "p50": 2.75,
+   "p75": 4.25,
+   "p90": 6,
+   "under1_2": 0.13
+  },
+  "bedroom": {
+   "n": 512,
+   "p10": 0.5,
+   "p25": 1.5,
+   "p50": 2.5,
+   "p75": 4,
+   "p90": 5,
+   "under1_2": 0.184
+  },
+  "sitting": {
+   "n": 127,
+   "p10": 0.65,
+   "p25": 1.5,
+   "p50": 2,
+   "p75": 3.5,
+   "p90": 5.25,
+   "under1_2": 0.165
+  },
+  "throne hall": {
+   "n": 173,
+   "p10": 0.75,
+   "p25": 1.5,
+   "p50": 2.5,
+   "p75": 4,
+   "p90": 5.5,
+   "under1_2": 0.162
+  },
+  "dormitory": {
+   "n": 57,
+   "p10": 0.9,
+   "p25": 1.5,
+   "p50": 2.5,
+   "p75": 4.25,
+   "p90": 5.2,
+   "under1_2": 0.211
+  },
+  "hearth room": {
+   "n": 106,
+   "p10": 1,
+   "p25": 1.5,
+   "p50": 2,
+   "p75": 4,
+   "p90": 7.5,
+   "under1_2": 0.189
+  },
+  "feast hall": {
+   "n": 68,
+   "p10": 0.18,
+   "p25": 1.38,
+   "p50": 2.5,
+   "p75": 4.31,
+   "p90": 5.75,
+   "under1_2": 0.25
+  },
+  "home": {
+   "n": 185,
+   "p10": 1,
+   "p25": 1.75,
+   "p50": 2.75,
+   "p75": 3.75,
+   "p90": 5.4,
+   "under1_2": 0.124
+  },
+  "dining": {
+   "n": 95,
+   "p10": 1,
+   "p25": 1.75,
+   "p50": 2.5,
+   "p75": 4,
+   "p90": 5,
+   "under1_2": 0.116
+  },
+  "portal room": {
+   "n": 54,
+   "p10": 0.58,
+   "p25": 1.56,
+   "p50": 2.75,
+   "p75": 3.94,
+   "p90": 5.85,
+   "under1_2": 0.222
+  },
+  "tavern hall": {
+   "n": 18,
+   "p10": 1,
+   "p25": 1.81,
+   "p50": 2.75,
+   "p75": 4.06,
+   "p90": 5.78,
+   "under1_2": 0.167
+  }
+ },
+ "stairToFurniture": {
+  "all": {
+   "n": 10580,
+   "p10": 0.84,
+   "p25": 1.48,
+   "p50": 2.74,
+   "p75": 4.55,
+   "p90": 7.82
+  },
+  "under1m": 0.123
+ },
+ "corridorExamples": [
+  {
+   "w": 0.5,
+   "wMax": 3,
+   "W": 3,
+   "L": 43,
+   "liked": true,
+   "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+   "lvl": 1,
+   "cx": 3.94,
+   "cz": 0
+  },
+  {
+   "w": 1,
+   "wMax": 2.5,
+   "W": 18.53,
+   "L": 19.24,
+   "liked": true,
+   "file": "advanced-base/castle-final-part.blueprint",
+   "lvl": 0.73,
+   "cx": 3.35,
+   "cz": 30.89
+  },
+  {
+   "w": 1,
+   "wMax": 1,
+   "W": 1,
+   "L": 4,
+   "liked": true,
+   "file": "castle/cute-little-castle__Å¿»¬¿¡_little-castle.blueprint",
+   "lvl": 21.1,
+   "cx": -28,
+   "cz": -12.5
+  },
+  {
+   "w": 1,
+   "wMax": 1,
+   "W": 1,
+   "L": 4,
+   "liked": true,
+   "file": "castle/wooden-castle-20000inst__PuP_wooden_castle.blueprint",
+   "lvl": 6.9,
+   "cx": 1,
+   "cz": 48.5
+  },
+  {
+   "w": 1,
+   "wMax": 1,
+   "W": 1.06,
+   "L": 4.01,
+   "liked": true,
+   "file": "other/the-hall-of-the-gods.blueprint",
+   "lvl": 0.33,
+   "cx": 0,
+   "cz": -15.5
+  },
+  {
+   "w": 1.5,
+   "wMax": 1.5,
+   "W": 1.5,
+   "L": 4,
+   "liked": true,
+   "file": "boat-house/harbor-transport-station.blueprint",
+   "lvl": 5.5,
+   "cx": 1.75,
+   "cz": 13.08
+  },
+  {
+   "w": 1.5,
+   "wMax": 1.5,
+   "W": 1.5,
+   "L": 11.5,
+   "liked": true,
+   "file": "castle/thortress-castle.blueprint",
+   "lvl": 5.04,
+   "cx": 25.22,
+   "cz": 14.26
+  },
+  {
+   "w": 1.5,
+   "wMax": 2,
+   "W": 2,
+   "L": 8,
+   "liked": true,
+   "file": "tree-house/tree-house-owl-for-10-vikings-11000isnt__PuP_Owl-tree_house.blueprint",
+   "lvl": 43.73,
+   "cx": -1.96,
+   "cz": 1.78
+  },
+  {
+   "w": 2,
+   "wMax": 2,
+   "W": 2,
+   "L": 6,
+   "liked": true,
+   "file": "castle/astle-mistlands__PuP_v_castle.blueprint",
+   "lvl": 16.35,
+   "cx": 191.5,
+   "cz": -29
+  },
+  {
+   "w": 2,
+   "wMax": 3,
+   "W": 3.5,
+   "L": 9,
+   "liked": true,
+   "file": "castle/the-palace-of-the-padishah-the-pup-valheim-super-build__Å¿»¬¿¡_palace.blueprint",
+   "lvl": 28.16,
+   "cx": 52.42,
+   "cz": 169.72
+  },
+  {
+   "w": 2,
+   "wMax": 3.5,
+   "W": 7.57,
+   "L": 19.74,
+   "liked": true,
+   "file": "other/i-built-a-star-wars-world-in-valheim__UGM-StarHeim_milleniumfalcon_landed.blueprint",
+   "lvl": 5.02,
+   "cx": 1.25,
+   "cz": 14.39
+  },
+  {
+   "w": 3.5,
+   "wMax": 4,
+   "W": 4.11,
+   "L": 19.56,
+   "liked": true,
+   "file": "building/chalet-style-house__Å¿»¬¿¡_house_shale.blueprint",
+   "lvl": 13.86,
+   "cx": -59.83,
+   "cz": -16.51
+  }
+ ]
+}

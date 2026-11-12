@@ -1,0 +1,7067 @@
+{
+ "meta": {
+  "made": "2026-11-12",
+  "source": "lab/rooms_corpus_extract.js and lab/rooms_corpus_stats.js on compact.json (2,128 builds)",
+  "builds": 2128,
+  "vanillaBuilds": 1520,
+  "likedBuilds": 380,
+  "likedRule": "top quarter of vanilla builds by votes (votes >= 10), ties by downloads",
+  "rooms": 20400,
+  "roomsLiked": 11945,
+  "families": "prefab first cut (lab/rooms_corpus_lib.js FAMILY_PREFAB)",
+  "roomRule": "reader room (lib/decorate.js readLevel) with half or more of its floor under a roof, 4 to 400 m2, vanilla build, no mod piece inside; floor furniture: pivot under 0.5 m over the floor",
+  "furnishedBuilds": 1062,
+  "likedFurnished": 251,
+  "showcase": 16
+ },
+ "fields": {
+  "perBuild": "whole build, outdoors included: per prefab or type over furnished vanilla builds (a table, bed, seat, chest or fire anywhere): has (share of builds), p50 and p90 over all, p50_when and p90_when over builds that have it, max",
+  "perBuildLiked": "the same over liked builds",
+  "light kinds": "distinct light kinds (rooms_corpus_lib.js LIGHTK) per build",
+  "light prefabs": "distinct light prefabs per build",
+  "main light share": "the most used light prefab's share of all lights in the build",
+  "perRoom": "per prefab over the study rooms that have it: p50, p90, max per room, and by room kind (15 rooms or more)",
+  "showcase": "the same counts in the 16 showcase designs (lab/rooms_corpus_showcase.js)",
+  "showcaseOverP90": "showcase counts over the corpus p90_when (main light share: over p90)",
+  "stacked": "chests standing on chests (pivot 0.4 m or less apart across, 0.5 to 1.6 m higher): builds with any, and per build when any",
+  "indoor": "indoors only (the pieces of a build's study rooms, each piece once), builds with 30 to 400 m2 of indoor floor: per prefab in 15 or more of them, and per type: has, p50, p90, p50_when, p90_when, and per 100 m2 of indoor floor among builds that have it (per100m2_p50_when, per100m2_p90_when); all = every such build, liked_ = liked ones",
+  "showcaseIndoor": "the same indoor counts for the showcase designs (area: indoor floor, m2)",
+  "showcaseIndoorOver": "[design, count, per 100 m2] where a showcase count is over the indoor p90_when, or over the per 100 m2 p90_when and the p50_when"
+ },
+ "indoor": {
+  "builds": 579,
+  "liked": 83,
+  "area": {
+   "n": 579,
+   "p10": 46.65,
+   "p25": 92.13,
+   "p50": 160,
+   "p75": 258.5,
+   "p90": 338.15
+  },
+  "all": {
+   "piece_chest_wood": {
+    "has": 0.385,
+    "p50": 0,
+    "p90": 19,
+    "p50_when": 7,
+    "p90_when": 38.8,
+    "per100m2_p50_when": 4.43,
+    "per100m2_p90_when": 20.49
+   },
+   "piece_walltorch": {
+    "has": 0.345,
+    "p50": 0,
+    "p90": 5,
+    "p50_when": 3,
+    "p90_when": 10,
+    "per100m2_p50_when": 1.97,
+    "per100m2_p90_when": 4.85
+   },
+   "rug_deer": {
+    "has": 0.33,
+    "p50": 0,
+    "p90": 4,
+    "p50_when": 2,
+    "p90_when": 11,
+    "per100m2_p50_when": 1.68,
+    "per100m2_p90_when": 5.26
+   },
+   "piece_workbench": {
+    "has": 0.302,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1.6,
+    "per100m2_p50_when": 0.56,
+    "per100m2_p90_when": 1.62
+   },
+   "itemstand": {
+    "has": 0.282,
+    "p50": 0,
+    "p90": 11,
+    "p50_when": 7,
+    "p90_when": 27.8,
+    "per100m2_p50_when": 3.25,
+    "per100m2_p90_when": 15.72
+   },
+   "piece_chest": {
+    "has": 0.257,
+    "p50": 0,
+    "p90": 5,
+    "p50_when": 4,
+    "p90_when": 18,
+    "per100m2_p50_when": 2.1,
+    "per100m2_p90_when": 9.81
+   },
+   "rug_fur": {
+    "has": 0.252,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 6.5,
+    "per100m2_p50_when": 1,
+    "per100m2_p90_when": 3.24
+   },
+   "piece_chair03": {
+    "has": 0.25,
+    "p50": 0,
+    "p90": 4,
+    "p50_when": 3,
+    "p90_when": 8,
+    "per100m2_p50_when": 1.76,
+    "per100m2_p90_when": 3.8
+   },
+   "sign": {
+    "has": 0.245,
+    "p50": 0,
+    "p90": 9,
+    "p50_when": 7,
+    "p90_when": 32,
+    "per100m2_p50_when": 3.81,
+    "per100m2_p90_when": 27.39
+   },
+   "itemstandh": {
+    "has": 0.238,
+    "p50": 0,
+    "p90": 16,
+    "p50_when": 11.5,
+    "p90_when": 54.9,
+    "per100m2_p50_when": 6.41,
+    "per100m2_p90_when": 26.38
+   },
+   "piece_table": {
+    "has": 0.235,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.66,
+    "per100m2_p90_when": 1.96
+   },
+   "piece_chair": {
+    "has": 0.233,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 9.6,
+    "per100m2_p50_when": 0.87,
+    "per100m2_p90_when": 5.61
+   },
+   "fermenter": {
+    "has": 0.199,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 4,
+    "per100m2_p50_when": 0.82,
+    "per100m2_p90_when": 2.14
+   },
+   "rug_wolf": {
+    "has": 0.199,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 4,
+    "per100m2_p50_when": 0.76,
+    "per100m2_p90_when": 2.26
+   },
+   "piece_dvergr_lantern": {
+    "has": 0.193,
+    "p50": 0,
+    "p90": 3,
+    "p50_when": 3,
+    "p90_when": 9,
+    "per100m2_p50_when": 2.3,
+    "per100m2_p90_when": 6.64
+   },
+   "hearth": {
+    "has": 0.19,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.49,
+    "per100m2_p90_when": 0.98
+   },
+   "forge": {
+    "has": 0.188,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.47,
+    "per100m2_p90_when": 1.07
+   },
+   "piece_bed02": {
+    "has": 0.188,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.57,
+    "per100m2_p90_when": 1.18
+   },
+   "bed": {
+    "has": 0.187,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.77,
+    "per100m2_p90_when": 2.14
+   },
+   "piece_workbench_ext1": {
+    "has": 0.173,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.52,
+    "per100m2_p90_when": 1.32
+   },
+   "ArmorStand": {
+    "has": 0.162,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 2,
+    "p90_when": 4,
+    "per100m2_p50_when": 0.82,
+    "per100m2_p90_when": 2.11
+   },
+   "forge_ext5": {
+    "has": 0.159,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.53,
+    "per100m2_p90_when": 1.38
+   },
+   "piece_table_round": {
+    "has": 0.159,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1.9,
+    "per100m2_p50_when": 0.54,
+    "per100m2_p90_when": 1.04
+   },
+   "piece_chair02": {
+    "has": 0.157,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 2,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.84,
+    "per100m2_p90_when": 3.13
+   },
+   "piece_workbench_ext2": {
+    "has": 0.157,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.5,
+    "per100m2_p90_when": 1.32
+   },
+   "piece_cauldron": {
+    "has": 0.157,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.58,
+    "per100m2_p90_when": 1.53
+   },
+   "piece_throne01": {
+    "has": 0.155,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.54,
+    "per100m2_p90_when": 1.31
+   },
+   "piece_groundtorch_wood": {
+    "has": 0.149,
+    "p50": 0,
+    "p90": 3,
+    "p50_when": 4.5,
+    "p90_when": 10,
+    "per100m2_p50_when": 2.56,
+    "per100m2_p90_when": 5.5
+   },
+   "forge_ext2": {
+    "has": 0.145,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.5,
+    "per100m2_p90_when": 1.33
+   },
+   "piece_banner01": {
+    "has": 0.145,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 5,
+    "per100m2_p50_when": 1.07,
+    "per100m2_p90_when": 3.83
+   },
+   "piece_chest_blackmetal": {
+    "has": 0.14,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 2,
+    "p90_when": 15,
+    "per100m2_p50_when": 0.85,
+    "per100m2_p90_when": 12.38
+   },
+   "cauldron_ext1_spice": {
+    "has": 0.14,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.58,
+    "per100m2_p90_when": 1.12
+   },
+   "piece_chest_private": {
+    "has": 0.131,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 4,
+    "per100m2_p50_when": 0.84,
+    "per100m2_p90_when": 2.65
+   },
+   "piece_brazierceiling01": {
+    "has": 0.131,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.73,
+    "per100m2_p90_when": 2.26
+   },
+   "forge_ext6": {
+    "has": 0.13,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.62,
+    "per100m2_p90_when": 1.67
+   },
+   "cauldron_ext3_butchertable": {
+    "has": 0.123,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.53,
+    "per100m2_p90_when": 1.18
+   },
+   "jute_carpet": {
+    "has": 0.121,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 2,
+    "p90_when": 6.1,
+    "per100m2_p50_when": 0.85,
+    "per100m2_p90_when": 3.1
+   },
+   "piece_workbench_ext4": {
+    "has": 0.119,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.63,
+    "per100m2_p90_when": 1.37
+   },
+   "cauldron_ext4_pots": {
+    "has": 0.116,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.54,
+    "per100m2_p90_when": 1.14
+   },
+   "forge_ext3": {
+    "has": 0.114,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.55,
+    "per100m2_p90_when": 1.36
+   },
+   "piece_workbench_ext3": {
+    "has": 0.111,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.62,
+    "per100m2_p90_when": 1.1
+   },
+   "forge_ext4": {
+    "has": 0.111,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.54,
+    "per100m2_p90_when": 1.15
+   },
+   "piece_bench01": {
+    "has": 0.107,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 4,
+    "per100m2_p50_when": 0.67,
+    "per100m2_p90_when": 1.48
+   },
+   "forge_ext1": {
+    "has": 0.107,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.48,
+    "per100m2_p90_when": 1.63
+   },
+   "piece_cookingstation": {
+    "has": 0.098,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 4,
+    "per100m2_p50_when": 1.01,
+    "per100m2_p90_when": 3.17
+   },
+   "piece_groundtorch": {
+    "has": 0.095,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 8,
+    "per100m2_p50_when": 1.55,
+    "per100m2_p90_when": 5.28
+   },
+   "piece_chest_barrel": {
+    "has": 0.092,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 5,
+    "p90_when": 14,
+    "per100m2_p50_when": 2.7,
+    "per100m2_p90_when": 13.63
+   },
+   "rug_hare": {
+    "has": 0.086,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 3,
+    "p90_when": 7.1,
+    "per100m2_p50_when": 1.24,
+    "per100m2_p90_when": 3.92
+   },
+   "fire_pit": {
+    "has": 0.086,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.85,
+    "per100m2_p90_when": 1.99
+   },
+   "piece_cloth_hanging_door": {
+    "has": 0.081,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 4,
+    "p90_when": 8.4,
+    "per100m2_p50_when": 1.52,
+    "per100m2_p90_when": 4.7
+   },
+   "piece_banner02": {
+    "has": 0.074,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 5.8,
+    "per100m2_p50_when": 0.87,
+    "per100m2_p90_when": 3.03
+   },
+   "piece_cookingstation_iron": {
+    "has": 0.074,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.54,
+    "per100m2_p90_when": 1.57
+   },
+   "treasure_stack": {
+    "has": 0.067,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 3,
+    "p90_when": 14,
+    "per100m2_p50_when": 1.23,
+    "per100m2_p90_when": 5.6
+   },
+   "portal_wood": {
+    "has": 0.066,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 8,
+    "per100m2_p50_when": 0.73,
+    "per100m2_p90_when": 6.67
+   },
+   "piece_Lavalantern": {
+    "has": 0.064,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 9.4,
+    "per100m2_p50_when": 1.08,
+    "per100m2_p90_when": 6.29
+   },
+   "piece_oven": {
+    "has": 0.06,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.53,
+    "per100m2_p90_when": 2.44
+   },
+   "piece_logbench01": {
+    "has": 0.06,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2.6,
+    "per100m2_p50_when": 0.61,
+    "per100m2_p90_when": 1.99
+   },
+   "piece_banner05": {
+    "has": 0.059,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 6.7,
+    "per100m2_p50_when": 0.64,
+    "per100m2_p90_when": 4.41
+   },
+   "piece_banner04": {
+    "has": 0.055,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 6.8,
+    "per100m2_p50_when": 1.07,
+    "per100m2_p90_when": 4
+   },
+   "cauldron_ext5_mortarandpestle": {
+    "has": 0.055,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.59,
+    "per100m2_p90_when": 0.99
+   },
+   "Candle_resin": {
+    "has": 0.054,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 3,
+    "p90_when": 13,
+    "per100m2_p50_when": 1.87,
+    "per100m2_p90_when": 5.83
+   },
+   "piece_groundtorch_mist": {
+    "has": 0.052,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2.5,
+    "p90_when": 20,
+    "per100m2_p50_when": 1.69,
+    "per100m2_p90_when": 11.03
+   },
+   "piece_cartographytable": {
+    "has": 0.052,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.38,
+    "per100m2_p90_when": 0.69
+   },
+   "wood_stack": {
+    "has": 0.052,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 6,
+    "per100m2_p50_when": 0.88,
+    "per100m2_p90_when": 4.9
+   },
+   "jute_carpet_blue": {
+    "has": 0.047,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 4,
+    "per100m2_p50_when": 0.54,
+    "per100m2_p90_when": 1.96
+   },
+   "guard_stone": {
+    "has": 0.047,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2.8,
+    "per100m2_p50_when": 0.41,
+    "per100m2_p90_when": 2
+   },
+   "piece_preptable": {
+    "has": 0.045,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.5,
+    "per100m2_p50_when": 0.55,
+    "per100m2_p90_when": 1
+   },
+   "ashwood_bed": {
+    "has": 0.043,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 6.2,
+    "per100m2_p50_when": 1.04,
+    "per100m2_p90_when": 2.06
+   },
+   "piece_xmastree": {
+    "has": 0.043,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.69,
+    "per100m2_p90_when": 2.01
+   },
+   "piece_cloth_hanging_door_blue": {
+    "has": 0.043,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 3,
+    "p90_when": 9.2,
+    "per100m2_p50_when": 1.64,
+    "per100m2_p90_when": 4.74
+   },
+   "blackforge": {
+    "has": 0.04,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.47,
+    "per100m2_p90_when": 1.16
+   },
+   "blackforge_ext1": {
+    "has": 0.038,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.51,
+    "per100m2_p90_when": 0.97
+   },
+   "piece_banner11": {
+    "has": 0.038,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 6,
+    "per100m2_p50_when": 1.95,
+    "per100m2_p90_when": 5.13
+   },
+   "piece_barber": {
+    "has": 0.036,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.62,
+    "per100m2_p90_when": 2.8
+   },
+   "piece_cloth_hanging_door_blue2": {
+    "has": 0.036,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 7,
+    "per100m2_p50_when": 0.69,
+    "per100m2_p90_when": 4.04
+   },
+   "rug_straw": {
+    "has": 0.035,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 3,
+    "p90_when": 19.7,
+    "per100m2_p50_when": 0.96,
+    "per100m2_p90_when": 14.7
+   },
+   "piece_stonecutter": {
+    "has": 0.035,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.1,
+    "per100m2_p50_when": 0.47,
+    "per100m2_p90_when": 0.95
+   },
+   "piece_MeadCauldron": {
+    "has": 0.033,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.4,
+    "per100m2_p90_when": 0.9
+   },
+   "piece_table_oak": {
+    "has": 0.033,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.51,
+    "per100m2_p90_when": 0.77
+   },
+   "piece_chest_treasure": {
+    "has": 0.033,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.51,
+    "per100m2_p90_when": 0.97
+   },
+   "piece_pot2": {
+    "has": 0.033,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.76,
+    "per100m2_p90_when": 1.46
+   },
+   "piece_pot3": {
+    "has": 0.033,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2.4,
+    "per100m2_p50_when": 0.76,
+    "per100m2_p90_when": 1.98
+   },
+   "piece_artisanstation": {
+    "has": 0.029,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.36,
+    "per100m2_p90_when": 1.12
+   },
+   "cauldron_ext6_rollingpins": {
+    "has": 0.029,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.43,
+    "per100m2_p90_when": 0.83
+   },
+   "piece_bathtub": {
+    "has": 0.029,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.41,
+    "per100m2_p90_when": 1.16
+   },
+   "piece_jackoturnip": {
+    "has": 0.029,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.67,
+    "per100m2_p90_when": 1.77
+   },
+   "piece_banner07": {
+    "has": 0.029,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 5,
+    "per100m2_p50_when": 1.01,
+    "per100m2_p90_when": 3.03
+   },
+   "piece_banner08": {
+    "has": 0.029,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 3.8,
+    "per100m2_p50_when": 1.26,
+    "per100m2_p90_when": 2.05
+   },
+   "rug_asksvin": {
+    "has": 0.028,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 3.5,
+    "per100m2_p50_when": 0.63,
+    "per100m2_p90_when": 3.07
+   },
+   "piece_gift1": {
+    "has": 0.028,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2.5,
+    "per100m2_p50_when": 1.27,
+    "per100m2_p90_when": 3.46
+   },
+   "piece_magetable_ext2": {
+    "has": 0.026,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.43,
+    "per100m2_p90_when": 3.29
+   },
+   "piece_blackwood_bench01": {
+    "has": 0.026,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.5,
+    "per100m2_p90_when": 1.92
+   },
+   "type:light": {
+    "has": 0.701,
+    "p50": 3,
+    "p90": 12,
+    "p50_when": 5.5,
+    "p90_when": 14,
+    "per100m2_p50_when": 3.17,
+    "per100m2_p90_when": 7.91
+   },
+   "type:chest": {
+    "has": 0.61,
+    "p50": 2,
+    "p90": 24.2,
+    "p50_when": 8,
+    "p90_when": 38.8,
+    "per100m2_p50_when": 4.64,
+    "per100m2_p90_when": 20.22
+   },
+   "type:barrel": {
+    "has": 0.098,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 5,
+    "p90_when": 14,
+    "per100m2_p50_when": 2.67,
+    "per100m2_p90_when": 13.08
+   },
+   "type:seat": {
+    "has": 0.453,
+    "p50": 0,
+    "p90": 8,
+    "p50_when": 4,
+    "p90_when": 12,
+    "per100m2_p50_when": 2.52,
+    "per100m2_p90_when": 6.53
+   },
+   "type:table": {
+    "has": 0.361,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 1,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.76,
+    "per100m2_p90_when": 1.93
+   },
+   "type:bed": {
+    "has": 0.399,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 1,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.74,
+    "per100m2_p90_when": 1.99
+   },
+   "type:drape": {
+    "has": 0.114,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 4,
+    "p90_when": 14.5,
+    "per100m2_p50_when": 2.32,
+    "per100m2_p90_when": 7.11
+   },
+   "type:banner": {
+    "has": 0.328,
+    "p50": 0,
+    "p90": 4,
+    "p50_when": 2,
+    "p90_when": 9,
+    "per100m2_p50_when": 1.62,
+    "per100m2_p90_when": 5.31
+   },
+   "type:rug": {
+    "has": 0.491,
+    "p50": 0,
+    "p90": 11,
+    "p50_when": 5,
+    "p90_when": 17,
+    "per100m2_p50_when": 3.11,
+    "per100m2_p90_when": 7.95
+   },
+   "type:shelf": {
+    "has": 0.014,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 31.7,
+    "per100m2_p50_when": 2.42,
+    "per100m2_p90_when": 36.94
+   },
+   "type:pot": {
+    "has": 0.045,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 3,
+    "p90_when": 10,
+    "per100m2_p50_when": 1.9,
+    "per100m2_p90_when": 5.6
+   },
+   "type:itemstand": {
+    "has": 0.34,
+    "p50": 0,
+    "p90": 28,
+    "p50_when": 11,
+    "p90_when": 69.8,
+    "per100m2_p50_when": 5.85,
+    "per100m2_p90_when": 37.72
+   },
+   "type:sign": {
+    "has": 0.25,
+    "p50": 0,
+    "p90": 9.2,
+    "p50_when": 7,
+    "p90_when": 36.2,
+    "per100m2_p50_when": 3.88,
+    "per100m2_p90_when": 27.99
+   },
+   "type:plant": {
+    "has": 0,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": null,
+    "p90_when": null,
+    "per100m2_p50_when": null,
+    "per100m2_p90_when": null
+   },
+   "light kinds": {
+    "has": 0.701,
+    "p50": 1,
+    "p90": 3,
+    "p50_when": 1,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.87,
+    "per100m2_p90_when": 2.5
+   },
+   "light prefabs": {
+    "has": 0.701,
+    "p50": 1,
+    "p90": 3,
+    "p50_when": 1,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.87,
+    "per100m2_p90_when": 2.53
+   },
+   "main light share": {
+    "has": 1,
+    "p50": 1,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.45,
+    "per100m2_p90_when": 1.47
+   }
+  },
+  "liked_": {
+   "piece_chest_wood": {
+    "has": 0.398,
+    "p50": 0,
+    "p90": 11.8,
+    "p50_when": 6,
+    "p90_when": 58.8,
+    "per100m2_p50_when": 3.32,
+    "per100m2_p90_when": 29.07
+   },
+   "piece_walltorch": {
+    "has": 0.398,
+    "p50": 0,
+    "p90": 5.8,
+    "p50_when": 4,
+    "p90_when": 8,
+    "per100m2_p50_when": 1.69,
+    "per100m2_p90_when": 4.03
+   },
+   "rug_deer": {
+    "has": 0.349,
+    "p50": 0,
+    "p90": 6.8,
+    "p50_when": 4,
+    "p90_when": 13.2,
+    "per100m2_p50_when": 2.39,
+    "per100m2_p90_when": 8.25
+   },
+   "piece_workbench": {
+    "has": 0.265,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.43,
+    "per100m2_p90_when": 1.49
+   },
+   "itemstand": {
+    "has": 0.566,
+    "p50": 3,
+    "p90": 25.4,
+    "p50_when": 9,
+    "p90_when": 34.2,
+    "per100m2_p50_when": 4.58,
+    "per100m2_p90_when": 14.84
+   },
+   "piece_chest": {
+    "has": 0.253,
+    "p50": 0,
+    "p90": 2.8,
+    "p50_when": 2,
+    "p90_when": 14,
+    "per100m2_p50_when": 0.66,
+    "per100m2_p90_when": 8.26
+   },
+   "rug_fur": {
+    "has": 0.277,
+    "p50": 0,
+    "p90": 3.8,
+    "p50_when": 2,
+    "p90_when": 8.6,
+    "per100m2_p50_when": 1.19,
+    "per100m2_p90_when": 2.84
+   },
+   "piece_chair03": {
+    "has": 0.301,
+    "p50": 0,
+    "p90": 3,
+    "p50_when": 3,
+    "p90_when": 6.2,
+    "per100m2_p50_when": 1.11,
+    "per100m2_p90_when": 3.66
+   },
+   "sign": {
+    "has": 0.301,
+    "p50": 0,
+    "p90": 9,
+    "p50_when": 8,
+    "p90_when": 49.8,
+    "per100m2_p50_when": 2.94,
+    "per100m2_p90_when": 25.3
+   },
+   "itemstandh": {
+    "has": 0.482,
+    "p50": 0,
+    "p90": 50.6,
+    "p50_when": 17.5,
+    "p90_when": 67.8,
+    "per100m2_p50_when": 8.69,
+    "per100m2_p90_when": 25.96
+   },
+   "piece_table": {
+    "has": 0.253,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 3,
+    "per100m2_p50_when": 0.76,
+    "per100m2_p90_when": 1.93
+   },
+   "piece_chair": {
+    "has": 0.301,
+    "p50": 0,
+    "p90": 9,
+    "p50_when": 3,
+    "p90_when": 25.8,
+    "per100m2_p50_when": 1.56,
+    "per100m2_p90_when": 10.75
+   },
+   "fermenter": {
+    "has": 0.289,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 4,
+    "per100m2_p50_when": 0.79,
+    "per100m2_p90_when": 1.78
+   },
+   "rug_wolf": {
+    "has": 0.241,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 3.3,
+    "per100m2_p50_when": 0.76,
+    "per100m2_p90_when": 1.64
+   },
+   "piece_dvergr_lantern": {
+    "has": 0.337,
+    "p50": 0,
+    "p90": 4,
+    "p50_when": 3,
+    "p90_when": 7.3,
+    "per100m2_p50_when": 1.4,
+    "per100m2_p90_when": 3.88
+   },
+   "hearth": {
+    "has": 0.157,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1.8,
+    "per100m2_p50_when": 0.4,
+    "per100m2_p90_when": 0.5
+   },
+   "forge": {
+    "has": 0.241,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.33,
+    "per100m2_p90_when": 0.5
+   },
+   "piece_bed02": {
+    "has": 0.181,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 2.6,
+    "per100m2_p50_when": 0.45,
+    "per100m2_p90_when": 0.89
+   },
+   "bed": {
+    "has": 0.193,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 3.5,
+    "per100m2_p50_when": 1.43,
+    "per100m2_p90_when": 2.33
+   },
+   "piece_workbench_ext1": {
+    "has": 0.108,
+    "p50": 0,
+    "p90": 0.8,
+    "p50_when": 1,
+    "p90_when": 2.4,
+    "per100m2_p50_when": 0.4,
+    "per100m2_p90_when": 0.93
+   },
+   "ArmorStand": {
+    "has": 0.229,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 4.2,
+    "per100m2_p50_when": 0.82,
+    "per100m2_p90_when": 1.69
+   },
+   "forge_ext5": {
+    "has": 0.205,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 2.4,
+    "per100m2_p50_when": 0.44,
+    "per100m2_p90_when": 0.94
+   },
+   "piece_table_round": {
+    "has": 0.157,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.42,
+    "per100m2_p90_when": 0.88
+   },
+   "piece_chair02": {
+    "has": 0.205,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 3.4,
+    "per100m2_p50_when": 0.78,
+    "per100m2_p90_when": 2.08
+   },
+   "piece_workbench_ext2": {
+    "has": 0.145,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.4,
+    "per100m2_p90_when": 1.43
+   },
+   "piece_cauldron": {
+    "has": 0.12,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.42,
+    "per100m2_p90_when": 1.08
+   },
+   "piece_throne01": {
+    "has": 0.169,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.41,
+    "per100m2_p90_when": 1.96
+   },
+   "piece_groundtorch_wood": {
+    "has": 0.145,
+    "p50": 0,
+    "p90": 4,
+    "p50_when": 6.5,
+    "p90_when": 11.7,
+    "per100m2_p50_when": 2.47,
+    "per100m2_p90_when": 8.49
+   },
+   "forge_ext2": {
+    "has": 0.157,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1.8,
+    "per100m2_p50_when": 0.42,
+    "per100m2_p90_when": 1.05
+   },
+   "piece_banner01": {
+    "has": 0.181,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 8,
+    "per100m2_p50_when": 1.69,
+    "per100m2_p90_when": 4.77
+   },
+   "piece_chest_blackmetal": {
+    "has": 0.157,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 2,
+    "p90_when": 63.2,
+    "per100m2_p50_when": 0.86,
+    "per100m2_p90_when": 23.49
+   },
+   "cauldron_ext1_spice": {
+    "has": 0.12,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 2.1,
+    "per100m2_p50_when": 0.6,
+    "per100m2_p90_when": 0.95
+   },
+   "piece_chest_private": {
+    "has": 0.205,
+    "p50": 0,
+    "p90": 1.8,
+    "p50_when": 2,
+    "p90_when": 10,
+    "per100m2_p50_when": 0.83,
+    "per100m2_p90_when": 4.42
+   },
+   "piece_brazierceiling01": {
+    "has": 0.181,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 2.6,
+    "per100m2_p50_when": 0.65,
+    "per100m2_p90_when": 1.63
+   },
+   "forge_ext6": {
+    "has": 0.084,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.44,
+    "per100m2_p90_when": 1.12
+   },
+   "cauldron_ext3_butchertable": {
+    "has": 0.072,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.55,
+    "per100m2_p90_when": 0.79
+   },
+   "jute_carpet": {
+    "has": 0.205,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 8,
+    "per100m2_p50_when": 0.93,
+    "per100m2_p90_when": 3
+   },
+   "piece_workbench_ext4": {
+    "has": 0.096,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.3,
+    "per100m2_p50_when": 0.44,
+    "per100m2_p90_when": 0.75
+   },
+   "cauldron_ext4_pots": {
+    "has": 0.024,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.74,
+    "per100m2_p90_when": 1.04
+   },
+   "forge_ext3": {
+    "has": 0.133,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.38,
+    "per100m2_p90_when": 0.84
+   },
+   "piece_workbench_ext3": {
+    "has": 0.048,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.7,
+    "per100m2_p50_when": 0.44,
+    "per100m2_p90_when": 0.52
+   },
+   "forge_ext4": {
+    "has": 0.048,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.7,
+    "per100m2_p50_when": 0.49,
+    "per100m2_p90_when": 0.7
+   },
+   "piece_bench01": {
+    "has": 0.108,
+    "p50": 0,
+    "p90": 0.8,
+    "p50_when": 2,
+    "p90_when": 5.6,
+    "per100m2_p50_when": 0.55,
+    "per100m2_p90_when": 1.66
+   },
+   "forge_ext1": {
+    "has": 0.096,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.32,
+    "per100m2_p90_when": 0.52
+   },
+   "piece_cookingstation": {
+    "has": 0.096,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1.5,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.67,
+    "per100m2_p90_when": 2.45
+   },
+   "piece_groundtorch": {
+    "has": 0.145,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2.5,
+    "p90_when": 5,
+    "per100m2_p50_when": 1.27,
+    "per100m2_p90_when": 2.09
+   },
+   "piece_chest_barrel": {
+    "has": 0.229,
+    "p50": 0,
+    "p90": 5.8,
+    "p50_when": 5,
+    "p90_when": 19.4,
+    "per100m2_p50_when": 2.69,
+    "per100m2_p90_when": 11.17
+   },
+   "rug_hare": {
+    "has": 0.169,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2.5,
+    "p90_when": 4.7,
+    "per100m2_p50_when": 1.59,
+    "per100m2_p90_when": 3.19
+   },
+   "fire_pit": {
+    "has": 0.072,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 4.5,
+    "per100m2_p50_when": 1.32,
+    "per100m2_p90_when": 2.12
+   },
+   "piece_cloth_hanging_door": {
+    "has": 0.193,
+    "p50": 0,
+    "p90": 3.6,
+    "p50_when": 4,
+    "p90_when": 9,
+    "per100m2_p50_when": 1.62,
+    "per100m2_p90_when": 7.36
+   },
+   "piece_banner02": {
+    "has": 0.06,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 4.4,
+    "per100m2_p50_when": 1.81,
+    "per100m2_p90_when": 2.64
+   },
+   "piece_cookingstation_iron": {
+    "has": 0.024,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.28,
+    "per100m2_p90_when": 0.29
+   },
+   "treasure_stack": {
+    "has": 0.12,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 3,
+    "p90_when": 14,
+    "per100m2_p50_when": 2.18,
+    "per100m2_p90_when": 9.1
+   },
+   "portal_wood": {
+    "has": 0.096,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 5.8,
+    "per100m2_p50_when": 0.59,
+    "per100m2_p90_when": 3.1
+   },
+   "piece_Lavalantern": {
+    "has": 0.181,
+    "p50": 0,
+    "p90": 2,
+    "p50_when": 2,
+    "p90_when": 11.2,
+    "per100m2_p50_when": 1.54,
+    "per100m2_p90_when": 7.95
+   },
+   "piece_oven": {
+    "has": 0.06,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 4,
+    "per100m2_p50_when": 0.36,
+    "per100m2_p90_when": 1.7
+   },
+   "piece_logbench01": {
+    "has": 0.036,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.8,
+    "per100m2_p50_when": 0.55,
+    "per100m2_p90_when": 1.51
+   },
+   "piece_banner05": {
+    "has": 0.108,
+    "p50": 0,
+    "p90": 0.8,
+    "p50_when": 2,
+    "p90_when": 5.2,
+    "per100m2_p50_when": 1.8,
+    "per100m2_p90_when": 4.67
+   },
+   "piece_banner04": {
+    "has": 0.096,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2.5,
+    "p90_when": 5.6,
+    "per100m2_p50_when": 1.67,
+    "per100m2_p90_when": 2.34
+   },
+   "cauldron_ext5_mortarandpestle": {
+    "has": 0.072,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.5,
+    "per100m2_p50_when": 0.64,
+    "per100m2_p90_when": 1.02
+   },
+   "Candle_resin": {
+    "has": 0.133,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 2,
+    "p90_when": 16,
+    "per100m2_p50_when": 0.9,
+    "per100m2_p90_when": 6.54
+   },
+   "piece_groundtorch_mist": {
+    "has": 0.084,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 8.2,
+    "per100m2_p50_when": 1.71,
+    "per100m2_p90_when": 2.8
+   },
+   "piece_cartographytable": {
+    "has": 0.06,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.3,
+    "per100m2_p90_when": 0.59
+   },
+   "wood_stack": {
+    "has": 0.048,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1.5,
+    "p90_when": 4.8,
+    "per100m2_p50_when": 0.63,
+    "per100m2_p90_when": 3.7
+   },
+   "jute_carpet_blue": {
+    "has": 0.06,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 6.4,
+    "per100m2_p50_when": 1.23,
+    "per100m2_p90_when": 1.99
+   },
+   "guard_stone": {
+    "has": 0.096,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.47,
+    "per100m2_p90_when": 1.1
+   },
+   "piece_preptable": {
+    "has": 0.12,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 1,
+    "p90_when": 1.1,
+    "per100m2_p50_when": 0.53,
+    "per100m2_p90_when": 0.91
+   },
+   "ashwood_bed": {
+    "has": 0.06,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 5.6,
+    "per100m2_p50_when": 0.82,
+    "per100m2_p90_when": 2
+   },
+   "piece_xmastree": {
+    "has": 0.084,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 6,
+    "per100m2_p50_when": 0.84,
+    "per100m2_p90_when": 3.25
+   },
+   "piece_cloth_hanging_door_blue": {
+    "has": 0.12,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 4,
+    "p90_when": 8.2,
+    "per100m2_p50_when": 1.94,
+    "per100m2_p90_when": 3.41
+   },
+   "blackforge": {
+    "has": 0.072,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.5,
+    "per100m2_p50_when": 0.32,
+    "per100m2_p90_when": 0.87
+   },
+   "blackforge_ext1": {
+    "has": 0.048,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1.5,
+    "p90_when": 2,
+    "per100m2_p50_when": 0.46,
+    "per100m2_p90_when": 0.58
+   },
+   "piece_banner11": {
+    "has": 0.072,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 6,
+    "per100m2_p50_when": 1.73,
+    "per100m2_p90_when": 2
+   },
+   "piece_barber": {
+    "has": 0.048,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.7,
+    "per100m2_p50_when": 0.78,
+    "per100m2_p90_when": 1.57
+   },
+   "piece_cloth_hanging_door_blue2": {
+    "has": 0.048,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 3.5,
+    "p90_when": 8.1,
+    "per100m2_p50_when": 1.72,
+    "per100m2_p90_when": 3.57
+   },
+   "rug_straw": {
+    "has": 0.072,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 4,
+    "p90_when": 18.5,
+    "per100m2_p50_when": 1.48,
+    "per100m2_p90_when": 7.76
+   },
+   "piece_stonecutter": {
+    "has": 0.036,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.29,
+    "per100m2_p90_when": 0.32
+   },
+   "piece_MeadCauldron": {
+    "has": 0.06,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.4,
+    "per100m2_p90_when": 0.74
+   },
+   "piece_table_oak": {
+    "has": 0.048,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 3.8,
+    "per100m2_p50_when": 0.37,
+    "per100m2_p90_when": 1.6
+   },
+   "piece_chest_treasure": {
+    "has": 0.084,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.4,
+    "per100m2_p50_when": 0.56,
+    "per100m2_p90_when": 1.07
+   },
+   "piece_pot2": {
+    "has": 0.096,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 3.3,
+    "per100m2_p50_when": 0.69,
+    "per100m2_p90_when": 2.02
+   },
+   "piece_pot3": {
+    "has": 0.084,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 2.8,
+    "per100m2_p50_when": 0.84,
+    "per100m2_p90_when": 1.81
+   },
+   "piece_artisanstation": {
+    "has": 0.072,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.29,
+    "per100m2_p90_when": 0.84
+   },
+   "cauldron_ext6_rollingpins": {
+    "has": 0.108,
+    "p50": 0,
+    "p90": 0.8,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.45,
+    "per100m2_p90_when": 0.91
+   },
+   "piece_bathtub": {
+    "has": 0.048,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1,
+    "per100m2_p50_when": 0.68,
+    "per100m2_p90_when": 1.35
+   },
+   "piece_jackoturnip": {
+    "has": 0.072,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.5,
+    "per100m2_p50_when": 0.57,
+    "per100m2_p90_when": 0.86
+   },
+   "piece_banner07": {
+    "has": 0.024,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1.5,
+    "p90_when": 1.9,
+    "per100m2_p50_when": 1.06,
+    "per100m2_p90_when": 1.66
+   },
+   "piece_banner08": {
+    "has": 0.084,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 2.4,
+    "per100m2_p50_when": 1.26,
+    "per100m2_p90_when": 1.83
+   },
+   "rug_asksvin": {
+    "has": 0.036,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 2.8,
+    "per100m2_p50_when": 0.9,
+    "per100m2_p90_when": 1.16
+   },
+   "piece_gift1": {
+    "has": 0.024,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 2.8,
+    "per100m2_p50_when": 1.5,
+    "per100m2_p90_when": 1.53
+   },
+   "piece_magetable_ext2": {
+    "has": 0.048,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 1,
+    "p90_when": 1.7,
+    "per100m2_p50_when": 0.42,
+    "per100m2_p90_when": 1.49
+   },
+   "piece_blackwood_bench01": {
+    "has": 0.048,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": 2,
+    "p90_when": 3.4,
+    "per100m2_p50_when": 1.58,
+    "per100m2_p90_when": 3.28
+   },
+   "type:light": {
+    "has": 0.819,
+    "p50": 5,
+    "p90": 15,
+    "p50_when": 7,
+    "p90_when": 16.2,
+    "per100m2_p50_when": 3.87,
+    "per100m2_p90_when": 9.22
+   },
+   "type:chest": {
+    "has": 0.651,
+    "p50": 2,
+    "p90": 46,
+    "p50_when": 7,
+    "p90_when": 59.7,
+    "per100m2_p50_when": 3.63,
+    "per100m2_p90_when": 25.89
+   },
+   "type:barrel": {
+    "has": 0.241,
+    "p50": 0,
+    "p90": 5.8,
+    "p50_when": 5,
+    "p90_when": 17.7,
+    "per100m2_p50_when": 2.68,
+    "per100m2_p90_when": 10.82
+   },
+   "type:seat": {
+    "has": 0.518,
+    "p50": 1,
+    "p90": 11.8,
+    "p50_when": 6,
+    "p90_when": 24.6,
+    "per100m2_p50_when": 2.86,
+    "per100m2_p90_when": 10.63
+   },
+   "type:table": {
+    "has": 0.398,
+    "p50": 0,
+    "p90": 2.8,
+    "p50_when": 1,
+    "p90_when": 3.8,
+    "per100m2_p50_when": 0.66,
+    "per100m2_p90_when": 1.89
+   },
+   "type:bed": {
+    "has": 0.386,
+    "p50": 0,
+    "p90": 3,
+    "p50_when": 2,
+    "p90_when": 4,
+    "per100m2_p50_when": 1,
+    "per100m2_p90_when": 2.42
+   },
+   "type:drape": {
+    "has": 0.253,
+    "p50": 0,
+    "p90": 6.6,
+    "p50_when": 5,
+    "p90_when": 14,
+    "per100m2_p50_when": 2.46,
+    "per100m2_p90_when": 6.73
+   },
+   "type:banner": {
+    "has": 0.458,
+    "p50": 0,
+    "p90": 7.8,
+    "p50_when": 3,
+    "p90_when": 10.3,
+    "per100m2_p50_when": 1.88,
+    "per100m2_p90_when": 5.68
+   },
+   "type:rug": {
+    "has": 0.578,
+    "p50": 2,
+    "p90": 17,
+    "p50_when": 10,
+    "p90_when": 20.3,
+    "per100m2_p50_when": 4.29,
+    "per100m2_p90_when": 11.17
+   },
+   "type:shelf": {
+    "has": 0,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": null,
+    "p90_when": null,
+    "per100m2_p50_when": null,
+    "per100m2_p90_when": null
+   },
+   "type:pot": {
+    "has": 0.12,
+    "p50": 0,
+    "p90": 1,
+    "p50_when": 3,
+    "p90_when": 8.4,
+    "per100m2_p50_when": 2.03,
+    "per100m2_p90_when": 4.31
+   },
+   "type:itemstand": {
+    "has": 0.651,
+    "p50": 6,
+    "p90": 75.8,
+    "p50_when": 17.5,
+    "p90_when": 85,
+    "per100m2_p50_when": 10.92,
+    "per100m2_p90_when": 40
+   },
+   "type:sign": {
+    "has": 0.301,
+    "p50": 0,
+    "p90": 9,
+    "p50_when": 8,
+    "p90_when": 49.8,
+    "per100m2_p50_when": 2.94,
+    "per100m2_p90_when": 25.3
+   },
+   "type:plant": {
+    "has": 0,
+    "p50": 0,
+    "p90": 0,
+    "p50_when": null,
+    "p90_when": null,
+    "per100m2_p50_when": null,
+    "per100m2_p90_when": null
+   }
+  }
+ },
+ "showcaseIndoor": {
+  "showcase-01-hub-md-norse-s5d3-2": {
+   "area": 46,
+   "piece_walltorch": 4,
+   "Candle_resin": 8,
+   "piece_chest_wood": 1,
+   "wood_ledge": 7,
+   "piece_pot1": 1,
+   "itemstand": 9,
+   "itemstandh": 4,
+   "type:light": 12,
+   "type:chest": 1,
+   "type:barrel": 0,
+   "type:seat": 0,
+   "type:table": 0,
+   "type:bed": 0,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 7,
+   "type:pot": 1,
+   "type:itemstand": 13,
+   "type:sign": 0,
+   "type:plant": 0,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.67
+  },
+  "showcase-02-hub-pl-byzantine-s5d3-1": {
+   "area": 726,
+   "piece_walltorch": 17,
+   "piece_groundtorch_wood": 10,
+   "Candle_resin": 17,
+   "piece_cloth_hanging_door": 6,
+   "piece_bench01": 2,
+   "piece_chair02": 1,
+   "piece_chest_wood": 5,
+   "piece_chest": 2,
+   "piece_chest_barrel": 4,
+   "wood_ledge": 15,
+   "piece_pot3": 1,
+   "itemstand": 37,
+   "itemstandh": 17,
+   "sign": 4,
+   "rug_deer": 4,
+   "jute_carpet": 1,
+   "piece_table": 5,
+   "hearth": 1,
+   "fire_pit": 2,
+   "piece_throne01": 3,
+   "type:light": 45,
+   "type:chest": 7,
+   "type:barrel": 4,
+   "type:seat": 3,
+   "type:table": 5,
+   "type:bed": 0,
+   "type:drape": 6,
+   "type:banner": 0,
+   "type:rug": 6,
+   "type:shelf": 15,
+   "type:pot": 2,
+   "type:itemstand": 54,
+   "type:sign": 4,
+   "type:plant": 0,
+   "light kinds": 4,
+   "light prefabs": 4,
+   "main light share": 0.38
+  },
+  "showcase-03-hub-bf-celtic-s4d3-2": {
+   "area": 229,
+   "piece_walltorch": 3,
+   "piece_groundtorch_wood": 2,
+   "piece_brazierceiling01": 4,
+   "Candle_resin": 7,
+   "piece_logbench01": 1,
+   "piece_bench01": 1,
+   "piece_chair": 1,
+   "piece_chair02": 2,
+   "piece_chair03": 1,
+   "piece_chest_wood": 2,
+   "piece_chest_blackmetal": 1,
+   "piece_chest_barrel": 1,
+   "wood_ledge": 9,
+   "itemstand": 25,
+   "itemstandh": 9,
+   "sign": 4,
+   "piece_banner01": 1,
+   "rug_deer": 1,
+   "rug_wolf": 3,
+   "piece_table": 5,
+   "fire_pit": 1,
+   "piece_throne01": 1,
+   "type:light": 16,
+   "type:chest": 4,
+   "type:barrel": 1,
+   "type:seat": 6,
+   "type:table": 5,
+   "type:bed": 0,
+   "type:drape": 0,
+   "type:banner": 2,
+   "type:rug": 4,
+   "type:shelf": 9,
+   "type:pot": 0,
+   "type:itemstand": 34,
+   "type:sign": 5,
+   "type:plant": 0,
+   "light kinds": 4,
+   "light prefabs": 4,
+   "main light share": 0.44
+  },
+  "showcase-04-temple-ml-byzantine-s3d3-1": {
+   "area": 217,
+   "piece_walltorch": 1,
+   "piece_dvergr_lantern": 1,
+   "Candle_resin": 1,
+   "piece_cloth_hanging_door": 1,
+   "piece_bench01": 3,
+   "piece_chair": 1,
+   "piece_chair03": 7,
+   "piece_chest_wood": 1,
+   "piece_chest": 3,
+   "piece_chest_barrel": 2,
+   "wood_ledge": 6,
+   "itemstandh": 14,
+   "sign": 1,
+   "rug_fur": 1,
+   "rug_wolf": 4,
+   "piece_table_round": 2,
+   "piece_table_oak": 1,
+   "piece_blackmarble_bench": 2,
+   "piece_blackmarble_table": 1,
+   "type:light": 6,
+   "type:chest": 4,
+   "type:barrel": 2,
+   "type:seat": 15,
+   "type:table": 6,
+   "type:bed": 0,
+   "type:drape": 1,
+   "type:banner": 0,
+   "type:rug": 5,
+   "type:shelf": 6,
+   "type:pot": 0,
+   "type:itemstand": 14,
+   "type:sign": 1,
+   "type:plant": 0,
+   "light kinds": 5,
+   "light prefabs": 5,
+   "main light share": 0.33
+  },
+  "showcase-05-longhouse-bf-norse-forest-s3d3-3": {
+   "area": 160,
+   "piece_walltorch": 2,
+   "piece_groundtorch_wood": 3,
+   "piece_logbench01": 8,
+   "piece_bench01": 1,
+   "piece_chair": 2,
+   "piece_chest_wood": 1,
+   "piece_chest_barrel": 4,
+   "wood_ledge": 2,
+   "itemstandh": 8,
+   "sign": 1,
+   "rug_wolf": 1,
+   "piece_table": 4,
+   "bed": 2,
+   "fire_pit": 1,
+   "piece_throne01": 1,
+   "piece_blackmarble_bench": 1,
+   "type:light": 5,
+   "type:chest": 1,
+   "type:barrel": 4,
+   "type:seat": 12,
+   "type:table": 4,
+   "type:bed": 2,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 1,
+   "type:shelf": 2,
+   "type:pot": 0,
+   "type:itemstand": 8,
+   "type:sign": 1,
+   "type:plant": 0,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.6
+  },
+  "showcase-06-tavern-pl-byzantine-s3d3-1": {
+   "area": 345,
+   "piece_walltorch": 1,
+   "piece_dvergr_lantern": 3,
+   "piece_cloth_hanging_door": 1,
+   "piece_bench01": 2,
+   "piece_chair02": 2,
+   "piece_chair03": 3,
+   "piece_chest_wood": 9,
+   "piece_chest": 8,
+   "wood_ledge": 24,
+   "piece_pot1": 2,
+   "itemstand": 6,
+   "itemstandh": 70,
+   "sign": 1,
+   "piece_banner01": 1,
+   "rug_fur": 1,
+   "rug_wolf": 1,
+   "ArmorStand": 3,
+   "piece_table": 3,
+   "piece_table_round": 2,
+   "piece_table_oak": 1,
+   "bed": 4,
+   "fire_pit": 1,
+   "type:light": 4,
+   "type:chest": 17,
+   "type:barrel": 0,
+   "type:seat": 8,
+   "type:table": 7,
+   "type:bed": 4,
+   "type:drape": 1,
+   "type:banner": 2,
+   "type:rug": 2,
+   "type:shelf": 24,
+   "type:pot": 3,
+   "type:itemstand": 76,
+   "type:sign": 1,
+   "type:plant": 0,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.75
+  },
+  "showcase-07-tavern-pl-steppe-s3d3-2": {
+   "area": 156,
+   "piece_walltorch": 3,
+   "piece_cloth_hanging_door": 1,
+   "piece_chest": 5,
+   "itemstand": 5,
+   "itemstandh": 3,
+   "sign": 1,
+   "rug_fur": 1,
+   "rug_wolf": 3,
+   "ArmorStand": 1,
+   "fire_pit": 1,
+   "piece_blackmarble_bench": 4,
+   "type:light": 5,
+   "type:chest": 5,
+   "type:barrel": 0,
+   "type:seat": 4,
+   "type:table": 0,
+   "type:bed": 0,
+   "type:drape": 1,
+   "type:banner": 0,
+   "type:rug": 4,
+   "type:shelf": 0,
+   "type:pot": 0,
+   "type:itemstand": 8,
+   "type:sign": 1,
+   "type:plant": 0,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.6
+  },
+  "showcase-08-home-pl-middle-eastern-s3d3-1": {
+   "area": 105,
+   "piece_cloth_hanging_door": 5,
+   "piece_logbench01": 1,
+   "piece_chest_wood": 3,
+   "wood_ledge": 1,
+   "itemstand": 12,
+   "itemstandh": 1,
+   "rug_wolf": 2,
+   "ArmorStand": 2,
+   "bed": 1,
+   "fire_pit": 1,
+   "type:light": 1,
+   "type:chest": 3,
+   "type:barrel": 0,
+   "type:seat": 3,
+   "type:table": 0,
+   "type:bed": 1,
+   "type:drape": 5,
+   "type:banner": 0,
+   "type:rug": 2,
+   "type:shelf": 1,
+   "type:pot": 0,
+   "type:itemstand": 13,
+   "type:sign": 0,
+   "type:plant": 0,
+   "light kinds": 1,
+   "light prefabs": 1,
+   "main light share": 1
+  },
+  "showcase-09-home-sw-baltic-s3d3-2": {
+   "area": 199,
+   "piece_walltorch": 2,
+   "piece_logbench01": 2,
+   "piece_bench01": 1,
+   "piece_chair": 1,
+   "piece_chair03": 1,
+   "piece_chest_wood": 6,
+   "wood_ledge": 14,
+   "piece_pot1": 1,
+   "itemstand": 4,
+   "itemstandh": 24,
+   "ArmorStand": 2,
+   "piece_table": 1,
+   "piece_table_round": 2,
+   "piece_bed02": 1,
+   "fire_pit": 1,
+   "type:light": 2,
+   "type:chest": 6,
+   "type:barrel": 0,
+   "type:seat": 6,
+   "type:table": 3,
+   "type:bed": 1,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 14,
+   "type:pot": 1,
+   "type:itemstand": 28,
+   "type:sign": 0,
+   "type:plant": 0,
+   "light kinds": 1,
+   "light prefabs": 1,
+   "main light share": 1
+  },
+  "showcase-10-home-bf-slavic-s3d3-3": {
+   "area": 60,
+   "piece_walltorch": 4,
+   "piece_chest_wood": 3,
+   "itemstand": 3,
+   "itemstandh": 5,
+   "ArmorStand": 1,
+   "piece_table": 1,
+   "bed": 2,
+   "fire_pit": 1,
+   "type:light": 5,
+   "type:chest": 3,
+   "type:barrel": 0,
+   "type:seat": 0,
+   "type:table": 1,
+   "type:bed": 2,
+   "type:drape": 0,
+   "type:banner": 1,
+   "type:rug": 1,
+   "type:shelf": 0,
+   "type:pot": 0,
+   "type:itemstand": 8,
+   "type:sign": 0,
+   "type:plant": 0,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.8
+  },
+  "showcase-11-home-md-anglo-saxon-s2d3-2": {
+   "area": 112,
+   "piece_groundtorch_wood": 4,
+   "piece_bench01": 1,
+   "piece_chest_wood": 3,
+   "piece_chest_blackmetal": 1,
+   "itemstand": 3,
+   "ArmorStand": 1,
+   "piece_table_round": 1,
+   "bed": 3,
+   "fire_pit": 1,
+   "piece_blackmarble_bench": 1,
+   "type:light": 4,
+   "type:chest": 4,
+   "type:barrel": 0,
+   "type:seat": 2,
+   "type:table": 1,
+   "type:bed": 3,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 0,
+   "type:pot": 0,
+   "type:itemstand": 3,
+   "type:sign": 0,
+   "type:plant": 0,
+   "light kinds": 1,
+   "light prefabs": 1,
+   "main light share": 1
+  },
+  "showcase-12-home-ml-lamari-s2d3-2": {
+   "area": 144,
+   "piece_walltorch": 6,
+   "piece_dvergr_lantern": 1,
+   "piece_logbench01": 2,
+   "piece_chair03": 1,
+   "piece_chest": 1,
+   "piece_chest_barrel": 4,
+   "wood_ledge": 4,
+   "itemstand": 18,
+   "itemstandh": 5,
+   "ArmorStand": 2,
+   "piece_bed02": 1,
+   "fire_pit": 1,
+   "piece_blackmarble_bench": 1,
+   "type:light": 7,
+   "type:chest": 1,
+   "type:barrel": 4,
+   "type:seat": 5,
+   "type:table": 0,
+   "type:bed": 1,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 1,
+   "type:shelf": 4,
+   "type:pot": 0,
+   "type:itemstand": 23,
+   "type:sign": 0,
+   "type:plant": 0,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.86
+  },
+  "showcase-13-smithy-mt-norse-highland-s2d3-1": {
+   "area": 28,
+   "piece_chest_barrel": 3,
+   "wood_ledge": 2,
+   "itemstandh": 2,
+   "type:light": 0,
+   "type:chest": 0,
+   "type:barrel": 3,
+   "type:seat": 0,
+   "type:table": 0,
+   "type:bed": 0,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 2,
+   "type:pot": 0,
+   "type:itemstand": 2,
+   "type:sign": 0,
+   "type:plant": 0,
+   "light kinds": 0,
+   "light prefabs": 0,
+   "main light share": 0
+  },
+  "showcase-14-tower-mt-norse-highland-s3d3-1": {
+   "area": 103,
+   "piece_walltorch": 2,
+   "piece_groundtorch_wood": 1,
+   "piece_bench01": 1,
+   "piece_chest_wood": 4,
+   "piece_chest": 1,
+   "piece_chest_barrel": 2,
+   "wood_ledge": 11,
+   "itemstand": 2,
+   "itemstandh": 15,
+   "ArmorStand": 1,
+   "type:light": 4,
+   "type:chest": 5,
+   "type:barrel": 2,
+   "type:seat": 2,
+   "type:table": 0,
+   "type:bed": 0,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 11,
+   "type:pot": 0,
+   "type:itemstand": 17,
+   "type:sign": 0,
+   "type:plant": 0,
+   "light kinds": 3,
+   "light prefabs": 3,
+   "main light share": 0.5
+  },
+  "showcase-15-workshop-al-castle-medieval-s2d3-3": {
+   "area": 67,
+   "piece_walltorch": 1,
+   "piece_dvergr_lantern": 1,
+   "piece_chest_wood": 4,
+   "piece_chest_barrel": 1,
+   "wood_ledge": 6,
+   "itemstandh": 9,
+   "sign": 1,
+   "type:light": 2,
+   "type:chest": 4,
+   "type:barrel": 1,
+   "type:seat": 0,
+   "type:table": 1,
+   "type:bed": 0,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 6,
+   "type:pot": 0,
+   "type:itemstand": 9,
+   "type:sign": 1,
+   "type:plant": 0,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.5
+  },
+  "showcase-16-home-al-castle-medieval-s3d3-1": {
+   "area": 73,
+   "piece_walltorch": 2,
+   "piece_groundtorch_wood": 1,
+   "piece_bench01": 1,
+   "piece_chest_barrel": 1,
+   "itemstand": 1,
+   "fire_pit": 1,
+   "type:light": 3,
+   "type:chest": 0,
+   "type:barrel": 1,
+   "type:seat": 1,
+   "type:table": 0,
+   "type:bed": 1,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 0,
+   "type:pot": 0,
+   "type:itemstand": 1,
+   "type:sign": 0,
+   "type:plant": 0,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.67
+  }
+ },
+ "showcaseIndoorOver": {
+  "piece_walltorch": [
+   [
+    "01-hub-md-norse-s5d3-2",
+    4,
+    8.7
+   ],
+   [
+    "02-hub-pl-byzantine-s5d3-1",
+    17,
+    2.3
+   ],
+   [
+    "10-home-bf-slavic-s3d3-3",
+    4,
+    6.7
+   ]
+  ],
+  "Candle_resin": [
+   [
+    "01-hub-md-norse-s5d3-2",
+    8,
+    17.4
+   ],
+   [
+    "02-hub-pl-byzantine-s5d3-1",
+    17,
+    2.3
+   ]
+  ],
+  "itemstand": [
+   [
+    "01-hub-md-norse-s5d3-2",
+    9,
+    19.6
+   ],
+   [
+    "02-hub-pl-byzantine-s5d3-1",
+    37,
+    5.1
+   ]
+  ],
+  "type:light": [
+   [
+    "01-hub-md-norse-s5d3-2",
+    12,
+    26.1
+   ],
+   [
+    "02-hub-pl-byzantine-s5d3-1",
+    45,
+    6.2
+   ],
+   [
+    "03-hub-bf-celtic-s4d3-2",
+    16,
+    7
+   ]
+  ],
+  "light kinds": [
+   [
+    "01-hub-md-norse-s5d3-2",
+    2,
+    4.3
+   ],
+   [
+    "02-hub-pl-byzantine-s5d3-1",
+    4,
+    0.6
+   ],
+   [
+    "03-hub-bf-celtic-s4d3-2",
+    4,
+    1.7
+   ],
+   [
+    "04-temple-ml-byzantine-s3d3-1",
+    5,
+    2.3
+   ],
+   [
+    "10-home-bf-slavic-s3d3-3",
+    2,
+    3.3
+   ],
+   [
+    "14-tower-mt-norse-highland-s3d3-1",
+    3,
+    2.9
+   ],
+   [
+    "15-workshop-al-castle-medieval-s2d3-3",
+    2,
+    3
+   ],
+   [
+    "16-home-al-castle-medieval-s3d3-1",
+    2,
+    2.7
+   ]
+  ],
+  "light prefabs": [
+   [
+    "01-hub-md-norse-s5d3-2",
+    2,
+    4.3
+   ],
+   [
+    "02-hub-pl-byzantine-s5d3-1",
+    4,
+    0.6
+   ],
+   [
+    "03-hub-bf-celtic-s4d3-2",
+    4,
+    1.7
+   ],
+   [
+    "04-temple-ml-byzantine-s3d3-1",
+    5,
+    2.3
+   ],
+   [
+    "10-home-bf-slavic-s3d3-3",
+    2,
+    3.3
+   ],
+   [
+    "14-tower-mt-norse-highland-s3d3-1",
+    3,
+    2.9
+   ],
+   [
+    "15-workshop-al-castle-medieval-s2d3-3",
+    2,
+    3
+   ],
+   [
+    "16-home-al-castle-medieval-s3d3-1",
+    2,
+    2.7
+   ]
+  ],
+  "piece_table": [
+   [
+    "02-hub-pl-byzantine-s5d3-1",
+    5,
+    0.7
+   ],
+   [
+    "03-hub-bf-celtic-s4d3-2",
+    5,
+    2.2
+   ],
+   [
+    "05-longhouse-bf-norse-forest-s3d3-3",
+    4,
+    2.5
+   ]
+  ],
+  "piece_throne01": [
+   [
+    "02-hub-pl-byzantine-s5d3-1",
+    3,
+    0.4
+   ]
+  ],
+  "type:table": [
+   [
+    "02-hub-pl-byzantine-s5d3-1",
+    5,
+    0.7
+   ],
+   [
+    "03-hub-bf-celtic-s4d3-2",
+    5,
+    2.2
+   ],
+   [
+    "04-temple-ml-byzantine-s3d3-1",
+    6,
+    2.8
+   ],
+   [
+    "05-longhouse-bf-norse-forest-s3d3-3",
+    4,
+    2.5
+   ],
+   [
+    "06-tavern-pl-byzantine-s3d3-1",
+    7,
+    2
+   ]
+  ],
+  "piece_brazierceiling01": [
+   [
+    "03-hub-bf-celtic-s4d3-2",
+    4,
+    1.7
+   ]
+  ],
+  "piece_table_round": [
+   [
+    "04-temple-ml-byzantine-s3d3-1",
+    2,
+    0.9
+   ],
+   [
+    "06-tavern-pl-byzantine-s3d3-1",
+    2,
+    0.6
+   ],
+   [
+    "09-home-sw-baltic-s3d3-2",
+    2,
+    1
+   ]
+  ],
+  "type:seat": [
+   [
+    "04-temple-ml-byzantine-s3d3-1",
+    15,
+    6.9
+   ],
+   [
+    "05-longhouse-bf-norse-forest-s3d3-3",
+    12,
+    7.5
+   ]
+  ],
+  "piece_logbench01": [
+   [
+    "05-longhouse-bf-norse-forest-s3d3-3",
+    8,
+    5
+   ]
+  ],
+  "itemstandh": [
+   [
+    "06-tavern-pl-byzantine-s3d3-1",
+    70,
+    20.3
+   ]
+  ],
+  "bed": [
+   [
+    "06-tavern-pl-byzantine-s3d3-1",
+    4,
+    1.2
+   ],
+   [
+    "10-home-bf-slavic-s3d3-3",
+    2,
+    3.3
+   ],
+   [
+    "11-home-md-anglo-saxon-s2d3-2",
+    3,
+    2.7
+   ]
+  ],
+  "type:bed": [
+   [
+    "06-tavern-pl-byzantine-s3d3-1",
+    4,
+    1.2
+   ],
+   [
+    "10-home-bf-slavic-s3d3-3",
+    2,
+    3.3
+   ],
+   [
+    "11-home-md-anglo-saxon-s2d3-2",
+    3,
+    2.7
+   ]
+  ],
+  "type:itemstand": [
+   [
+    "06-tavern-pl-byzantine-s3d3-1",
+    76,
+    22
+   ]
+  ],
+  "piece_cloth_hanging_door": [
+   [
+    "08-home-pl-middle-eastern-s3d3-1",
+    5,
+    4.8
+   ]
+  ]
+ },
+ "perBuild": {
+  "piece_walltorch": {
+   "has": 0.424,
+   "p50": 0,
+   "p90": 18,
+   "p50_when": 8,
+   "p90_when": 30,
+   "max": 122
+  },
+  "piece_groundtorch": {
+   "has": 0.205,
+   "p50": 0,
+   "p90": 6,
+   "p50_when": 6,
+   "p90_when": 24,
+   "max": 90
+  },
+  "piece_groundtorch_wood": {
+   "has": 0.172,
+   "p50": 0,
+   "p90": 4,
+   "p50_when": 6,
+   "p90_when": 19,
+   "max": 46
+  },
+  "piece_brazierceiling01": {
+   "has": 0.326,
+   "p50": 0,
+   "p90": 4.9,
+   "p50_when": 2,
+   "p90_when": 11,
+   "max": 53
+  },
+  "piece_dvergr_lantern": {
+   "has": 0.303,
+   "p50": 0,
+   "p90": 18.9,
+   "p50_when": 10,
+   "p90_when": 64,
+   "max": 255
+  },
+  "Candle_resin": {
+   "has": 0.097,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 5,
+   "p90_when": 24.8,
+   "max": 153
+  },
+  "piece_cloth_hanging_door": {
+   "has": 0.177,
+   "p50": 0,
+   "p90": 6,
+   "p50_when": 8,
+   "p90_when": 49.2,
+   "max": 237
+  },
+  "piece_cloth_hanging_door_blue": {
+   "has": 0.106,
+   "p50": 0,
+   "p90": 1,
+   "p50_when": 4,
+   "p90_when": 30.6,
+   "max": 66
+  },
+  "piece_cloth_hanging_door_blue2": {
+   "has": 0.083,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 3,
+   "p90_when": 13.3,
+   "max": 191
+  },
+  "piece_logbench01": {
+   "has": 0.109,
+   "p50": 0,
+   "p90": 1,
+   "p50_when": 1.5,
+   "p90_when": 4,
+   "max": 10
+  },
+  "piece_bench01": {
+   "has": 0.235,
+   "p50": 0,
+   "p90": 3,
+   "p50_when": 2,
+   "p90_when": 12,
+   "max": 64
+  },
+  "piece_chair": {
+   "has": 0.323,
+   "p50": 0,
+   "p90": 7,
+   "p50_when": 3,
+   "p90_when": 44,
+   "max": 1150
+  },
+  "piece_chair02": {
+   "has": 0.256,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 2,
+   "p90_when": 8,
+   "max": 281
+  },
+  "piece_chair03": {
+   "has": 0.36,
+   "p50": 0,
+   "p90": 11,
+   "p50_when": 6,
+   "p90_when": 21,
+   "max": 120
+  },
+  "piece_chest_wood": {
+   "has": 0.483,
+   "p50": 0,
+   "p90": 25,
+   "p50_when": 8,
+   "p90_when": 52,
+   "max": 163
+  },
+  "piece_chest": {
+   "has": 0.414,
+   "p50": 0,
+   "p90": 15.9,
+   "p50_when": 6,
+   "p90_when": 39,
+   "max": 580
+  },
+  "piece_chest_private": {
+   "has": 0.25,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 2,
+   "p90_when": 8,
+   "max": 149
+  },
+  "piece_chest_blackmetal": {
+   "has": 0.243,
+   "p50": 0,
+   "p90": 6.9,
+   "p50_when": 4,
+   "p90_when": 40.3,
+   "max": 238
+  },
+  "piece_chest_barrel": {
+   "has": 0.167,
+   "p50": 0,
+   "p90": 6,
+   "p50_when": 8,
+   "p90_when": 24.4,
+   "max": 96
+  },
+  "wood_ledge": {
+   "has": 0.032,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 29,
+   "p90_when": 774.7,
+   "max": 6618
+  },
+  "piece_pot1": {
+   "has": 0.077,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 2,
+   "p90_when": 15.9,
+   "max": 56
+  },
+  "piece_pot2": {
+   "has": 0.088,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 2,
+   "p90_when": 11.6,
+   "max": 40
+  },
+  "piece_pot3": {
+   "has": 0.082,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 2,
+   "p90_when": 10,
+   "max": 54
+  },
+  "itemstand": {
+   "has": 0.454,
+   "p50": 0,
+   "p90": 43.9,
+   "p50_when": 12,
+   "p90_when": 90.7,
+   "max": 821
+  },
+  "itemstandh": {
+   "has": 0.396,
+   "p50": 0,
+   "p90": 53.8,
+   "p50_when": 16,
+   "p90_when": 118,
+   "max": 4140
+  },
+  "sign": {
+   "has": 0.426,
+   "p50": 0,
+   "p90": 28.9,
+   "p50_when": 10,
+   "p90_when": 66.9,
+   "max": 2546
+  },
+  "piece_banner01": {
+   "has": 0.232,
+   "p50": 0,
+   "p90": 3,
+   "p50_when": 3,
+   "p90_when": 13.5,
+   "max": 68
+  },
+  "rug_deer": {
+   "has": 0.384,
+   "p50": 0,
+   "p90": 8,
+   "p50_when": 4,
+   "p90_when": 19.3,
+   "max": 253
+  },
+  "rug_fur": {
+   "has": 0.36,
+   "p50": 0,
+   "p90": 8,
+   "p50_when": 4,
+   "p90_when": 23.9,
+   "max": 290
+  },
+  "rug_wolf": {
+   "has": 0.304,
+   "p50": 0,
+   "p90": 5,
+   "p50_when": 3,
+   "p90_when": 14,
+   "max": 52
+  },
+  "jute_carpet": {
+   "has": 0.264,
+   "p50": 0,
+   "p90": 9,
+   "p50_when": 5,
+   "p90_when": 36.1,
+   "max": 1274
+  },
+  "ArmorStand": {
+   "has": 0.308,
+   "p50": 0,
+   "p90": 5,
+   "p50_when": 3,
+   "p90_when": 13.4,
+   "max": 62
+  },
+  "piece_table": {
+   "has": 0.343,
+   "p50": 0,
+   "p90": 3,
+   "p50_when": 2,
+   "p90_when": 7,
+   "max": 29
+  },
+  "piece_table_round": {
+   "has": 0.27,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 1,
+   "p90_when": 5,
+   "max": 30
+  },
+  "piece_table_oak": {
+   "has": 0.162,
+   "p50": 0,
+   "p90": 1,
+   "p50_when": 1,
+   "p90_when": 3,
+   "max": 18
+  },
+  "bed": {
+   "has": 0.226,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 2,
+   "p90_when": 6,
+   "max": 58
+  },
+  "piece_bed02": {
+   "has": 0.288,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 1,
+   "p90_when": 6,
+   "max": 23
+  },
+  "hearth": {
+   "has": 0.469,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 1,
+   "p90_when": 4,
+   "max": 23
+  },
+  "fire_pit": {
+   "has": 0.28,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 1,
+   "p90_when": 4,
+   "max": 31
+  },
+  "piece_throne01": {
+   "has": 0.242,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 1,
+   "p90_when": 6,
+   "max": 16
+  },
+  "piece_blackmarble_bench": {
+   "has": 0.1,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 4,
+   "p90_when": 12.5,
+   "max": 33
+  },
+  "piece_blackmarble_table": {
+   "has": 0.077,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 2,
+   "p90_when": 7,
+   "max": 32
+  },
+  "vines": {
+   "has": 0.102,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 34.5,
+   "p90_when": 487.3,
+   "max": 2020
+  },
+  "type:light": {
+   "has": 0.803,
+   "p50": 10.5,
+   "p90": 79,
+   "p50_when": 17,
+   "p90_when": 93,
+   "max": 1207
+  },
+  "type:chest": {
+   "has": 0.787,
+   "p50": 7,
+   "p90": 60.9,
+   "p50_when": 13,
+   "p90_when": 70,
+   "max": 1597
+  },
+  "type:barrel": {
+   "has": 0.179,
+   "p50": 0,
+   "p90": 6,
+   "p50_when": 8,
+   "p90_when": 25.4,
+   "max": 96
+  },
+  "type:seat": {
+   "has": 0.656,
+   "p50": 3,
+   "p90": 28.9,
+   "p50_when": 8,
+   "p90_when": 45,
+   "max": 1159
+  },
+  "type:table": {
+   "has": 0.524,
+   "p50": 1,
+   "p90": 7,
+   "p50_when": 2,
+   "p90_when": 10,
+   "max": 334
+  },
+  "type:bed": {
+   "has": 0.529,
+   "p50": 1,
+   "p90": 6,
+   "p50_when": 2,
+   "p90_when": 9,
+   "max": 431
+  },
+  "type:drape": {
+   "has": 0.252,
+   "p50": 0,
+   "p90": 12,
+   "p50_when": 8,
+   "p90_when": 56.6,
+   "max": 299
+  },
+  "type:banner": {
+   "has": 0.53,
+   "p50": 1,
+   "p90": 20,
+   "p50_when": 6,
+   "p90_when": 29.8,
+   "max": 653
+  },
+  "type:rug": {
+   "has": 0.599,
+   "p50": 3,
+   "p90": 41.9,
+   "p50_when": 11,
+   "p90_when": 65.5,
+   "max": 1444
+  },
+  "type:shelf": {
+   "has": 0.053,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 8.5,
+   "p90_when": 334.5,
+   "max": 6618
+  },
+  "type:pot": {
+   "has": 0.134,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 5,
+   "p90_when": 28.9,
+   "max": 97
+  },
+  "type:itemstand": {
+   "has": 0.527,
+   "p50": 1,
+   "p90": 101,
+   "p50_when": 23,
+   "p90_when": 187.6,
+   "max": 4140
+  },
+  "type:sign": {
+   "has": 0.429,
+   "p50": 0,
+   "p90": 30,
+   "p50_when": 10,
+   "p90_when": 71,
+   "max": 2546
+  },
+  "type:plant": {
+   "has": 0.374,
+   "p50": 0,
+   "p90": 84.7,
+   "p50_when": 22,
+   "p90_when": 286.8,
+   "max": 4950
+  },
+  "light kinds": {
+   "has": 0.803,
+   "p50": 2,
+   "p90": 5,
+   "p50_when": 2,
+   "p90_when": 6,
+   "max": 10
+  },
+  "light prefabs": {
+   "has": 0.803,
+   "p50": 2,
+   "p90": 6,
+   "p50_when": 2,
+   "p90_when": 6,
+   "max": 13
+  },
+  "main light share": {
+   "has": 1,
+   "p50": 0.73,
+   "p90": 1,
+   "p50_when": 0.73,
+   "p90_when": 1,
+   "max": 1
+  }
+ },
+ "perBuildLiked": {
+  "piece_walltorch": {
+   "has": 0.375,
+   "p50": 0,
+   "p90": 15,
+   "p50_when": 8,
+   "p90_when": 32.1,
+   "max": 88
+  },
+  "piece_groundtorch": {
+   "has": 0.199,
+   "p50": 0,
+   "p90": 7,
+   "p50_when": 7.5,
+   "p90_when": 31.7,
+   "max": 49
+  },
+  "piece_groundtorch_wood": {
+   "has": 0.131,
+   "p50": 0,
+   "p90": 3,
+   "p50_when": 9,
+   "p90_when": 21.6,
+   "max": 46
+  },
+  "piece_brazierceiling01": {
+   "has": 0.355,
+   "p50": 0,
+   "p90": 8,
+   "p50_when": 4,
+   "p90_when": 12.2,
+   "max": 51
+  },
+  "piece_dvergr_lantern": {
+   "has": 0.474,
+   "p50": 0,
+   "p90": 46,
+   "p50_when": 16,
+   "p90_when": 77,
+   "max": 255
+  },
+  "Candle_resin": {
+   "has": 0.143,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 4,
+   "p90_when": 16,
+   "max": 28
+  },
+  "piece_cloth_hanging_door": {
+   "has": 0.307,
+   "p50": 0,
+   "p90": 22,
+   "p50_when": 12,
+   "p90_when": 69.2,
+   "max": 237
+  },
+  "piece_cloth_hanging_door_blue": {
+   "has": 0.195,
+   "p50": 0,
+   "p90": 5,
+   "p50_when": 6,
+   "p90_when": 33,
+   "max": 54
+  },
+  "piece_cloth_hanging_door_blue2": {
+   "has": 0.135,
+   "p50": 0,
+   "p90": 3,
+   "p50_when": 6,
+   "p90_when": 42.5,
+   "max": 191
+  },
+  "piece_logbench01": {
+   "has": 0.1,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 1,
+   "p90_when": 4.6,
+   "max": 5
+  },
+  "piece_bench01": {
+   "has": 0.299,
+   "p50": 0,
+   "p90": 5,
+   "p50_when": 3,
+   "p90_when": 10.6,
+   "max": 64
+  },
+  "piece_chair": {
+   "has": 0.382,
+   "p50": 0,
+   "p90": 19,
+   "p50_when": 7,
+   "p90_when": 94,
+   "max": 527
+  },
+  "piece_chair02": {
+   "has": 0.315,
+   "p50": 0,
+   "p90": 3,
+   "p50_when": 2,
+   "p90_when": 12.2,
+   "max": 281
+  },
+  "piece_chair03": {
+   "has": 0.446,
+   "p50": 0,
+   "p90": 18,
+   "p50_when": 9,
+   "p90_when": 29.9,
+   "max": 90
+  },
+  "piece_chest_wood": {
+   "has": 0.454,
+   "p50": 0,
+   "p90": 26,
+   "p50_when": 9.5,
+   "p90_when": 62.1,
+   "max": 133
+  },
+  "piece_chest": {
+   "has": 0.49,
+   "p50": 0,
+   "p90": 37,
+   "p50_when": 8,
+   "p90_when": 67.2,
+   "max": 236
+  },
+  "piece_chest_private": {
+   "has": 0.367,
+   "p50": 0,
+   "p90": 4,
+   "p50_when": 2,
+   "p90_when": 16,
+   "max": 149
+  },
+  "piece_chest_blackmetal": {
+   "has": 0.335,
+   "p50": 0,
+   "p90": 17,
+   "p50_when": 7,
+   "p90_when": 47.1,
+   "max": 238
+  },
+  "piece_chest_barrel": {
+   "has": 0.283,
+   "p50": 0,
+   "p90": 16,
+   "p50_when": 9,
+   "p90_when": 38,
+   "max": 96
+  },
+  "wood_ledge": {
+   "has": 0.092,
+   "p50": 0,
+   "p90": 0,
+   "p50_when": 29,
+   "p90_when": 1879.6,
+   "max": 6618
+  },
+  "piece_pot1": {
+   "has": 0.124,
+   "p50": 0,
+   "p90": 1,
+   "p50_when": 2,
+   "p90_when": 16,
+   "max": 56
+  },
+  "piece_pot2": {
+   "has": 0.139,
+   "p50": 0,
+   "p90": 1,
+   "p50_when": 2,
+   "p90_when": 11.2,
+   "max": 36
+  },
+  "piece_pot3": {
+   "has": 0.127,
+   "p50": 0,
+   "p90": 1,
+   "p50_when": 2,
+   "p90_when": 7.9,
+   "max": 26
+  },
+  "itemstand": {
+   "has": 0.57,
+   "p50": 4,
+   "p90": 79,
+   "p50_when": 21,
+   "p90_when": 129.6,
+   "max": 661
+  },
+  "itemstandh": {
+   "has": 0.522,
+   "p50": 2,
+   "p90": 125,
+   "p50_when": 22,
+   "p90_when": 225,
+   "max": 3161
+  },
+  "sign": {
+   "has": 0.466,
+   "p50": 0,
+   "p90": 60,
+   "p50_when": 13,
+   "p90_when": 113.8,
+   "max": 2546
+  },
+  "piece_banner01": {
+   "has": 0.219,
+   "p50": 0,
+   "p90": 4,
+   "p50_when": 3,
+   "p90_when": 16,
+   "max": 25
+  },
+  "rug_deer": {
+   "has": 0.414,
+   "p50": 0,
+   "p90": 18,
+   "p50_when": 5,
+   "p90_when": 46.1,
+   "max": 253
+  },
+  "rug_fur": {
+   "has": 0.458,
+   "p50": 0,
+   "p90": 19,
+   "p50_when": 6,
+   "p90_when": 37.8,
+   "max": 253
+  },
+  "rug_wolf": {
+   "has": 0.41,
+   "p50": 0,
+   "p90": 12,
+   "p50_when": 5,
+   "p90_when": 22.6,
+   "max": 52
+  },
+  "jute_carpet": {
+   "has": 0.367,
+   "p50": 0,
+   "p90": 24,
+   "p50_when": 12.5,
+   "p90_when": 70.5,
+   "max": 1274
+  },
+  "ArmorStand": {
+   "has": 0.363,
+   "p50": 0,
+   "p90": 10,
+   "p50_when": 5,
+   "p90_when": 22,
+   "max": 62
+  },
+  "piece_table": {
+   "has": 0.426,
+   "p50": 0,
+   "p90": 4,
+   "p50_when": 2,
+   "p90_when": 6,
+   "max": 29
+  },
+  "piece_table_round": {
+   "has": 0.299,
+   "p50": 0,
+   "p90": 3,
+   "p50_when": 2,
+   "p90_when": 7,
+   "max": 15
+  },
+  "piece_table_oak": {
+   "has": 0.259,
+   "p50": 0,
+   "p90": 1,
+   "p50_when": 1,
+   "p90_when": 4,
+   "max": 10
+  },
+  "bed": {
+   "has": 0.223,
+   "p50": 0,
+   "p90": 3,
+   "p50_when": 2,
+   "p90_when": 6,
+   "max": 15
+  },
+  "piece_bed02": {
+   "has": 0.347,
+   "p50": 0,
+   "p90": 5,
+   "p50_when": 2,
+   "p90_when": 10,
+   "max": 13
+  },
+  "hearth": {
+   "has": 0.542,
+   "p50": 1,
+   "p90": 4,
+   "p50_when": 2,
+   "p90_when": 6,
+   "max": 23
+  },
+  "fire_pit": {
+   "has": 0.259,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 1,
+   "p90_when": 5,
+   "max": 31
+  },
+  "piece_throne01": {
+   "has": 0.311,
+   "p50": 0,
+   "p90": 3,
+   "p50_when": 2,
+   "p90_when": 9.3,
+   "max": 16
+  },
+  "piece_blackmarble_bench": {
+   "has": 0.183,
+   "p50": 0,
+   "p90": 4,
+   "p50_when": 4,
+   "p90_when": 13,
+   "max": 28
+  },
+  "piece_blackmarble_table": {
+   "has": 0.124,
+   "p50": 0,
+   "p90": 1,
+   "p50_when": 3,
+   "p90_when": 7,
+   "max": 15
+  },
+  "vines": {
+   "has": 0.167,
+   "p50": 0,
+   "p90": 32,
+   "p50_when": 51,
+   "p90_when": 539.4,
+   "max": 1691
+  },
+  "type:light": {
+   "has": 0.861,
+   "p50": 24,
+   "p90": 126,
+   "p50_when": 34,
+   "p90_when": 141.5,
+   "max": 1207
+  },
+  "type:chest": {
+   "has": 0.805,
+   "p50": 12,
+   "p90": 90,
+   "p50_when": 21.5,
+   "p90_when": 99.9,
+   "max": 1597
+  },
+  "type:barrel": {
+   "has": 0.299,
+   "p50": 0,
+   "p90": 16,
+   "p50_when": 9,
+   "p90_when": 39.8,
+   "max": 96
+  },
+  "type:seat": {
+   "has": 0.789,
+   "p50": 8,
+   "p90": 59,
+   "p50_when": 14,
+   "p90_when": 79.2,
+   "max": 534
+  },
+  "type:table": {
+   "has": 0.598,
+   "p50": 1,
+   "p90": 10,
+   "p50_when": 4,
+   "p90_when": 17.1,
+   "max": 334
+  },
+  "type:bed": {
+   "has": 0.602,
+   "p50": 1,
+   "p90": 10,
+   "p50_when": 4,
+   "p90_when": 10,
+   "max": 431
+  },
+  "type:drape": {
+   "has": 0.418,
+   "p50": 0,
+   "p90": 52,
+   "p50_when": 16,
+   "p90_when": 98,
+   "max": 299
+  },
+  "type:banner": {
+   "has": 0.637,
+   "p50": 4,
+   "p90": 32,
+   "p50_when": 9,
+   "p90_when": 42.1,
+   "max": 653
+  },
+  "type:rug": {
+   "has": 0.673,
+   "p50": 10,
+   "p90": 89,
+   "p50_when": 23,
+   "p90_when": 132.4,
+   "max": 1444
+  },
+  "type:shelf": {
+   "has": 0.131,
+   "p50": 0,
+   "p90": 2,
+   "p50_when": 12,
+   "p90_when": 783.8,
+   "max": 6618
+  },
+  "type:pot": {
+   "has": 0.255,
+   "p50": 0,
+   "p90": 8,
+   "p50_when": 6,
+   "p90_when": 27.1,
+   "max": 94
+  },
+  "type:itemstand": {
+   "has": 0.645,
+   "p50": 11,
+   "p90": 210,
+   "p50_when": 41.5,
+   "p90_when": 285.5,
+   "max": 3436
+  },
+  "type:sign": {
+   "has": 0.474,
+   "p50": 0,
+   "p90": 62,
+   "p50_when": 13,
+   "p90_when": 115.2,
+   "max": 2546
+  },
+  "type:plant": {
+   "has": 0.522,
+   "p50": 1,
+   "p90": 260,
+   "p50_when": 53,
+   "p90_when": 574,
+   "max": 4950
+  },
+  "light kinds": {
+   "has": 0.861,
+   "p50": 3,
+   "p90": 6,
+   "p50_when": 3,
+   "p90_when": 6,
+   "max": 10
+  },
+  "light prefabs": {
+   "has": 0.861,
+   "p50": 3,
+   "p90": 6,
+   "p50_when": 3,
+   "p90_when": 7,
+   "max": 13
+  }
+ },
+ "perRoom": {
+  "piece_walltorch": {
+   "rooms": 1397,
+   "p50": 2,
+   "p90": 6,
+   "max": 28,
+   "byKind": {
+    "storage": {
+     "rooms": 113,
+     "p50": 2,
+     "p90": 5.8
+    },
+    "corridor": {
+     "rooms": 118,
+     "p50": 2,
+     "p90": 4
+    },
+    "empty": {
+     "rooms": 272,
+     "p50": 1,
+     "p90": 6
+    },
+    "smithy": {
+     "rooms": 109,
+     "p50": 2,
+     "p90": 7.2
+    },
+    "other": {
+     "rooms": 112,
+     "p50": 1,
+     "p90": 3
+    },
+    "workshop": {
+     "rooms": 46,
+     "p50": 2,
+     "p90": 4
+    },
+    "dormitory": {
+     "rooms": 26,
+     "p50": 2,
+     "p90": 5.5
+    },
+    "throne hall": {
+     "rooms": 73,
+     "p50": 2,
+     "p90": 10
+    },
+    "bedroom": {
+     "rooms": 131,
+     "p50": 2,
+     "p90": 4
+    },
+    "home": {
+     "rooms": 84,
+     "p50": 3,
+     "p90": 9
+    },
+    "kitchen": {
+     "rooms": 73,
+     "p50": 1,
+     "p90": 4
+    },
+    "display": {
+     "rooms": 105,
+     "p50": 1,
+     "p90": 4
+    },
+    "feast hall": {
+     "rooms": 26,
+     "p50": 5,
+     "p90": 10.5
+    },
+    "dining": {
+     "rooms": 29,
+     "p50": 2,
+     "p90": 4
+    },
+    "sitting": {
+     "rooms": 26,
+     "p50": 2,
+     "p90": 5
+    },
+    "shrine": {
+     "rooms": 15,
+     "p50": 3,
+     "p90": 4.6
+    }
+   }
+  },
+  "piece_groundtorch": {
+   "rooms": 313,
+   "p50": 2,
+   "p90": 4,
+   "max": 16,
+   "byKind": {
+    "empty": {
+     "rooms": 75,
+     "p50": 2,
+     "p90": 5.2
+    },
+    "bedroom": {
+     "rooms": 24,
+     "p50": 2,
+     "p90": 4
+    },
+    "smithy": {
+     "rooms": 28,
+     "p50": 2,
+     "p90": 4.3
+    },
+    "other": {
+     "rooms": 17,
+     "p50": 1,
+     "p90": 2.4
+    },
+    "home": {
+     "rooms": 19,
+     "p50": 2,
+     "p90": 4.4
+    },
+    "display": {
+     "rooms": 18,
+     "p50": 2,
+     "p90": 3.3
+    },
+    "storage": {
+     "rooms": 25,
+     "p50": 2,
+     "p90": 5.2
+    },
+    "throne hall": {
+     "rooms": 20,
+     "p50": 2,
+     "p90": 4
+    },
+    "corridor": {
+     "rooms": 23,
+     "p50": 1,
+     "p90": 3
+    }
+   }
+  },
+  "piece_groundtorch_wood": {
+   "rooms": 387,
+   "p50": 2,
+   "p90": 6,
+   "max": 20,
+   "byKind": {
+    "empty": {
+     "rooms": 96,
+     "p50": 1,
+     "p90": 4
+    },
+    "workshop": {
+     "rooms": 26,
+     "p50": 2,
+     "p90": 6
+    },
+    "home": {
+     "rooms": 26,
+     "p50": 4,
+     "p90": 7.5
+    },
+    "other": {
+     "rooms": 40,
+     "p50": 1,
+     "p90": 2
+    },
+    "display": {
+     "rooms": 21,
+     "p50": 2,
+     "p90": 3
+    },
+    "storage": {
+     "rooms": 28,
+     "p50": 2,
+     "p90": 4
+    },
+    "smithy": {
+     "rooms": 22,
+     "p50": 2,
+     "p90": 4.9
+    },
+    "bedroom": {
+     "rooms": 37,
+     "p50": 2,
+     "p90": 7.4
+    },
+    "corridor": {
+     "rooms": 26,
+     "p50": 1,
+     "p90": 3.5
+    }
+   }
+  },
+  "piece_brazierceiling01": {
+   "rooms": 374,
+   "p50": 1,
+   "p90": 3,
+   "max": 10,
+   "byKind": {
+    "home": {
+     "rooms": 23,
+     "p50": 1,
+     "p90": 2
+    },
+    "empty": {
+     "rooms": 92,
+     "p50": 1,
+     "p90": 2.9
+    },
+    "corridor": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 6
+    },
+    "throne hall": {
+     "rooms": 28,
+     "p50": 1,
+     "p90": 2.3
+    },
+    "bedroom": {
+     "rooms": 53,
+     "p50": 1,
+     "p90": 1
+    },
+    "smithy": {
+     "rooms": 25,
+     "p50": 1,
+     "p90": 3
+    },
+    "display": {
+     "rooms": 21,
+     "p50": 1,
+     "p90": 2
+    },
+    "other": {
+     "rooms": 32,
+     "p50": 1,
+     "p90": 2
+    }
+   }
+  },
+  "piece_dvergr_lantern": {
+   "rooms": 1687,
+   "p50": 2,
+   "p90": 6,
+   "max": 59,
+   "byKind": {
+    "smithy": {
+     "rooms": 69,
+     "p50": 2,
+     "p90": 9.2
+    },
+    "empty": {
+     "rooms": 568,
+     "p50": 1,
+     "p90": 4.3
+    },
+    "other": {
+     "rooms": 211,
+     "p50": 1,
+     "p90": 4
+    },
+    "corridor": {
+     "rooms": 210,
+     "p50": 2,
+     "p90": 4
+    },
+    "kitchen": {
+     "rooms": 40,
+     "p50": 2,
+     "p90": 6.1
+    },
+    "storage": {
+     "rooms": 63,
+     "p50": 2,
+     "p90": 6
+    },
+    "workshop": {
+     "rooms": 38,
+     "p50": 2,
+     "p90": 5.3
+    },
+    "sitting": {
+     "rooms": 29,
+     "p50": 2,
+     "p90": 7.4
+    },
+    "dormitory": {
+     "rooms": 18,
+     "p50": 3,
+     "p90": 9.4
+    },
+    "throne hall": {
+     "rooms": 45,
+     "p50": 4,
+     "p90": 10.8
+    },
+    "feast hall": {
+     "rooms": 25,
+     "p50": 3,
+     "p90": 11.6
+    },
+    "home": {
+     "rooms": 55,
+     "p50": 2,
+     "p90": 8.6
+    },
+    "bedroom": {
+     "rooms": 156,
+     "p50": 2,
+     "p90": 4.5
+    },
+    "display": {
+     "rooms": 88,
+     "p50": 2,
+     "p90": 8
+    },
+    "dining": {
+     "rooms": 22,
+     "p50": 2,
+     "p90": 4.9
+    }
+   }
+  },
+  "Candle_resin": {
+   "rooms": 243,
+   "p50": 2,
+   "p90": 6,
+   "max": 44,
+   "byKind": {
+    "empty": {
+     "rooms": 23,
+     "p50": 2,
+     "p90": 11
+    },
+    "other": {
+     "rooms": 27,
+     "p50": 2,
+     "p90": 4.4
+    },
+    "throne hall": {
+     "rooms": 17,
+     "p50": 2,
+     "p90": 6.8
+    },
+    "display": {
+     "rooms": 26,
+     "p50": 3,
+     "p90": 10
+    },
+    "bedroom": {
+     "rooms": 39,
+     "p50": 1,
+     "p90": 3
+    },
+    "home": {
+     "rooms": 23,
+     "p50": 2,
+     "p90": 4.8
+    }
+   }
+  },
+  "piece_cloth_hanging_door": {
+   "rooms": 491,
+   "p50": 2,
+   "p90": 8,
+   "max": 24,
+   "byKind": {
+    "other": {
+     "rooms": 36,
+     "p50": 2,
+     "p90": 5
+    },
+    "bedroom": {
+     "rooms": 85,
+     "p50": 4,
+     "p90": 12
+    },
+    "throne hall": {
+     "rooms": 30,
+     "p50": 4,
+     "p90": 10.2
+    },
+    "display": {
+     "rooms": 32,
+     "p50": 2,
+     "p90": 5
+    },
+    "empty": {
+     "rooms": 123,
+     "p50": 2,
+     "p90": 4
+    },
+    "home": {
+     "rooms": 35,
+     "p50": 5,
+     "p90": 16
+    },
+    "corridor": {
+     "rooms": 49,
+     "p50": 2,
+     "p90": 4.2
+    }
+   }
+  },
+  "piece_cloth_hanging_door_blue": {
+   "rooms": 225,
+   "p50": 2,
+   "p90": 6,
+   "max": 27,
+   "byKind": {
+    "other": {
+     "rooms": 15,
+     "p50": 1,
+     "p90": 2.6
+    },
+    "bedroom": {
+     "rooms": 43,
+     "p50": 2,
+     "p90": 4
+    },
+    "home": {
+     "rooms": 19,
+     "p50": 2,
+     "p90": 10.2
+    },
+    "empty": {
+     "rooms": 34,
+     "p50": 1.5,
+     "p90": 5.1
+    },
+    "corridor": {
+     "rooms": 24,
+     "p50": 2,
+     "p90": 4
+    }
+   }
+  },
+  "piece_cloth_hanging_door_blue2": {
+   "rooms": 153,
+   "p50": 2,
+   "p90": 6,
+   "max": 15,
+   "byKind": {
+    "bedroom": {
+     "rooms": 41,
+     "p50": 2,
+     "p90": 3
+    },
+    "empty": {
+     "rooms": 27,
+     "p50": 2,
+     "p90": 4
+    },
+    "display": {
+     "rooms": 17,
+     "p50": 2,
+     "p90": 2.4
+    }
+   }
+  },
+  "piece_logbench01": {
+   "rooms": 99,
+   "p50": 1,
+   "p90": 3,
+   "max": 5,
+   "byKind": {
+    "home": {
+     "rooms": 19,
+     "p50": 2,
+     "p90": 4
+    }
+   }
+  },
+  "piece_bench01": {
+   "rooms": 265,
+   "p50": 2,
+   "p90": 4,
+   "max": 32,
+   "byKind": {
+    "dining": {
+     "rooms": 20,
+     "p50": 2,
+     "p90": 4
+    },
+    "sitting": {
+     "rooms": 31,
+     "p50": 2,
+     "p90": 4
+    },
+    "home": {
+     "rooms": 32,
+     "p50": 1.5,
+     "p90": 5.9
+    },
+    "smithy": {
+     "rooms": 18,
+     "p50": 1.5,
+     "p90": 3
+    },
+    "empty": {
+     "rooms": 16,
+     "p50": 1,
+     "p90": 2.5
+    },
+    "display": {
+     "rooms": 15,
+     "p50": 2,
+     "p90": 3
+    },
+    "feast hall": {
+     "rooms": 16,
+     "p50": 3.5,
+     "p90": 11
+    },
+    "bedroom": {
+     "rooms": 17,
+     "p50": 1,
+     "p90": 2
+    },
+    "throne hall": {
+     "rooms": 30,
+     "p50": 2,
+     "p90": 8
+    }
+   }
+  },
+  "piece_chair": {
+   "rooms": 670,
+   "p50": 1,
+   "p90": 8,
+   "max": 220,
+   "byKind": {
+    "feast hall": {
+     "rooms": 32,
+     "p50": 6,
+     "p90": 83
+    },
+    "empty": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 4.8
+    },
+    "home": {
+     "rooms": 101,
+     "p50": 2,
+     "p90": 17
+    },
+    "throne hall": {
+     "rooms": 62,
+     "p50": 1.5,
+     "p90": 10.9
+    },
+    "workshop": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 3
+    },
+    "bedroom": {
+     "rooms": 163,
+     "p50": 1,
+     "p90": 2
+    },
+    "smithy": {
+     "rooms": 32,
+     "p50": 1,
+     "p90": 5
+    },
+    "other": {
+     "rooms": 24,
+     "p50": 1,
+     "p90": 1.7
+    },
+    "display": {
+     "rooms": 42,
+     "p50": 1,
+     "p90": 6
+    },
+    "dining": {
+     "rooms": 23,
+     "p50": 1,
+     "p90": 4.8
+    },
+    "kitchen": {
+     "rooms": 31,
+     "p50": 1,
+     "p90": 3
+    },
+    "sitting": {
+     "rooms": 47,
+     "p50": 2,
+     "p90": 10.2
+    },
+    "storage": {
+     "rooms": 25,
+     "p50": 1,
+     "p90": 3
+    }
+   }
+  },
+  "piece_chair02": {
+   "rooms": 348,
+   "p50": 2,
+   "p90": 4,
+   "max": 20,
+   "byKind": {
+    "bedroom": {
+     "rooms": 36,
+     "p50": 1,
+     "p90": 2
+    },
+    "home": {
+     "rooms": 59,
+     "p50": 2,
+     "p90": 6
+    },
+    "dining": {
+     "rooms": 28,
+     "p50": 2,
+     "p90": 4
+    },
+    "workshop": {
+     "rooms": 18,
+     "p50": 1,
+     "p90": 2
+    },
+    "storage": {
+     "rooms": 22,
+     "p50": 2,
+     "p90": 2.9
+    },
+    "display": {
+     "rooms": 25,
+     "p50": 2,
+     "p90": 9.8
+    },
+    "smithy": {
+     "rooms": 31,
+     "p50": 1,
+     "p90": 2
+    },
+    "throne hall": {
+     "rooms": 35,
+     "p50": 2,
+     "p90": 6.6
+    },
+    "sitting": {
+     "rooms": 16,
+     "p50": 2,
+     "p90": 2.5
+    },
+    "feast hall": {
+     "rooms": 18,
+     "p50": 3,
+     "p90": 8.8
+    },
+    "empty": {
+     "rooms": 15,
+     "p50": 2,
+     "p90": 2
+    }
+   }
+  },
+  "piece_chair03": {
+   "rooms": 802,
+   "p50": 2,
+   "p90": 8,
+   "max": 33,
+   "byKind": {
+    "smithy": {
+     "rooms": 47,
+     "p50": 2,
+     "p90": 6
+    },
+    "corridor": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 3.4
+    },
+    "other": {
+     "rooms": 28,
+     "p50": 2,
+     "p90": 3.3
+    },
+    "empty": {
+     "rooms": 72,
+     "p50": 1.5,
+     "p90": 3
+    },
+    "sitting": {
+     "rooms": 50,
+     "p50": 2,
+     "p90": 4
+    },
+    "dormitory": {
+     "rooms": 24,
+     "p50": 2,
+     "p90": 6
+    },
+    "throne hall": {
+     "rooms": 81,
+     "p50": 4,
+     "p90": 10
+    },
+    "dining": {
+     "rooms": 70,
+     "p50": 3,
+     "p90": 6
+    },
+    "storage": {
+     "rooms": 24,
+     "p50": 2,
+     "p90": 4
+    },
+    "home": {
+     "rooms": 109,
+     "p50": 3,
+     "p90": 8
+    },
+    "bedroom": {
+     "rooms": 119,
+     "p50": 1,
+     "p90": 2.2
+    },
+    "workshop": {
+     "rooms": 23,
+     "p50": 2,
+     "p90": 3
+    },
+    "kitchen": {
+     "rooms": 32,
+     "p50": 2,
+     "p90": 6
+    },
+    "feast hall": {
+     "rooms": 34,
+     "p50": 9,
+     "p90": 13
+    },
+    "display": {
+     "rooms": 28,
+     "p50": 1,
+     "p90": 2
+    },
+    "tavern hall": {
+     "rooms": 30,
+     "p50": 10,
+     "p90": 27.1
+    }
+   }
+  },
+  "piece_chest_wood": {
+   "rooms": 1372,
+   "p50": 4,
+   "p90": 15,
+   "max": 120,
+   "byKind": {
+    "display": {
+     "rooms": 58,
+     "p50": 2,
+     "p90": 3.3
+    },
+    "other": {
+     "rooms": 244,
+     "p50": 2,
+     "p90": 6
+    },
+    "bedroom": {
+     "rooms": 134,
+     "p50": 2,
+     "p90": 10.4
+    },
+    "smithy": {
+     "rooms": 89,
+     "p50": 5,
+     "p90": 32
+    },
+    "empty": {
+     "rooms": 61,
+     "p50": 2,
+     "p90": 6
+    },
+    "home": {
+     "rooms": 69,
+     "p50": 4,
+     "p90": 16.2
+    },
+    "workshop": {
+     "rooms": 53,
+     "p50": 3,
+     "p90": 20
+    },
+    "dining": {
+     "rooms": 21,
+     "p50": 1,
+     "p90": 5
+    },
+    "storage": {
+     "rooms": 455,
+     "p50": 8,
+     "p90": 20
+    },
+    "kitchen": {
+     "rooms": 52,
+     "p50": 3,
+     "p90": 14.9
+    },
+    "corridor": {
+     "rooms": 28,
+     "p50": 1.5,
+     "p90": 4.6
+    },
+    "throne hall": {
+     "rooms": 46,
+     "p50": 5.5,
+     "p90": 18
+    },
+    "sitting": {
+     "rooms": 17,
+     "p50": 3,
+     "p90": 4.4
+    }
+   }
+  },
+  "piece_chest": {
+   "rooms": 1159,
+   "p50": 3,
+   "p90": 8,
+   "max": 87,
+   "byKind": {
+    "other": {
+     "rooms": 319,
+     "p50": 2,
+     "p90": 6
+    },
+    "empty": {
+     "rooms": 68,
+     "p50": 2,
+     "p90": 6.6
+    },
+    "corridor": {
+     "rooms": 24,
+     "p50": 1.5,
+     "p90": 7.4
+    },
+    "storage": {
+     "rooms": 217,
+     "p50": 5,
+     "p90": 16
+    },
+    "workshop": {
+     "rooms": 32,
+     "p50": 3,
+     "p90": 17.5
+    },
+    "dormitory": {
+     "rooms": 17,
+     "p50": 4,
+     "p90": 7.8
+    },
+    "home": {
+     "rooms": 81,
+     "p50": 3,
+     "p90": 8
+    },
+    "kitchen": {
+     "rooms": 65,
+     "p50": 2,
+     "p90": 8
+    },
+    "bedroom": {
+     "rooms": 103,
+     "p50": 2,
+     "p90": 4.8
+    },
+    "display": {
+     "rooms": 33,
+     "p50": 1,
+     "p90": 4.8
+    },
+    "smithy": {
+     "rooms": 84,
+     "p50": 4,
+     "p90": 19.4
+    },
+    "dining": {
+     "rooms": 22,
+     "p50": 3,
+     "p90": 6.9
+    },
+    "throne hall": {
+     "rooms": 49,
+     "p50": 2,
+     "p90": 7.8
+    }
+   }
+  },
+  "piece_chest_private": {
+   "rooms": 423,
+   "p50": 1,
+   "p90": 4,
+   "max": 25,
+   "byKind": {
+    "home": {
+     "rooms": 57,
+     "p50": 1,
+     "p90": 4.4
+    },
+    "dining": {
+     "rooms": 21,
+     "p50": 1,
+     "p90": 2
+    },
+    "bedroom": {
+     "rooms": 111,
+     "p50": 1,
+     "p90": 2
+    },
+    "other": {
+     "rooms": 38,
+     "p50": 1,
+     "p90": 2
+    },
+    "storage": {
+     "rooms": 41,
+     "p50": 2,
+     "p90": 24
+    },
+    "smithy": {
+     "rooms": 17,
+     "p50": 2,
+     "p90": 9.4
+    },
+    "throne hall": {
+     "rooms": 28,
+     "p50": 1,
+     "p90": 3.3
+    },
+    "display": {
+     "rooms": 27,
+     "p50": 1,
+     "p90": 2
+    },
+    "kitchen": {
+     "rooms": 21,
+     "p50": 1,
+     "p90": 2
+    }
+   }
+  },
+  "piece_chest_blackmetal": {
+   "rooms": 695,
+   "p50": 3,
+   "p90": 10,
+   "max": 73,
+   "byKind": {
+    "storage": {
+     "rooms": 218,
+     "p50": 8,
+     "p90": 18
+    },
+    "smithy": {
+     "rooms": 48,
+     "p50": 3,
+     "p90": 19.2
+    },
+    "other": {
+     "rooms": 105,
+     "p50": 2,
+     "p90": 4
+    },
+    "empty": {
+     "rooms": 47,
+     "p50": 1,
+     "p90": 6.8
+    },
+    "home": {
+     "rooms": 57,
+     "p50": 1,
+     "p90": 4
+    },
+    "kitchen": {
+     "rooms": 23,
+     "p50": 1,
+     "p90": 10.8
+    },
+    "throne hall": {
+     "rooms": 28,
+     "p50": 2,
+     "p90": 21.3
+    },
+    "bedroom": {
+     "rooms": 59,
+     "p50": 2,
+     "p90": 4
+    },
+    "corridor": {
+     "rooms": 51,
+     "p50": 3,
+     "p90": 4
+    }
+   }
+  },
+  "piece_chest_barrel": {
+   "rooms": 362,
+   "p50": 3,
+   "p90": 9,
+   "max": 33,
+   "byKind": {
+    "smithy": {
+     "rooms": 24,
+     "p50": 3,
+     "p90": 13
+    },
+    "other": {
+     "rooms": 42,
+     "p50": 2,
+     "p90": 4
+    },
+    "storage": {
+     "rooms": 68,
+     "p50": 4.5,
+     "p90": 15
+    },
+    "home": {
+     "rooms": 24,
+     "p50": 2,
+     "p90": 10.4
+    },
+    "bedroom": {
+     "rooms": 34,
+     "p50": 1,
+     "p90": 3.7
+    },
+    "throne hall": {
+     "rooms": 15,
+     "p50": 3,
+     "p90": 8.6
+    },
+    "kitchen": {
+     "rooms": 40,
+     "p50": 3.5,
+     "p90": 9.1
+    },
+    "workshop": {
+     "rooms": 19,
+     "p50": 3,
+     "p90": 9.8
+    },
+    "empty": {
+     "rooms": 21,
+     "p50": 2,
+     "p90": 4
+    },
+    "corridor": {
+     "rooms": 19,
+     "p50": 2,
+     "p90": 7.2
+    }
+   }
+  },
+  "wood_ledge": {
+   "rooms": 89,
+   "p50": 12,
+   "p90": 113.4,
+   "max": 466,
+   "byKind": {
+    "empty": {
+     "rooms": 19,
+     "p50": 9,
+     "p90": 61.4
+    },
+    "corridor": {
+     "rooms": 19,
+     "p50": 24,
+     "p90": 66
+    }
+   }
+  },
+  "piece_pot1": {
+   "rooms": 118,
+   "p50": 1,
+   "p90": 2,
+   "max": 6,
+   "byKind": {
+    "other": {
+     "rooms": 44,
+     "p50": 1,
+     "p90": 2.7
+    },
+    "home": {
+     "rooms": 17,
+     "p50": 1,
+     "p90": 2.4
+    }
+   }
+  },
+  "piece_pot2": {
+   "rooms": 145,
+   "p50": 1,
+   "p90": 3,
+   "max": 15,
+   "byKind": {
+    "other": {
+     "rooms": 50,
+     "p50": 1,
+     "p90": 3
+    },
+    "home": {
+     "rooms": 15,
+     "p50": 1,
+     "p90": 7.2
+    },
+    "bedroom": {
+     "rooms": 15,
+     "p50": 1,
+     "p90": 2
+    }
+   }
+  },
+  "piece_pot3": {
+   "rooms": 149,
+   "p50": 1,
+   "p90": 2.2,
+   "max": 13,
+   "byKind": {
+    "sitting": {
+     "rooms": 15,
+     "p50": 1,
+     "p90": 2.6
+    },
+    "other": {
+     "rooms": 46,
+     "p50": 1,
+     "p90": 2.5
+    }
+   }
+  },
+  "itemstand": {
+   "rooms": 1448,
+   "p50": 3,
+   "p90": 16,
+   "max": 160,
+   "byKind": {
+    "empty": {
+     "rooms": 147,
+     "p50": 1,
+     "p90": 2
+    },
+    "smithy": {
+     "rooms": 78,
+     "p50": 5,
+     "p90": 18.6
+    },
+    "workshop": {
+     "rooms": 43,
+     "p50": 3,
+     "p90": 12.6
+    },
+    "other": {
+     "rooms": 93,
+     "p50": 1,
+     "p90": 13.8
+    },
+    "bedroom": {
+     "rooms": 132,
+     "p50": 3,
+     "p90": 15.9
+    },
+    "hearth room": {
+     "rooms": 21,
+     "p50": 3,
+     "p90": 8
+    },
+    "display": {
+     "rooms": 368,
+     "p50": 4,
+     "p90": 22.3
+    },
+    "storage": {
+     "rooms": 93,
+     "p50": 3,
+     "p90": 9
+    },
+    "kitchen": {
+     "rooms": 65,
+     "p50": 3,
+     "p90": 14.8
+    },
+    "home": {
+     "rooms": 86,
+     "p50": 4,
+     "p90": 14.5
+    },
+    "feast hall": {
+     "rooms": 36,
+     "p50": 7,
+     "p90": 22
+    },
+    "throne hall": {
+     "rooms": 77,
+     "p50": 5,
+     "p90": 13
+    },
+    "corridor": {
+     "rooms": 83,
+     "p50": 1,
+     "p90": 2
+    },
+    "dining": {
+     "rooms": 29,
+     "p50": 6,
+     "p90": 15.2
+    },
+    "dormitory": {
+     "rooms": 15,
+     "p50": 3,
+     "p90": 10.6
+    },
+    "sitting": {
+     "rooms": 41,
+     "p50": 5,
+     "p90": 32
+    },
+    "tavern hall": {
+     "rooms": 17,
+     "p50": 8,
+     "p90": 23
+    }
+   }
+  },
+  "itemstandh": {
+   "rooms": 1379,
+   "p50": 5,
+   "p90": 27,
+   "max": 1418,
+   "byKind": {
+    "smithy": {
+     "rooms": 55,
+     "p50": 9,
+     "p90": 35
+    },
+    "display": {
+     "rooms": 500,
+     "p50": 6,
+     "p90": 26.1
+    },
+    "storage": {
+     "rooms": 50,
+     "p50": 4,
+     "p90": 16
+    },
+    "kitchen": {
+     "rooms": 69,
+     "p50": 9,
+     "p90": 36.8
+    },
+    "throne hall": {
+     "rooms": 72,
+     "p50": 9,
+     "p90": 36
+    },
+    "home": {
+     "rooms": 72,
+     "p50": 6,
+     "p90": 31
+    },
+    "hearth room": {
+     "rooms": 15,
+     "p50": 8,
+     "p90": 29.2
+    },
+    "bedroom": {
+     "rooms": 96,
+     "p50": 3,
+     "p90": 12.5
+    },
+    "other": {
+     "rooms": 53,
+     "p50": 2,
+     "p90": 9
+    },
+    "workshop": {
+     "rooms": 29,
+     "p50": 4,
+     "p90": 19.2
+    },
+    "dining": {
+     "rooms": 37,
+     "p50": 7,
+     "p90": 27.4
+    },
+    "sitting": {
+     "rooms": 38,
+     "p50": 4.5,
+     "p90": 40.1
+    },
+    "empty": {
+     "rooms": 165,
+     "p50": 1,
+     "p90": 2
+    },
+    "corridor": {
+     "rooms": 39,
+     "p50": 1,
+     "p90": 2
+    },
+    "feast hall": {
+     "rooms": 26,
+     "p50": 13,
+     "p90": 48
+    },
+    "tavern hall": {
+     "rooms": 21,
+     "p50": 24,
+     "p90": 54
+    },
+    "shrine": {
+     "rooms": 18,
+     "p50": 26,
+     "p90": 185
+    }
+   }
+  },
+  "sign": {
+   "rooms": 1336,
+   "p50": 4,
+   "p90": 20,
+   "max": 645,
+   "byKind": {
+    "smithy": {
+     "rooms": 63,
+     "p50": 8,
+     "p90": 34.6
+    },
+    "other": {
+     "rooms": 168,
+     "p50": 4,
+     "p90": 6
+    },
+    "workshop": {
+     "rooms": 35,
+     "p50": 4,
+     "p90": 14.6
+    },
+    "bedroom": {
+     "rooms": 94,
+     "p50": 2,
+     "p90": 8
+    },
+    "corridor": {
+     "rooms": 83,
+     "p50": 3,
+     "p90": 16
+    },
+    "empty": {
+     "rooms": 185,
+     "p50": 2,
+     "p90": 11.6
+    },
+    "storage": {
+     "rooms": 228,
+     "p50": 6,
+     "p90": 24.9
+    },
+    "sitting": {
+     "rooms": 31,
+     "p50": 3,
+     "p90": 29
+    },
+    "feast hall": {
+     "rooms": 19,
+     "p50": 10,
+     "p90": 25.2
+    },
+    "display": {
+     "rooms": 203,
+     "p50": 2,
+     "p90": 15.8
+    },
+    "home": {
+     "rooms": 43,
+     "p50": 6,
+     "p90": 30
+    },
+    "throne hall": {
+     "rooms": 39,
+     "p50": 7,
+     "p90": 36.4
+    },
+    "kitchen": {
+     "rooms": 49,
+     "p50": 4,
+     "p90": 16.4
+    },
+    "dining": {
+     "rooms": 15,
+     "p50": 5,
+     "p90": 12.4
+    },
+    "portal room": {
+     "rooms": 38,
+     "p50": 9,
+     "p90": 48
+    }
+   }
+  },
+  "piece_banner01": {
+   "rooms": 347,
+   "p50": 2,
+   "p90": 4,
+   "max": 23,
+   "byKind": {
+    "smithy": {
+     "rooms": 26,
+     "p50": 2,
+     "p90": 4
+    },
+    "empty": {
+     "rooms": 46,
+     "p50": 1,
+     "p90": 3
+    },
+    "throne hall": {
+     "rooms": 38,
+     "p50": 2,
+     "p90": 6
+    },
+    "corridor": {
+     "rooms": 17,
+     "p50": 2,
+     "p90": 4.4
+    },
+    "storage": {
+     "rooms": 18,
+     "p50": 1,
+     "p90": 3
+    },
+    "display": {
+     "rooms": 25,
+     "p50": 1,
+     "p90": 9
+    },
+    "home": {
+     "rooms": 31,
+     "p50": 2,
+     "p90": 4
+    },
+    "bedroom": {
+     "rooms": 53,
+     "p50": 2,
+     "p90": 3
+    },
+    "other": {
+     "rooms": 23,
+     "p50": 1,
+     "p90": 2
+    }
+   }
+  },
+  "rug_deer": {
+   "rooms": 786,
+   "p50": 2,
+   "p90": 7,
+   "max": 33,
+   "byKind": {
+    "smithy": {
+     "rooms": 72,
+     "p50": 2,
+     "p90": 7
+    },
+    "corridor": {
+     "rooms": 35,
+     "p50": 2,
+     "p90": 7.2
+    },
+    "empty": {
+     "rooms": 97,
+     "p50": 2,
+     "p90": 4
+    },
+    "other": {
+     "rooms": 36,
+     "p50": 2,
+     "p90": 5.5
+    },
+    "workshop": {
+     "rooms": 45,
+     "p50": 2,
+     "p90": 10
+    },
+    "sitting": {
+     "rooms": 22,
+     "p50": 2,
+     "p90": 3
+    },
+    "dormitory": {
+     "rooms": 18,
+     "p50": 1.5,
+     "p90": 6
+    },
+    "throne hall": {
+     "rooms": 76,
+     "p50": 2,
+     "p90": 5.5
+    },
+    "bedroom": {
+     "rooms": 109,
+     "p50": 2,
+     "p90": 6.2
+    },
+    "feast hall": {
+     "rooms": 15,
+     "p50": 3,
+     "p90": 9.4
+    },
+    "home": {
+     "rooms": 88,
+     "p50": 2.5,
+     "p90": 10
+    },
+    "storage": {
+     "rooms": 38,
+     "p50": 1,
+     "p90": 5.3
+    },
+    "display": {
+     "rooms": 45,
+     "p50": 2,
+     "p90": 5
+    },
+    "kitchen": {
+     "rooms": 35,
+     "p50": 2,
+     "p90": 7.6
+    },
+    "dining": {
+     "rooms": 30,
+     "p50": 3,
+     "p90": 6
+    }
+   }
+  },
+  "rug_fur": {
+   "rooms": 917,
+   "p50": 2,
+   "p90": 8,
+   "max": 79,
+   "byKind": {
+    "empty": {
+     "rooms": 156,
+     "p50": 1,
+     "p90": 6
+    },
+    "corridor": {
+     "rooms": 24,
+     "p50": 1.5,
+     "p90": 4.7
+    },
+    "smithy": {
+     "rooms": 56,
+     "p50": 2,
+     "p90": 7
+    },
+    "bedroom": {
+     "rooms": 159,
+     "p50": 2,
+     "p90": 7.2
+    },
+    "other": {
+     "rooms": 46,
+     "p50": 1,
+     "p90": 4
+    },
+    "workshop": {
+     "rooms": 26,
+     "p50": 2,
+     "p90": 4
+    },
+    "sitting": {
+     "rooms": 27,
+     "p50": 2,
+     "p90": 7
+    },
+    "dormitory": {
+     "rooms": 26,
+     "p50": 4.5,
+     "p90": 25
+    },
+    "home": {
+     "rooms": 95,
+     "p50": 3,
+     "p90": 19.6
+    },
+    "feast hall": {
+     "rooms": 28,
+     "p50": 3,
+     "p90": 8
+    },
+    "dining": {
+     "rooms": 37,
+     "p50": 2,
+     "p90": 4
+    },
+    "storage": {
+     "rooms": 36,
+     "p50": 1,
+     "p90": 5.5
+    },
+    "display": {
+     "rooms": 39,
+     "p50": 1,
+     "p90": 3
+    },
+    "throne hall": {
+     "rooms": 89,
+     "p50": 2,
+     "p90": 8.2
+    },
+    "kitchen": {
+     "rooms": 44,
+     "p50": 2,
+     "p90": 5.7
+    }
+   }
+  },
+  "rug_wolf": {
+   "rooms": 644,
+   "p50": 2,
+   "p90": 5,
+   "max": 26,
+   "byKind": {
+    "empty": {
+     "rooms": 61,
+     "p50": 1,
+     "p90": 3
+    },
+    "bedroom": {
+     "rooms": 131,
+     "p50": 2,
+     "p90": 5
+    },
+    "dormitory": {
+     "rooms": 27,
+     "p50": 3,
+     "p90": 10.4
+    },
+    "home": {
+     "rooms": 86,
+     "p50": 2,
+     "p90": 6
+    },
+    "throne hall": {
+     "rooms": 79,
+     "p50": 2,
+     "p90": 7.2
+    },
+    "corridor": {
+     "rooms": 15,
+     "p50": 1,
+     "p90": 3.2
+    },
+    "workshop": {
+     "rooms": 17,
+     "p50": 1,
+     "p90": 4.2
+    },
+    "storage": {
+     "rooms": 21,
+     "p50": 1,
+     "p90": 2
+    },
+    "dining": {
+     "rooms": 24,
+     "p50": 1,
+     "p90": 4
+    },
+    "kitchen": {
+     "rooms": 26,
+     "p50": 2,
+     "p90": 4
+    },
+    "display": {
+     "rooms": 25,
+     "p50": 2,
+     "p90": 3.6
+    },
+    "feast hall": {
+     "rooms": 15,
+     "p50": 2,
+     "p90": 4.2
+    },
+    "other": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 5
+    },
+    "sitting": {
+     "rooms": 21,
+     "p50": 2,
+     "p90": 7
+    },
+    "smithy": {
+     "rooms": 54,
+     "p50": 2,
+     "p90": 4
+    }
+   }
+  },
+  "jute_carpet": {
+   "rooms": 769,
+   "p50": 2,
+   "p90": 8,
+   "max": 44,
+   "byKind": {
+    "smithy": {
+     "rooms": 35,
+     "p50": 1,
+     "p90": 5.2
+    },
+    "other": {
+     "rooms": 59,
+     "p50": 1,
+     "p90": 6
+    },
+    "empty": {
+     "rooms": 229,
+     "p50": 1,
+     "p90": 4
+    },
+    "sitting": {
+     "rooms": 26,
+     "p50": 6,
+     "p90": 9.5
+    },
+    "feast hall": {
+     "rooms": 15,
+     "p50": 5,
+     "p90": 9
+    },
+    "storage": {
+     "rooms": 17,
+     "p50": 3,
+     "p90": 9.8
+    },
+    "home": {
+     "rooms": 50,
+     "p50": 2,
+     "p90": 13.2
+    },
+    "kitchen": {
+     "rooms": 19,
+     "p50": 2,
+     "p90": 3.4
+    },
+    "bedroom": {
+     "rooms": 97,
+     "p50": 2,
+     "p90": 9
+    },
+    "display": {
+     "rooms": 35,
+     "p50": 1,
+     "p90": 6.6
+    },
+    "corridor": {
+     "rooms": 48,
+     "p50": 2,
+     "p90": 3.6
+    },
+    "throne hall": {
+     "rooms": 53,
+     "p50": 2,
+     "p90": 16.8
+    },
+    "tavern hall": {
+     "rooms": 16,
+     "p50": 4,
+     "p90": 11.5
+    },
+    "dining": {
+     "rooms": 18,
+     "p50": 2,
+     "p90": 6.3
+    }
+   }
+  },
+  "ArmorStand": {
+   "rooms": 502,
+   "p50": 1,
+   "p90": 4,
+   "max": 19,
+   "byKind": {
+    "smithy": {
+     "rooms": 36,
+     "p50": 2,
+     "p90": 5
+    },
+    "display": {
+     "rooms": 41,
+     "p50": 1,
+     "p90": 3
+    },
+    "storage": {
+     "rooms": 20,
+     "p50": 2,
+     "p90": 3.1
+    },
+    "empty": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 2.2
+    },
+    "home": {
+     "rooms": 71,
+     "p50": 1,
+     "p90": 4
+    },
+    "other": {
+     "rooms": 52,
+     "p50": 1,
+     "p90": 4.9
+    },
+    "bedroom": {
+     "rooms": 109,
+     "p50": 1,
+     "p90": 3
+    },
+    "throne hall": {
+     "rooms": 50,
+     "p50": 2,
+     "p90": 6
+    },
+    "kitchen": {
+     "rooms": 16,
+     "p50": 1,
+     "p90": 4
+    }
+   }
+  },
+  "piece_table": {
+   "rooms": 538,
+   "p50": 1,
+   "p90": 3,
+   "max": 9,
+   "byKind": {
+    "smithy": {
+     "rooms": 43,
+     "p50": 1,
+     "p90": 2
+    },
+    "storage": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 2
+    },
+    "workshop": {
+     "rooms": 18,
+     "p50": 1,
+     "p90": 1
+    },
+    "other": {
+     "rooms": 16,
+     "p50": 1,
+     "p90": 1
+    },
+    "dormitory": {
+     "rooms": 17,
+     "p50": 1,
+     "p90": 4
+    },
+    "empty": {
+     "rooms": 27,
+     "p50": 1,
+     "p90": 2
+    },
+    "throne hall": {
+     "rooms": 73,
+     "p50": 1,
+     "p90": 3
+    },
+    "bedroom": {
+     "rooms": 64,
+     "p50": 1,
+     "p90": 1
+    },
+    "feast hall": {
+     "rooms": 29,
+     "p50": 3,
+     "p90": 6
+    },
+    "home": {
+     "rooms": 87,
+     "p50": 1,
+     "p90": 2.4
+    },
+    "dining": {
+     "rooms": 54,
+     "p50": 1,
+     "p90": 2
+    },
+    "display": {
+     "rooms": 26,
+     "p50": 1,
+     "p90": 1.5
+    },
+    "sitting": {
+     "rooms": 16,
+     "p50": 2,
+     "p90": 2
+    },
+    "kitchen": {
+     "rooms": 22,
+     "p50": 1,
+     "p90": 2.8
+    }
+   }
+  },
+  "piece_table_round": {
+   "rooms": 425,
+   "p50": 1,
+   "p90": 2,
+   "max": 6,
+   "byKind": {
+    "smithy": {
+     "rooms": 25,
+     "p50": 1,
+     "p90": 1
+    },
+    "dining": {
+     "rooms": 46,
+     "p50": 1,
+     "p90": 1
+    },
+    "home": {
+     "rooms": 70,
+     "p50": 1,
+     "p90": 2
+    },
+    "bedroom": {
+     "rooms": 60,
+     "p50": 1,
+     "p90": 1
+    },
+    "dormitory": {
+     "rooms": 15,
+     "p50": 1,
+     "p90": 2
+    },
+    "throne hall": {
+     "rooms": 60,
+     "p50": 1,
+     "p90": 2
+    },
+    "empty": {
+     "rooms": 25,
+     "p50": 1,
+     "p90": 1
+    },
+    "tavern hall": {
+     "rooms": 20,
+     "p50": 2,
+     "p90": 4
+    },
+    "other": {
+     "rooms": 18,
+     "p50": 1,
+     "p90": 1
+    }
+   }
+  },
+  "piece_table_oak": {
+   "rooms": 152,
+   "p50": 1,
+   "p90": 2,
+   "max": 4,
+   "byKind": {
+    "throne hall": {
+     "rooms": 41,
+     "p50": 1,
+     "p90": 2
+    },
+    "home": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 2
+    },
+    "feast hall": {
+     "rooms": 22,
+     "p50": 1,
+     "p90": 2
+    }
+   }
+  },
+  "bed": {
+   "rooms": 382,
+   "p50": 1,
+   "p90": 4,
+   "max": 15,
+   "byKind": {
+    "dormitory": {
+     "rooms": 22,
+     "p50": 4,
+     "p90": 8.9
+    },
+    "bedroom": {
+     "rooms": 210,
+     "p50": 1,
+     "p90": 2
+    },
+    "empty": {
+     "rooms": 18,
+     "p50": 1,
+     "p90": 2
+    },
+    "home": {
+     "rooms": 55,
+     "p50": 2,
+     "p90": 4
+    },
+    "storage": {
+     "rooms": 21,
+     "p50": 1,
+     "p90": 2
+    }
+   }
+  },
+  "piece_bed02": {
+   "rooms": 561,
+   "p50": 1,
+   "p90": 2,
+   "max": 7,
+   "byKind": {
+    "smithy": {
+     "rooms": 25,
+     "p50": 1,
+     "p90": 2
+    },
+    "bedroom": {
+     "rooms": 251,
+     "p50": 1,
+     "p90": 2
+    },
+    "dormitory": {
+     "rooms": 19,
+     "p50": 3,
+     "p90": 5.4
+    },
+    "throne hall": {
+     "rooms": 33,
+     "p50": 1,
+     "p90": 1.8
+    },
+    "home": {
+     "rooms": 121,
+     "p50": 1,
+     "p90": 3
+    },
+    "empty": {
+     "rooms": 32,
+     "p50": 1,
+     "p90": 1.9
+    },
+    "storage": {
+     "rooms": 17,
+     "p50": 1,
+     "p90": 1.4
+    }
+   }
+  },
+  "hearth": {
+   "rooms": 394,
+   "p50": 1,
+   "p90": 2,
+   "max": 4,
+   "byKind": {
+    "smithy": {
+     "rooms": 35,
+     "p50": 1,
+     "p90": 1
+    },
+    "hearth room": {
+     "rooms": 108,
+     "p50": 1,
+     "p90": 1
+    },
+    "throne hall": {
+     "rooms": 42,
+     "p50": 1,
+     "p90": 2
+    },
+    "empty": {
+     "rooms": 26,
+     "p50": 1,
+     "p90": 1
+    },
+    "kitchen": {
+     "rooms": 58,
+     "p50": 1,
+     "p90": 2
+    },
+    "home": {
+     "rooms": 42,
+     "p50": 1,
+     "p90": 1
+    },
+    "dining": {
+     "rooms": 16,
+     "p50": 1,
+     "p90": 1
+    }
+   }
+  },
+  "fire_pit": {
+   "rooms": 109,
+   "p50": 1,
+   "p90": 2,
+   "max": 5,
+   "byKind": {
+    "kitchen": {
+     "rooms": 25,
+     "p50": 1,
+     "p90": 2.6
+    },
+    "hearth room": {
+     "rooms": 27,
+     "p50": 1,
+     "p90": 2
+    },
+    "home": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 1.2
+    }
+   }
+  },
+  "piece_throne01": {
+   "rooms": 396,
+   "p50": 1,
+   "p90": 2,
+   "max": 10,
+   "byKind": {
+    "smithy": {
+     "rooms": 24,
+     "p50": 1,
+     "p90": 2
+    },
+    "throne hall": {
+     "rooms": 120,
+     "p50": 1,
+     "p90": 3
+    },
+    "empty": {
+     "rooms": 25,
+     "p50": 1,
+     "p90": 2
+    },
+    "bedroom": {
+     "rooms": 60,
+     "p50": 1,
+     "p90": 1.1
+    },
+    "home": {
+     "rooms": 64,
+     "p50": 1,
+     "p90": 2
+    },
+    "other": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 1
+    },
+    "storage": {
+     "rooms": 16,
+     "p50": 1,
+     "p90": 1
+    }
+   }
+  },
+  "piece_blackmarble_bench": {
+   "rooms": 81,
+   "p50": 1,
+   "p90": 4,
+   "max": 13,
+   "byKind": {
+    "other": {
+     "rooms": 16,
+     "p50": 1,
+     "p90": 1
+    }
+   }
+  },
+  "piece_blackmarble_table": {
+   "rooms": 90,
+   "p50": 1,
+   "p90": 2,
+   "max": 16,
+   "byKind": {
+    "throne hall": {
+     "rooms": 19,
+     "p50": 1,
+     "p90": 2.2
+    }
+   }
+  }
+ },
+ "showcase": {
+  "showcase-01-hub-md-norse-s5d3-2": {
+   "piece_walltorch": 26,
+   "piece_groundtorch": 1,
+   "piece_groundtorch_wood": 25,
+   "piece_brazierceiling01": 3,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 23,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 0,
+   "piece_bench01": 4,
+   "piece_chair": 0,
+   "piece_chair02": 3,
+   "piece_chair03": 1,
+   "piece_chest_wood": 13,
+   "piece_chest": 1,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 0,
+   "wood_ledge": 17,
+   "piece_pot1": 1,
+   "piece_pot2": 0,
+   "piece_pot3": 1,
+   "itemstand": 55,
+   "itemstandh": 9,
+   "sign": 9,
+   "piece_banner01": 0,
+   "rug_deer": 1,
+   "rug_fur": 0,
+   "rug_wolf": 4,
+   "jute_carpet": 1,
+   "ArmorStand": 0,
+   "piece_table": 14,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 0,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 2,
+   "piece_throne01": 2,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 79,
+   "type:chest": 14,
+   "type:barrel": 0,
+   "type:seat": 10,
+   "type:table": 14,
+   "type:bed": 0,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 8,
+   "type:shelf": 17,
+   "type:pot": 2,
+   "type:itemstand": 64,
+   "type:sign": 9,
+   "type:plant": 0,
+   "light kinds": 6,
+   "light prefabs": 6,
+   "main light share": 0.33
+  },
+  "showcase-02-hub-pl-byzantine-s5d3-1": {
+   "piece_walltorch": 17,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 10,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 17,
+   "piece_cloth_hanging_door": 6,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 0,
+   "piece_bench01": 2,
+   "piece_chair": 0,
+   "piece_chair02": 1,
+   "piece_chair03": 0,
+   "piece_chest_wood": 5,
+   "piece_chest": 2,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 4,
+   "wood_ledge": 15,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 1,
+   "itemstand": 37,
+   "itemstandh": 17,
+   "sign": 10,
+   "piece_banner01": 0,
+   "rug_deer": 4,
+   "rug_fur": 0,
+   "rug_wolf": 0,
+   "jute_carpet": 1,
+   "ArmorStand": 0,
+   "piece_table": 5,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 0,
+   "piece_bed02": 0,
+   "hearth": 1,
+   "fire_pit": 2,
+   "piece_throne01": 3,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 45,
+   "type:chest": 7,
+   "type:barrel": 4,
+   "type:seat": 3,
+   "type:table": 5,
+   "type:bed": 0,
+   "type:drape": 6,
+   "type:banner": 0,
+   "type:rug": 6,
+   "type:shelf": 15,
+   "type:pot": 2,
+   "type:itemstand": 54,
+   "type:sign": 10,
+   "type:plant": 0,
+   "light kinds": 4,
+   "light prefabs": 4,
+   "main light share": 0.38
+  },
+  "showcase-03-hub-bf-celtic-s4d3-2": {
+   "piece_walltorch": 3,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 2,
+   "piece_brazierceiling01": 4,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 7,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 1,
+   "piece_bench01": 1,
+   "piece_chair": 1,
+   "piece_chair02": 2,
+   "piece_chair03": 1,
+   "piece_chest_wood": 2,
+   "piece_chest": 0,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 1,
+   "piece_chest_barrel": 1,
+   "wood_ledge": 9,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 25,
+   "itemstandh": 9,
+   "sign": 10,
+   "piece_banner01": 1,
+   "rug_deer": 1,
+   "rug_fur": 0,
+   "rug_wolf": 3,
+   "jute_carpet": 0,
+   "ArmorStand": 0,
+   "piece_table": 5,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 0,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 1,
+   "piece_throne01": 1,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 16,
+   "type:chest": 4,
+   "type:barrel": 1,
+   "type:seat": 6,
+   "type:table": 5,
+   "type:bed": 0,
+   "type:drape": 0,
+   "type:banner": 2,
+   "type:rug": 4,
+   "type:shelf": 9,
+   "type:pot": 0,
+   "type:itemstand": 34,
+   "type:sign": 11,
+   "type:plant": 0,
+   "light kinds": 4,
+   "light prefabs": 4,
+   "main light share": 0.44
+  },
+  "showcase-04-temple-ml-byzantine-s3d3-1": {
+   "piece_walltorch": 1,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 0,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 1,
+   "Candle_resin": 1,
+   "piece_cloth_hanging_door": 1,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 0,
+   "piece_bench01": 3,
+   "piece_chair": 1,
+   "piece_chair02": 0,
+   "piece_chair03": 7,
+   "piece_chest_wood": 1,
+   "piece_chest": 3,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 2,
+   "wood_ledge": 6,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 0,
+   "itemstandh": 14,
+   "sign": 1,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 1,
+   "rug_wolf": 4,
+   "jute_carpet": 0,
+   "ArmorStand": 0,
+   "piece_table": 0,
+   "piece_table_round": 2,
+   "piece_table_oak": 1,
+   "bed": 0,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 0,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 2,
+   "piece_blackmarble_table": 1,
+   "vines": 0,
+   "type:light": 6,
+   "type:chest": 4,
+   "type:barrel": 2,
+   "type:seat": 15,
+   "type:table": 6,
+   "type:bed": 0,
+   "type:drape": 1,
+   "type:banner": 0,
+   "type:rug": 5,
+   "type:shelf": 6,
+   "type:pot": 0,
+   "type:itemstand": 14,
+   "type:sign": 1,
+   "type:plant": 11,
+   "light kinds": 5,
+   "light prefabs": 5,
+   "main light share": 0.33
+  },
+  "showcase-05-longhouse-bf-norse-forest-s3d3-3": {
+   "piece_walltorch": 2,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 3,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 8,
+   "piece_bench01": 1,
+   "piece_chair": 2,
+   "piece_chair02": 0,
+   "piece_chair03": 0,
+   "piece_chest_wood": 2,
+   "piece_chest": 0,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 4,
+   "wood_ledge": 2,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 0,
+   "itemstandh": 8,
+   "sign": 1,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 0,
+   "rug_wolf": 1,
+   "jute_carpet": 0,
+   "ArmorStand": 0,
+   "piece_table": 4,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 2,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 1,
+   "piece_throne01": 1,
+   "piece_blackmarble_bench": 1,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 5,
+   "type:chest": 2,
+   "type:barrel": 4,
+   "type:seat": 12,
+   "type:table": 4,
+   "type:bed": 2,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 1,
+   "type:shelf": 2,
+   "type:pot": 0,
+   "type:itemstand": 8,
+   "type:sign": 1,
+   "type:plant": 19,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.6
+  },
+  "showcase-06-tavern-pl-byzantine-s3d3-1": {
+   "piece_walltorch": 3,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 0,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 3,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 1,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 0,
+   "piece_bench01": 4,
+   "piece_chair": 0,
+   "piece_chair02": 2,
+   "piece_chair03": 3,
+   "piece_chest_wood": 9,
+   "piece_chest": 8,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 0,
+   "wood_ledge": 24,
+   "piece_pot1": 2,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 6,
+   "itemstandh": 70,
+   "sign": 1,
+   "piece_banner01": 1,
+   "rug_deer": 0,
+   "rug_fur": 1,
+   "rug_wolf": 1,
+   "jute_carpet": 0,
+   "ArmorStand": 3,
+   "piece_table": 4,
+   "piece_table_round": 2,
+   "piece_table_oak": 1,
+   "bed": 4,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 1,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 6,
+   "type:chest": 17,
+   "type:barrel": 0,
+   "type:seat": 10,
+   "type:table": 8,
+   "type:bed": 4,
+   "type:drape": 1,
+   "type:banner": 2,
+   "type:rug": 2,
+   "type:shelf": 24,
+   "type:pot": 3,
+   "type:itemstand": 76,
+   "type:sign": 1,
+   "type:plant": 18,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.5
+  },
+  "showcase-07-tavern-pl-steppe-s3d3-2": {
+   "piece_walltorch": 3,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 1,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 1,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 0,
+   "piece_bench01": 0,
+   "piece_chair": 0,
+   "piece_chair02": 0,
+   "piece_chair03": 0,
+   "piece_chest_wood": 0,
+   "piece_chest": 5,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 0,
+   "wood_ledge": 0,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 5,
+   "itemstandh": 3,
+   "sign": 1,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 1,
+   "rug_wolf": 3,
+   "jute_carpet": 0,
+   "ArmorStand": 1,
+   "piece_table": 0,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 0,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 1,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 4,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 6,
+   "type:chest": 5,
+   "type:barrel": 0,
+   "type:seat": 4,
+   "type:table": 0,
+   "type:bed": 0,
+   "type:drape": 1,
+   "type:banner": 0,
+   "type:rug": 4,
+   "type:shelf": 0,
+   "type:pot": 0,
+   "type:itemstand": 8,
+   "type:sign": 1,
+   "type:plant": 22,
+   "light kinds": 3,
+   "light prefabs": 3,
+   "main light share": 0.5
+  },
+  "showcase-08-home-pl-middle-eastern-s3d3-1": {
+   "piece_walltorch": 2,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 0,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 5,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 1,
+   "piece_bench01": 0,
+   "piece_chair": 0,
+   "piece_chair02": 0,
+   "piece_chair03": 0,
+   "piece_chest_wood": 3,
+   "piece_chest": 0,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 0,
+   "wood_ledge": 1,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 12,
+   "itemstandh": 1,
+   "sign": 0,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 0,
+   "rug_wolf": 2,
+   "jute_carpet": 0,
+   "ArmorStand": 2,
+   "piece_table": 0,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 1,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 1,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 32,
+   "type:light": 3,
+   "type:chest": 3,
+   "type:barrel": 0,
+   "type:seat": 3,
+   "type:table": 0,
+   "type:bed": 1,
+   "type:drape": 5,
+   "type:banner": 0,
+   "type:rug": 2,
+   "type:shelf": 1,
+   "type:pot": 0,
+   "type:itemstand": 13,
+   "type:sign": 0,
+   "type:plant": 63,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.67
+  },
+  "showcase-09-home-sw-baltic-s3d3-2": {
+   "piece_walltorch": 2,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 0,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 2,
+   "piece_bench01": 1,
+   "piece_chair": 1,
+   "piece_chair02": 0,
+   "piece_chair03": 1,
+   "piece_chest_wood": 6,
+   "piece_chest": 0,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 0,
+   "wood_ledge": 14,
+   "piece_pot1": 1,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 4,
+   "itemstandh": 24,
+   "sign": 0,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 0,
+   "rug_wolf": 0,
+   "jute_carpet": 0,
+   "ArmorStand": 2,
+   "piece_table": 1,
+   "piece_table_round": 2,
+   "piece_table_oak": 0,
+   "bed": 0,
+   "piece_bed02": 1,
+   "hearth": 0,
+   "fire_pit": 1,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 2,
+   "type:chest": 6,
+   "type:barrel": 0,
+   "type:seat": 6,
+   "type:table": 3,
+   "type:bed": 1,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 14,
+   "type:pot": 1,
+   "type:itemstand": 28,
+   "type:sign": 0,
+   "type:plant": 0,
+   "light kinds": 1,
+   "light prefabs": 1,
+   "main light share": 1
+  },
+  "showcase-10-home-bf-slavic-s3d3-3": {
+   "piece_walltorch": 4,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 0,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 0,
+   "piece_bench01": 0,
+   "piece_chair": 0,
+   "piece_chair02": 0,
+   "piece_chair03": 0,
+   "piece_chest_wood": 3,
+   "piece_chest": 0,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 0,
+   "wood_ledge": 0,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 3,
+   "itemstandh": 5,
+   "sign": 0,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 0,
+   "rug_wolf": 0,
+   "jute_carpet": 0,
+   "ArmorStand": 1,
+   "piece_table": 1,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 2,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 1,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 16,
+   "type:light": 5,
+   "type:chest": 3,
+   "type:barrel": 0,
+   "type:seat": 0,
+   "type:table": 1,
+   "type:bed": 2,
+   "type:drape": 0,
+   "type:banner": 1,
+   "type:rug": 1,
+   "type:shelf": 0,
+   "type:pot": 0,
+   "type:itemstand": 8,
+   "type:sign": 0,
+   "type:plant": 30,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.8
+  },
+  "showcase-11-home-md-anglo-saxon-s2d3-2": {
+   "piece_walltorch": 0,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 5,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 0,
+   "piece_bench01": 1,
+   "piece_chair": 0,
+   "piece_chair02": 0,
+   "piece_chair03": 0,
+   "piece_chest_wood": 3,
+   "piece_chest": 0,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 1,
+   "piece_chest_barrel": 0,
+   "wood_ledge": 0,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 3,
+   "itemstandh": 0,
+   "sign": 0,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 0,
+   "rug_wolf": 0,
+   "jute_carpet": 0,
+   "ArmorStand": 1,
+   "piece_table": 0,
+   "piece_table_round": 1,
+   "piece_table_oak": 0,
+   "bed": 3,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 1,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 1,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 5,
+   "type:chest": 4,
+   "type:barrel": 0,
+   "type:seat": 2,
+   "type:table": 1,
+   "type:bed": 3,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 0,
+   "type:pot": 0,
+   "type:itemstand": 3,
+   "type:sign": 0,
+   "type:plant": 6,
+   "light kinds": 1,
+   "light prefabs": 1,
+   "main light share": 1
+  },
+  "showcase-12-home-ml-lamari-s2d3-2": {
+   "piece_walltorch": 6,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 0,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 1,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 2,
+   "piece_bench01": 1,
+   "piece_chair": 0,
+   "piece_chair02": 0,
+   "piece_chair03": 1,
+   "piece_chest_wood": 0,
+   "piece_chest": 1,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 4,
+   "wood_ledge": 4,
+   "piece_pot1": 1,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 18,
+   "itemstandh": 5,
+   "sign": 0,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 0,
+   "rug_wolf": 0,
+   "jute_carpet": 0,
+   "ArmorStand": 2,
+   "piece_table": 0,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 0,
+   "piece_bed02": 1,
+   "hearth": 0,
+   "fire_pit": 1,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 1,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 7,
+   "type:chest": 1,
+   "type:barrel": 4,
+   "type:seat": 6,
+   "type:table": 0,
+   "type:bed": 1,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 1,
+   "type:shelf": 4,
+   "type:pot": 1,
+   "type:itemstand": 23,
+   "type:sign": 0,
+   "type:plant": 42,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.86
+  },
+  "showcase-13-smithy-mt-norse-highland-s2d3-1": {
+   "piece_walltorch": 0,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 0,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 0,
+   "piece_bench01": 0,
+   "piece_chair": 0,
+   "piece_chair02": 0,
+   "piece_chair03": 0,
+   "piece_chest_wood": 0,
+   "piece_chest": 0,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 3,
+   "wood_ledge": 2,
+   "piece_pot1": 0,
+   "piece_pot2": 1,
+   "piece_pot3": 1,
+   "itemstand": 0,
+   "itemstandh": 2,
+   "sign": 0,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 0,
+   "rug_wolf": 0,
+   "jute_carpet": 0,
+   "ArmorStand": 0,
+   "piece_table": 0,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 0,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 0,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 0,
+   "type:chest": 0,
+   "type:barrel": 3,
+   "type:seat": 0,
+   "type:table": 0,
+   "type:bed": 0,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 2,
+   "type:pot": 3,
+   "type:itemstand": 2,
+   "type:sign": 0,
+   "type:plant": 4,
+   "light kinds": 0,
+   "light prefabs": 0,
+   "main light share": 0
+  },
+  "showcase-14-tower-mt-norse-highland-s3d3-1": {
+   "piece_walltorch": 4,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 1,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 0,
+   "piece_bench01": 1,
+   "piece_chair": 0,
+   "piece_chair02": 0,
+   "piece_chair03": 0,
+   "piece_chest_wood": 4,
+   "piece_chest": 1,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 2,
+   "wood_ledge": 11,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 2,
+   "itemstandh": 15,
+   "sign": 0,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 0,
+   "rug_wolf": 0,
+   "jute_carpet": 0,
+   "ArmorStand": 1,
+   "piece_table": 0,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 0,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 0,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 81,
+   "type:light": 6,
+   "type:chest": 5,
+   "type:barrel": 2,
+   "type:seat": 2,
+   "type:table": 0,
+   "type:bed": 0,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 11,
+   "type:pot": 0,
+   "type:itemstand": 17,
+   "type:sign": 0,
+   "type:plant": 97,
+   "light kinds": 3,
+   "light prefabs": 3,
+   "main light share": 0.67
+  },
+  "showcase-15-workshop-al-castle-medieval-s2d3-3": {
+   "piece_walltorch": 1,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 1,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 1,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 0,
+   "piece_bench01": 0,
+   "piece_chair": 0,
+   "piece_chair02": 0,
+   "piece_chair03": 0,
+   "piece_chest_wood": 4,
+   "piece_chest": 0,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 1,
+   "wood_ledge": 6,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 0,
+   "itemstandh": 9,
+   "sign": 1,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 0,
+   "rug_wolf": 0,
+   "jute_carpet": 0,
+   "ArmorStand": 0,
+   "piece_table": 0,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 0,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 0,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 3,
+   "type:chest": 4,
+   "type:barrel": 1,
+   "type:seat": 0,
+   "type:table": 1,
+   "type:bed": 0,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 6,
+   "type:pot": 0,
+   "type:itemstand": 9,
+   "type:sign": 1,
+   "type:plant": 6,
+   "light kinds": 3,
+   "light prefabs": 3,
+   "main light share": 0.33
+  },
+  "showcase-16-home-al-castle-medieval-s3d3-1": {
+   "piece_walltorch": 2,
+   "piece_groundtorch": 0,
+   "piece_groundtorch_wood": 2,
+   "piece_brazierceiling01": 0,
+   "piece_dvergr_lantern": 0,
+   "Candle_resin": 0,
+   "piece_cloth_hanging_door": 0,
+   "piece_cloth_hanging_door_blue": 0,
+   "piece_cloth_hanging_door_blue2": 0,
+   "piece_logbench01": 1,
+   "piece_bench01": 1,
+   "piece_chair": 0,
+   "piece_chair02": 0,
+   "piece_chair03": 0,
+   "piece_chest_wood": 0,
+   "piece_chest": 0,
+   "piece_chest_private": 0,
+   "piece_chest_blackmetal": 0,
+   "piece_chest_barrel": 1,
+   "wood_ledge": 0,
+   "piece_pot1": 0,
+   "piece_pot2": 0,
+   "piece_pot3": 0,
+   "itemstand": 1,
+   "itemstandh": 0,
+   "sign": 0,
+   "piece_banner01": 0,
+   "rug_deer": 0,
+   "rug_fur": 0,
+   "rug_wolf": 0,
+   "jute_carpet": 0,
+   "ArmorStand": 0,
+   "piece_table": 0,
+   "piece_table_round": 0,
+   "piece_table_oak": 0,
+   "bed": 0,
+   "piece_bed02": 0,
+   "hearth": 0,
+   "fire_pit": 1,
+   "piece_throne01": 0,
+   "piece_blackmarble_bench": 0,
+   "piece_blackmarble_table": 0,
+   "vines": 0,
+   "type:light": 4,
+   "type:chest": 0,
+   "type:barrel": 1,
+   "type:seat": 2,
+   "type:table": 0,
+   "type:bed": 1,
+   "type:drape": 0,
+   "type:banner": 0,
+   "type:rug": 0,
+   "type:shelf": 0,
+   "type:pot": 0,
+   "type:itemstand": 1,
+   "type:sign": 0,
+   "type:plant": 64,
+   "light kinds": 2,
+   "light prefabs": 2,
+   "main light share": 0.5
+  }
+ },
+ "showcaseOverP90": {
+  "piece_groundtorch_wood": [
+   [
+    "01-hub-md-norse-s5d3-2",
+    25
+   ]
+  ],
+  "piece_table": [
+   [
+    "01-hub-md-norse-s5d3-2",
+    14
+   ]
+  ],
+  "type:table": [
+   [
+    "01-hub-md-norse-s5d3-2",
+    14
+   ]
+  ],
+  "piece_logbench01": [
+   [
+    "05-longhouse-bf-norse-forest-s3d3-3",
+    8
+   ]
+  ]
+ },
+ "stacked": {
+  "buildsWithChests": 854,
+  "withStack": 0.534,
+  "stackedWhen": {
+   "n": 456,
+   "p10": 2,
+   "p25": 4,
+   "p50": 10,
+   "p75": 27,
+   "p90": 49
+  },
+  "stackedShareOfChests": 0.353,
+  "chestsPerBuild": {
+   "n": 854,
+   "p10": 2,
+   "p25": 4,
+   "p50": 14,
+   "p75": 37,
+   "p90": 76
+  },
+  "showcase": {
+   "showcase-01-hub-md-norse-s5d3-2": {
+    "stacked": 0,
+    "chests": 14
+   },
+   "showcase-02-hub-pl-byzantine-s5d3-1": {
+    "stacked": 0,
+    "chests": 11
+   },
+   "showcase-03-hub-bf-celtic-s4d3-2": {
+    "stacked": 0,
+    "chests": 5
+   },
+   "showcase-04-temple-ml-byzantine-s3d3-1": {
+    "stacked": 1,
+    "chests": 6
+   },
+   "showcase-05-longhouse-bf-norse-forest-s3d3-3": {
+    "stacked": 2,
+    "chests": 6
+   },
+   "showcase-06-tavern-pl-byzantine-s3d3-1": {
+    "stacked": 5,
+    "chests": 17
+   },
+   "showcase-07-tavern-pl-steppe-s3d3-2": {
+    "stacked": 0,
+    "chests": 5
+   },
+   "showcase-08-home-pl-middle-eastern-s3d3-1": {
+    "stacked": 1,
+    "chests": 3
+   },
+   "showcase-09-home-sw-baltic-s3d3-2": {
+    "stacked": 1,
+    "chests": 6
+   },
+   "showcase-10-home-bf-slavic-s3d3-3": {
+    "stacked": 1,
+    "chests": 3
+   },
+   "showcase-11-home-md-anglo-saxon-s2d3-2": {
+    "stacked": 1,
+    "chests": 4
+   },
+   "showcase-12-home-ml-lamari-s2d3-2": {
+    "stacked": 0,
+    "chests": 5
+   },
+   "showcase-13-smithy-mt-norse-highland-s2d3-1": {
+    "stacked": 1,
+    "chests": 3
+   },
+   "showcase-14-tower-mt-norse-highland-s3d3-1": {
+    "stacked": 0,
+    "chests": 7
+   },
+   "showcase-15-workshop-al-castle-medieval-s2d3-3": {
+    "stacked": 0,
+    "chests": 5
+   },
+   "showcase-16-home-al-castle-medieval-s3d3-1": {
+    "stacked": 0,
+    "chests": 1
+   }
+  }
+ }
+}

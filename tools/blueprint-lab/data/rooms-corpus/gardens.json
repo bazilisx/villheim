@@ -1,0 +1,2519 @@
+{
+ "meta": {
+  "made": "2026-11-12",
+  "source": "lab/rooms_corpus_gardens.js",
+  "builds": 1827
+ },
+ "fields": {
+  "windows": "windows read on room walls (runs 0.6 m or wider): windows, builds with windows, share of windows with a planter outside, builds with any planter",
+  "planters": "per window planter: plants (count), species (distinct), class mix, plants per meter of window, offset of the plants' middle from the window middle along the wall (m), out from the wall (m), height of the plants' pivots over the sill (m), under: what building pieces carry the plants (count of planters), frame: building pieces within 0.45 m of the window ends or just over and under it on the outside (count of planters), species: [prefab, planters]",
+  "vines": "builds with vines (vines, VineAsh, VineGreen) and vines per build; vines are left out of clusters and gardens",
+  "clusters": "plants other than vines joined at 1.2 m or less: sizes, species per cluster, nearest neighbor spacing (m), spacing over the plant width (under 1 means they overlap), share of clusters whose plants all share one yaw, distinct yaws (15 degree steps) per plant, class mixes, species pairs in one cluster [a+b, clusters]",
+  "gardens": "clusters of 6 or more plants: count, size, species, the building pieces carrying them (beds), the building pieces round their edge (edging), the gap from the nearest plant to a wall (m) and the share within 1 m",
+  "trees": "tree and small tree prefabs per build kind and per culture (builds)",
+  "byCulture": "flower, bush and crop species per culture: [prefab, builds]",
+  "showcase": "the same counts for the 16 showcase designs"
+ },
+ "windows": {
+  "windows": 31319,
+  "builds": 893,
+  "planterShare": 0.009,
+  "buildsWithPlanter": 67
+ },
+ "planters": {
+  "n": 288,
+  "plants": {
+   "n": 288,
+   "p10": 1,
+   "p25": 1,
+   "p50": 1,
+   "p75": 2,
+   "p90": 3
+  },
+  "species": [
+   [
+    "vines",
+    222
+   ],
+   [
+    "VineAsh",
+    17
+   ],
+   [
+    "Vineberry",
+    9
+   ],
+   [
+    "VineGreen",
+    8
+   ],
+   [
+    "Pickable_Mushroom_yellow",
+    6
+   ],
+   [
+    "MushroomYellow",
+    5
+   ],
+   [
+    "MushroomJotunPuffs",
+    5
+   ],
+   [
+    "BlueberryBush",
+    5
+   ],
+   [
+    "MushroomSmokePuff",
+    4
+   ],
+   [
+    "Fiddleheadfern",
+    4
+   ],
+   [
+    "MushroomMagecap",
+    3
+   ],
+   [
+    "Pickable_Dandelion",
+    3
+   ],
+   [
+    "FirTree_small",
+    2
+   ],
+   [
+    "MushroomBzerker",
+    2
+   ],
+   [
+    "RaspberryBush",
+    2
+   ],
+   [
+    "MushroomOmelette",
+    2
+   ],
+   [
+    "Mushroom",
+    1
+   ],
+   [
+    "FernAshlands",
+    1
+   ],
+   [
+    "Bush02_en",
+    1
+   ],
+   [
+    "CloudberryBush",
+    1
+   ]
+  ],
+  "perMeter": {
+   "n": 288,
+   "p10": 0.42,
+   "p25": 0.57,
+   "p50": 1,
+   "p75": 1.33,
+   "p90": 2.43
+  },
+  "offCenter": {
+   "n": 288,
+   "p10": 0.08,
+   "p25": 0.24,
+   "p50": 0.56,
+   "p75": 0.91,
+   "p90": 1.32
+  },
+  "out": {
+   "n": 288,
+   "p10": 0.15,
+   "p25": 0.26,
+   "p50": 0.51,
+   "p75": 0.9,
+   "p90": 1.16
+  },
+  "overSill": {
+   "n": 288,
+   "p10": -0.65,
+   "p25": -0.38,
+   "p50": 0.01,
+   "p75": 0.24,
+   "p90": 0.51
+  },
+  "distinctYawPerPlant": {
+   "n": 288,
+   "p10": 0.5,
+   "p25": 0.5,
+   "p50": 1,
+   "p75": 1,
+   "p90": 1
+  },
+  "classes": [
+   [
+    "vine",
+    252
+   ],
+   [
+    "flower",
+    19
+   ],
+   [
+    "bush",
+    9
+   ],
+   [
+    "bush+flower",
+    2
+   ],
+   [
+    "small tree",
+    2
+   ],
+   [
+    "bush+vine",
+    2
+   ],
+   [
+    "flower+vine",
+    2
+   ]
+  ],
+  "under": [
+   [
+    "stone_wall_2x1",
+    88
+   ],
+   [
+    "piece_dvergr_wood_wall",
+    20
+   ],
+   [
+    "wood_wall_quarter",
+    19
+   ],
+   [
+    "darkwood_decowall",
+    16
+   ],
+   [
+    "wood_beam",
+    15
+   ],
+   [
+    "blackmarble_2x1x1",
+    13
+   ],
+   [
+    "ashwood_floor_1x1",
+    11
+   ],
+   [
+    "stone_floor_2x2",
+    10
+   ],
+   [
+    "wood_fence",
+    9
+   ],
+   [
+    "ashwood_wall_arch",
+    9
+   ],
+   [
+    "ashwood_beam_2m",
+    9
+   ],
+   [
+    "wood_floor_1x1",
+    9
+   ],
+   [
+    "woodwall",
+    7
+   ],
+   [
+    "wood_wall_half",
+    7
+   ],
+   [
+    "wood_floor",
+    7
+   ]
+  ],
+  "noneUnder": 0.274,
+  "frame": [
+   [
+    "wood_beam",
+    37
+   ],
+   [
+    "wood_beam_1",
+    28
+   ],
+   [
+    "woodiron_pole",
+    28
+   ],
+   [
+    "wood_pole2",
+    25
+   ],
+   [
+    "woodiron_beam",
+    23
+   ],
+   [
+    "wood_pole",
+    20
+   ],
+   [
+    "darkwood_beam",
+    17
+   ],
+   [
+    "piece_dvergr_pole",
+    17
+   ],
+   [
+    "darkwood_pole",
+    14
+   ],
+   [
+    "ashwood_beam_2m",
+    12
+   ],
+   [
+    "ashwood_beam_1m",
+    11
+   ],
+   [
+    "Piece_grausten_pillarbase_small",
+    10
+   ],
+   [
+    "ashwood_pole_2m",
+    10
+   ],
+   [
+    "darkwood_pole4",
+    7
+   ],
+   [
+    "wood_pole_log_4",
+    5
+   ]
+  ],
+  "framed": 0.549,
+  "examples": [
+   {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "plants": 3,
+    "species": [
+     "vines"
+    ],
+    "under": [
+     "wood_fence"
+    ],
+    "frame": []
+   },
+   {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "plants": 4,
+    "species": [
+     "vines"
+    ],
+    "under": [
+     "wood_fence"
+    ],
+    "frame": []
+   },
+   {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "plants": 4,
+    "species": [
+     "vines"
+    ],
+    "under": [
+     "wood_fence"
+    ],
+    "frame": []
+   },
+   {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "plants": 4,
+    "species": [
+     "vines"
+    ],
+    "under": [
+     "wood_fence"
+    ],
+    "frame": []
+   },
+   {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "plants": 5,
+    "species": [
+     "vines"
+    ],
+    "under": [
+     "wood_fence",
+     "stone_floor_2x2"
+    ],
+    "frame": []
+   },
+   {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "plants": 4,
+    "species": [
+     "vines"
+    ],
+    "under": [
+     "wood_fence",
+     "stone_floor_2x2"
+    ],
+    "frame": []
+   },
+   {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "plants": 3,
+    "species": [
+     "vines"
+    ],
+    "under": [
+     "wood_fence"
+    ],
+    "frame": []
+   },
+   {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "plants": 3,
+    "species": [
+     "vines"
+    ],
+    "under": [
+     "stone_floor_2x2",
+     "woodwall"
+    ],
+    "frame": [
+     "darkwood_beam4x4",
+     "darkwood_pole4"
+    ]
+   },
+   {
+    "file": "advanced-base/harry-potter-themed-base-structure-may-require-mods.blueprint",
+    "plants": 6,
+    "species": [
+     "MushroomYellow",
+     "MushroomMagecap",
+     "MushroomJotunPuffs",
+     "MushroomSmokePuff",
+     "Fiddleheadfern"
+    ],
+    "under": [
+     "ashwood_wall_arch",
+     "iron_wall_1x1",
+     "Piece_grausten_wall_1x2",
+     "ashwood_decowall_divider",
+     "ashwood_floor_1x1"
+    ],
+    "frame": [
+     "ashwood_pole_2m"
+    ]
+   },
+   {
+    "file": "advanced-base/harry-potter-themed-base-structure-may-require-mods.blueprint",
+    "plants": 6,
+    "species": [
+     "MushroomYellow",
+     "MushroomMagecap",
+     "MushroomJotunPuffs",
+     "MushroomSmokePuff",
+     "Fiddleheadfern"
+    ],
+    "under": [
+     "ashwood_wall_arch",
+     "iron_wall_1x1",
+     "Piece_grausten_wall_1x2",
+     "ashwood_decowall_divider",
+     "ashwood_floor_1x1"
+    ],
+    "frame": [
+     "ashwood_pole_2m"
+    ]
+   }
+  ]
+ },
+ "vines": {
+  "builds": 158,
+  "perBuild": {
+   "n": 158,
+   "p10": 4,
+   "p25": 9,
+   "p50": 31.5,
+   "p75": 134,
+   "p90": 374.3
+  }
+ },
+ "clusters": {
+  "all": 6317,
+  "single": 0.78,
+  "size": {
+   "n": 1387,
+   "p10": 2,
+   "p25": 2,
+   "p50": 2,
+   "p75": 4,
+   "p90": 7
+  },
+  "species": {
+   "n": 1387,
+   "p10": 1,
+   "p25": 1,
+   "p50": 1,
+   "p75": 2,
+   "p90": 3
+  },
+  "oneSpecies": 0.731,
+  "spacing": {
+   "n": 1387,
+   "p10": 0.21,
+   "p25": 0.33,
+   "p50": 0.64,
+   "p75": 0.92,
+   "p90": 1.06
+  },
+  "spacingOverWidth": {
+   "n": 1387,
+   "p10": 0.21,
+   "p25": 0.53,
+   "p50": 1.1,
+   "p75": 1.96,
+   "p90": 2.78
+  },
+  "oneYaw": 0.203,
+  "yawsPerPlant": {
+   "n": 1387,
+   "p10": 0.33,
+   "p25": 0.5,
+   "p50": 1,
+   "p75": 1,
+   "p90": 1
+  },
+  "classes": [
+   [
+    "flower",
+    708
+   ],
+   [
+    "bush",
+    388
+   ],
+   [
+    "bush+flower",
+    121
+   ],
+   [
+    "bush+small tree",
+    55
+   ],
+   [
+    "small tree",
+    42
+   ],
+   [
+    "bush+flower+small tree",
+    31
+   ],
+   [
+    "crop",
+    18
+   ],
+   [
+    "flower+small tree",
+    9
+   ],
+   [
+    "crop+flower",
+    9
+   ],
+   [
+    "bush+crop",
+    3
+   ],
+   [
+    "bush+crop+flower",
+    2
+   ],
+   [
+    "crop+small tree",
+    1
+   ]
+  ],
+  "speciesPairs": [
+   [
+    "Pickable_Thistle+shrub_2",
+    52
+   ],
+   [
+    "Bush01_heath+Pickable_Thistle",
+    51
+   ],
+   [
+    "Pickable_Mushroom_yellow+Pickable_Thistle",
+    50
+   ],
+   [
+    "Beech_small1+Bush01",
+    37
+   ],
+   [
+    "Bush01_heath+shrub_2",
+    37
+   ],
+   [
+    "Bush01_heath+Pickable_Mushroom_yellow",
+    34
+   ],
+   [
+    "BlueberryBush+RaspberryBush",
+    30
+   ],
+   [
+    "Pickable_Thistle+RaspberryBush",
+    29
+   ],
+   [
+    "Pickable_Mushroom_yellow+shrub_2",
+    29
+   ],
+   [
+    "Bush01+Bush01_heath",
+    28
+   ],
+   [
+    "Beech_small1+RaspberryBush",
+    27
+   ],
+   [
+    "Pickable_Mushroom_yellow+RaspberryBush",
+    25
+   ],
+   [
+    "Bush01+Pickable_Thistle",
+    24
+   ],
+   [
+    "Beech_small1+Pickable_Thistle",
+    24
+   ],
+   [
+    "Beech_small1+Bush01_heath",
+    23
+   ],
+   [
+    "MushroomJotunPuffs+MushroomMagecap",
+    21
+   ],
+   [
+    "Bush01+RaspberryBush",
+    19
+   ],
+   [
+    "Bush01_heath+Bush02_en",
+    18
+   ],
+   [
+    "Bush01+Bush02_en",
+    18
+   ],
+   [
+    "Bush01_heath+RaspberryBush",
+    18
+   ],
+   [
+    "BlueberryBush+Pickable_Thistle",
+    16
+   ],
+   [
+    "Bush02_en+RaspberryBush",
+    15
+   ],
+   [
+    "FernAshlands+Pickable_Fiddlehead",
+    14
+   ],
+   [
+    "Bush02_en+Pickable_Thistle",
+    14
+   ],
+   [
+    "Beech_small1+Bush02_en",
+    14
+   ],
+   [
+    "BlueberryBush+shrub_2",
+    13
+   ],
+   [
+    "Mushroom+MushroomYellow",
+    12
+   ],
+   [
+    "Beech_small1+shrub_2",
+    12
+   ],
+   [
+    "Bush01+Pickable_Dandelion",
+    11
+   ],
+   [
+    "MushroomMagecap+MushroomYellow",
+    11
+   ]
+  ]
+ },
+ "gardens": {
+  "n": 209,
+  "size": {
+   "n": 209,
+   "p10": 6,
+   "p25": 6,
+   "p50": 8,
+   "p75": 17,
+   "p90": 38.4
+  },
+  "species": {
+   "n": 209,
+   "p10": 1,
+   "p25": 1,
+   "p50": 1,
+   "p75": 4,
+   "p90": 5
+  },
+  "oneSpecies": 0.531,
+  "mixes": [
+   [
+    "Pickable_Mushroom_yellow",
+    79
+   ],
+   [
+    "Bush01_heath+Pickable_Mushroom_yellow+Pickable_Thistle+shrub_2",
+    28
+   ],
+   [
+    "BlueberryBush",
+    6
+   ],
+   [
+    "BlueberryBush+CloudberryBush",
+    4
+   ],
+   [
+    "CloudberryBush",
+    4
+   ],
+   [
+    "MushroomJotunPuffs+MushroomMagecap",
+    3
+   ],
+   [
+    "Pickable_Fiddlehead",
+    3
+   ],
+   [
+    "Pickable_SeedOnion",
+    3
+   ],
+   [
+    "Mushroom",
+    3
+   ],
+   [
+    "LingonberryBush",
+    2
+   ],
+   [
+    "FernAshlands+Pickable_SeedOnion+Pickable_SeedTurnip",
+    2
+   ],
+   [
+    "Bush01_heath",
+    2
+   ],
+   [
+    "AshlandsBush1+AshlandsBush2",
+    2
+   ],
+   [
+    "Bush01_heath+Bush02_en+Pickable_Dandelion+Pickable_Mushroom",
+    2
+   ],
+   [
+    "Mushroom+MushroomBzerker+MushroomMagecap+MushroomSmokePuff+MushroomYellow",
+    2
+   ]
+  ],
+  "bed": [
+   [
+    "dungeon_forestcrypt_door",
+    24
+   ],
+   [
+    "wood_beam",
+    10
+   ],
+   [
+    "wood_floor_1x1",
+    8
+   ],
+   [
+    "blackmarble_2x1x1",
+    8
+   ],
+   [
+    "wood_beam_1",
+    7
+   ],
+   [
+    "darkwood_beam4x4",
+    6
+   ],
+   [
+    "blackmarble_stair",
+    5
+   ],
+   [
+    "wood_beam_26",
+    5
+   ],
+   [
+    "ashwood_floor_1x1",
+    4
+   ],
+   [
+    "wood_beam_45",
+    4
+   ],
+   [
+    "crystal_wall_1x1",
+    3
+   ],
+   [
+    "wood_wall_roof_top",
+    3
+   ],
+   [
+    "darkwood_roof",
+    3
+   ],
+   [
+    "darkwood_roof_45",
+    3
+   ],
+   [
+    "darkwood_beam",
+    3
+   ]
+  ],
+  "noBed": 0.617,
+  "edge": [
+   [
+    "wood_floor_1x1",
+    46
+   ],
+   [
+    "wood_wall_half",
+    41
+   ],
+   [
+    "darkwood_beam",
+    35
+   ],
+   [
+    "wood_beam",
+    31
+   ],
+   [
+    "piece_sharpstakes",
+    29
+   ],
+   [
+    "stake_wall",
+    29
+   ],
+   [
+    "wood_pole_log_4",
+    29
+   ],
+   [
+    "stone_wall_2x1",
+    26
+   ],
+   [
+    "wood_beam_1",
+    18
+   ],
+   [
+    "blackmarble_2x1x1",
+    17
+   ],
+   [
+    "ashwood_beam_1m",
+    13
+   ],
+   [
+    "wood_pole",
+    12
+   ],
+   [
+    "wood_pole2",
+    12
+   ],
+   [
+    "woodwall",
+    9
+   ],
+   [
+    "stone_floor_2x2",
+    9
+   ]
+  ],
+  "bedPrefabsPerGarden": {
+   "n": 80,
+   "p10": 1,
+   "p25": 1,
+   "p50": 1,
+   "p75": 2,
+   "p90": 3
+  },
+  "wallGap": {
+   "n": 185,
+   "p10": 0,
+   "p25": 0,
+   "p50": 0.15,
+   "p75": 0.59,
+   "p90": 3.24
+  },
+  "atWall": 0.689,
+  "byKind": [
+   [
+    "home",
+    90
+   ],
+   [
+    "other",
+    56
+   ],
+   [
+    "tavern",
+    51
+   ],
+   [
+    "castle",
+    10
+   ],
+   [
+    "temple",
+    2
+   ]
+  ],
+  "examples": [
+   {
+    "file": "advanced-base/harry-potter-themed-base-structure-may-require-mods.blueprint",
+    "plants": 6,
+    "species": [
+     "Fiddleheadfern",
+     "MushroomJotunPuffs",
+     "MushroomMagecap",
+     "MushroomSmokePuff",
+     "MushroomYellow"
+    ],
+    "bed": [
+     "ashwood_wall_arch",
+     "iron_wall_1x1",
+     "Piece_grausten_wall_1x2",
+     "ashwood_decowall_divider",
+     "ashwood_floor_1x1"
+    ],
+    "edge": [
+     "iron_wall_1x1",
+     "Piece_grausten_wall_1x2",
+     "ashwood_decowall_divider",
+     "ashwood_wall_arch",
+     "ashwood_floor_1x1",
+     "ashwood_pole_2m"
+    ],
+    "wallGap": 0
+   },
+   {
+    "file": "advanced-base/harry-potter-themed-base-structure-may-require-mods.blueprint",
+    "plants": 11,
+    "species": [
+     "MushroomJotunPuffs",
+     "MushroomMagecap"
+    ],
+    "bed": [
+     "ashwood_floor_1x1",
+     "woodiron_beam"
+    ],
+    "edge": [
+     "ashwood_floor_1x1",
+     "Piece_grausten_wall_2x2",
+     "woodiron_beam",
+     "darkwood_beam_45",
+     "wood_log_45",
+     "ashwood_decowall_2x2"
+    ],
+    "wallGap": 0
+   },
+   {
+    "file": "advanced-base/harry-potter-themed-base-structure-may-require-mods.blueprint",
+    "plants": 6,
+    "species": [
+     "MushroomBzerker",
+     "MushroomSmokePuff"
+    ],
+    "bed": [
+     "ashwood_decowall_divider",
+     "ashwood_wall_roof_45",
+     "wood_log_45",
+     "darkwood_beam_45",
+     "ashwood_floor_1x1",
+     "woodiron_beam"
+    ],
+    "edge": [
+     "ashwood_floor_1x1",
+     "Piece_grausten_wall_2x2",
+     "Piece_flametal_pillar",
+     "ashwood_decowall_2x2"
+    ],
+    "wallGap": 0
+   },
+   {
+    "file": "advanced-base/viking-villa-for-10__UGM_VikingVillaFor10.blueprint",
+    "plants": 9,
+    "species": [
+     "FernAshlands",
+     "Pickable_SeedOnion",
+     "Pickable_SeedTurnip"
+    ],
+    "bed": [
+     "wood_beam"
+    ],
+    "edge": [],
+    "wallGap": 2.97
+   },
+   {
+    "file": "advanced-base/viking-villa-for-10__UGM_VikingVillaFor10.blueprint",
+    "plants": 9,
+    "species": [
+     "FernAshlands",
+     "Pickable_SeedOnion",
+     "Pickable_SeedTurnip"
+    ],
+    "bed": [
+     "wood_beam"
+    ],
+    "edge": [
+     "wood_beam"
+    ],
+    "wallGap": 2.95
+   },
+   {
+    "file": "advanced-base/viking-villa-for-10__UGM_VikingVillaFor10.blueprint",
+    "plants": 9,
+    "species": [
+     "Mushroom",
+     "MushroomBzerker"
+    ],
+    "bed": [
+     "ashwood_beam_2m",
+     "stake_wall",
+     "woodwall"
+    ],
+    "edge": [
+     "ashwood_beam_2m",
+     "piece_dvergr_wood_wall",
+     "woodwall"
+    ],
+    "wallGap": 0
+   },
+   {
+    "file": "boat-house/cozy-dock-house.blueprint",
+    "plants": 163,
+    "species": [
+     "Pickable_Carrot",
+     "Pickable_Dandelion",
+     "Pickable_Turnip"
+    ],
+    "bed": [],
+    "edge": [
+     "stone_wall_1x1",
+     "wood_beam",
+     "wood_pole",
+     "wood_pole2"
+    ],
+    "wallGap": 0.51
+   },
+   {
+    "file": "boat-house/cozy-dock-house.blueprint",
+    "plants": 66,
+    "species": [
+     "Bush01",
+     "Bush01_heath",
+     "Bush02_en",
+     "Pickable_SeedOnion",
+     "RaspberryBush",
+     "shrub_2"
+    ],
+    "bed": [
+     "wood_beam",
+     "wood_wall_log"
+    ],
+    "edge": [
+     "wood_log_26",
+     "wood_beam",
+     "wood_floor",
+     "stone_floor_2x2",
+     "wood_wall_log",
+     "wood_wall_log_4x0.5"
+    ],
+    "wallGap": 0
+   },
+   {
+    "file": "building/haunted-house.blueprint",
+    "plants": 26,
+    "species": [
+     "AshlandsBush1",
+     "AshlandsBush2"
+    ],
+    "bed": [
+     "Piece_grausten_stone_ladder"
+    ],
+    "edge": [],
+    "wallGap": 1.46
+   },
+   {
+    "file": "building/haunted-house.blueprint",
+    "plants": 28,
+    "species": [
+     "AshlandsBush1",
+     "AshlandsBush2"
+    ],
+    "bed": [
+     "Piece_grausten_stone_ladder"
+    ],
+    "edge": [],
+    "wallGap": 1.04
+   },
+   {
+    "file": "building/haunted-house.blueprint",
+    "plants": 6,
+    "species": [
+     "MushroomMagecap",
+     "MushroomYellow"
+    ],
+    "bed": [
+     "ashwood_door",
+     "ashwood_halfwall_1x2"
+    ],
+    "edge": [
+     "ashwood_beam_1m",
+     "ashwood_beam_2m",
+     "ashwood_pole_1m",
+     "ashwood_pole_2m",
+     "crystal_wall_1x1",
+     "wood_floor_1x1"
+    ],
+    "wallGap": 0
+   },
+   {
+    "file": "building/house-with-steep-roof.blueprint",
+    "plants": 6,
+    "species": [
+     "CloudberryBush",
+     "Pickable_Fiddlehead",
+     "RaspberryBush"
+    ],
+    "bed": [],
+    "edge": [
+     "wood_beam",
+     "wood_floor",
+     "wood_wall_log_4x0.5",
+     "ashwood_decowall_divider"
+    ],
+    "wallGap": 0
+   }
+  ]
+ },
+ "trees": {
+  "byKind": {
+   "other": [
+    [
+     "FirTree_small",
+     23
+    ],
+    [
+     "Beech_small1",
+     17
+    ],
+    [
+     "FirTree_oldLog",
+     7
+    ],
+    [
+     "FirTree_small_dead",
+     7
+    ],
+    [
+     "Beech1",
+     6
+    ],
+    [
+     "YggaShoot_small1",
+     5
+    ],
+    [
+     "YggaShoot3",
+     5
+    ],
+    [
+     "Beech_small2",
+     5
+    ]
+   ],
+   "castle": [
+    [
+     "Beech_small1",
+     4
+    ],
+    [
+     "YggaShoot_small1",
+     3
+    ],
+    [
+     "FirTree_small",
+     3
+    ],
+    [
+     "YggaShoot3",
+     2
+    ],
+    [
+     "OakStub",
+     1
+    ],
+    [
+     "YggaShoot1",
+     1
+    ],
+    [
+     "SwampTree2",
+     1
+    ],
+    [
+     "SwampTree2_darkland",
+     1
+    ]
+   ],
+   "home": [
+    [
+     "Beech_small1",
+     14
+    ],
+    [
+     "FirTree_small",
+     14
+    ],
+    [
+     "Beech1",
+     4
+    ],
+    [
+     "FirTree_oldLog",
+     4
+    ],
+    [
+     "Beech_small2",
+     3
+    ],
+    [
+     "SwampTree2_darkland",
+     3
+    ],
+    [
+     "Birch2",
+     2
+    ],
+    [
+     "OakStub",
+     2
+    ]
+   ],
+   "farm": [
+    [
+     "FirTree_small",
+     1
+    ]
+   ],
+   "longhouse": [
+    [
+     "FirTree_small",
+     1
+    ],
+    [
+     "Beech_small1",
+     1
+    ]
+   ],
+   "tavern": [
+    [
+     "FirTree_small",
+     5
+    ],
+    [
+     "Beech_small1",
+     2
+    ],
+    [
+     "FirTree_oldLog",
+     1
+    ],
+    [
+     "Beech_small2",
+     1
+    ]
+   ],
+   "temple": [
+    [
+     "YggaShoot_small1",
+     3
+    ],
+    [
+     "FirTree_small",
+     2
+    ],
+    [
+     "Beech1",
+     1
+    ],
+    [
+     "BirchStub",
+     1
+    ],
+    [
+     "SwampTree1_Stub",
+     1
+    ]
+   ]
+  },
+  "byCulture": {
+   "mistlands": [
+    [
+     "Beech_small1",
+     1
+    ]
+   ],
+   "fantasy": [
+    [
+     "FirTree_small",
+     1
+    ]
+   ],
+   "norse": [
+    [
+     "Beech_small1",
+     11
+    ],
+    [
+     "FirTree_small",
+     5
+    ],
+    [
+     "Beech_small2",
+     1
+    ],
+    [
+     "Beech1",
+     1
+    ],
+    [
+     "YggaShoot3",
+     1
+    ],
+    [
+     "YggaShoot_small1",
+     1
+    ]
+   ],
+   "ashlands": [
+    [
+     "FirTree_small",
+     4
+    ],
+    [
+     "Beech_small1",
+     3
+    ],
+    [
+     "Beech_Stub",
+     1
+    ],
+    [
+     "YggaShoot_small1",
+     1
+    ],
+    [
+     "OakStub",
+     1
+    ],
+    [
+     "Beech1",
+     1
+    ]
+   ],
+   "norse-forest": [
+    [
+     "FirTree_small",
+     3
+    ],
+    [
+     "FirTree_oldLog",
+     1
+    ]
+   ],
+   "medieval-timber": [
+    [
+     "FirTree_small",
+     1
+    ],
+    [
+     "Beech_small1",
+     1
+    ]
+   ],
+   "castle": [
+    [
+     "Beech_small1",
+     2
+    ],
+    [
+     "FirTree_small",
+     2
+    ],
+    [
+     "FirTree_oldLog",
+     1
+    ],
+    [
+     "YggaShoot_small1",
+     1
+    ]
+   ],
+   "norse-highland": [
+    [
+     "FirTree_small",
+     2
+    ]
+   ],
+   "celtic-crannog": [
+    [
+     "Beech_small1",
+     1
+    ]
+   ],
+   "fen-folk": [
+    [
+     "SwampTree2",
+     1
+    ]
+   ],
+   "tree-house": [
+    [
+     "SwampTree2_darkland",
+     1
+    ]
+   ]
+  }
+ },
+ "byCulture": {
+  "castle": [
+   [
+    "Pickable_Dandelion",
+    8
+   ],
+   [
+    "vines",
+    6
+   ],
+   [
+    "RaspberryBush",
+    5
+   ],
+   [
+    "Bush02_en",
+    4
+   ],
+   [
+    "BlueberryBush",
+    3
+   ],
+   [
+    "VineAsh",
+    2
+   ],
+   [
+    "Pickable_Mushroom",
+    2
+   ],
+   [
+    "Bush01_heath",
+    2
+   ],
+   [
+    "shrub_2_heath",
+    2
+   ],
+   [
+    "Bush01",
+    2
+   ],
+   [
+    "Beech_small1",
+    2
+   ],
+   [
+    "shrub_2",
+    2
+   ]
+  ],
+  "mistlands": [
+   [
+    "Pickable_Dandelion",
+    2
+   ],
+   [
+    "Bush01",
+    1
+   ],
+   [
+    "Beech_small1",
+    1
+   ],
+   [
+    "vines",
+    1
+   ]
+  ],
+  "fantasy": [
+   [
+    "MushroomYellow",
+    5
+   ],
+   [
+    "Pickable_Dandelion",
+    4
+   ],
+   [
+    "MushroomMagecap",
+    3
+   ],
+   [
+    "MushroomJotunPuffs",
+    3
+   ],
+   [
+    "Fiddleheadfern",
+    3
+   ],
+   [
+    "Mushroom",
+    3
+   ],
+   [
+    "shrub_2",
+    2
+   ],
+   [
+    "Pickable_Thistle",
+    2
+   ],
+   [
+    "BlueberryBush",
+    2
+   ],
+   [
+    "Vineberry",
+    2
+   ],
+   [
+    "MushroomSmokePuff",
+    2
+   ],
+   [
+    "MushroomBzerker",
+    2
+   ]
+  ],
+  "norse": [
+   [
+    "Pickable_Dandelion",
+    18
+   ],
+   [
+    "Beech_small1",
+    11
+   ],
+   [
+    "RaspberryBush",
+    11
+   ],
+   [
+    "vines",
+    9
+   ],
+   [
+    "Bush01",
+    8
+   ],
+   [
+    "Pickable_Mushroom",
+    7
+   ],
+   [
+    "BlueberryBush",
+    6
+   ],
+   [
+    "Pickable_Thistle",
+    5
+   ],
+   [
+    "FirTree_small",
+    5
+   ],
+   [
+    "Pickable_Mushroom_yellow",
+    4
+   ],
+   [
+    "shrub_2",
+    4
+   ],
+   [
+    "shrub_2_heath",
+    3
+   ]
+  ],
+  "ashlands": [
+   [
+    "vines",
+    9
+   ],
+   [
+    "Pickable_Dandelion",
+    8
+   ],
+   [
+    "Bush01",
+    5
+   ],
+   [
+    "FirTree_small",
+    4
+   ],
+   [
+    "Beech_small1",
+    3
+   ],
+   [
+    "MushroomJotunPuffs",
+    3
+   ],
+   [
+    "Vineberry",
+    2
+   ],
+   [
+    "Bush02_en",
+    2
+   ],
+   [
+    "Mushroom",
+    2
+   ],
+   [
+    "VineGreen",
+    2
+   ],
+   [
+    "shrub_2",
+    2
+   ],
+   [
+    "Fiddleheadfern",
+    2
+   ]
+  ],
+  "medieval-timber": [
+   [
+    "vines",
+    3
+   ],
+   [
+    "Pickable_Mushroom_yellow",
+    3
+   ],
+   [
+    "Pickable_Dandelion",
+    3
+   ],
+   [
+    "Bush01",
+    2
+   ],
+   [
+    "Pickable_Thistle",
+    2
+   ],
+   [
+    "shrub_2",
+    2
+   ],
+   [
+    "MushroomYellow",
+    1
+   ],
+   [
+    "FernAshlands",
+    1
+   ],
+   [
+    "RaspberryBush",
+    1
+   ],
+   [
+    "FirTree_small",
+    1
+   ],
+   [
+    "Pickable_Fiddlehead",
+    1
+   ],
+   [
+    "CloudberryBush",
+    1
+   ]
+  ],
+  "norse-highland": [
+   [
+    "FirTree_small",
+    2
+   ],
+   [
+    "Pickable_Dandelion",
+    1
+   ],
+   [
+    "BlueberryBush",
+    1
+   ],
+   [
+    "Pickable_Thistle",
+    1
+   ],
+   [
+    "RaspberryBush",
+    1
+   ],
+   [
+    "VineAsh",
+    1
+   ],
+   [
+    "VineGreen",
+    1
+   ],
+   [
+    "Pickable_Mushroom_yellow",
+    1
+   ],
+   [
+    "Pickable_Mushroom_blue",
+    1
+   ],
+   [
+    "MushroomSmokePuff",
+    1
+   ],
+   [
+    "MushroomMagecap",
+    1
+   ],
+   [
+    "MushroomJotunPuffs",
+    1
+   ]
+  ],
+  "norse-forest": [
+   [
+    "shrub_2",
+    6
+   ],
+   [
+    "Pickable_Dandelion",
+    6
+   ],
+   [
+    "vines",
+    5
+   ],
+   [
+    "FirTree_small",
+    3
+   ],
+   [
+    "BlueberryBush",
+    2
+   ],
+   [
+    "Mushroom",
+    2
+   ],
+   [
+    "MushroomBzerker",
+    2
+   ],
+   [
+    "MushroomMagecap",
+    2
+   ],
+   [
+    "MushroomSmokePuff",
+    2
+   ],
+   [
+    "MushroomYellow",
+    2
+   ],
+   [
+    "Pickable_Thistle",
+    2
+   ],
+   [
+    "Pickable_SeedCarrot",
+    1
+   ]
+  ],
+  "east-asian": [
+   [
+    "Pickable_Dandelion",
+    1
+   ]
+  ],
+  "celtic-crannog": [
+   [
+    "Pickable_Mushroom",
+    1
+   ],
+   [
+    "Beech_small1",
+    1
+   ],
+   [
+    "Bush01",
+    1
+   ],
+   [
+    "Pickable_Dandelion",
+    1
+   ]
+  ],
+  "celtic": [
+   [
+    "Bush01_heath",
+    1
+   ],
+   [
+    "Bush02_en",
+    1
+   ],
+   [
+    "shrub_2_heath",
+    1
+   ],
+   [
+    "CloudberryBush",
+    1
+   ],
+   [
+    "Pickable_SeedOnion",
+    1
+   ],
+   [
+    "vines",
+    1
+   ]
+  ],
+  "modern": [
+   [
+    "BlueberryBush",
+    2
+   ],
+   [
+    "RaspberryBush",
+    1
+   ],
+   [
+    "vines",
+    1
+   ],
+   [
+    "Pickable_Dandelion",
+    1
+   ]
+  ],
+  "fen-folk": [
+   [
+    "shrub_2",
+    2
+   ],
+   [
+    "Pickable_Dandelion",
+    1
+   ],
+   [
+    "Bush01",
+    1
+   ],
+   [
+    "MushroomMagecap",
+    1
+   ],
+   [
+    "MushroomSmokePuff",
+    1
+   ],
+   [
+    "MushroomYellow",
+    1
+   ],
+   [
+    "Vineberry",
+    1
+   ],
+   [
+    "vines",
+    1
+   ]
+  ],
+  "tree-house": [
+   [
+    "Pickable_SeedTurnip",
+    1
+   ],
+   [
+    "vines",
+    1
+   ]
+  ]
+ },
+ "showcase": {
+  "windows": {
+   "windows": 220,
+   "builds": 14,
+   "planterShare": 0.077,
+   "buildsWithPlanter": 6
+  },
+  "planters": {
+   "n": 17,
+   "plants": {
+    "n": 17,
+    "p10": 1,
+    "p25": 1,
+    "p50": 1,
+    "p75": 2,
+    "p90": 2
+   },
+   "species": [
+    [
+     "vines",
+     4
+    ],
+    [
+     "Pickable_Dandelion",
+     3
+    ],
+    [
+     "Pickable_Thistle",
+     3
+    ],
+    [
+     "Pickable_Fiddlehead",
+     2
+    ],
+    [
+     "Pickable_Onion",
+     2
+    ],
+    [
+     "Pickable_Mushroom_yellow",
+     2
+    ],
+    [
+     "Pickable_Turnip",
+     2
+    ],
+    [
+     "Pickable_Carrot",
+     1
+    ],
+    [
+     "VineGreen",
+     1
+    ],
+    [
+     "VineAsh",
+     1
+    ]
+   ],
+   "perMeter": {
+    "n": 17,
+    "p10": 1,
+    "p25": 1,
+    "p50": 1,
+    "p75": 2,
+    "p90": 2
+   },
+   "offCenter": {
+    "n": 17,
+    "p10": 0,
+    "p25": 0.06,
+    "p50": 1,
+    "p75": 1,
+    "p90": 1.06
+   },
+   "out": {
+    "n": 17,
+    "p10": 0.13,
+    "p25": 0.35,
+    "p50": 0.35,
+    "p75": 0.45,
+    "p90": 0.77
+   },
+   "overSill": {
+    "n": 17,
+    "p10": -0.25,
+    "p25": -0.25,
+    "p50": -0.18,
+    "p75": -0.08,
+    "p90": 0.69
+   },
+   "distinctYawPerPlant": {
+    "n": 17,
+    "p10": 0.5,
+    "p25": 0.5,
+    "p50": 1,
+    "p75": 1,
+    "p90": 1
+   },
+   "classes": [
+    [
+     "flower",
+     6
+    ],
+    [
+     "vine",
+     6
+    ],
+    [
+     "crop+flower",
+     3
+    ],
+    [
+     "crop",
+     2
+    ]
+   ],
+   "under": [
+    [
+     "wood_floor_1x1",
+     11
+    ],
+    [
+     "wood_wall_log",
+     7
+    ],
+    [
+     "wood_wall_half",
+     4
+    ],
+    [
+     "stone_wall_2x1",
+     2
+    ],
+    [
+     "blackmarble_2x1x1",
+     2
+    ]
+   ],
+   "noneUnder": 0.118,
+   "frame": [
+    [
+     "wood_beam",
+     14
+    ],
+    [
+     "wood_pole",
+     5
+    ],
+    [
+     "wood_pole2",
+     4
+    ],
+    [
+     "darkwood_beam",
+     2
+    ],
+    [
+     "wood_pole_log",
+     2
+    ],
+    [
+     "wood_beam_45",
+     1
+    ],
+    [
+     "darkwood_pole",
+     1
+    ]
+   ],
+   "framed": 0.941,
+   "examples": []
+  },
+  "vines": {
+   "builds": 6,
+   "perBuild": {
+    "n": 6,
+    "p10": 13.5,
+    "p25": 20,
+    "p50": 34,
+    "p75": 45.75,
+    "p90": 65
+   }
+  },
+  "clusters": {
+   "all": 96,
+   "single": 0.719,
+   "size": {
+    "n": 27,
+    "p10": 2,
+    "p25": 3,
+    "p50": 3,
+    "p75": 4,
+    "p90": 6
+   },
+   "species": {
+    "n": 27,
+    "p10": 1,
+    "p25": 2,
+    "p50": 3,
+    "p75": 3,
+    "p90": 4
+   },
+   "oneSpecies": 0.185,
+   "spacing": {
+    "n": 27,
+    "p10": 0.45,
+    "p25": 0.49,
+    "p50": 0.57,
+    "p75": 0.66,
+    "p90": 0.85
+   },
+   "spacingOverWidth": {
+    "n": 27,
+    "p10": 0.53,
+    "p25": 0.85,
+    "p50": 1.14,
+    "p75": 1.5,
+    "p90": 1.84
+   },
+   "oneYaw": 0,
+   "yawsPerPlant": {
+    "n": 27,
+    "p10": 0.67,
+    "p25": 0.67,
+    "p50": 0.8,
+    "p75": 1,
+    "p90": 1
+   },
+   "classes": [
+    [
+     "flower",
+     12
+    ],
+    [
+     "crop",
+     4
+    ],
+    [
+     "bush+flower",
+     3
+    ],
+    [
+     "flower+small tree",
+     2
+    ],
+    [
+     "crop+flower",
+     2
+    ],
+    [
+     "bush+small tree",
+     2
+    ],
+    [
+     "bush",
+     2
+    ]
+   ],
+   "speciesPairs": [
+    [
+     "Pickable_Dandelion+Pickable_Thistle",
+     6
+    ],
+    [
+     "Pickable_Dandelion+Pickable_Mushroom_yellow",
+     6
+    ],
+    [
+     "Pickable_Dandelion+Pickable_Mushroom",
+     5
+    ],
+    [
+     "Pickable_Mushroom+Pickable_Mushroom_yellow",
+     5
+    ],
+    [
+     "Pickable_Dandelion+Pickable_Mushroom_blue",
+     4
+    ],
+    [
+     "Pickable_Dandelion+Pickable_Fiddlehead",
+     4
+    ],
+    [
+     "Pickable_Fiddlehead+Pickable_Thistle",
+     3
+    ],
+    [
+     "Bush01_heath+Pickable_Thistle",
+     3
+    ],
+    [
+     "Pickable_Mushroom+Pickable_Thistle",
+     3
+    ],
+    [
+     "Pickable_Mushroom_yellow+Pickable_Thistle",
+     3
+    ],
+    [
+     "Pickable_Mushroom_blue+Pickable_Mushroom_yellow",
+     3
+    ],
+    [
+     "FirTree_small+Pickable_Thistle",
+     2
+    ],
+    [
+     "Pickable_Mushroom_blue+Pickable_Thistle",
+     2
+    ],
+    [
+     "Pickable_Fiddlehead+Pickable_Mushroom",
+     2
+    ],
+    [
+     "Pickable_Fiddlehead+Pickable_Mushroom_yellow",
+     2
+    ],
+    [
+     "Bush01_heath+shrub_2_heath",
+     2
+    ],
+    [
+     "Beech_small1+FirTree_small",
+     1
+    ],
+    [
+     "Beech_small1+Pickable_Thistle",
+     1
+    ],
+    [
+     "FirTree_small+Pickable_Dandelion",
+     1
+    ],
+    [
+     "FirTree_small+Pickable_Fiddlehead",
+     1
+    ],
+    [
+     "Bush01_heath+Pickable_Dandelion",
+     1
+    ],
+    [
+     "Bush01_heath+Pickable_Fiddlehead",
+     1
+    ],
+    [
+     "Bush01_heath+Pickable_Mushroom",
+     1
+    ],
+    [
+     "Bush01_heath+Pickable_Mushroom_yellow",
+     1
+    ],
+    [
+     "Pickable_Dandelion+Pickable_Onion",
+     1
+    ],
+    [
+     "Pickable_Fiddlehead+Pickable_Onion",
+     1
+    ],
+    [
+     "Pickable_Mushroom_yellow+Pickable_Onion",
+     1
+    ],
+    [
+     "Pickable_Onion+Pickable_Thistle",
+     1
+    ],
+    [
+     "Pickable_Barley+Pickable_Dandelion",
+     1
+    ],
+    [
+     "Pickable_Barley+Pickable_Mushroom",
+     1
+    ]
+   ]
+  },
+  "gardens": {
+   "n": 4,
+   "size": {
+    "n": 4,
+    "p10": 6,
+    "p25": 6,
+    "p50": 7,
+    "p75": 8.25,
+    "p90": 8.7
+   },
+   "species": {
+    "n": 4,
+    "p10": 2.6,
+    "p25": 3.5,
+    "p50": 4,
+    "p75": 4.5,
+    "p90": 5.4
+   },
+   "oneSpecies": 0,
+   "mixes": [
+    [
+     "Bush01_heath+Pickable_Dandelion+Pickable_Fiddlehead+Pickable_Mushroom+Pickable_Mushroom_yellow+Pickable_Thistle",
+     1
+    ],
+    [
+     "Pickable_Mushroom+Pickable_Mushroom_yellow",
+     1
+    ],
+    [
+     "Pickable_Barley+Pickable_Dandelion+Pickable_Mushroom+Pickable_Mushroom_yellow",
+     1
+    ],
+    [
+     "BlueberryBush+Bush01_heath+Pickable_Thistle+shrub_2_heath",
+     1
+    ]
+   ],
+   "bed": [],
+   "noBed": 1,
+   "edge": [
+    [
+     "darkwood_beam",
+     2
+    ],
+    [
+     "wood_wall_half",
+     1
+    ],
+    [
+     "stone_fence",
+     1
+    ],
+    [
+     "wood_beam_1",
+     1
+    ],
+    [
+     "stone_wall_2x1",
+     1
+    ]
+   ],
+   "bedPrefabsPerGarden": {
+    "n": 0,
+    "p10": null,
+    "p25": null,
+    "p50": null,
+    "p75": null,
+    "p90": null
+   },
+   "wallGap": {
+    "n": 4,
+    "p10": 0,
+    "p25": 0,
+    "p50": 0.22,
+    "p75": 0.48,
+    "p90": 0.55
+   },
+   "atWall": 1,
+   "byKind": [
+    [
+     "tavern",
+     2
+    ],
+    [
+     "home",
+     1
+    ],
+    [
+     "other",
+     1
+    ]
+   ],
+   "examples": [
+    {
+     "file": "showcase/showcase-07-tavern-pl-steppe-s3d3-2.blueprint",
+     "plants": 8,
+     "species": [
+      "Bush01_heath",
+      "Pickable_Dandelion",
+      "Pickable_Fiddlehead",
+      "Pickable_Mushroom",
+      "Pickable_Mushroom_yellow",
+      "Pickable_Thistle"
+     ],
+     "bed": [],
+     "edge": [
+      "darkwood_beam"
+     ],
+     "wallGap": 0
+    },
+    {
+     "file": "showcase/showcase-07-tavern-pl-steppe-s3d3-2.blueprint",
+     "plants": 6,
+     "species": [
+      "Pickable_Mushroom",
+      "Pickable_Mushroom_yellow"
+     ],
+     "bed": [],
+     "edge": [
+      "wood_wall_half"
+     ],
+     "wallGap": 0.6
+    },
+    {
+     "file": "showcase/showcase-08-home-pl-middle-eastern-s3d3-1.blueprint",
+     "plants": 6,
+     "species": [
+      "Pickable_Barley",
+      "Pickable_Dandelion",
+      "Pickable_Mushroom",
+      "Pickable_Mushroom_yellow"
+     ],
+     "bed": [],
+     "edge": [
+      "stone_fence",
+      "darkwood_beam",
+      "wood_beam_1"
+     ],
+     "wallGap": 0
+    },
+    {
+     "file": "showcase/showcase-14-tower-mt-norse-highland-s3d3-1.blueprint",
+     "plants": 9,
+     "species": [
+      "BlueberryBush",
+      "Bush01_heath",
+      "Pickable_Thistle",
+      "shrub_2_heath"
+     ],
+     "bed": [],
+     "edge": [
+      "stone_wall_2x1"
+     ],
+     "wallGap": 0.44
+    }
+   ]
+  },
+  "trees": {
+   "byKind": {
+    "longhouse": [
+     [
+      "FirTree_small",
+      1
+     ],
+     [
+      "Beech_small2",
+      1
+     ],
+     [
+      "Beech_small1",
+      1
+     ]
+    ],
+    "tavern": [
+     [
+      "FirTree_small",
+      1
+     ],
+     [
+      "YggaShoot_small1",
+      1
+     ]
+    ],
+    "home": [
+     [
+      "FirTree_small",
+      2
+     ],
+     [
+      "Beech_small1",
+      2
+     ],
+     [
+      "FirTree_small_dead",
+      1
+     ],
+     [
+      "YggaShoot_small1",
+      1
+     ]
+    ],
+    "castle": [
+     [
+      "YggaShoot_small1",
+      1
+     ]
+    ]
+   },
+   "byCulture": {}
+  },
+  "byCulture": {}
+ }
+}

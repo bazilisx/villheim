@@ -878,3 +878,434 @@ passes above.
 
 Counts here cover whole builds; where the piece sits (in a wall, clipped, on a surface) is measured only for the
 table, sill and rug relations. Clip depths are in "Creative sets" above.
+
+## Room intent: outside study (2026-11-12)
+
+Track C of the showcase review (`docs/handoffs/2026-11-12-showcase-review/README.md`, cause 2: rooms without
+intent). Tyler asked for this study in his showcase notes (`TYLER_NOTES.md`): the WoW housing tour as an exemplar
+("among my favorites for how interior design and clutter can make it feel alive, lived in, homey, cosy"), designers of
+BG3, ESO, Skyrim and others, and real-world room design "like in a real house, those sorts of feng shui skills". He
+added (through the lead, 2026-11-12): "figure out how different rooms, layouts, decor and intentional clutter and
+environmental storytelling play a role. Recall these are among our most important interior design drivers."
+
+Notes per source, with links, are in `docs/handoffs/2026-11-12-showcase-review/outside/`: `wow-housing-tour.md`
+(room by room) and `sources.md` (everything else read this round). Screenshots stay in the private repo
+(`villheim-corpus/research/2026-11-12-outside/`). This section turns them into rules. D-136: a rule from outside
+sources is a candidate until the corpus confirms it; marks below say which.
+
+- **[corpus]** measured in the corpus (number given).
+- **[confirm]** not yet measured; track B (`docs/ROOM_STUDY.md`, `data/rooms-corpus/`) or a later pass measures it,
+  and the corpus number replaces the outside one where they differ.
+- **[Tyler]** Tyler's own rule or words; applies as given.
+
+### Corpus checks made for this section
+
+Two quick passes over `compact.json` (2,128 builds) to test outside rules before writing them down. Scripts and
+output: `villheim-corpus/research/2026-11-12-outside/scripts/` (`seats.py`, `groups.py`).
+
+| Question | Result |
+|---|---|
+| Seats within 2.2 m of a table: how many kinds per table? | 1,987 tables with seats: one kind 1,816 (91 %), two kinds 162, three or four 9 |
+| Which seats go with which table? | `piece_table`: chair02 33 %, chair03 31 %, bench01 17 %, chair 12 %, logbench01 3 %. `piece_table_round`: chair03 84 %. `piece_table_oak`: chair03 73 %, bench01 11 %, throne01 7 %. `piece_blackmarble_table`: chair03 58 %, blackmarble_bench 23 %. `dvergrprops_table`: dvergr stool 70 %. Runed tables: runed chairs 72 to 93 % |
+| Black marble seats at tables of another material | 5 of 1,847 tables (0.3 %) |
+| Log benches | in 152 of 2,128 builds (7 %), median 2 per build (p75 3); 20 % within 3.5 m of a fire, 9 % within 2.2 m of a table |
+| Light kinds in builds with 5 or more lights (947 builds) | 1 kind 190, 2 kinds 217, 3 kinds 191, 4 kinds 109, 5 kinds 88, 6 or more 152; the commonest kind is 50 / 67 / 91 % of a build's lights (p25 / p50 / p75) |
+| Horizontal item stands in groups (within 0.6 m, same height) | singles 74 %, pairs 10 %, threes 4 %, fours 3 %, fives 2 %, larger 8 %. Groups of two or more: odd 1,191, even 1,656 |
+
+What these mean for the rules below: one seat kind per table is what builders do; the dark wood chair (`piece_chair03`)
+is the common seat at oak, round and black marble tables; black marble benches belong at black marble tables only;
+log benches are a rare piece, more often by a fire than at a table; one light kind leads in a building with one to
+three others beside it. The rule of odds from home styling (groups of three and five) does not show in how builders
+group horizontal stands: single stands and pairs lead. Odd groups stay a styling option for a few hot spots, never a
+target count.
+
+### What the WoW house teaches
+
+Full notes: `outside/wow-housing-tour.md`. The tour house has 36 viewpoints on two floors: a bar and kitchen block, a
+two-storey library, a lounge and study wing, an upper gallery hall with a lounge and kitchen room, a round guest
+bedroom and a cave den. Fourteen points it shows throughout:
+
+1. Every furniture group stands on its own rug (11 of 12 groups seen); the rug marks the zone.
+2. The walking line from door to door or stair is bare floor; small clutter sits at its edge, never on it.
+3. One wood for furniture, a darker wood for structure, and iron fittings on both, in every room.
+4. Two fabric colors per room, repeated in rugs, curtains, cushions and hangings.
+5. A focal point at the end of the view from each door; fireplaces framed symmetrically by structure and dressed
+   unevenly by small things.
+6. Small things in groups of three with a gap before the next group (a styling choice; see the corpus check above).
+7. Walls dressed in bays between posts, one theme per bay, in two layers (something high, something low).
+8. A ceiling layer in every used room: string lights, chandeliers, lanterns on posts, food hung from beams, nets.
+9. Food and drink at every stage: raw in sacks and crates, cooking with steam, served on plates, stored in kegs.
+10. Mid-use signs: an open book, a pushed-back chair, plans on a desk with a ruler on them, cups set out.
+11. A light every few steps along the walking lines; a hung light over each table.
+12. One or two odd personal pieces per room among the serious ones.
+13. Places left empty on purpose: the aisle, behind the counter, the stair foot, the middle of the hall.
+14. Storage behind the room it serves (a pantry behind the kitchen, kegs at the bar end); no chest stacks in living
+    rooms. The corpus stacks 58 % of its chests (`relx.chestsStacked`, above), so stacks belong in storage rooms and
+    store walls, and the living rooms of a home follow the tour.
+
+### What the other sources add
+
+- **Skyrim inns and homes** (pictures of the Bannered Mare and Breezehome, `outside/sources.md`): the social room is
+  built round one fire in the middle, with benches beside it and seats in small groups along the walls; the serving
+  counter stands to one side of the fire with food hung from the beam behind it; service rooms have their own door
+  outside, with the chopping block by that door; food stores tuck under the stair; a sleeper's room is told by three
+  or four things (the housecarl's bed with a fur, a shield over it, a chest, a training dummy).
+- **Viking longhouse and hall seating** (Hurstwic): benches along both long walls between the posts and the wall,
+  facing each other across a long fire; the high seat in the middle of the upper bench, the guest of honor in the
+  middle of the lower bench across the fire; rank falls toward the door; storage under the benches; tables put up
+  for meals; a closed bed for the heads of the house; a pantry off the main room; a draft room at the entry.
+- **Medieval great hall** (World History Encyclopedia): the high table on a dais at the far end from the entry; a
+  screen at the entry end with service passages behind it to the kitchen and pantry; long tables and benches round
+  the sides; weapons and hangings on the walls; candle stands and wall lights.
+- **Feng shui** (Cliff Tan, NPR): a clear entry; the command position (a solid wall behind the bed or the chief seat,
+  facing the door, not in line with it); warm low light from several sources; furniture sized to the room.
+- **Set dressing and storytelling** (Don Carson; 80.lv articles in `outside/sources.md`): props are placed by use,
+  never by grid; every object has a reason to be where it is; one story per scene or it reads as a museum; a strong
+  first read on entry, then secondary and tertiary detail; calm places where the eye rests; one clear clue at the
+  focal point; vary how crowded each area is; one unique piece in a row of repeats; wear and mess where the use is.
+
+### Space and walking lines
+
+- **[Tyler]** Passages people walk through are at least two `wood_floor` pieces wide (4 m); one piece wide only for a
+  closet or hidden passage. Nothing crowds a doorway or the space just inside it (D-148, D-152).
+- **[corpus]** Clear depth inside a door, p10 by room kind: hall 4.0 m, kitchen 3.5, living 3.0, tavern 2.6, sleeping
+  2.4, smithy 2.2, home 1.6 ("What builders do", above).
+- Real-world clearances scale the in-room lines (Houzz, `outside/sources.md`): walkway 0.8 to 0.9 m, 0.6 m between
+  pieces of furniture, 0.9 m behind a seated diner, 0.5 m at the sides of a double bed, a seating group inside an arc
+  of about 2.4 m. A third-person camera and a Valheim character need more than a real person; until track B gives the
+  corpus numbers, the lab uses: a walking line in a room at least one `wood_floor` (2 m) wide where it is not a
+  passage between rooms; a seat with its pull-back space (about 1 m behind a bench or chair at a table, matching the
+  corpus bench gap of 1.0 m from the table's middle line) kept off the walking line. **[confirm]**
+- Walking lines run door to door, door to stair, door to the focal point and door to each zone. Each zone is entered
+  from a line, never through another zone (feng shui flow; WoW plan).
+- The space at a stair foot and top stays clear for one `wood_floor` (WoW library and I room; existing decorator rule:
+  stairs and ladders with 0.8 m round them).
+
+### Focal point and command position
+
+- Every room has one focal point: the piece seen first from the main door, at the far end or the far wall of the view.
+  By room kind: hearth (home, hall, lounge), bed (bedroom), bar counter and its back wall (bar), long table or high
+  seat (hall), forge or workbench (smithy, workshop), altar (temple), desk or map table (study). In a tavern the
+  central fire leads and the bar is the second focus (Skyrim, longhouse).
+- The focal point gets the best dressing (Carson: save the best detail for the destination) and the strongest light.
+- The chief seat (high seat, throne, the head of a long table, the desk chair) has a solid wall behind it and faces
+  the door across the room; it never has its back to the door (feng shui command position; longhouse high seat;
+  great hall dais).
+- The bed head goes to a solid wall, not under a window; the bed is not in line with the door and is not beside it;
+  from the bed the door is in view (feng shui; corpus: bed head to a wall, pivot 1.75 m out). **[confirm]** the share of
+  corpus beds in line with a door.
+- Symmetry frames the focal point (cupboards either side of the fire, a pair of plants either side of the far door,
+  banners in a pair); everything else in the room is uneven.
+
+### Zones and groupings
+
+- A room holds one to four zones, each with its own purpose and its own set: the focal zone, then up to three
+  supporting zones (eating, sleeping, working, storing, sitting). Rooms under about 25 m2 hold one or two. **[confirm]**
+  zones per room by size.
+- A zone is a set of pieces that belong together, placed together, on its own rug where the culture lays rugs (WoW:
+  11 of 12 groups; corpus: rugs under 22 % of tables, 18 % of beds, 38 % of round tables, so a rug per zone is the
+  WoW look, and the corpus share is the target). **[corpus]** for rug shares, **[confirm]** for rug per zone.
+- Seating groups face a shared center (the fire, a table, the high seat) within an arc of about 2.4 m; seats along
+  walls come in pairs with a small table between (BG3, WoW, real-world arc).
+- One seat kind per table. **[corpus]** 91 % of tables with seats. Mixed seats at one table (a log bench, a stool and
+  a chair) read as hodgepodge (Tyler, longhouse 05).
+- Tables in a room: one main table per eating zone; a second table only for a second purpose (a side table with
+  drink, a desk, a work table), never two eating tables side by side in a home (Tyler, longhouse 05). **[confirm]**
+  tables per room by kind.
+
+### Light
+
+- Layers: a general light over the room (chandelier, hanging brazier, the fire), task light where people work or eat
+  (a candle on the table, a lantern by the desk, a torch by the workbench), accent light on the focal point and wall
+  bays (wall torches in a pair, standing lanterns by the fire) (Redfin; WoW).
+- A light every few steps along each walking line, and a light at the far end of the view (WoW; Carson). Dark
+  stretches are allowed at the room's edges and corners where nothing is used (Carson: leave areas in shadow).
+- Warm light only in living rooms: fire, candles, torches, lanterns. Blue, green or purple light is an accent once per
+  room at most, for a reason (a mage table, a Mistlands lantern), never the main light (Tyler on the rune table).
+- **[corpus]** One light kind leads a building (median 67 % of its lights) with up to three others beside it. **[Tyler]**
+  "the exact same type of torches in every build ... countless candles": the leading kind changes from building to
+  building, by culture and biome.
+- **[corpus]** 0.2 to 0.6 lights per 10 m2; a light within 2 m of 14 % of beds.
+
+### Palette
+
+- **Woods.** Pick one furniture wood family per zone and at most two per room, plus the structure wood (beams, posts,
+  walls). In view at once: three wood tones at most, as base (floor and structure), contrast (main furniture) and
+  accent (one or two pieces) (Apartment Therapy rule of threes; WoW: one furniture wood, one darker structure wood).
+  Families by mesh texture (`work/cache/<prefab>.json`, `mat`): base wood (`piece_table`, `piece_bench01`,
+  `piece_chair02`, `piece_workbench`), oak (`piece_table_oak`, `piece_table_round`, and the Deep North
+  `mountainkit_table`, which uses a worn copy of the oak texture), dark wood (`piece_chair03`, darkwood beams), log and
+  bark (`piece_logbench01`, `fire_pit`), Dvergr (`dvergrprops_*`, wood with copper and metal bands), runed
+  (`piece_chair_runed`, `piece_table_runed`, `piece_table_runed_small`, `piece_bench_runed`), black marble
+  (`piece_blackmarble_table`, `piece_blackmarble_bench`), Ashlands (`ashwood_bed`, `piece_blackwood_bench01`). How
+  each looks (color, finish) is track A's catalog; the families here are from the texture names only.
+- **Pairings the corpus makes** **[corpus]**: dark wood chairs with oak, round and black marble tables; base chairs
+  (chair02) and dark chairs with the plain table; Dvergr stools with Dvergr tables; runed chairs with runed tables;
+  black marble benches with black marble tables only. The Deep North oak table shares its texture family with the oak
+  and round tables, so Deep North pieces can join oak rooms of any biome (Tyler: Deep North furniture "could certainly
+  pair well with any sort of meadows house onward"). **[confirm]** once the catalog has colors.
+- **Stone and metal.** One stone in a room besides the hearth (stone floor, black marble or grausten, never stone and
+  grausten mixed; Tyler 015, 016). Metals: one or two per room (iron bands on chests and barrels, copper on Dvergr
+  pieces, gold on treasure), the same metal on pieces of one use (Jordan Samson). **[confirm]** stone and metal mixes.
+- **Fabric and color.** Two fabric colors per room, repeated in rugs, banners, drapes and curtains (WoW). Hides (deer,
+  wolf, bear, lox, Bjorn) count as neutral. Shares as a guide (60-30-10, Bob Vila): about 60 % the structure wood and
+  floor, 30 % the furniture wood and rugs, 10 % accent (banners, glow, gold, one bright fabric). A house keeps one
+  household color across rooms (WoW: teal and gold in the bar, blue in the upper rooms); a guest room may carry another
+  culture's set if every piece in it shares that set's trim (WoW guest room).
+- **Glow.** One glow color per room besides warm fire. Purple, blue and green glow (mage table, eitr pieces, Dvergr
+  lanterns, colored torches) only in a room whose purpose calls for it (study, temple, Mistlands buildings).
+
+### Intentional clutter
+
+Clutter reads as purposeful when each object answers three questions: what is it for, who used it, and why is it
+here (80.lv believable environments; Carson cause and effect). The rules:
+
+1. **Near where it is used.** Food at the cooking and the table; drink at the bar, the kegs and the fire seats; tools
+   at the station they serve and on the wall above it; weapons and armor by the armor stand, the bed of the one who
+   uses them, or the door; fuel by the fire or outside by the door (see vignette 4 for the indoor question); goods by
+   the counter; books, maps and papers at the desk. A small thing more than about 2 m from its use is out of place.
+   **[confirm]** distance from stand items to their use piece in the corpus (the stand pass already places by surface,
+   `lib/stands.js`).
+2. **On a parent.** Small things sit on a surface (table, counter, shelf, sill, chest lid, mantel, beam) or hang on a
+   wall over the piece they belong to; few lie loose on the floor, and those at a wall or a seat (WoW parenting; corpus:
+   floor stands 2,078, 1,893 of them within 0.5 m of a wall).
+3. **In hot spots.** Two to four dressed spots per room: the focal point, then one to three supporting zones; the floor
+   and walls between stay plain (WoW; 80.lv: vary how crowded each area is, and leave places where the eye rests).
+   Within a hot spot, density falls off from its busiest end (the WoW library table: busy near end, sparse far end).
+   **[confirm]** hot spots per room in the corpus.
+4. **Layers per room.** Large (the set pieces), medium (barrels, stands, chests, armor stands), small (items on stands),
+   wall (item stands, banners, shields, trophies, torches), ceiling (chandeliers, hanging braziers, banners from beams,
+   items hung on beams), floor (rugs, a few loose things at walls). A used room has something in each of wall, floor
+   and either medium or ceiling (WoW). A layer with nothing is allowed for a reason (a cave den has no ceiling layer).
+5. **Varied heights in a group.** A group mixes a tall, a middle and a low piece (a basket, a plant, a small chest at a
+   corner; a lantern, a book and a cup on a dresser) (WoW; rule of odds). Counts follow the corpus: single stands and
+   pairs lead (74 % and 10 % of horizontal stand groups), with larger groups at a few hot spots.
+6. **Varied kinds, capped repeats.** Inside a room, any one small kind (the same candle, the same pot) repeats only as
+   a set (a row of mugs on a bar, candles along a table); a decor kind seen in every room of a building is a sign of
+   repetition (Tyler: same torches, candles, drapes, log benches, stacked chests). Per building: the lead light kind
+   at about two thirds of the lights, others for the rest (corpus above); log benches at most two or three in the few
+   buildings that have them (corpus median 2, p75 3, in 7 % of builds); stacked chests in storage rooms and store
+   walls, not in every corner (Tyler).
+7. **How much is too much.** The walking lines stay bare; no clutter in a door box; furniture and medium pieces take at
+   most half the floor (existing fill rule); dressed spots stay under about a third of the room's wall length
+   **[confirm]**; density per room kind stays inside the corpus p25 to p75 band ("How full rooms are", above). Signs of
+   too much: groups touching groups, the same object in three places in view, a small thing with no parent and no
+   use, clutter on a stair or in front of a door.
+8. **Imperfect placement.** Loose things and chairs turned a little, never on a grid; sets kept square (beds to walls,
+   tables to the room or turned on purpose). **[corpus]** 42 % of seats, 29 % of tables and 31 % of rugs are turned
+   more than 10 degrees (`relx`).
+
+### Environmental storytelling
+
+A room tells who lives there and what they were just doing (Smith and Worch; Carson; the 80.lv articles). Rules:
+
+1. **One story per room, one per building.** Pick the household's traits first (family size and ages from the roster,
+   D-077; wealth; habits such as brewing, reading, hunting trophies, music, gardening; culture), then dress every room
+   from them. Traits are household traits, never professions (drivers in the 2026-11-10 helper rules). A prop that belongs to
+   no trait of the household is left out (80.lv: props share one story, or the room is a museum).
+2. **Who lives here, by owner zones.** Each sleeping place carries its sleeper's things: a fighter's bed with a shield
+   over it and a chest at its foot (Breezehome housecarl); a couple's bed with a different small piece on each side
+   (Ubbe's butchery); children's beds smaller, in a loft or corner. In the main room each side or seat belongs to
+   someone (longhouse high seat; Svan house sides): the head's chair by the fire with a footstool or a drink beside it,
+   the work corner of the one who mends or spins.
+3. **What they were just doing (mid-task scenes).** Each home has one or two scenes caught mid-use, at hot spots:
+   a meal half eaten, a chair pushed back from the table, a drink by the fire seat, a pot on the fire, work laid out on
+   the bench, a book or map open on the desk (WoW: open book, plans with a ruler, steam over the pot, cups set out).
+   Every mid-task scene has its cause in reach: the plates by the cooking, the tools by the station.
+4. **Residue of time.** Wear and use where the use is: rugs worn at the door (Valheim has no wear decals; use more
+   rugs layered at the entry and the fire), high corners left bare and dark where nothing is used (WoW shows cobwebs
+   there), fuel used down by the fire. The building's stage shows it: an s1
+   home has the needs and a few personal pieces; an s3 home has years of things (more stands, trophies, banners).
+5. **One clear clue at the focal point.** The best-read piece of the story sits at the focal point: a trophy over the
+   hearth, the household's banner behind the high seat, the family's best item on a stand above the table (80.lv
+   narrative). Clues elsewhere add to it and each means something alone (Smith and Worch).
+6. **Contrast and one unique piece.** One piece per room breaks the pattern (a single odd personal piece, a rare
+   trophy; WoW's flamingo, Carson's unique pillar), so repeated sets never read as copies.
+7. **Familiar first.** A room must read as its kind on entry (a bed reads bedroom, a counter and kegs read bar) before
+   any detail (80.lv strong first read; Carson familiar reference points).
+
+### Room intent template
+
+Each room the decorator furnishes gets an intent record before any piece is placed:
+
+| Field | What it holds |
+|---|---|
+| Purpose | One line: what the room is for and for whom (household, guests, workers) |
+| Focal point | The piece seen first from the main door, and where it stands |
+| Zones | One to four, each with its purpose, its place (wall, corner, center, bay) and its set |
+| Walking lines | Door to door, door to stair, door to focal point, door to each zone; widths from "Space and walking lines" |
+| Core set | The pieces the room needs to read as its kind |
+| Supporting pieces | Pieces that add to the purpose (side tables, storage for that room's use, a second seat group) |
+| Clutter layers | Which layers get dressing, the hot spots, the mid-task scene if any |
+| Light | General, task and accent sources and the lead light kind |
+| Palette | Structure wood, furniture wood family, stone and metal, two fabric colors, glow if any |
+| Story | The household traits it shows, the owner of each zone, the clue at the focal point |
+| Never here | Pieces that do not belong in this kind of room |
+
+### Room kinds
+
+Pieces in each line are vanilla names from `lib/pieces.js` and the mesh cache; looks are checked against track A's
+catalog when it lands. Counts are from outside sources unless marked.
+
+**Home main room** (cooking, eating, sitting; the house's social room)
+- Purpose: the family's daily room. Focal point: the hearth (`hearth`, `fire_pit`, wall hearths with chimneys; Tyler:
+  home fires along walls, in alcoves, or in wall hearths).
+- Zones: hearth with one or two seats facing it (chair or bench 2 m and more out; existing rule: no bench beside the
+  fire in homes, FP-002, FP-010); one table with one seat kind (2 to 6 seats); a cooking spot at or beside the fire
+  (`piece_cookingstation`, `piece_cauldron` with extensions); a store wall or corner for food (barrels, a chest).
+- Walking lines: door to hearth zone edge, door to stair, door to the bedroom doors; the line passes beside the table,
+  never through the seat ring.
+- Clutter: food on the table and by the cooking (`itemstandh`), cooking tools on the wall over the cauldron, a trophy
+  or the household's banner over the hearth, rugs at the hearth and under the table where the culture lays rugs.
+- Never: a forge, a mage table, a black marble bench at a wooden table, outdoor fence (`wood_fence`), rooftop
+  animals (`darkwood_raven`, `darkwood_wolf`) (Tyler), stacked chests in the corners, a fire pit just inside the door
+  (Tyler 09).
+
+**Bedroom**
+- Purpose: sleep, and the sleeper's things. Focal point: the bed, head to a solid wall, not in line with the door.
+- Zones: the bed with a nightstand on one or both sides (a small table, a barrel or a chest; different pieces either
+  side for a couple) and a chest at the foot or along the side; a dressing or gear corner (armor stand, wall stands for
+  weapons and a shield); in a larger room a sitting spot (one chair and a light).
+- Walking lines: door to the open side of each bed, at least 0.5 m real or one floor piece in game; door to the chest.
+- Light: a candle or lantern near the bed head (corpus: 14 % of beds) and one general light.
+- Clutter: the sleeper's items on stands over the bed or the chest (corpus: 208 wall stands over beds); a rug beside
+  the bed (corpus: about 30 % of beds).
+- Never: cooking stations, forges, workbenches, a mage or rune table (Tyler 06), tables with benches for meals,
+  beds at odd angles to each other (Tyler 10).
+
+**Kitchen corner** (a zone in a home, or its own room in a tavern or hall)
+- Focal point: the cooking fire with the cauldron or cooking station on it.
+- Zones: the fire; a prep surface (`piece_preptable`, a table, `cauldron_ext3_butchertable`); food storage beside it
+  (barrels, sacks as stand items, a food chest); an oven where the stage allows (`piece_oven`).
+- Clutter: food at every stage (raw by the prep table, cooking on the fire, served at the table), tools hung over the
+  prep surface, herbs and meat on stands near the fire (WoW, Skyrim).
+- A kitchen in its own room gets a door to the yard where the plan allows, with fuel and the chopping block outside it
+  (Skyrim, longhouse pantry).
+
+**Tavern** (social building; the common room)
+- Focal point: a central fire (Tyler: middle fires for social rooms; `hearth` preferred to `fire_pit` in taverns,
+  Tyler 06). The bar is the second focus, against one wall, in view of the fire.
+- Zones: the fire ring (benches facing the fire, sized to the hall; existing rule: a ring only in halls of 60 m2 and
+  more); tables in small groups along the walls, each with one seat kind (corpus 91 %); the bar (below); a stair to
+  guest rooms; a kitchen behind the bar or off the room.
+- Walking lines: door to the fire ring, door to the bar, bar to the kitchen, door to the stair. The space behind the
+  bar is clear (Tyler 06: chests blocked it).
+- Clutter: mugs and food on the tables at one or two tables (a feast at one, drinks at another, bare elsewhere),
+  banners on the walls in bays, trophies over the fire or the bar.
+- Never: stacked chests in the room (storage goes behind the bar or in a store room), beds in the common room.
+
+**Bar** (a zone in a tavern or a hall)
+- Core set: a counter (tables in a row or half walls with a top; corpus counters are low stone, grausten, black marble
+  and quarter walls), stools or chairs of one kind in front, kegs at one end (`barrell` in a row, a `fermenter`), shelves
+  or a wall of stands behind with drink and food.
+- Space: a clear strip behind the counter for the server, entered from one end (WoW; Tyler 06).
+- Clutter: mugs on the counter in groups with gaps, a candle at one end, food hung or on stands on the back wall,
+  the bar's banner or sign over the back shelf (WoW, Skyrim).
+
+**Hall and hub** (longhouse, great hall, village hub)
+- Focal point: the high seat or throne (`piece_throne01`, `piece_throne02`) at the far end, or the middle of one long
+  side facing the fire (longhouse); a long fire or hearths down the middle.
+- Zones: benches along the long walls facing the fire (longhouse) or long tables down the sides (great hall); the
+  high seat with a table before it; an entry end with a screen or a draft room and the service doors; wall bays with
+  weapons, shields and banners.
+- Walking lines: the central aisle stays clear from door to high seat (WoW gallery hall, longhouse corridor); hall
+  passages at least 3 floor pieces wide (Tyler: "Wider hallways can be 3 or more").
+- Clutter: dressing in bays between posts, one theme per bay, the same kind repeated per bay with variation (WoW
+  gallery); a chandelier or hanging brazier per bay down the center line; a feast at the high table only.
+- Tie beams in halls large enough (D-128).
+
+**Workshop and smithy**
+- Focal point: the main station (forge with its extensions; workbench with its extensions), back to a wall.
+- Zones: the station with its extensions to its sides (existing rules: forge with anvil 1.5 m to one side, cooler and
+  bellows 1.25 m to the other; workbench chopping block 2 m to one side); material storage (ore and bars on stands,
+  wood stacks, chests with signs); a finished-goods wall (weapons on stands, armor stand); a rest spot (one stool or
+  bench with a drink, the Sawmill "rest corner").
+- Walking lines: door to the front of each station, kept clear for the work place.
+- Never: a second copy of the same extension in front of the station or in the middle of the floor (Tyler 13, forge
+  ext2 and ext4), a spinning wheel by the door (Tyler 15), beds.
+
+**Storehouse**
+- Purpose: storage for the village (D-113: separate from the longhouse). Focal point: the main store wall facing the
+  door, chests in a row or a grid with a sign over each group (corpus: half of chests against a wall, 58 % stacked).
+- Zones: store walls by material (D-016, signs); barrels in rows; a counter or table for counting goods; a cart or
+  crates near the door.
+- Walking lines: door down the middle, a lane in front of each store wall wide enough to open the chests.
+- Here, stacked chests and repeated crates are right: density follows the corpus (storage 4.0 / 7.6 / 10.0 pieces per
+  10 m2).
+
+**Temple**
+- Focal point: the altar at the far wall facing the door (existing rule: benches in two rows and an aisle).
+- Zones: the altar with candles and offerings on stands; seating rows; a side shrine or two along the walls.
+- Light: candles in groups at the altar, braziers in pairs along the aisle; one glow color allowed if it fits the god.
+- Never: beds, cooking, storage stacks.
+
+**Study** (a library or map room in a large home, hall or tower)
+- Focal point: the desk or map table (`piece_cartographytable`, a table with a chair) under a light, or a long reading
+  table under a chandelier (WoW library).
+- Zones: the desk with one chair turned a little as if pushed back; a reading seat in a corner with a light and a rug;
+  walls of stands as shelves (horizontal stands on beams or ledges as shelves).
+- Clutter: maps and papers at the desk (vanilla has few paper items; the cartography table carries the read), a lantern,
+  a drink; a mage table (`piece_magetable` and extensions) only here or in a temple, with its glow as the room's one
+  accent (Tyler 06).
+
+### Vignettes
+
+Small scenes with a story, each tied to a hot spot. A vignette is placed whole or not at all; one or two per home, two
+to four in a tavern or hall. Valheim pieces in parentheses.
+
+1. **Supper left mid-meal.** A table with one seat kind, one seat pushed back and turned 10 to 30 degrees, plates
+   and food on horizontal stands at the places, a drink, a candle (table, chairs or benches, `itemstandh` with cooked
+   meat, bread, mead, `Candle_resin`).
+2. **Pot on the fire.** The cooking station or cauldron on the fire with food on it, raw food on a stand on the prep
+   surface beside it, a tool hung over it (`piece_cookingstation`, `piece_cauldron`, `cauldron_ext*`, `itemstandh`,
+   `itemstand`).
+3. **The head's chair by the fire.** One chair or the high seat facing the fire from 2 m or more, a small table or
+   barrel beside it with a drink and a light, a hide rug before it (`piece_chair02` or `piece_throne01`,
+   `piece_chest_barrel` as a side table, `itemstandh` with mead, `rug_wolf`).
+4. **Fuel by the hearth.** Firewood beside the fire in a wall bay (Cozy Blacksmith Cabin; corpus: wood stacks in 19 %
+   of furnished buildings, median 4). The decorator moves woodpiles outdoors since T-05; whether a small stack beside a
+   hearth is allowed indoors needs Tyler's answer (proposed row below).
+5. **Mending corner.** An armor stand with part of a set on it, a chair beside it, tools and the missing piece on wall
+   stands above (`ArmorStand`, `piece_chair`, `itemstand`).
+6. **Reading or map nook.** A chair in a corner turned to the room, a light beside it, a rug in front, a small table
+   with a book or map item (existing extra "reading corner"; WoW G2 alcove; `piece_cartographytable` in a study).
+7. **Brewing corner.** A fermenter with barrels in a row beside it and mead on a stand on the barrel tops (`fermenter`,
+   `barrell`, `itemstandh`).
+8. **Bar end.** Kegs at the end of the counter, a mug at the tap end, a candle, the bar's banner on the wall behind
+   (WoW A2).
+9. **Trophy bay.** One wall bay between posts with trophies on stands, a banner, and a torch pair either side; the
+   best trophy over the hearth or the high seat (WoW gallery; corpus wall stands by the hearth 558).
+10. **Bedside.** A bed with a nightstand piece and a candle at the head, a chest at the foot, the sleeper's weapon or
+    shield on a stand over the bed, a rug beside (Breezehome; corpus bed relations).
+11. **Couple's bed.** One large bed with a different small piece on each side, a candle on one, a chest at the foot
+    (Ubbe's butchery).
+12. **Work laid out.** A workbench with its extensions, a half-made item on a horizontal stand on the bench top,
+    tools on the wall above, the chopping block 2 m aside, offcuts (wood on a stand) (corpus: wall stands over
+    workbenches 578).
+13. **Smith at the anvil.** The forge with one anvil beside it, a bar or a blade on a stand by the anvil, a cooler
+    and bellows on the other side, ore on a stand at the store side (forge extensions placed by
+    the existing rules).
+14. **Guest bench by the door.** A bench along the wall beside (never in) the door box, a cloak or shield on a wall
+    stand over it (ESO: cloak rack by the entrance).
+15. **Offering at the altar.** Candles in a group at the altar, offerings (food, a trophy, a coin stack) on stands
+    in front.
+16. **Late drink by the fire.** Two chairs angled toward the fire with a small table between, two mugs and a
+    candle on it (BG3 pairs, WoW lounge).
+17. **Window seat.** A bench under a window with a plant on the sill and a rug before it (WoW couch under the
+    window; corpus sill stands 187).
+18. **Store corner at a turn.** At a corner on a walking line, three floor pieces of different heights (a barrel, a
+    crate, a chest), never on the line (WoW F1 landing).
+
+### What the corpus still has to confirm
+
+Each **[confirm]** above, gathered for track B and the next pass (D-136: corpus numbers win where they differ):
+
+- In-room walking line width and the pull-back space behind seats.
+- Share of beds in line with a door, and beds under windows.
+- Zones per room by room size, and hot spots (dressed spots) per room.
+- Rugs per zone, and runner rugs along walking lines.
+- Tables per room by room kind; eating tables side by side.
+- Stone kinds and metal kinds mixed per room; furniture wood families per room (with the catalog's colors).
+- Distance from each stand item to the piece it belongs to (food to cooking or table, tools to stations).
+- Share of wall length dressed per room.
+- Light kinds per room (the building measure is above).

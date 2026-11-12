@@ -783,7 +783,7 @@ Generated tab, which he closed on 2026-11-11, and the private repo's line on der
 3. Windows round 2 (deeper eaves after D-150, wide doors, openings per wall run), every building to s5 (D-153, with the
    Stages tab), memento stands (D-134), decks and tilted trim from the measures (data from 4f27706).
 
-Artifacts: lab page slug ebd4fcaa-85d1-452f-9d94-251d2687967c (version 1794444166-7987, main 4226ceb); progress
+Artifacts: lab page slug ebd4fcaa-85d1-452f-9d94-251d2687967c (version 1794444904-3a2f, main 8bef2b1); progress
 dashboard slug 614b97c4-18f6-4b7a-9882-7055a5d9f388 (DATA block at the top of its script; check it parses before
 each publish).
 

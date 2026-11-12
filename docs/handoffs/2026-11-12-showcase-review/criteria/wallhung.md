@@ -1,4 +1,4 @@
-# Council criteria: wall-hung pieces (track F)
+# Council criteria: attached pieces, wall-hung first (track F)
 
 What a generated s3d3 building is judged by for everything hung on a wall: signs, item stands, wall torches, Dvergr
 wall lanterns, banners, wall ledges (shelves), wall carvings and the cauldron's wall racks. Evidence in
@@ -24,6 +24,7 @@ Pass: 85 points or more of 100, and no hard fail.
 | H2 | A piece hung in the air | No wall within 1.5 m behind it (audit wallOff "no wall behind it") | Tyler: "Some hovered away from the walls". Showcase before: 11 (hub torches turned along the wall) |
 | H3 | A piece turned wrong | Its back away from the wall or along it: the wall on its front side, or a wall at its side within 10 cm and none behind (audit wallTurn); the torch's wall plate is its local -x, the Dvergr lantern's +x, a stand's board -z (lib/wallhang.js HUNG, matching the piece catalog's front sides) | Tyler: "torches oriented the wrong way". Showcase before: 11 |
 | H4 | Pieces over one another | Two hung pieces on one wall whose outlines overlap by 10 % or more of the smaller, at any depth (audit wallStack) | Tyler: "signs were all stacked and layered and smushed randomly together... Some were 3-stacks thick, randomly pushed in front of each other at odd positions". The notice board's three 1 m signs 0.55 m apart overlapped by 45 % |
+| H6 | A standing or hanging light floats | A standing torch whose foot is more than 3 cm over what is under it, or a hanging brazier more than 3 cm under the beam, floor or roof over it (`lab/attach_measure.js`; audit floats; test_structure) | Tyler: "lots of hovering stuff (both walls and on the floor)". Corpus: standing torches 0.75 m over the floor piece's pivot, foot on the floor's top; brazier chains 5 cm into what is over them. Showcase before: 42 of 50 standing torches 10 to 64 cm up |
 | H5 | A piece sunk deeper than builders sink it | What shows of it more than 1.5 cm (a banner 3 cm) into what shows of a wall, beam, post or roof, past the depth it carries as a clip made on purpose (audit mountClip; the generator marks pieces it sinks into uneven walls, up to 8 to 10 cm, as `#VillheimClips`) | D-098, D-127. Corpus decor use, 25th percentile of pieces touching their wall: torches 9 cm into it, stands 13 cm |
 
 ## Scored items (100 points)
@@ -48,6 +49,9 @@ Pass: 85 points or more of 100, and no hard fail.
 
 ## Notes for the council
 
+- The principle covers anything attached: what stands on a floor, a table or a shelf sits on it (audit floats, watched:
+  33 in the showcase after, mostly flat stands over shelves and hub furniture 3 to 4 cm up, for tracks E and G), what
+  hangs from a ceiling hangs from it, and each faces the way the catalog's front side says.
 - What stands on a floor or furniture (signs set on edge between bookends in a corpus set, a ledge as a cabinet's top)
   is judged by the furniture criteria, not by these. The roof carvings on gable ends are roof trim (track D).
 - A clip made on purpose is fine up to its mark (D-098): the generator sinks a piece into an uneven wall until half its

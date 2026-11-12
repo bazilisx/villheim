@@ -1,9 +1,24 @@
 # Track F: wall-hung pieces (showcase review, 2026-11-12)
 
-Branch `design/wip-wallhung`. Tyler (TYLER_NOTES.md, last section): "Signs and stands and sometimes lights that werent
+Branch `design/wip-wallhung`. Tyler (TYLER_NOTES.md, the night's note on wall pieces): "Signs and stands and sometimes lights that werent
 touching walls and were a foot or more away, as well as their random assorted layout and positioning was the issue";
 earlier "signs and item stands sticking out from the wall, not attached", "torches oriented the wrong way", wood_ledge
 "like throwing spaghetti at a wall". Criteria: `criteria/wallhung.md`.
+
+## By principle
+
+Tyler's signs, stands, torches and ledges are cases of one principle: anything attached to something (a wall, a beam, a
+post, a ceiling, a roof, a floor, a table, a shelf) sits on it the way builders attach it, faces the way it is meant
+to, and is placed with intent. Measured for every attached kind, not only the ones he named:
+
+| Principle | Cases found (showcase before, same measures) | Fixed here | Left, with owner |
+|---|---|---|---|
+| Hung on a wall: on what shows of the wall at its own height | signs, item stands, wall torches, Dvergr lanterns, banners (inside and out), wall ledges, the cauldron's racks, door torches outside, motif props: 115 of 314 more than 3 cm off, 11 in the air, 26 too deep, 43 half off | all of these (`hang()`) | the roof carvings on gable ends (track D) |
+| Turned the way it is meant to | hub torches with the arm along the wall (11); every hung prefab's wall side checked against the catalog | hung pieces | furniture fronts (a wardrobe and a bed turned around, Tyler on 03 and 09): track E, with the catalog's front sides |
+| Standing on what holds it | standing torches 10 cm over every floor (42 of 50 in the showcase), hub torches up to 64 cm; hub benches and chests 3 to 4 cm (stand 0.125 m against the corpus 0.097 to 0.10 m over the floor pivot); a mead cauldron 1.9 m over the floor under a gallery; flat stands up to 80 cm over their shelf | standing torches (`settle()`, decorator base 0.65 m) | hub furniture height and the cauldron (track E); flat stands on shelves (track G) |
+| Hanging from what holds it | ceiling braziers set at a computed height: one hub brazier 25 cm under its roof; the decorator's chain top 35 cm into the ceiling | braziers (`hangFrom()`, corpus 5 cm in) | none known |
+| Not over or in front of another | signs 45 % over each other on the notice board, torches over stands, a spice rack over ledges | the overlap guard in `hang()`; notice layout | furniture on furniture (a chest on a table in the throne shot): track E |
+| Placed with intent | a kit every 2.5 to 3.2 m with random jitter; ledges in 12 of 16 buildings | wall slots by intent, ledge cap (D-166) | the decorator's lights (`lightsIn` ranks by darkness with noise; track E can move it to `plan()`); what sits on tables and shelves (track G) |
 
 ## What was done
 
@@ -15,6 +30,7 @@ earlier "signs and item stands sticking out from the wall, not attached", "torch
 | ed8e6cb | Pool audit measures wallOff, wallHalf, wallTurn, wallStack, gated (`lib/audit.js`); `lab/test_structure.js` wall checks; motif props (`lib/motifs.js`) and the vignette torch (`lib/kitbash.js`) through hang() |
 | a418715 | Notice board as a column of notices per face; `lab/render_walls.js` (wall views and close-ups) |
 | 080cfc5 | A set's own pieces count as wall when its hung pieces go up; the spice rack's back plate |
+| a5b8a10 | Standing and hanging pieces: `attach`, `settle`, `hangFrom` in `lib/wallhang.js`; standing torch base; hub torches and braziers; `lab/attach_measure.js`; the audit's watched floats measure; test_structure checks |
 
 ## How it works
 
@@ -85,6 +101,11 @@ dwarven workshop, byzantine temple, slavic hub s4, anglo-saxon storehouse): befo
 5 in the air, 14 too deep, 24 half off, 4 turned; after 108, 102 flush, 2 off (the BK-drawers ledges), 4 in the air
 (gable dragons), none too deep, half off, turned or stacked.
 
+Standing and hanging pieces (`lab/attach_measure.js`, decor that neither stands on nor hangs from anything within 3 cm):
+showcase 77 of 656 before, 33 of 587 after. Corpus: standing torches 0.75 m over the wood_floor piece's pivot (most of
+100 in liked builds), their foot on the floor's collider top (0.097 m); chests, benches, chairs, thrones and armor
+stands 0.09 to 0.10 m over it; ceiling braziers' chain top 5 cm into what is over them (p50 of 739; p10 13 cm).
+
 Arrangement (`/tmp/wallhung-scripts/arrange.js`): showcase wood_ledge 107 pieces in 12 buildings before, 36 in 9 after;
 fresh set 45 in 9, 25 in 7. Wall lights with another within 1.25 m on one wall: 2 of 63 after (corpus: 96 % alone).
 
@@ -111,7 +132,10 @@ apart, 71 % at one height; stands 59 % alone, rows at one height 49 %; signs 68 
 - `node lab/test_structure.js`: all rules hold on 36 designs, with the new wall checks on each and on the Meadows hub
   s5d3 (notice board, catalog back sides, hang on a plinth wall).
 - `node lab/test_hub.js`: on 3266467 the notice board test failed for the Plains middle-eastern part hall (signs did
-  not go up against the board's posts); a418715 lays the notices in a column. The rerun is in the report.
+  not go up against the board's posts); a418715 lays the notices in a column, and all hub tests pass on 080cfc5 (main
+  at 0d22c7d passes too). The rerun on a5b8a10 is in the report.
+- Pool audit on the showcase after: wallOff 1 (a BK-drawers ledge), wallTurn, wallHalf, wallStack 0, floats 33
+  (watched).
 - The game bundle (`lib/build_engine.js` to /tmp) runs vhMake for the Meadows hub in a plain VM context.
 - Renders in `/tmp/wallhung-renders/` (not committed): `0N-close-before.png` and `-after.png` for 01, 02, 06, 14 show
   each piece from the side and the front; before, the hub torches hang in front of the wood wall over the plinth with
@@ -121,7 +145,8 @@ apart, 71 % at one height; stands 59 % alone, rows at one height 49 %; signs 68 
 
 - `lib/kitbash.js` (track E): `dressWalls` calls the new `dressWallsPlanned` and `busyAt` (its walk removed); fit's
   hung pieces through `hangB().hang` with `wallFaceAt`; the slide re-hangs; vignettes' torch; `LEDGE_KITS`.
-- `lib/decorate.js` (track E): putMount calls hang() for HUNG prefabs; auditOne honors `p.wclip`.
+- `lib/decorate.js` (track E): putMount calls hang() for HUNG prefabs; auditOne honors `p.wclip`; the standing
+  torches' base 0.65 m; lightsIn's brazier through hangFrom.
 - `lib/generate.js` (track D): `doorTorchOnWall` called from doorLights.
 - `lib/details.js` (track D): `bannersOnWall` called from hangBanners.
 - `lib/build_engine.js`: wallhang.js in the bundle list.
@@ -137,9 +162,12 @@ apart, 71 % at one height; stands 59 % alone, rows at one height 49 %; signs 68 
    with gaps it reads as a pile. Sets that are a row of the same piece should keep all of it or none (track E or G).
 4. Decorator lights (`lib/decorate.js` lightsIn) still rank wall spots by darkness and purpose with a little noise; the
    planned slots are used by the library's wall pass only. Track E can move lightsIn to `plan()`.
-5. The corpus pass with fine wall parts (`/tmp/wallhung-scripts/corpus_cells.js`) is slow (half an hour for the liked
-   builds); the table above is from the coarse pass. Stone walls' coarse box sits at the outermost stone, so the
-   corpus depths into stone are a few cm deeper than shown.
+5. The corpus pass with fine wall parts (`/tmp/wallhung-scripts/corpus_cells.js`) ran out of memory three times on the
+   liked builds (2 cores, 7 GB shared); the table above is from the coarse pass. Stone walls' coarse box sits at the
+   outermost stone, so the corpus depths into stone are a few cm deeper than shown.
+7. Hub furniture stands at 0.125 m over the floor pivot against the corpus 0.097 to 0.10 m (benches and chests 3 to 4 cm
+   up); a mead cauldron on a gallery 1.9 m over the floor under it; flat stands over their shelves (`lab/attach_measure.js`
+   lists them). Tracks E and G.
 6. Not tried in the game.
 
 ## Proposed Decisions rows

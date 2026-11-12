@@ -63,7 +63,8 @@ class Build {
     // Ashlands timber stands in for wood pieces whose pivots sit elsewhere (measured from the game's snap points,
     // 2026-11-09): the 2 m beam hangs 1 m under its pivot, the 1 m pole under its, the 45 degree beam rises from its
     // foot. The generator places by the wood pieces' pivots, so these move to match.
-    if (PIVOT_SHIFT[name]) y += PIVOT_SHIFT[name];
+    // (a motif's pieces come at the pivots corpus builders set, so they keep them)
+    if (PIVOT_SHIFT[name] && !(extra && extra.motif)) y += PIVOT_SHIFT[name];
     const key = `${name}|${Math.round(x * 100)}|${Math.round(y * 100)}|${Math.round(z * 100)}|${Math.round(yaw) % 360}`; // rounded so -0.00 and 0.00 match
     if (this.keys.has(key)) return; // the same piece in the same place once only (porch eaves, meeting wings)
     this.keys.add(key);
@@ -73,7 +74,11 @@ class Build {
 
 // Wing-local (u along the ridge, v across, local yaw) to world. alpha is the wing's yaw: 0 = ridge along x,
 // 270 = ridge along z (Unity's yaw maps local x to (cos a, -sin a)).
-const PIVOT_SHIFT = { ashwood_beam_2m: 1, ashwood_pole_1m: 0.5, ashwood_wall_beam_45: -1, ashwood_wall_beam_45_alt: -1 };
+// The dark wood beams' colliders stand 0.05 to 0.45 m over their pivot where the wood beam's is centred on it
+// (data/piece-models.json): placed as wood beams, a dark wood band rose 0.25 m into a doorway (a 0.35 m kerb at the
+// upper doors of the Plains and Mistlands homes) and a bar's top beam hovered 0.15 m over its half walls (showcase 06,
+// Tyler: "the darkwood beams are hovering above the woodwall_half").
+const PIVOT_SHIFT = { ashwood_beam_2m: 1, ashwood_pole_1m: 0.5, ashwood_wall_beam_45: -1, ashwood_wall_beam_45_alt: -1, darkwood_beam: -0.25, darkwood_beam4x4: -0.25 };
 function toWorld(w, u, v, yaw) {
   const a = w.alpha * Math.PI / 180;
   return [w.cx + u * Math.cos(a) + v * Math.sin(a), w.cz - u * Math.sin(a) + v * Math.cos(a), norm(yaw + w.alpha)];

@@ -88,7 +88,7 @@ const catCount = {};
         const u = bdx * lx[0] + bdz * lx[1], v = bdx * lz[0] + bdz * lz[1];
         if (Math.hypot(u, v) > 0.02) { const i = Math.abs(u) > Math.abs(v) ? (u > 0 ? 0 : 1) : (v > 0 ? 2 : 3); s.dir[i]++; s.dirN++; b.dir[i]++; }
       }
-      if (covered && !['nature', 'misc'].includes(c.role)) areaItems.push(p);
+      if (covered && c.role !== 'nature' && !/^(Pickable_|vfx_|fx_|sfx_|Spawner|LocationProxy)/.test(n)) areaItems.push(p);
     }
     for (const [n, k] of counts) { const s = st(n); const b = acc.get(n);
       if (b) { const f = v => v / b.n, hs = b.hf.slice().sort((x, y) => x - y); s.pb = s.pb || []; const dn = b.dir.reduce((x, y) => x + y, 0); s.pb.push([w, f(b.cov), f(b.roof), f(b.gable), f(b.yard), f(b.deck), f(b.wall), f(b.hung), f(b.ceil), f(b.onTop), hs.length ? hs[hs.length >> 1] : null, b.hf.length]); if (dn) { s.dirB = s.dirB || [0, 0, 0, 0]; for (let i = 0; i < 4; i++) s.dirB[i] += w * b.dir[i] / dn; s.dirBn = (s.dirBn || 0) + 1; } } s.builds++; s.wbuilds += w; s.per.push([k, w, nb - 1]); s.cats[cat] = (s.cats[cat] || 0) + 1; }

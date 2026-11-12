@@ -1,0 +1,2203 @@
+{
+ "reference": "corpus builds in categories ['advanced-base', 'blacksmith', 'building', 'castle', 'interior-design', 'longhouse', 'portal-hub', 'starter-home', 'storage', 'tavern', 'temple', 'tower', 'tree-house', 'village'] with 40 m2 or more of floor: 909 builds",
+ "groups": [
+  {
+   "group": "wall torch (piece_walltorch)",
+   "corpus_share_using": 0.47,
+   "corpus_count_p50": 8,
+   "corpus_count_p90": 32,
+   "corpus_per100m2_p50_when_used": 0.89,
+   "corpus_per100m2_p90_when_used": 2.6,
+   "corpus_per100m2_mean_all": 0.64,
+   "showcase_designs_using": 14,
+   "showcase_count_median": 2.5,
+   "showcase_counts": [
+    26,
+    17,
+    3,
+    1,
+    2,
+    3,
+    3,
+    2,
+    2,
+    4,
+    0,
+    6,
+    0,
+    4,
+    1,
+    2
+   ],
+   "showcase_per100m2_median": 1.17,
+   "showcase_over_p90": 2
+  },
+  {
+   "group": "all torches and lanterns",
+   "corpus_share_using": 0.82,
+   "corpus_count_p50": 19,
+   "corpus_count_p90": 99,
+   "corpus_per100m2_p50_when_used": 2.21,
+   "corpus_per100m2_p90_when_used": 6.4,
+   "corpus_per100m2_mean_all": 3.36,
+   "showcase_designs_using": 15,
+   "showcase_count_median": 5.5,
+   "showcase_counts": [
+    79,
+    45,
+    16,
+    6,
+    5,
+    6,
+    6,
+    3,
+    2,
+    5,
+    5,
+    7,
+    0,
+    6,
+    3,
+    4
+   ],
+   "showcase_per100m2_median": 3.42,
+   "showcase_over_p90": 2
+  },
+  {
+   "group": "resin candles",
+   "corpus_share_using": 0.1,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 30,
+   "corpus_per100m2_p50_when_used": 0.39,
+   "corpus_per100m2_p90_when_used": 2.27,
+   "corpus_per100m2_mean_all": 0.12,
+   "showcase_designs_using": 4,
+   "showcase_count_median": 0.0,
+   "showcase_counts": [
+    23,
+    17,
+    7,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "showcase_per100m2_median": 0.0,
+   "showcase_over_p90": 1
+  },
+  {
+   "group": "drapes and cloth hangings",
+   "corpus_share_using": 0.26,
+   "corpus_count_p50": 9,
+   "corpus_count_p90": 60,
+   "corpus_per100m2_p50_when_used": 0.5,
+   "corpus_per100m2_p90_when_used": 2.53,
+   "corpus_per100m2_mean_all": 0.31,
+   "showcase_designs_using": 5,
+   "showcase_count_median": 0.0,
+   "showcase_counts": [
+    0,
+    6,
+    0,
+    1,
+    0,
+    1,
+    1,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "showcase_per100m2_median": 0.0,
+   "showcase_over_p90": 0
+  },
+  {
+   "group": "banners",
+   "corpus_share_using": 0.56,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 32,
+   "corpus_per100m2_p50_when_used": 0.63,
+   "corpus_per100m2_p90_when_used": 2.51,
+   "corpus_per100m2_mean_all": 0.69,
+   "showcase_designs_using": 3,
+   "showcase_count_median": 0.0,
+   "showcase_counts": [
+    0,
+    0,
+    2,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "showcase_per100m2_median": 0.0,
+   "showcase_over_p90": 0
+  },
+  {
+   "group": "sitting logs (piece_logbench01)",
+   "corpus_share_using": 0.11,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 5,
+   "corpus_per100m2_p50_when_used": 0.22,
+   "corpus_per100m2_p90_when_used": 1.11,
+   "corpus_per100m2_mean_all": 0.05,
+   "showcase_designs_using": 6,
+   "showcase_count_median": 0.0,
+   "showcase_counts": [
+    0,
+    0,
+    1,
+    0,
+    8,
+    0,
+    0,
+    1,
+    2,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    1
+   ],
+   "showcase_per100m2_median": 0.0,
+   "showcase_over_p90": 1
+  },
+  {
+   "group": "chests and barrels",
+   "corpus_share_using": 0.71,
+   "corpus_count_p50": 19,
+   "corpus_count_p90": 90,
+   "corpus_per100m2_p50_when_used": 2.44,
+   "corpus_per100m2_p90_when_used": 10.57,
+   "corpus_per100m2_mean_all": 3.24,
+   "showcase_designs_using": 16,
+   "showcase_count_median": 5.0,
+   "showcase_counts": [
+    14,
+    13,
+    5,
+    6,
+    6,
+    18,
+    5,
+    3,
+    6,
+    4,
+    4,
+    5,
+    3,
+    8,
+    5,
+    1
+   ],
+   "showcase_per100m2_median": 2.41,
+   "showcase_over_p90": 0
+  },
+  {
+   "group": "wood_ledge",
+   "corpus_share_using": 0.03,
+   "corpus_count_p50": 19,
+   "corpus_count_p90": 711,
+   "corpus_per100m2_p50_when_used": 1.72,
+   "corpus_per100m2_p90_when_used": 22.38,
+   "corpus_per100m2_mean_all": 0.58,
+   "showcase_designs_using": 12,
+   "showcase_count_median": 5.0,
+   "showcase_counts": [
+    17,
+    15,
+    9,
+    6,
+    2,
+    24,
+    0,
+    1,
+    14,
+    0,
+    0,
+    4,
+    2,
+    11,
+    6,
+    0
+   ],
+   "showcase_per100m2_median": 1.67,
+   "showcase_over_p90": 0
+  },
+  {
+   "group": "pots",
+   "corpus_share_using": 0.13,
+   "corpus_count_p50": 5,
+   "corpus_count_p90": 26,
+   "corpus_per100m2_p50_when_used": 0.29,
+   "corpus_per100m2_p90_when_used": 1.19,
+   "corpus_per100m2_mean_all": 0.08,
+   "showcase_designs_using": 6,
+   "showcase_count_median": 0.0,
+   "showcase_counts": [
+    2,
+    2,
+    0,
+    0,
+    0,
+    3,
+    0,
+    0,
+    1,
+    0,
+    0,
+    1,
+    3,
+    0,
+    0,
+    0
+   ],
+   "showcase_per100m2_median": 0.0,
+   "showcase_over_p90": 1
+  },
+  {
+   "group": "item stands",
+   "corpus_share_using": 0.52,
+   "corpus_count_p50": 27,
+   "corpus_count_p90": 240,
+   "corpus_per100m2_p50_when_used": 2.71,
+   "corpus_per100m2_p90_when_used": 17.69,
+   "corpus_per100m2_mean_all": 4.81,
+   "showcase_designs_using": 16,
+   "showcase_count_median": 13.5,
+   "showcase_counts": [
+    64,
+    54,
+    34,
+    14,
+    8,
+    76,
+    8,
+    13,
+    28,
+    8,
+    3,
+    23,
+    2,
+    17,
+    9,
+    1
+   ],
+   "showcase_per100m2_median": 5.89,
+   "showcase_over_p90": 1
+  },
+  {
+   "group": "rugs",
+   "corpus_share_using": 0.63,
+   "corpus_count_p50": 12,
+   "corpus_count_p90": 77,
+   "corpus_per100m2_p50_when_used": 1.59,
+   "corpus_per100m2_p90_when_used": 4.45,
+   "corpus_per100m2_mean_all": 1.54,
+   "showcase_designs_using": 10,
+   "showcase_count_median": 1.0,
+   "showcase_counts": [
+    8,
+    6,
+    4,
+    5,
+    1,
+    2,
+    4,
+    2,
+    0,
+    1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "showcase_per100m2_median": 0.51,
+   "showcase_over_p90": 0
+  },
+  {
+   "group": "seats (all)",
+   "corpus_share_using": 0.63,
+   "corpus_count_p50": 10,
+   "corpus_count_p90": 51,
+   "corpus_per100m2_p50_when_used": 1.11,
+   "corpus_per100m2_p90_when_used": 4.76,
+   "corpus_per100m2_mean_all": 1.67,
+   "showcase_designs_using": 13,
+   "showcase_count_median": 5.0,
+   "showcase_counts": [
+    12,
+    6,
+    7,
+    16,
+    13,
+    10,
+    4,
+    3,
+    6,
+    0,
+    2,
+    6,
+    0,
+    2,
+    0,
+    2
+   ],
+   "showcase_per100m2_median": 1.53,
+   "showcase_over_p90": 2
+  },
+  {
+   "group": "tables (all)",
+   "corpus_share_using": 0.57,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 11,
+   "corpus_per100m2_p50_when_used": 0.31,
+   "corpus_per100m2_p90_when_used": 0.88,
+   "corpus_per100m2_mean_all": 0.31,
+   "showcase_designs_using": 10,
+   "showcase_count_median": 1.0,
+   "showcase_counts": [
+    14,
+    5,
+    5,
+    6,
+    4,
+    8,
+    0,
+    0,
+    3,
+    1,
+    1,
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "showcase_per100m2_median": 0.77,
+   "showcase_over_p90": 7
+  },
+  {
+   "group": "beds (all)",
+   "corpus_share_using": 0.54,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 10,
+   "corpus_per100m2_p50_when_used": 0.26,
+   "corpus_per100m2_p90_when_used": 0.76,
+   "corpus_per100m2_mean_all": 0.27,
+   "showcase_designs_using": 8,
+   "showcase_count_median": 0.5,
+   "showcase_counts": [
+    0,
+    0,
+    0,
+    0,
+    2,
+    4,
+    0,
+    1,
+    1,
+    2,
+    3,
+    1,
+    0,
+    0,
+    0,
+    1
+   ],
+   "showcase_per100m2_median": 0.15,
+   "showcase_over_p90": 5
+  }
+ ],
+ "presence": [
+  {
+   "id": "wood_ledge",
+   "name": "small wood ledge",
+   "kind": "misc",
+   "showcase_designs": 12,
+   "showcase_total": 111,
+   "corpus_share": 0.034,
+   "corpus_count_p50": 19,
+   "corpus_count_p90": 711,
+   "presence_ratio": 22.0
+  },
+  {
+   "id": "Pickable_Thistle",
+   "name": "pickable thistle",
+   "kind": "item",
+   "showcase_designs": 9,
+   "showcase_total": 22,
+   "corpus_share": 0.04,
+   "corpus_count_p50": 5,
+   "corpus_count_p90": 49,
+   "presence_ratio": 14.2
+  },
+  {
+   "id": "fire_pit",
+   "name": "campfire ring",
+   "kind": "fire",
+   "showcase_designs": 12,
+   "showcase_total": 14,
+   "corpus_share": 0.252,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 5,
+   "presence_ratio": 3.0
+  },
+  {
+   "id": "itemstandh",
+   "name": "flat item stand (shelf peg)",
+   "kind": "display-stand",
+   "showcase_designs": 14,
+   "showcase_total": 191,
+   "corpus_share": 0.384,
+   "corpus_count_p50": 18,
+   "corpus_count_p90": 167,
+   "presence_ratio": 2.3
+  },
+  {
+   "id": "piece_bench01",
+   "name": "plain plank bench",
+   "kind": "seat",
+   "showcase_designs": 11,
+   "showcase_total": 20,
+   "corpus_share": 0.233,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 12,
+   "presence_ratio": 2.9
+  },
+  {
+   "id": "Pickable_Dandelion",
+   "name": "pickable dandelion",
+   "kind": "item",
+   "showcase_designs": 9,
+   "showcase_total": 13,
+   "corpus_share": 0.123,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 11,
+   "presence_ratio": 4.6
+  },
+  {
+   "id": "piece_walltorch",
+   "name": "wall sconce torch",
+   "kind": "light",
+   "showcase_designs": 14,
+   "showcase_total": 76,
+   "corpus_share": 0.469,
+   "corpus_count_p50": 8,
+   "corpus_count_p90": 32,
+   "presence_ratio": 1.9
+  },
+  {
+   "id": "Pickable_Mushroom_yellow",
+   "name": "pickable mushroom yellow",
+   "kind": "item",
+   "showcase_designs": 7,
+   "showcase_total": 16,
+   "corpus_share": 0.037,
+   "corpus_count_p50": 20,
+   "corpus_count_p90": 409,
+   "presence_ratio": 11.7
+  },
+  {
+   "id": "piece_chest_barrel",
+   "name": "barrel",
+   "kind": "storage",
+   "showcase_designs": 9,
+   "showcase_total": 22,
+   "corpus_share": 0.172,
+   "corpus_count_p50": 8,
+   "corpus_count_p90": 34,
+   "presence_ratio": 3.3
+  },
+  {
+   "id": "piece_groundtorch_wood",
+   "name": "wooden standing torch",
+   "kind": "light",
+   "showcase_designs": 9,
+   "showcase_total": 50,
+   "corpus_share": 0.193,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 20,
+   "presence_ratio": 2.9
+  },
+  {
+   "id": "Pickable_Fiddlehead",
+   "name": "pickable fiddlehead",
+   "kind": "item",
+   "showcase_designs": 6,
+   "showcase_total": 7,
+   "corpus_share": 0.012,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 18,
+   "presence_ratio": 31.0
+  },
+  {
+   "id": "Bush01_heath",
+   "name": "bush01 heath",
+   "kind": "plant",
+   "showcase_designs": 6,
+   "showcase_total": 17,
+   "corpus_share": 0.029,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 28,
+   "presence_ratio": 13.1
+  },
+  {
+   "id": "wood_fence",
+   "name": "roundpole fence",
+   "kind": "fence",
+   "showcase_designs": 7,
+   "showcase_total": 183,
+   "corpus_share": 0.096,
+   "corpus_count_p50": 12,
+   "corpus_count_p90": 44,
+   "presence_ratio": 4.6
+  },
+  {
+   "id": "Pickable_Mushroom",
+   "name": "pickable mushroom",
+   "kind": "item",
+   "showcase_designs": 6,
+   "showcase_total": 11,
+   "corpus_share": 0.037,
+   "corpus_count_p50": 5,
+   "corpus_count_p90": 38,
+   "presence_ratio": 10.0
+  },
+  {
+   "id": "dvergrprops_stool",
+   "name": "dvergr stool",
+   "kind": "seat",
+   "showcase_designs": 5,
+   "showcase_total": 5,
+   "corpus_share": 0.017,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 7,
+   "presence_ratio": 18.9
+  },
+  {
+   "id": "itemstand",
+   "name": "wall item stand",
+   "kind": "display-stand",
+   "showcase_designs": 12,
+   "showcase_total": 171,
+   "corpus_share": 0.459,
+   "corpus_count_p50": 13,
+   "corpus_count_p90": 115,
+   "presence_ratio": 1.6
+  },
+  {
+   "id": "piece_chest_wood",
+   "name": "small wooden chest",
+   "kind": "storage",
+   "showcase_designs": 12,
+   "showcase_total": 55,
+   "corpus_share": 0.476,
+   "corpus_count_p50": 8,
+   "corpus_count_p90": 52,
+   "presence_ratio": 1.6
+  },
+  {
+   "id": "piece_logbench01",
+   "name": "sitting log",
+   "kind": "seat",
+   "showcase_designs": 6,
+   "showcase_total": 15,
+   "corpus_share": 0.113,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 5,
+   "presence_ratio": 3.3
+  },
+  {
+   "id": "Pickable_Mushroom_blue",
+   "name": "pickable mushroom blue",
+   "kind": "item",
+   "showcase_designs": 4,
+   "showcase_total": 6,
+   "corpus_share": 0.008,
+   "corpus_count_p50": 7,
+   "corpus_count_p90": 14,
+   "presence_ratio": 32.5
+  },
+  {
+   "id": "stone_fence",
+   "name": "stone fence",
+   "kind": "fence",
+   "showcase_designs": 4,
+   "showcase_total": 73,
+   "corpus_share": 0.013,
+   "corpus_count_p50": 46,
+   "corpus_count_p90": 575,
+   "presence_ratio": 18.9
+  },
+  {
+   "id": "piece_blackmarble_bench",
+   "name": "black marble bench",
+   "kind": "seat",
+   "showcase_designs": 5,
+   "showcase_total": 9,
+   "corpus_share": 0.101,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 12,
+   "presence_ratio": 3.1
+  },
+  {
+   "id": "Pickable_Barley",
+   "name": "pickable barley",
+   "kind": "item",
+   "showcase_designs": 3,
+   "showcase_total": 15,
+   "corpus_share": 0.001,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 6,
+   "presence_ratio": 37.5
+  },
+  {
+   "id": "FirTree_small",
+   "name": "fir tree small",
+   "kind": "plant",
+   "showcase_designs": 4,
+   "showcase_total": 10,
+   "corpus_share": 0.067,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 14,
+   "presence_ratio": 3.7
+  },
+  {
+   "id": "VineGreen",
+   "name": "vine green",
+   "kind": "plant",
+   "showcase_designs": 3,
+   "showcase_total": 44,
+   "corpus_share": 0.009,
+   "corpus_count_p50": 45,
+   "corpus_count_p90": 75,
+   "presence_ratio": 21.3
+  },
+  {
+   "id": "piece_pot1",
+   "name": "medium green pot",
+   "kind": "container-decor",
+   "showcase_designs": 4,
+   "showcase_total": 5,
+   "corpus_share": 0.076,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 9,
+   "presence_ratio": 3.3
+  },
+  {
+   "id": "VineAsh",
+   "name": "vine ash",
+   "kind": "plant",
+   "showcase_designs": 3,
+   "showcase_total": 52,
+   "corpus_share": 0.014,
+   "corpus_count_p50": 63,
+   "corpus_count_p90": 144,
+   "presence_ratio": 13.1
+  },
+  {
+   "id": "dvergrprops_table",
+   "name": "dvergr table",
+   "kind": "table",
+   "showcase_designs": 3,
+   "showcase_total": 4,
+   "corpus_share": 0.014,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 326,
+   "presence_ratio": 13.1
+  },
+  {
+   "id": "YggaShoot_small1",
+   "name": "ygga shoot small1",
+   "kind": "plant",
+   "showcase_designs": 3,
+   "showcase_total": 9,
+   "corpus_share": 0.017,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 21,
+   "presence_ratio": 11.4
+  },
+  {
+   "id": "dvergrprops_crate_long",
+   "name": "dvergr long crate",
+   "kind": "storage",
+   "showcase_designs": 3,
+   "showcase_total": 3,
+   "corpus_share": 0.017,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 162,
+   "presence_ratio": 11.4
+  },
+  {
+   "id": "ArmorStand",
+   "name": "armor stand",
+   "kind": "display-stand",
+   "showcase_designs": 8,
+   "showcase_total": 13,
+   "corpus_share": 0.34,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 15,
+   "presence_ratio": 1.5
+  },
+  {
+   "id": "piece_cookingstation",
+   "name": "cooking spit",
+   "kind": "station",
+   "showcase_designs": 7,
+   "showcase_total": 7,
+   "corpus_share": 0.283,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 6,
+   "presence_ratio": 1.5
+  },
+  {
+   "id": "Beech_small1",
+   "name": "beech small1",
+   "kind": "plant",
+   "showcase_designs": 3,
+   "showcase_total": 3,
+   "corpus_share": 0.033,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 26,
+   "presence_ratio": 5.7
+  },
+  {
+   "id": "shrub_2_heath",
+   "name": "shrub 2 heath",
+   "kind": "plant",
+   "showcase_designs": 3,
+   "showcase_total": 4,
+   "corpus_share": 0.04,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 22,
+   "presence_ratio": 4.7
+  },
+  {
+   "id": "Candle_resin",
+   "name": "resin candle",
+   "kind": "light",
+   "showcase_designs": 4,
+   "showcase_total": 48,
+   "corpus_share": 0.103,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 30,
+   "presence_ratio": 2.4
+  },
+  {
+   "id": "BlueberryBush",
+   "name": "blueberry bush",
+   "kind": "plant",
+   "showcase_designs": 3,
+   "showcase_total": 5,
+   "corpus_share": 0.051,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 17,
+   "presence_ratio": 3.7
+  },
+  {
+   "id": "Pickable_Onion",
+   "name": "pickable onion",
+   "kind": "item",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.0,
+   "corpus_count_p50": null,
+   "corpus_count_p90": null,
+   "presence_ratio": 25.0
+  },
+  {
+   "id": "Pickable_Turnip",
+   "name": "pickable turnip",
+   "kind": "item",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.0,
+   "corpus_count_p50": null,
+   "corpus_count_p90": null,
+   "presence_ratio": 25.0
+  },
+  {
+   "id": "AshlandsBush2",
+   "name": "ashlands bush2",
+   "kind": "plant",
+   "showcase_designs": 2,
+   "showcase_total": 5,
+   "corpus_share": 0.001,
+   "corpus_count_p50": 54,
+   "corpus_count_p90": 54,
+   "presence_ratio": 25.0
+  },
+  {
+   "id": "piece_blackwood_bench01",
+   "name": "ashwood bench",
+   "kind": "seat",
+   "showcase_designs": 3,
+   "showcase_total": 3,
+   "corpus_share": 0.067,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 7,
+   "presence_ratio": 2.8
+  },
+  {
+   "id": "rug_asksvin",
+   "name": "asksvin hide rug",
+   "kind": "rug",
+   "showcase_designs": 3,
+   "showcase_total": 3,
+   "corpus_share": 0.068,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 10,
+   "presence_ratio": 2.7
+  },
+  {
+   "id": "piece_pot3",
+   "name": "small green pot",
+   "kind": "container-decor",
+   "showcase_designs": 3,
+   "showcase_total": 3,
+   "corpus_share": 0.08,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 9,
+   "presence_ratio": 2.3
+  },
+  {
+   "id": "dvergrprops_crate",
+   "name": "dvergr crate",
+   "kind": "storage",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.02,
+   "corpus_count_p50": 5,
+   "corpus_count_p90": 32,
+   "presence_ratio": 6.3
+  },
+  {
+   "id": "piece_groundtorch_green",
+   "name": "iron standing torch, green flame",
+   "kind": "light",
+   "showcase_designs": 3,
+   "showcase_total": 4,
+   "corpus_share": 0.088,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 37,
+   "presence_ratio": 2.1
+  },
+  {
+   "id": "dvergrprops_lantern_standing",
+   "name": "dvergr standing lantern",
+   "kind": "light",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.029,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 46,
+   "presence_ratio": 4.4
+  },
+  {
+   "id": "CloudberryBush",
+   "name": "cloudberry bush",
+   "kind": "plant",
+   "showcase_designs": 2,
+   "showcase_total": 7,
+   "corpus_share": 0.03,
+   "corpus_count_p50": 9,
+   "corpus_count_p90": 40,
+   "presence_ratio": 4.2
+  },
+  {
+   "id": "FeastPlains",
+   "name": "plains pie picnic",
+   "kind": "food",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.03,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 3,
+   "presence_ratio": 4.2
+  },
+  {
+   "id": "bed",
+   "name": "simple straw bed",
+   "kind": "bed",
+   "showcase_designs": 5,
+   "showcase_total": 12,
+   "corpus_share": 0.219,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 6,
+   "presence_ratio": 1.4
+  },
+  {
+   "id": "rug_wolf",
+   "name": "wolf fur rug",
+   "kind": "rug",
+   "showcase_designs": 7,
+   "showcase_total": 18,
+   "corpus_share": 0.347,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 18,
+   "presence_ratio": 1.3
+  },
+  {
+   "id": "vines",
+   "name": "climbing vines",
+   "kind": "plant",
+   "showcase_designs": 3,
+   "showcase_total": 129,
+   "corpus_share": 0.102,
+   "corpus_count_p50": 39,
+   "corpus_count_p90": 301,
+   "presence_ratio": 1.8
+  },
+  {
+   "id": "Bush02_en",
+   "name": "bush02 en",
+   "kind": "plant",
+   "showcase_designs": 2,
+   "showcase_total": 3,
+   "corpus_share": 0.043,
+   "corpus_count_p50": 5,
+   "corpus_count_p90": 20,
+   "presence_ratio": 2.9
+  },
+  {
+   "id": "sign",
+   "name": "wooden sign",
+   "kind": "sign",
+   "showcase_designs": 8,
+   "showcase_total": 34,
+   "corpus_share": 0.425,
+   "corpus_count_p50": 11,
+   "corpus_count_p90": 82,
+   "presence_ratio": 1.2
+  },
+  {
+   "id": "piece_table",
+   "name": "plain plank table",
+   "kind": "table",
+   "showcase_designs": 7,
+   "showcase_total": 34,
+   "corpus_share": 0.364,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 7,
+   "presence_ratio": 1.2
+  },
+  {
+   "id": "AshlandsBush1",
+   "name": "ashlands bush1",
+   "kind": "plant",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.002,
+   "corpus_count_p50": 52,
+   "corpus_count_p90": 52,
+   "presence_ratio": 12.5
+  },
+  {
+   "id": "Pickable_Carrot",
+   "name": "pickable carrot",
+   "kind": "item",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.002,
+   "corpus_count_p50": 9,
+   "corpus_count_p90": 9,
+   "presence_ratio": 12.5
+  },
+  {
+   "id": "Beech_small2",
+   "name": "beech small2",
+   "kind": "plant",
+   "showcase_designs": 1,
+   "showcase_total": 5,
+   "corpus_share": 0.003,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 68,
+   "presence_ratio": 12.5
+  },
+  {
+   "id": "wood_fine_stack",
+   "name": "fine wood stack",
+   "kind": "resource-stack",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.067,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 15,
+   "presence_ratio": 1.9
+  },
+  {
+   "id": "piece_chair_runed",
+   "name": "carved chair",
+   "kind": "seat",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.009,
+   "corpus_count_p50": 9,
+   "corpus_count_p90": 14,
+   "presence_ratio": 7.1
+  },
+  {
+   "id": "piece_pot1_cracked",
+   "name": "medium clay pot, red glowing cracks",
+   "kind": "container-decor",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.009,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 12,
+   "presence_ratio": 7.1
+  },
+  {
+   "id": "rug_seal",
+   "name": "sealskin rug",
+   "kind": "rug",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.011,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 3,
+   "presence_ratio": 5.7
+  },
+  {
+   "id": "piece_bench_runed",
+   "name": "carved bench",
+   "kind": "seat",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.012,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 5,
+   "presence_ratio": 5.2
+  },
+  {
+   "id": "piece_pot2_red",
+   "name": "large red pot",
+   "kind": "container-decor",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.012,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 18,
+   "presence_ratio": 5.2
+  },
+  {
+   "id": "sign_notext",
+   "name": "wooden sign (blank)",
+   "kind": "sign",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.012,
+   "corpus_count_p50": 8,
+   "corpus_count_p90": 660,
+   "presence_ratio": 5.2
+  },
+  {
+   "id": "Fiddleheadfern",
+   "name": "fiddlehead",
+   "kind": "food",
+   "showcase_designs": 1,
+   "showcase_total": 2,
+   "corpus_share": 0.013,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 8,
+   "presence_ratio": 4.7
+  },
+  {
+   "id": "FirTree_small_dead",
+   "name": "fir tree small dead",
+   "kind": "plant",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.013,
+   "corpus_count_p50": 5,
+   "corpus_count_p90": 20,
+   "presence_ratio": 4.7
+  },
+  {
+   "id": "piece_chest_warderobe",
+   "name": "wardrobe",
+   "kind": "storage",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.014,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 28,
+   "presence_ratio": 4.4
+  },
+  {
+   "id": "piece_pot2_cracked",
+   "name": "large clay pot, red glowing cracks",
+   "kind": "container-decor",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.019,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 12,
+   "presence_ratio": 3.3
+  },
+  {
+   "id": "wood_stack",
+   "name": "firewood stack",
+   "kind": "resource-stack",
+   "showcase_designs": 3,
+   "showcase_total": 3,
+   "corpus_share": 0.145,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 8,
+   "presence_ratio": 1.3
+  },
+  {
+   "id": "stone_pile",
+   "name": "stone pile",
+   "kind": "resource-stack",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.087,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 20,
+   "presence_ratio": 1.4
+  },
+  {
+   "id": "FeastBlackforest",
+   "name": "black forest buffet platter",
+   "kind": "food",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.034,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 2,
+   "presence_ratio": 1.8
+  },
+  {
+   "id": "piece_chest",
+   "name": "iron-banded chest",
+   "kind": "storage",
+   "showcase_designs": 7,
+   "showcase_total": 21,
+   "corpus_share": 0.417,
+   "corpus_count_p50": 7,
+   "corpus_count_p90": 44,
+   "presence_ratio": 1.0
+  },
+  {
+   "id": "FeastMeadows",
+   "name": "whole roasted meadow boar",
+   "kind": "food",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.048,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 2,
+   "presence_ratio": 1.3
+  },
+  {
+   "id": "piece_bone_throne",
+   "name": "bone throne",
+   "kind": "seat",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.048,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 4,
+   "presence_ratio": 1.3
+  },
+  {
+   "id": "piece_chair03",
+   "name": "darkwood chair",
+   "kind": "seat",
+   "showcase_designs": 6,
+   "showcase_total": 14,
+   "corpus_share": 0.363,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 23,
+   "presence_ratio": 1.0
+  },
+  {
+   "id": "RaspberryBush",
+   "name": "raspberry bush",
+   "kind": "plant",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.059,
+   "corpus_count_p50": 7,
+   "corpus_count_p90": 20,
+   "presence_ratio": 1.1
+  },
+  {
+   "id": "piece_banner10",
+   "name": "orange banner",
+   "kind": "hanging-cloth",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.07,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 11,
+   "presence_ratio": 0.9
+  },
+  {
+   "id": "rug_straw",
+   "name": "straw mat",
+   "kind": "rug",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.076,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 19,
+   "presence_ratio": 0.8
+  },
+  {
+   "id": "darkwood_raven",
+   "name": "carved raven (roof decor)",
+   "kind": "carving",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.14,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 18,
+   "presence_ratio": 0.9
+  },
+  {
+   "id": "piece_chair02",
+   "name": "wood chair with back",
+   "kind": "seat",
+   "showcase_designs": 4,
+   "showcase_total": 8,
+   "corpus_share": 0.271,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 8,
+   "presence_ratio": 0.9
+  },
+  {
+   "id": "piece_pot2",
+   "name": "large green pot",
+   "kind": "container-decor",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.084,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 10,
+   "presence_ratio": 0.7
+  },
+  {
+   "id": "piece_throne01",
+   "name": "raven throne",
+   "kind": "seat",
+   "showcase_designs": 4,
+   "showcase_total": 7,
+   "corpus_share": 0.279,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 6,
+   "presence_ratio": 0.9
+  },
+  {
+   "id": "piece_banner02",
+   "name": "blue banner",
+   "kind": "hanging-cloth",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.156,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 14,
+   "presence_ratio": 0.8
+  },
+  {
+   "id": "piece_blackmarble_table",
+   "name": "black marble table",
+   "kind": "table",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.095,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 8,
+   "presence_ratio": 0.7
+  },
+  {
+   "id": "piece_magetable_ext",
+   "name": "rune table (purple glow)",
+   "kind": "station-addon",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.158,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 2,
+   "presence_ratio": 0.8
+  },
+  {
+   "id": "ashwood_bed",
+   "name": "ashwood bed",
+   "kind": "bed",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.096,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 9,
+   "presence_ratio": 0.7
+  },
+  {
+   "id": "piece_groundtorch_mist",
+   "name": "wisp torch (purple glow)",
+   "kind": "light",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.161,
+   "corpus_count_p50": 8,
+   "corpus_count_p90": 85,
+   "presence_ratio": 0.8
+  },
+  {
+   "id": "darkwood_wolf",
+   "name": "carved wolf head (roof decor)",
+   "kind": "carving",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.1,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 8,
+   "presence_ratio": 0.6
+  },
+  {
+   "id": "blackforge_ext4_gemcutter",
+   "name": "gem cutter",
+   "kind": "station-addon",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.102,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 1,
+   "presence_ratio": 0.6
+  },
+  {
+   "id": "wood_dragon1",
+   "name": "carved dragon head (roof decor)",
+   "kind": "carving",
+   "showcase_designs": 2,
+   "showcase_total": 5,
+   "corpus_share": 0.166,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 28,
+   "presence_ratio": 0.8
+  },
+  {
+   "id": "piece_table_round",
+   "name": "round table",
+   "kind": "table",
+   "showcase_designs": 4,
+   "showcase_total": 7,
+   "corpus_share": 0.292,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 5,
+   "presence_ratio": 0.9
+  },
+  {
+   "id": "piece_groundtorch_blue",
+   "name": "iron standing torch, blue flame",
+   "kind": "light",
+   "showcase_designs": 1,
+   "showcase_total": 2,
+   "corpus_share": 0.111,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 30,
+   "presence_ratio": 0.6
+  },
+  {
+   "id": "piece_table_oak",
+   "name": "long heavy table",
+   "kind": "table",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.182,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 3,
+   "presence_ratio": 0.7
+  },
+  {
+   "id": "piece_dvergr_lantern",
+   "name": "dvergr wall lantern",
+   "kind": "light",
+   "showcase_designs": 4,
+   "showcase_total": 6,
+   "corpus_share": 0.309,
+   "corpus_count_p50": 9,
+   "corpus_count_p90": 55,
+   "presence_ratio": 0.8
+  },
+  {
+   "id": "piece_spinningwheel",
+   "name": "spinning wheel",
+   "kind": "station",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.13,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 3,
+   "presence_ratio": 0.5
+  },
+  {
+   "id": "piece_chair",
+   "name": "stool",
+   "kind": "seat",
+   "showcase_designs": 4,
+   "showcase_total": 5,
+   "corpus_share": 0.318,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 36,
+   "presence_ratio": 0.8
+  },
+  {
+   "id": "piece_preptable",
+   "name": "food prep table",
+   "kind": "station",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.143,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 2,
+   "presence_ratio": 0.4
+  },
+  {
+   "id": "treasure_stack",
+   "name": "coin stack",
+   "kind": "resource-stack",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.145,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 12,
+   "presence_ratio": 0.4
+  },
+  {
+   "id": "piece_magetable_ext2",
+   "name": "candle stand (unfading candles)",
+   "kind": "station-addon",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.146,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 2,
+   "presence_ratio": 0.4
+  },
+  {
+   "id": "piece_workbench_ext1",
+   "name": "chopping block with axe",
+   "kind": "station-addon",
+   "showcase_designs": 5,
+   "showcase_total": 9,
+   "corpus_share": 0.414,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 2,
+   "presence_ratio": 0.8
+  },
+  {
+   "id": "piece_banner01",
+   "name": "black banner",
+   "kind": "hanging-cloth",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.25,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 13,
+   "presence_ratio": 0.5
+  },
+  {
+   "id": "piece_chest_blackmetal",
+   "name": "black metal chest",
+   "kind": "storage",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.268,
+   "corpus_count_p50": 5,
+   "corpus_count_p90": 53,
+   "presence_ratio": 0.5
+  },
+  {
+   "id": "cauldron_ext5_mortarandpestle",
+   "name": "mortar and pestle",
+   "kind": "station-addon",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.235,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 1,
+   "presence_ratio": 0.3
+  },
+  {
+   "id": "jute_carpet",
+   "name": "red jute carpet",
+   "kind": "rug",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.301,
+   "corpus_count_p50": 6,
+   "corpus_count_p90": 37,
+   "presence_ratio": 0.4
+  },
+  {
+   "id": "piece_groundtorch",
+   "name": "iron standing torch",
+   "kind": "light",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.245,
+   "corpus_count_p50": 5,
+   "corpus_count_p90": 24,
+   "presence_ratio": 0.3
+  },
+  {
+   "id": "rug_fur",
+   "name": "lox fur rug",
+   "kind": "rug",
+   "showcase_designs": 3,
+   "showcase_total": 3,
+   "corpus_share": 0.391,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 28,
+   "presence_ratio": 0.5
+  },
+  {
+   "id": "piece_bed02",
+   "name": "dragon bed with furs",
+   "kind": "bed",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.331,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 7,
+   "presence_ratio": 0.4
+  },
+  {
+   "id": "rug_deer",
+   "name": "deer hide rug",
+   "kind": "rug",
+   "showcase_designs": 3,
+   "showcase_total": 6,
+   "corpus_share": 0.422,
+   "corpus_count_p50": 4,
+   "corpus_count_p90": 21,
+   "presence_ratio": 0.4
+  },
+  {
+   "id": "piece_cookingstation_iron",
+   "name": "iron cooking grill",
+   "kind": "station",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.306,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 3,
+   "presence_ratio": 0.2
+  },
+  {
+   "id": "forge_ext4",
+   "name": "big anvil on a wood stump",
+   "kind": "station-addon",
+   "showcase_designs": 1,
+   "showcase_total": 2,
+   "corpus_share": 0.307,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 1,
+   "presence_ratio": 0.2
+  },
+  {
+   "id": "piece_cauldron",
+   "name": "cauldron",
+   "kind": "station",
+   "showcase_designs": 3,
+   "showcase_total": 3,
+   "corpus_share": 0.433,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 2,
+   "presence_ratio": 0.4
+  },
+  {
+   "id": "piece_brazierceiling01",
+   "name": "hanging iron brazier",
+   "kind": "light",
+   "showcase_designs": 2,
+   "showcase_total": 7,
+   "corpus_share": 0.372,
+   "corpus_count_p50": 3,
+   "corpus_count_p90": 12,
+   "presence_ratio": 0.3
+  },
+  {
+   "id": "forge",
+   "name": "forge",
+   "kind": "station",
+   "showcase_designs": 2,
+   "showcase_total": 3,
+   "corpus_share": 0.392,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 2,
+   "presence_ratio": 0.3
+  },
+  {
+   "id": "fermenter",
+   "name": "fermenter barrel",
+   "kind": "station",
+   "showcase_designs": 2,
+   "showcase_total": 2,
+   "corpus_share": 0.394,
+   "corpus_count_p50": 2,
+   "corpus_count_p90": 8,
+   "presence_ratio": 0.3
+  },
+  {
+   "id": "forge_ext2",
+   "name": "old log with three tiny anvils",
+   "kind": "station-addon",
+   "showcase_designs": 1,
+   "showcase_total": 2,
+   "corpus_share": 0.333,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 1,
+   "presence_ratio": 0.2
+  },
+  {
+   "id": "piece_workbench",
+   "name": "workbench",
+   "kind": "station",
+   "showcase_designs": 3,
+   "showcase_total": 4,
+   "corpus_share": 0.51,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 3,
+   "presence_ratio": 0.4
+  },
+  {
+   "id": "piece_workbench_ext2",
+   "name": "tanning rack",
+   "kind": "station-addon",
+   "showcase_designs": 1,
+   "showcase_total": 2,
+   "corpus_share": 0.385,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 1,
+   "presence_ratio": 0.2
+  },
+  {
+   "id": "hearth",
+   "name": "stone hearth",
+   "kind": "fire",
+   "showcase_designs": 1,
+   "showcase_total": 1,
+   "corpus_share": 0.514,
+   "corpus_count_p50": 1,
+   "corpus_count_p90": 5,
+   "presence_ratio": 0.1
+  }
+ ],
+ "variety": [
+  {
+   "kind": "light",
+   "corpus_distinct_p50": 2,
+   "corpus_distinct_p90": 6,
+   "showcase_distinct_median": 2
+  },
+  {
+   "kind": "seat",
+   "corpus_distinct_p50": 3,
+   "corpus_distinct_p90": 6,
+   "showcase_distinct_median": 4
+  },
+  {
+   "kind": "table",
+   "corpus_distinct_p50": 2,
+   "corpus_distinct_p90": 4,
+   "showcase_distinct_median": 1.0
+  },
+  {
+   "kind": "storage",
+   "corpus_distinct_p50": 2,
+   "corpus_distinct_p90": 5,
+   "showcase_distinct_median": 2.0
+  },
+  {
+   "kind": "rug",
+   "corpus_distinct_p50": 3,
+   "corpus_distinct_p90": 6,
+   "showcase_distinct_median": 2.0
+  },
+  {
+   "kind": "hanging-cloth",
+   "corpus_distinct_p50": 1,
+   "corpus_distinct_p90": 5,
+   "showcase_distinct_median": 2
+  },
+  {
+   "kind": "display-stand",
+   "corpus_distinct_p50": 2,
+   "corpus_distinct_p90": 3,
+   "showcase_distinct_median": 2.0
+  },
+  {
+   "kind": "container-decor",
+   "corpus_distinct_p50": 2,
+   "corpus_distinct_p90": 3,
+   "showcase_distinct_median": 2.0
+  }
+ ],
+ "showcase_source": "16 showcase designs regenerated with the lab at main b18cf36 (request.make, tries 1, the seeds in GenCommands.cs ShowcaseList); the saved files on Tyler's PC were gone (folder empty on 2026-11-12)",
+ "variant_choice": [
+  {
+   "kind": "light",
+   "corpus_builds_with_kind": 749,
+   "showcase_designs_with_kind": 15,
+   "pieces": [
+    {
+     "id": "piece_walltorch",
+     "corpus": 0.57,
+     "showcase": 0.93
+    },
+    {
+     "id": "piece_groundtorch_wood",
+     "corpus": 0.23,
+     "showcase": 0.6
+    },
+    {
+     "id": "piece_brazierceiling01",
+     "corpus": 0.45,
+     "showcase": 0.13
+    },
+    {
+     "id": "piece_dvergr_lantern",
+     "corpus": 0.38,
+     "showcase": 0.27
+    },
+    {
+     "id": "piece_groundtorch",
+     "corpus": 0.3,
+     "showcase": 0.07
+    },
+    {
+     "id": "Candle_resin",
+     "corpus": 0.13,
+     "showcase": 0.27
+    },
+    {
+     "id": "piece_Lavalantern",
+     "corpus": 0.2,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_groundtorch_green",
+     "corpus": 0.11,
+     "showcase": 0.2
+    },
+    {
+     "id": "piece_groundtorch_mist",
+     "corpus": 0.19,
+     "showcase": 0.13
+    },
+    {
+     "id": "dvergrprops_lantern_standing",
+     "corpus": 0.03,
+     "showcase": 0.13
+    },
+    {
+     "id": "piece_groundtorch_blue",
+     "corpus": 0.13,
+     "showcase": 0.07
+    }
+   ]
+  },
+  {
+   "kind": "seat",
+   "corpus_builds_with_kind": 576,
+   "showcase_designs_with_kind": 13,
+   "pieces": [
+    {
+     "id": "piece_bench01",
+     "corpus": 0.37,
+     "showcase": 0.85
+    },
+    {
+     "id": "piece_chair03",
+     "corpus": 0.57,
+     "showcase": 0.46
+    },
+    {
+     "id": "piece_chair",
+     "corpus": 0.5,
+     "showcase": 0.31
+    },
+    {
+     "id": "piece_logbench01",
+     "corpus": 0.18,
+     "showcase": 0.46
+    },
+    {
+     "id": "piece_throne01",
+     "corpus": 0.44,
+     "showcase": 0.31
+    },
+    {
+     "id": "piece_chair02",
+     "corpus": 0.43,
+     "showcase": 0.31
+    },
+    {
+     "id": "dvergrprops_stool",
+     "corpus": 0.03,
+     "showcase": 0.38
+    },
+    {
+     "id": "piece_blackmarble_bench",
+     "corpus": 0.16,
+     "showcase": 0.38
+    },
+    {
+     "id": "piece_blackwood_bench01",
+     "corpus": 0.11,
+     "showcase": 0.23
+    },
+    {
+     "id": "piece_throne02",
+     "corpus": 0.17,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_blackmarble_throne",
+     "corpus": 0.16,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_bench_runed",
+     "corpus": 0.02,
+     "showcase": 0.08
+    }
+   ]
+  },
+  {
+   "kind": "storage",
+   "corpus_builds_with_kind": 670,
+   "showcase_designs_with_kind": 16,
+   "pieces": [
+    {
+     "id": "piece_chest_wood",
+     "corpus": 0.65,
+     "showcase": 0.75
+    },
+    {
+     "id": "piece_chest",
+     "corpus": 0.57,
+     "showcase": 0.44
+    },
+    {
+     "id": "piece_chest_barrel",
+     "corpus": 0.23,
+     "showcase": 0.56
+    },
+    {
+     "id": "piece_chest_blackmetal",
+     "corpus": 0.36,
+     "showcase": 0.12
+    },
+    {
+     "id": "piece_chest_private",
+     "corpus": 0.36,
+     "showcase": 0.0
+    },
+    {
+     "id": "dvergrprops_crate_long",
+     "corpus": 0.02,
+     "showcase": 0.19
+    },
+    {
+     "id": "piece_chest_treasure",
+     "corpus": 0.13,
+     "showcase": 0.0
+    },
+    {
+     "id": "dvergrprops_crate",
+     "corpus": 0.03,
+     "showcase": 0.12
+    },
+    {
+     "id": "piece_chest_warderobe",
+     "corpus": 0.02,
+     "showcase": 0.06
+    }
+   ]
+  },
+  {
+   "kind": "rug",
+   "corpus_builds_with_kind": 575,
+   "showcase_designs_with_kind": 10,
+   "pieces": [
+    {
+     "id": "rug_wolf",
+     "corpus": 0.55,
+     "showcase": 0.7
+    },
+    {
+     "id": "rug_deer",
+     "corpus": 0.67,
+     "showcase": 0.3
+    },
+    {
+     "id": "rug_fur",
+     "corpus": 0.62,
+     "showcase": 0.3
+    },
+    {
+     "id": "jute_carpet",
+     "corpus": 0.48,
+     "showcase": 0.2
+    },
+    {
+     "id": "rug_asksvin",
+     "corpus": 0.11,
+     "showcase": 0.3
+    },
+    {
+     "id": "rug_hare",
+     "corpus": 0.3,
+     "showcase": 0.0
+    },
+    {
+     "id": "jute_carpet_blue",
+     "corpus": 0.24,
+     "showcase": 0.0
+    },
+    {
+     "id": "rug_straw",
+     "corpus": 0.12,
+     "showcase": 0.1
+    },
+    {
+     "id": "rug_seal",
+     "corpus": 0.02,
+     "showcase": 0.1
+    },
+    {
+     "id": "rug_Bjorn",
+     "corpus": 0.08,
+     "showcase": 0.0
+    }
+   ]
+  },
+  {
+   "kind": "table",
+   "corpus_builds_with_kind": 515,
+   "showcase_designs_with_kind": 10,
+   "pieces": [
+    {
+     "id": "piece_table",
+     "corpus": 0.64,
+     "showcase": 0.7
+    },
+    {
+     "id": "piece_table_round",
+     "corpus": 0.51,
+     "showcase": 0.4
+    },
+    {
+     "id": "piece_table_oak",
+     "corpus": 0.32,
+     "showcase": 0.2
+    },
+    {
+     "id": "dvergrprops_table",
+     "corpus": 0.03,
+     "showcase": 0.3
+    },
+    {
+     "id": "piece_cartographytable",
+     "corpus": 0.29,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_blackmarble_table",
+     "corpus": 0.17,
+     "showcase": 0.1
+    }
+   ]
+  },
+  {
+   "kind": "hanging-cloth",
+   "corpus_builds_with_kind": 519,
+   "showcase_designs_with_kind": 3,
+   "pieces": [
+    {
+     "id": "piece_banner01",
+     "corpus": 0.44,
+     "showcase": 0.67
+    },
+    {
+     "id": "piece_banner02",
+     "corpus": 0.27,
+     "showcase": 0.67
+    },
+    {
+     "id": "piece_banner10",
+     "corpus": 0.12,
+     "showcase": 0.33
+    },
+    {
+     "id": "piece_banner04",
+     "corpus": 0.32,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_banner05",
+     "corpus": 0.25,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_banner11",
+     "corpus": 0.17,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_banner03",
+     "corpus": 0.15,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_banner08",
+     "corpus": 0.15,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_banner09",
+     "corpus": 0.15,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_banner07",
+     "corpus": 0.11,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_banner06",
+     "corpus": 0.09,
+     "showcase": 0.0
+    }
+   ]
+  },
+  {
+   "kind": "fire",
+   "corpus_builds_with_kind": 634,
+   "showcase_designs_with_kind": 12,
+   "pieces": [
+    {
+     "id": "fire_pit",
+     "corpus": 0.36,
+     "showcase": 1.0
+    },
+    {
+     "id": "hearth",
+     "corpus": 0.74,
+     "showcase": 0.08
+    },
+    {
+     "id": "fire_pit_iron",
+     "corpus": 0.17,
+     "showcase": 0.0
+    }
+   ]
+  },
+  {
+   "kind": "bed",
+   "corpus_builds_with_kind": 494,
+   "showcase_designs_with_kind": 8,
+   "pieces": [
+    {
+     "id": "bed",
+     "corpus": 0.4,
+     "showcase": 0.62
+    },
+    {
+     "id": "piece_bed02",
+     "corpus": 0.61,
+     "showcase": 0.25
+    },
+    {
+     "id": "ashwood_bed",
+     "corpus": 0.18,
+     "showcase": 0.12
+    }
+   ]
+  },
+  {
+   "kind": "container-decor",
+   "corpus_builds_with_kind": 127,
+   "showcase_designs_with_kind": 6,
+   "pieces": [
+    {
+     "id": "piece_pot1",
+     "corpus": 0.54,
+     "showcase": 0.67
+    },
+    {
+     "id": "piece_pot2",
+     "corpus": 0.6,
+     "showcase": 0.17
+    },
+    {
+     "id": "piece_pot3",
+     "corpus": 0.57,
+     "showcase": 0.5
+    },
+    {
+     "id": "piece_pot1_cracked",
+     "corpus": 0.06,
+     "showcase": 0.17
+    },
+    {
+     "id": "piece_pot2_cracked",
+     "corpus": 0.13,
+     "showcase": 0.17
+    },
+    {
+     "id": "piece_pot2_red",
+     "corpus": 0.09,
+     "showcase": 0.17
+    },
+    {
+     "id": "CastleKit_braided_box01",
+     "corpus": 0.06,
+     "showcase": 0.0
+    },
+    {
+     "id": "bucket",
+     "corpus": 0.06,
+     "showcase": 0.0
+    },
+    {
+     "id": "piece_pot3_cracked",
+     "corpus": 0.06,
+     "showcase": 0.0
+    }
+   ]
+  }
+ ]
+}

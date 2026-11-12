@@ -15,7 +15,7 @@ import json, os, re, sys, math
 import numpy as np
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from families import FAMILIES, FAMILY_BY_TEX, FAMILY_BY_ID, NAMES
+from families import FAMILIES, FAMILY_BY_TEX, FAMILY_BY_ID, NAMES, DESC
 
 W = sys.argv[1]
 OUT = sys.argv[2]
@@ -78,18 +78,23 @@ def value_word(L):
     return 'very dark' if L < 18 else 'dark' if L < 32 else 'mid' if L < 52 else 'light' if L < 72 else 'very light'
 
 def hue_word(hexs):
-    c = np.array([int(hexs[i:i + 2], 16) / 255 for i in (1, 3, 5)])
-    lab = srgb2lab(c); a, b = lab[1], lab[2]; ch = math.hypot(a, b)
-    if ch < 6: return 'gray' if lab[0] > 25 else 'black'
-    if lab[0] < 22 and ch < 14: return 'black-brown'
-    h = (math.degrees(math.atan2(b, a)) + 360) % 360
-    if h < 25 or h >= 345: return 'red' if ch > 25 else 'red-brown'
-    if h < 50: return 'orange' if ch > 40 else 'brown'
-    if h < 88: return 'brown' if ch < 45 else 'orange' if h < 70 else 'yellow'
-    if h < 105: return 'olive' if ch < 30 else 'yellow'
-    if h < 160: return 'green'
-    if h < 250: return 'blue-green' if h < 210 else 'blue'
-    if h < 300: return 'purple'
+    """Color name from HSV hue, with brown for dim warm colors and gray or black for unsaturated ones."""
+    import colorsys
+    r, g, bl = (int(hexs[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    h, s, v = colorsys.rgb_to_hsv(r, g, bl); h *= 360
+    if v < 0.13: return 'black'
+    if s < 0.15: return 'gray' if v > 0.3 else 'black'
+    if v < 0.22 and s < 0.45: return 'black-brown'
+    warm = h < 65 or h >= 345
+    if warm and (v < 0.62 or s < 0.45): return 'brown' if h >= 15 or s < 0.6 else 'red-brown'
+    if h < 15 or h >= 345: return 'red'
+    if h < 40: return 'orange'
+    if h < 65: return 'yellow'
+    if h < 80: return 'olive' if v < 0.6 else 'yellow-green'
+    if h < 170: return 'green'
+    if h < 200: return 'cyan'
+    if h < 255: return 'blue'
+    if h < 290: return 'purple'
     return 'magenta'
 
 def warmth(hexs):
@@ -120,7 +125,7 @@ def mat_word(s):
     return None
 GLOW_NOTES = {
     'piece_magetable_ext': 'purple rune glow (Tyler: "blackmarble and purple glowing accents")',
-    'piece_groundtorch_mist': 'purple-pink wisp flame', 'piece_pot1_cracked': 'red-orange glowing cracks',
+'piece_pot1_cracked': 'red-orange glowing cracks',
     'piece_pot2_cracked': 'red-orange glowing cracks', 'piece_pot3_cracked': 'red-orange glowing cracks',
 }
 
@@ -131,6 +136,7 @@ def kind_of(n, role, path, m):
     if '/Characters/' in path or n.startswith('Spawner') or 'Spawner' in n: return 'creature'
     if '/StatusEffects/' in path or n.startswith('vfx_') or n.startswith('fx_') or n in ('LocationProxy',): return 'effect'
     if '/consumables/' in path or re.match(r'^(Mead|Feast|BarleyWine)', n): return 'food'
+    if n.startswith('Pickable_') and not re.search(r'Stone|Flint|Branch|Crystal|Remains|Meteorite|Core|Shard|Dvergr|Hairstrands|MeatPile', n): return 'plant'
     if '/Items/' in path and not p: return 'item'
     if re.search(r'Pickable_|/Vegetation/|/Bush|/Beech|/Birch|/FirTree|/Pine|/Oak|/SwampTree|/Shoots|Fern|vines|Vine', path + n) and not re.search(r'Stone|Flint|Branch|Crystal|Remains|Meteorite|Core', n): return 'plant'
     if re.search(r'Rock|rock|cliff|widestone|Placeable_|bigrock|caverock|MineRock', n): return 'rock'
@@ -213,6 +219,23 @@ def facing(n, s, kind, md):
         res['back'] = back; res['front'] = OPP[back]
     res['sure'] = sure
     return res
+
+# piece pairs from the corpus pass: [builds with both, builds where both stand under cover within 4 m and 1.5 m height]
+NB_PAIRS = {}
+for k_, e_ in stats.get('pairs', {}).items():
+    a_, b_ = k_.split('|')
+    NB_PAIRS.setdefault(a_, []).append((b_, e_[0], e_[1]))
+    NB_PAIRS.setdefault(b_, []).append((a_, e_[0], e_[1]))
+NOPAIR = {'wall', 'floor', 'roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'pole', 'stair', 'door', 'window', 'fence', 'creature', 'effect', 'rock'}
+def pair_lists(n, kinds):
+    rows = [(o, both, area) for o, both, area in NB_PAIRS.get(n, []) if kinds.get(o) and kinds[o] not in NOPAIR and both >= 8]
+    if not rows: return None, None
+    tot_b = sum(r[1] for r in rows); tot_a = sum(r[2] for r in rows)
+    base = tot_a / tot_b if tot_b else 0
+    good = sorted([r for r in rows if r[2] >= 4 and r[2] / r[1] >= max(0.2, 1.5 * base)], key=lambda r: -r[2])[:8]
+    rare = sorted([r for r in rows if r[1] >= 30 and r[2] / r[1] <= 0.25 * max(base, 0.04)], key=lambda r: -r[1])[:8]
+    fmt = lambda r: {'id': r[0], 'builds_both': r[1], 'same_area': r[2], 'rate': round(r[2] / r[1], 2)}
+    return [fmt(r) for r in good], [fmt(r) for r in rare]
 
 # per-build size, for counts per 100 m2 of floor
 BUILD = BS
@@ -348,6 +371,26 @@ for n, s in ST.items():
         'comfort_group': p.get('m_comfortGroup') or 0, 'generator_files': GEN.get(n), 'tags': sorted(tags),
     }
     out[n] = rec
+
+KINDS = {k: v['kind'] for k, v in out.items()}
+for n, rec in out.items():
+    if rec['kind'] in NOPAIR or rec['kind'] in ('plant', 'item'): continue
+    g, r = pair_lists(n, KINDS)
+    if g: rec['pairs_with'] = g
+    if r: rec['rarely_with'] = r
+    # a plain description of the look, from the measured colors and the family
+    lk = rec['look']; F = FAMILIES[rec['family']]
+    parts = []
+    if lk: parts.append('%s %s' % (lk['value'], lk['hue']))
+    parts.append(rec['material'].replace('+', ' and '))
+    if F[2]: parts.append('(' + F[2] + ')')
+    d = ' '.join(parts)
+    if rec['glow']:
+        gl = rec['glow']
+        if gl.get('note'): d += '; ' + gl['note']
+        elif gl.get('light'): d += '; gives %s light' % gl['hue']
+        elif gl.get('emissive'): d += '; %s glow' % gl['emissive_hue']
+    rec['description'] = DESC.get(n, d)
 
 doc = {
     'about': 'Villheim piece catalog: one record per vanilla prefab placed in the corpus (compact.json, 2,128 builds) or by the generator. '

@@ -308,7 +308,9 @@ function vignettes(b, ctx, zones) {
       const n0 = b.pieces.length;
       if (kind === 'bench') {
         const [x, z] = at(0.4); b.put('piece_bench01', x, top, z, yaw, T);
-        const [tx, tz] = at(0.28); b.put('piece_walltorch', tx, top + 1.55, tz, (Math.atan2(nx, nz) * 180 / Math.PI + 270 + 360) % 360, { decor: true });
+        // the torch against what shows of the wall (lib/wallhang.js: a log wall shows 5 cm past its collider)
+        const [tx, tz] = at(0.0), r = hangB().hang('piece_walltorch', { x: tx, z: tz, nx, nz, y: top + 1.55 }, hangB().backingOf(b.pieces), { pieces: b.pieces });
+        if (r) b.put('piece_walltorch', r.x, r.y, r.z, r.yaw, r.wclip ? { decor: true, wclip: r.wclip } : { decor: true });
       } else if (kind === 'store') {
         const [x, z] = at(0.42, -0.45); b.put('piece_chest_wood', x, top, z, yaw, T);
         const [x2, z2] = at(0.4, 0.75); b.put('piece_chest_barrel', x2, top, z2, yaw, T);

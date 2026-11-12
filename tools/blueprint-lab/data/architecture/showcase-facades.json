@@ -1,0 +1,495 @@
+{
+ "meta": {
+  "made": "2026-11-12",
+  "source": "lab/arch_facades.js",
+  "set": "showcase",
+  "builds": 16,
+  "buildsWithRuns": 10,
+  "windows": 195
+ },
+ "fields": {
+  "runs": "runs of 2 or more windows on one wall line and level: count, share whose windows all carry the same treatment (feature classes and light fill), by run length; shuffle: the same with each build's windows dealt to its runs at random",
+  "spacing": "runs of 3 or more: gaps between window middles all equal within 0.3 m, the gap (m) of even runs, and all windows the same width (0.5 m steps)",
+  "feat": "per feature: windows with it, builds, runs holding it, of those the share where every window of the run has it (fullRun), exactly one (loneInRun), some (partial), fullRun after the shuffle, and the share of builds whose windows with the feature all use one piece for it",
+  "sides": "levels with windows on 2 or more sides: share where every side's lead treatment is the same; on the lowest level, the front (side with the most outer doors) against the other sides",
+  "stacks": "sides with windows on 2 or more levels: upper windows over a lower run (a window of the level below on a wall line within 1 m), with a window right under them (middles within 0.35 m) or within 1 m, and of the aligned pairs the share with the same architectural treatment",
+  "archUniform": "runs whose windows all carry the same architectural treatment (shutter, sill, head, posts, arch, brace, planter, vine, hood, fill; lights and hung decor left out)",
+  "odd": "runs of 3 or more where one treatment holds most windows: the windows that differ, what room is behind them and where they sit, against all windows of those runs (base)",
+  "lone": "runs of 3 or more where one window alone has a feature: the feature, the room behind, where it sits",
+  "bands": "outer faces 3 m or longer, by side and level: beams at the foot proud of the face along half the side or more; builds (3 or more sides read) with all, none or some sides banded, and the share of sides banded",
+  "featureByCulture": "per corpus culture group (data/culture-corpus/members.json) and all: windows with each feature over the group's windows, and builds with the feature on any window over its builds",
+  "corners": "outside corners of the lowest level: a post within 0.55 m; builds with all, none or some corners posted, and the share of posted builds with one post piece at every corner"
+ },
+ "runs": {
+  "n": 40,
+  "uniform": 0.475,
+  "archUniform": 0.675,
+  "archUniformIfShuffled": 0.375,
+  "onePieceInFullRun": {
+   "hood": {
+    "runs": 7,
+    "onePiece": 1
+   },
+   "sill": {
+    "runs": 5,
+    "onePiece": 1
+   },
+   "head": {
+    "runs": 1,
+    "onePiece": 1
+   },
+   "planter": {
+    "runs": 2,
+    "onePiece": 0
+   },
+   "vine": {
+    "runs": 1,
+    "onePiece": 1
+   },
+   "posts": {
+    "runs": 3,
+    "onePiece": 1
+   },
+   "brace": {
+    "runs": 1,
+    "onePiece": 1
+   }
+  },
+  "byLen": {
+   "2": {
+    "n": 18,
+    "uniform": 0.556
+   },
+   "3": {
+    "n": 14,
+    "uniform": 0.5
+   },
+   "4": {
+    "n": 5,
+    "uniform": 0.4
+   },
+   "5+": {
+    "n": 3,
+    "uniform": 0
+   }
+  },
+  "shuffleUniform": 0.225
+ },
+ "spacing": {
+  "runs": 22,
+  "evenGaps": 0.364,
+  "sameWidth": 0.455,
+  "evenGap": {
+   "0": 3,
+   "2": 1,
+   "3": 1,
+   "10": 1,
+   "12": 2
+  }
+ },
+ "feat": {
+  "sill": {
+   "windows": 38,
+   "windowShare": 0.195,
+   "builds": 7,
+   "runsWith": 10,
+   "fullRun": 0.5,
+   "loneInRun": 0.2,
+   "partial": 0.3,
+   "fullRunIfShuffled": 0.333,
+   "onePieceInBuild": 0.429
+  },
+  "head": {
+   "windows": 15,
+   "windowShare": 0.077,
+   "builds": 6,
+   "runsWith": 4,
+   "fullRun": 0.25,
+   "loneInRun": 0.25,
+   "partial": 0.5,
+   "fullRunIfShuffled": 0,
+   "onePieceInBuild": 0.333
+  },
+  "posts": {
+   "windows": 37,
+   "windowShare": 0.19,
+   "builds": 10,
+   "runsWith": 6,
+   "fullRun": 0.5,
+   "loneInRun": 0.5,
+   "partial": 0,
+   "fullRunIfShuffled": 0.3,
+   "onePieceInBuild": 0.8
+  },
+  "brace": {
+   "windows": 13,
+   "windowShare": 0.067,
+   "builds": 4,
+   "runsWith": 4,
+   "fullRun": 0.25,
+   "loneInRun": 0.5,
+   "partial": 0.25,
+   "fullRunIfShuffled": 0.5,
+   "onePieceInBuild": 0.75
+  },
+  "planter": {
+   "windows": 16,
+   "windowShare": 0.082,
+   "builds": 5,
+   "runsWith": 4,
+   "fullRun": 0.5,
+   "loneInRun": 0,
+   "partial": 0.5,
+   "fullRunIfShuffled": 0,
+   "onePieceInBuild": 0
+  },
+  "vine": {
+   "windows": 15,
+   "windowShare": 0.077,
+   "builds": 5,
+   "runsWith": 3,
+   "fullRun": 0.333,
+   "loneInRun": 0.333,
+   "partial": 0.333,
+   "fullRunIfShuffled": 0,
+   "onePieceInBuild": 0.4
+  },
+  "hood": {
+   "windows": 45,
+   "windowShare": 0.231,
+   "builds": 7,
+   "runsWith": 11,
+   "fullRun": 0.636,
+   "loneInRun": 0.364,
+   "partial": 0,
+   "fullRunIfShuffled": 0.167,
+   "onePieceInBuild": 0.857
+  },
+  "light": {
+   "windows": 15,
+   "windowShare": 0.077,
+   "builds": 5,
+   "runsWith": 8,
+   "fullRun": 0,
+   "loneInRun": 0.75,
+   "partial": 0.25,
+   "fullRunIfShuffled": 0,
+   "onePieceInBuild": 0
+  },
+  "hung": {
+   "windows": 9,
+   "windowShare": 0.046,
+   "builds": 6,
+   "runsWith": 4,
+   "fullRun": 0,
+   "loneInRun": 1,
+   "partial": 0,
+   "fullRunIfShuffled": 0,
+   "onePieceInBuild": 0.333
+  },
+  "fill:open": {
+   "windows": 150,
+   "windowShare": 0.769,
+   "builds": 14,
+   "runsWith": 28,
+   "fullRun": 0.964,
+   "loneInRun": 0.036,
+   "partial": 0,
+   "fullRunIfShuffled": 0.903,
+   "onePieceInBuild": null
+  },
+  "fill:bars": {
+   "windows": 45,
+   "windowShare": 0.231,
+   "builds": 4,
+   "runsWith": 13,
+   "fullRun": 0.923,
+   "loneInRun": 0,
+   "partial": 0.077,
+   "fullRunIfShuffled": 0.75,
+   "onePieceInBuild": null
+  }
+ },
+ "sides": {
+  "levels": 20,
+  "allSidesSame": 0.3,
+  "frontLevels": 5,
+  "frontDiffers": 0.6,
+  "frontRicher": 0.6,
+  "frontPoorer": 0,
+  "featureShareFront": {
+   "shutter": 0,
+   "sill": 0.55,
+   "head": 0,
+   "posts": 0.4,
+   "arch": 0,
+   "brace": 0.2,
+   "planter": 0.55,
+   "vine": 0,
+   "hood": 0,
+   "light": 0.1,
+   "hung": 0
+  },
+  "featureShareOther": {
+   "shutter": 0,
+   "sill": 0.448,
+   "head": 0.207,
+   "posts": 0.282,
+   "arch": 0,
+   "brace": 0.089,
+   "planter": 0,
+   "vine": 0.133,
+   "hood": 0,
+   "light": 0.02,
+   "hung": 0
+  }
+ },
+ "stacks": {
+  "sides": 18,
+  "upperWindows": 56,
+  "overLowerRun": 0.518,
+  "aligned": 0.232,
+  "alignedOfOverRun": 0.448,
+  "within1mOfOverRun": 0.552,
+  "sameTreatmentWhenAligned": 0.615
+ },
+ "odd": {
+  "runs": 19,
+  "windows": 67,
+  "oddShare": 0.179,
+  "behind": {
+   "workshop": {
+    "n": 7,
+    "share": 0.583,
+    "base": 0.418
+   },
+   "bedroom": {
+    "n": 3,
+    "share": 0.25,
+    "base": 0.209
+   },
+   "kitchen": {
+    "n": 2,
+    "share": 0.167,
+    "base": 0.239
+   }
+  },
+  "where": {
+   "middle": {
+    "n": 7,
+    "share": 0.583,
+    "base": 0.433
+   },
+   "run end": {
+    "n": 5,
+    "share": 0.417,
+    "base": 0.567
+   }
+  },
+  "how": {
+   "adds light": {
+    "n": 6,
+    "share": 0.5,
+    "base": null
+   },
+   "adds light+hung": {
+    "n": 2,
+    "share": 0.167,
+    "base": null
+   },
+   "lacks light": {
+    "n": 1,
+    "share": 0.083,
+    "base": null
+   },
+   "lacks sill+planter": {
+    "n": 1,
+    "share": 0.083,
+    "base": null
+   },
+   "other fill": {
+    "n": 1,
+    "share": 0.083,
+    "base": null
+   },
+   "adds posts+hood+hung": {
+    "n": 1,
+    "share": 0.083,
+    "base": null
+   }
+  }
+ },
+ "lone": {
+  "n": 12,
+  "feat": {
+   "light": {
+    "n": 6,
+    "share": 0.5,
+    "base": null
+   },
+   "hung": {
+    "n": 3,
+    "share": 0.25,
+    "base": null
+   },
+   "hood": {
+    "n": 2,
+    "share": 0.167,
+    "base": null
+   },
+   "posts": {
+    "n": 1,
+    "share": 0.083,
+    "base": null
+   }
+  },
+  "behind": {
+   "workshop": {
+    "n": 6,
+    "share": 0.5,
+    "base": 0.418
+   },
+   "kitchen": {
+    "n": 4,
+    "share": 0.333,
+    "base": 0.239
+   },
+   "bedroom": {
+    "n": 2,
+    "share": 0.167,
+    "base": 0.209
+   }
+  },
+  "where": {
+   "top level": {
+    "n": 9,
+    "share": 0.75,
+    "base": null
+   },
+   "other": {
+    "n": 3,
+    "share": 0.25,
+    "base": null
+   }
+  }
+ },
+ "bands": {
+  "builds": 14,
+  "all": 0,
+  "none": 1,
+  "mixed": 0,
+  "faceShare": 0
+ },
+ "corners": {
+  "builds": 11,
+  "all": 0.182,
+  "none": 0.636,
+  "mixed": 0.182,
+  "cornerShare": 0.3,
+  "onePieceWhenPosted": 1
+ },
+ "byCulture": {
+  "unsorted": {
+   "builds": 7,
+   "runs": 37,
+   "uniform": 16,
+   "uniformShare": 0.432
+  }
+ },
+ "byKind": {
+  "other": {
+   "builds": 2,
+   "runs": 15,
+   "uniform": 9,
+   "uniformShare": 0.6
+  },
+  "longhouse": {
+   "builds": 1,
+   "runs": 5,
+   "uniform": 2,
+   "uniformShare": 0.4
+  },
+  "tavern": {
+   "builds": 1,
+   "runs": 7,
+   "uniform": 4,
+   "uniformShare": 0.571
+  },
+  "home": {
+   "builds": 3,
+   "runs": 10,
+   "uniform": 1,
+   "uniformShare": 0.1
+  }
+ },
+ "featureByCulture": {
+  "unsorted": {
+   "builds": 14,
+   "windows": 195,
+   "windowShare": {
+    "fill:open": 0.769,
+    "hood": 0.231,
+    "fill:bars": 0.231,
+    "sill": 0.195,
+    "posts": 0.19,
+    "planter": 0.082,
+    "light": 0.077,
+    "vine": 0.077,
+    "head": 0.077,
+    "brace": 0.067,
+    "hung": 0.046
+   },
+   "buildShare": {
+    "fill:open": 1,
+    "posts": 0.714,
+    "sill": 0.5,
+    "hood": 0.5,
+    "hung": 0.429,
+    "head": 0.429,
+    "light": 0.357,
+    "vine": 0.357,
+    "planter": 0.357,
+    "fill:bars": 0.286,
+    "brace": 0.286
+   }
+  },
+  "all": {
+   "builds": 14,
+   "windows": 195,
+   "windowShare": {
+    "fill:open": 0.769,
+    "hood": 0.231,
+    "fill:bars": 0.231,
+    "sill": 0.195,
+    "posts": 0.19,
+    "planter": 0.082,
+    "light": 0.077,
+    "vine": 0.077,
+    "head": 0.077,
+    "brace": 0.067,
+    "hung": 0.046
+   },
+   "buildShare": {
+    "fill:open": 1,
+    "posts": 0.714,
+    "sill": 0.5,
+    "hood": 0.5,
+    "hung": 0.429,
+    "head": 0.429,
+    "light": 0.357,
+    "vine": 0.357,
+    "planter": 0.357,
+    "fill:bars": 0.286,
+    "brace": 0.286
+   }
+  }
+ },
+ "perBuildUniform": {
+  "n": 7,
+  "p10": 0,
+  "p25": 0.1,
+  "p50": 0.4,
+  "p75": 0.54,
+  "p90": 0.74
+ }
+}

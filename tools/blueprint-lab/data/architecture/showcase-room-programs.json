@@ -1,0 +1,141 @@
+{
+ "meta": {
+  "made": "2026-11-12",
+  "source": "lab/arch_rooms.js",
+  "builds": 16,
+  "catalog": "track A catalog (data/catalog/pieces.json family, version 1); prefabs it does not list have no family"
+ },
+ "fields": {
+  "channel": "per channel (light kind, banner prefab, rug prefab, drape prefab, furniture family): rooms holding 2 or more, share with one kind, kinds per room, share of the lead kind; household: builds with 3 or more rooms holding the channel, share of rooms whose lead kind is the build's lead, and the same with rooms drawn from all builds at random"
+ },
+ "light": {
+  "rooms": 22,
+  "oneKind": 0.318,
+  "kindsPerRoom": {
+   "n": 22,
+   "p10": 1,
+   "p25": 1,
+   "p50": 2,
+   "p75": 2.75,
+   "p90": 3.9
+  },
+  "leadShare": {
+   "n": 22,
+   "p10": 0.5,
+   "p25": 0.53,
+   "p50": 0.66,
+   "p75": 1,
+   "p90": 1
+  },
+  "household": {
+   "builds": 4,
+   "rooms": 17,
+   "roomTakesBuildLead": 0.529,
+   "ifShuffled": 0.588
+  }
+ },
+ "banner": {
+  "rooms": 2,
+  "oneKind": 0,
+  "kindsPerRoom": {
+   "n": 2,
+   "p10": 2,
+   "p25": 2,
+   "p50": 2,
+   "p75": 2,
+   "p90": 2
+  },
+  "leadShare": {
+   "n": 2,
+   "p10": 0.5,
+   "p25": 0.5,
+   "p50": 0.5,
+   "p75": 0.5,
+   "p90": 0.5
+  },
+  "household": {
+   "builds": 0,
+   "rooms": 0,
+   "roomTakesBuildLead": null,
+   "ifShuffled": null
+  }
+ },
+ "rug": {
+  "rooms": 8,
+  "oneKind": 0.125,
+  "kindsPerRoom": {
+   "n": 8,
+   "p10": 1.7,
+   "p25": 2,
+   "p50": 2,
+   "p75": 3,
+   "p90": 3.6
+  },
+  "leadShare": {
+   "n": 8,
+   "p10": 0.45,
+   "p25": 0.5,
+   "p50": 0.71,
+   "p75": 0.76,
+   "p90": 0.86
+  },
+  "household": {
+   "builds": 0,
+   "rooms": 0,
+   "roomTakesBuildLead": null,
+   "ifShuffled": null
+  }
+ },
+ "drape": {
+  "rooms": 4,
+  "oneKind": 1,
+  "kindsPerRoom": {
+   "n": 4,
+   "p10": 1,
+   "p25": 1,
+   "p50": 1,
+   "p75": 1,
+   "p90": 1
+  },
+  "leadShare": {
+   "n": 4,
+   "p10": 1,
+   "p25": 1,
+   "p50": 1,
+   "p75": 1,
+   "p90": 1
+  },
+  "household": {
+   "builds": 1,
+   "rooms": 4,
+   "roomTakesBuildLead": 1,
+   "ifShuffled": 1
+  }
+ },
+ "wood": {
+  "rooms": 30,
+  "oneKind": 0.167,
+  "kindsPerRoom": {
+   "n": 30,
+   "p10": 1,
+   "p25": 2,
+   "p50": 2,
+   "p75": 4,
+   "p90": 5.1
+  },
+  "leadShare": {
+   "n": 30,
+   "p10": 0.48,
+   "p25": 0.5,
+   "p50": 0.54,
+   "p75": 0.74,
+   "p90": 1
+  },
+  "household": {
+   "builds": 4,
+   "rooms": 19,
+   "roomTakesBuildLead": 0.737,
+   "ifShuffled": 0.579
+  }
+ }
+}

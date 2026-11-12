@@ -45,7 +45,7 @@ Valheim names after each point are the nearest vanilla pieces; track A's catalog
 - Walking line: the runner rug down the middle, unbroken, door to door.
 - Placement: thick round pillars in two rows; blue curtains tied back at each pillar; between pillars, a low bench or
   a small table set back against the wall; trophies (masks, mounted heads, a sword) hung on the pillars at eye height
-  and above. Candle chandeliers hang down the centre line, one per bay.
+  and above. Candle chandeliers hang down the center line, one per bay.
 - Clutter: almost none on the floor. All the dressing is on the walls and pillars.
 - Left empty: the whole middle strip.
 - Lesson for a hall: the dressing lives in bays along the sides, repeated per bay with variation in what is hung

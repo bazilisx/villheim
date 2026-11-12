@@ -63,5 +63,5 @@ they agree it meets what they learned, then it goes to him. At most 10 buildings
    passes. After 6 rounds without quorum on a building, the lead takes the disagreement to Tyler.
 7. **Delivery:** the lead (never a helper) copies approved buildings with renders and scorecards to
    `BepInEx/config/PlanBuild/blueprints/inspiration/generated/ingame/council` under the game install
-   (`Z:\SteamLibrary\steamapps\common\Valheim`), the folder PlanBuild reads and `vh gen` writes (its search and save
-   directories are relative to valheim.exe).
+   (`Z:\SteamLibrary\steamapps\common\Valheim`; `$HOME/mnt/common--Valheim` through `device_bash`), the folder
+   PlanBuild reads and `vh gen` writes (its search and save directories are relative to valheim.exe).

@@ -63,7 +63,7 @@ read it before changing, planning or answering anything about village behavior, 
 - **Wording of records:** docs, notes, comments and sheet rows state facts with sources: what was done, what the code
   does, what was tried, what is open. No one's mood, no story of how a correction came about, no judgments of earlier
   work. A process lesson that should outlast a session becomes a short plain instruction here, replacing older lines
-  where it can, so this file stays short.
+  where it can, so this file stays under about 150 lines.
 - **Dates** are US Mountain Time.
 
 ## Identity and git
@@ -84,7 +84,8 @@ Commits are Tyler's own work record, so they carry his identity and voice.
 Commits, docs, README, comments and in-game text should read as Tyler writes, because they go out as his: plain
 American English everywhere, commands, dialogue and config keys included (color, gray, center, rumor), short sentences, common words, "is" and "are" over elaborate verbs.
 Put asides in commas, colons or parentheses (no em dashes). State the point directly; leave out contrast framing such
-as "not only X but Y", "it's not X, it's Y", "no X, no Y, just Z" or "not X but rather Y". No promotional tone, no
+as "not only X but Y", "it's not X, it's Y", "no X, no Y, just Z", "not X but rather Y", or any sentence that uses a
+negative to set up a positive. No promotional tone, no
 words that mark text as AI-written (delve, seamless, robust, leverage, vibrant, tapestry), no emoji in docs or
 commits. Text never reads as notes from an AI ("I've implemented", "This commit introduces", "Let me know").
 Reference: https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
@@ -101,7 +102,7 @@ Reference: https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   paid with stand-ins from nearby biomes (D-080, D-126).
 - **Building kinds.** The hub is the hearth: one building on its own central plot that grows into the village's town
   hall (D-139, D-154). The storehouse (a work building for storage) and the longhouse (a social hub) are separate
-  buildings (D-113). A building's
+  buildings (D-113); what the longhouse is for beside the hub is open (D-168). A building's
   first plot is big enough for its last stage (D-083).
 - **Other mods.** VikingColonies and Innangard are study only: never copy their code or depend on them (VikingColonies'
   license forbids it; Innangard has none; D-097 open). ValheimCityBuilder, World Edit (RustyProductions) and the mods

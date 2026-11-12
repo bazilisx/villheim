@@ -26,7 +26,7 @@ consistency at the level of the building and the room, messy realism at the leve
 ## 1. Every choice has intent
 
 Every room has a purpose and every piece in it has a reason tied to that purpose and to who lives there. Variety comes
-from kitbashing purposeful sets, never from scattering.
+from kitbashing purposeful sets.
 
 - "My hope is that rooms have intent, and the furniture arrangement has intent within those rooms." (TN)
 - "Not random in a good way, like kitbashing different prefab clusters together. It feels like just throwing things
@@ -97,7 +97,8 @@ warm and intimate; a large hall when it is grand and well filled. Undersized mea
 
 Buildings, greenery and the village as a whole grow through the stages, from a camp to a dense small city with
 landscaping (D-138, D-153, D-158). The hub is the hearth, the village's town hall, on its own central plot (D-154).
-Decor stages add to each other: d1 is spartan with beds first, d2 holds d1, d3 holds d2 (D-071).
+Decor builds up as residents add to it: d1 is spartan with beds first, and d2 and d3 add more (D-071). Nothing has to
+carry over unchanged, within a stage or from one stage to the next (D-132, the later ruling).
 
 Growth is free to change things: "Tables can move and change. Fireplaces can move spots... Walls and furniture and
 decor can evolve and change as the house grows" (D-132); "Don't get locked into constraints" (D-133). Tyler's mock-ups

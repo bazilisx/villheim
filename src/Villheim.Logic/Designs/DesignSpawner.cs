@@ -417,12 +417,20 @@ namespace Villheim.Logic.Designs
                 StandItems.LockLoose(instance);
             }
 
-            // an item stand saved with its item gets the item, locked on (StandItems)
+            // an item stand saved with its item gets the item, locked on (StandItems); a sign saved with its text gets the
+            // text (the notice board's notices showed as bare boards in the showcase test, 2026-11-11)
             if (entry.Text != null)
             {
                 try
                 {
-                    StandItems.Apply(instance, entry.Text);
+                    if (view != null && view.GetZDO() != null && instance.GetComponentInChildren<Sign>() != null)
+                    {
+                        view.GetZDO().Set(ZDOVars.s_text, entry.Text);
+                    }
+                    else
+                    {
+                        StandItems.Apply(instance, entry.Text);
+                    }
                 }
                 catch (System.Exception e)
                 {

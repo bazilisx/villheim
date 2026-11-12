@@ -505,15 +505,16 @@ function exterior(b, ctx) {
 
   // ---- window planters (D-165, Tyler 2026-11-12: "Families that like plants can have planters. But not, not every
   // single window should have planters"; at most about 10 % of a village's windows). Which windows get one is the
-  // household's: ctx.planterWindows(openings, ctx) when the furnishing gives it (track E), else one window by the
-  // front door of a household fond of plants (lib/persona.js hobby plants 0.5 or more). The planter is Tyler's mockup
+  // household's: ctx.planterWindows(openings, ctx) when the furnishing gives it (track E), else the whole front run of
+  // the ground storey of a household fond of plants (lib/persona.js hobby plants 0.5 or more; D-167: one feature on a
+  // whole run of windows). The planter is Tyler's mockup
   // (frames/shot-c-sill-mockup.jpg): "the sill is under the window. Theres additional 1x1 beams outlining the window,
   // and outling the other two sides of the planter" (planter()).
   if (X.windowBoxes && ctx.door) {
     const fronts = openings.filter(o => o.kind === 'window' && !o.storey && !o.bare && o.e.out[0] === ctx.door.out[0] && o.e.out[1] === ctx.door.out[1]);
     const P = ctx.persona || {};
-    const chosen = ctx.planterWindows ? ctx.planterWindows(fronts, ctx)
-      : ((P.hobby || {}).plants || 0) >= 0.5 ? fronts.slice().sort((p, q) => Math.hypot(p.e.x - ctx.door.x, p.e.z - ctx.door.z) - Math.hypot(q.e.x - ctx.door.x, q.e.z - ctx.door.z)).slice(0, 1) : [];
+    // (D-167, Tyler: "windows in a row would all have the same feature": the whole front run of the ground storey)
+    const chosen = ctx.planterWindows ? ctx.planterWindows(fronts, ctx) : ((P.hobby || {}).plants || 0) >= 0.5 ? fronts : [];
     for (const o of chosen) {
       const got = planter(b, ctx, o);
       if (!got) continue;

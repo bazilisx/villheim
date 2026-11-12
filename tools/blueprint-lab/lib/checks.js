@@ -586,6 +586,41 @@ function crossedBoards(pieces) {
   return out;
 }
 
+// Wall tops meet the roof (Tyler, showcases 03 and 15: "gaps up top on the wall that dont complete the wall-to-roof
+// connection"). Along each outside wall or gable piece (floor on one side of it only), at its ends and middle: when
+// the next solid straight over its top is a roof piece, it is no more than WALL_GAP m higher, unless a window or door
+// is in between. Returns the gaps found.
+const WALL_GAP = 0.25;
+function wallTops(pieces) {
+  const boxes = pieces.map(gameBox), near = index(boxes), out = [];
+  // (a smoke louver's raised caps over a fire are open at the sides on purpose)
+  const fires = pieces.filter(p => PC.piece(p.name).role === 'fire' || /fire_pit|hearth|bonfire/.test(p.name));
+  const floorAt = (x, z, y1) => { for (const j of near(ptBox(x, y1 - 4.5, y1, z), 0)) { const b = boxes[j]; if (b.info.role === 'floor' && !pieces[j].decor && b.x0 <= x && x <= b.x1 && b.z0 <= z && z <= b.z1 && b.y1 < y1 && b.y1 > y1 - 4.5) return true; } return false; };
+  pieces.forEach((p, n) => {
+    const b = boxes[n], role = b.info.role;
+    if (p.decor || !['wall', 'window', 'gable'].includes(role) || tilted(p.q) || /arch/.test(p.name)) return;
+    const a = yawDeg(p) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a), w = b.info.size[0];
+    if (floorAt(p.x - uz, p.z + ux, b.y1) && floorAt(p.x + uz, p.z - ux, b.y1)) return;
+    for (const t of [-w / 2 + 0.25, 0, w / 2 - 0.25]) {
+      const x = p.x + ux * t, z = p.z + uz * t, top = b.y1;
+      let next = Infinity, by = -1;
+      for (const j of near(ptBox(x, top + 0.02, top + 4, z), 0)) {
+        if (j === n || pieces[j].decor || boxes[j].pass) continue;
+        const o = boxes[j];
+        let y0 = null;
+        if (o.sol && o.sol.length) { for (const sd of o.sol) { const sp = SHP.spanY(sd, x, z); if (sp && sp[1] > top - 0.05 && (y0 == null || sp[0] < y0)) y0 = sp[0]; } }
+        else if (o.x0 <= x && x <= o.x1 && o.z0 <= z && z <= o.z1 && o.y1 > top) y0 = o.y0;
+        if (y0 != null && y0 < next) { next = Math.max(y0, top); by = j; }
+      }
+      if (!isFinite(next) || next - top <= WALL_GAP || !['roof', 'roofTop', 'roofCorner'].includes(boxes[by].info.role)) continue;
+      if (fires.some(f => Math.hypot(f.x - x, f.z - z) < 4)) continue; // (and a smoke shaft's boards end under the ridge)
+      const opening = pieces.some((q, m) => m !== n && ['window', 'door'].includes(boxes[m].info.role) && boxes[m].x0 <= x + 0.3 && boxes[m].x1 >= x - 0.3 && boxes[m].z0 <= z + 0.3 && boxes[m].z1 >= z - 0.3 && boxes[m].y0 < next && boxes[m].y1 > top);
+      if (!opening) out.push({ name: p.name, x: +x.toFixed(1), y: +top.toFixed(2), z: +z.toFixed(1), gap: +(next - top).toFixed(2), under: pieces[by].name });
+    }
+  });
+  return out;
+}
+
 // The game's own support rule (WearNTear.UpdateSupport in assembly_valheim, decompiled 2026-11-12). A piece looks at
 // every collider that reaches into its own colliders grown by 0.15 m on each side. The ground gives the material's
 // max. From each touching piece it may take that piece's support less its own material's horizontal loss times the
@@ -954,12 +989,14 @@ function check(design, biome, opts = {}) {
     const G0 = Math.min(0, ...pieces.map(p => p.y));
     const falls = pieces.filter(p => PLANT_FALL.test(p.name) && p.y > G0 + 0.3);
     results.push({ check: 'plants held', ok: falls.length === 0, detail: falls.length ? `${falls.length} plants over the ground the game drops (${[...new Set(falls.map(p => p.name))].slice(0, 4).join(', ')})` : 'no plant the game drops stands over the ground' });
+    const wt = wallTops(pieces);
+    results.push({ check: 'wall tops', ok: wt.length === 0, detail: wt.length ? `${wt.length} gaps over outside walls under the roof (${wt.slice(0, 3).map(g => `${g.name} ${g.gap} m under ${g.under}`).join('; ')})` : 'outside walls meet the roof' });
     const cb = crossedBoards(pieces);
     results.push({ check: 'crossed boards', ok: cb.length === 0, detail: cb.length ? `${cb.length} out of line with the bargeboards (${cb.slice(0, 2).join('; ')})` : 'crossed boards in line' });
   }
   return results;
 }
 
-const apiC = { check, CLIP_MAX, stability, gameSupport, GAME_LOSS, passages, PASSAGE_W, PASSAGE_CLOSET, doorways, DOOR_STEP, DOOR_STEP_MAX, pastureFences, crossedBoards, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
+const apiC = { check, CLIP_MAX, stability, gameSupport, GAME_LOSS, passages, PASSAGE_W, PASSAGE_CLOSET, doorways, DOOR_STEP, DOOR_STEP_MAX, pastureFences, crossedBoards, wallTops, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
   setShapes(on) { SHAPES_DEFAULT = !!on; }, get shapes() { return SHAPES_DEFAULT; } };
 if (NODE_C) module.exports = apiC; else window.VHChecks = apiC;

@@ -2691,6 +2691,7 @@ function valleys(parts, b) {
   return n;
 }
 
+const CAP_GAP = 0.5;
 function gablePieces(K, C, w, top, r, ends, vent, dctx) {
   const roof = r === 2 ? K.roof45 : K.roof26, roofTop = r === 2 ? K.roofTop45 : K.roofTop26, gable = r === 2 ? K.gable45 : K.gable26;
   const capY = capOf(w, top, r), low = i => capY - r * (i + 1), pivot = i => low(i) + (r === 2 ? 1 : 0);
@@ -2720,6 +2721,11 @@ function gablePieces(K, C, w, top, r, ends, vent, dctx) {
       for (const yb of [yw - 0.1, yw + 1.1]) add(K.beam || 'wood_beam', u + Math.sign(u) * 0.25, yb, 0, 90, 'trim', yb + 0.1);
       gableFill(K, add, u, yw + 1, 0, capY - yw - 1, C.stoneWalls);
     } else gableFill(K, add, u, top, 0, capY - top, C.stoneWalls);
+    // a 1 m square piece on the apex, up into the ridge cap: the cap's underside stands well over its
+    // pivot at the ridge (0.86 m at a 45 degree cap's middle), and a gable filled only to the apex left a triangle of sky
+    // under every cap (the gaps at the wall tops of showcases 03 and 15); a metre wide, its corners stay in the cap's
+    // boards
+    add(K.wallQuarter || K.wallHalf, u, capY + 0.2, 0, 90, 'gable', capY + 0.2 + CAP_GAP);
     for (let i = 0; i <= wallRow; i++) for (const sv of [-1, 1]) {
       const v = sv * (2 + 2 * i);
       gableFill(K, add, u, top, v, low(i) - top, C.stoneWalls);

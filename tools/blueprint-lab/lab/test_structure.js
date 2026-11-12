@@ -16,7 +16,7 @@ for (const [type, biome, culture, stage] of cases) for (const seed of [1, 2, 3])
   const d = G.generate({ type, biome, culture, stage, decor: 'd' + stage[1], seed });
   const name = d.meta.Name;
   // passages (Tyler's two-piece rule) are counted and listed, not failed, until every plan meets it (track D record)
-  for (const c of Ck.check(d, biome)) { if (['passages', 'roof holes'].includes(c.check)) { if (!c.ok) narrow.push(`${name}: ${c.check}: ${c.detail}`); continue; } ok(c.ok, `${name}: ${c.check}: ${c.detail}`); }
+  for (const c of Ck.check(d, biome)) { if (['passages', 'roof holes', 'wall tops'].includes(c.check)) { if (!c.ok) narrow.push(`${name}: ${c.check}: ${c.detail}`); continue; } ok(c.ok, `${name}: ${c.check}: ${c.detail}`); }
   for (const p of d.pieces) {
     // no door taller than its wall; the dark wood gate is never a house door
     if (P.piece(p.name).role === 'door') ok(p.name !== 'darkwood_gate', `${name}: darkwood_gate used as a door`);
@@ -56,12 +56,12 @@ const SHOWCASE = [['hub', 'Meadows', 'norse', 's5', 2], ['hub', 'Plains', 'byzan
   ['home', 'Ashlands', 'castle-medieval', 's3', 1]];
 for (const [type, biome, culture, stage, seed] of SHOWCASE) {
   const d = G.generate({ type, biome, culture, stage, decor: 'd3', seed, lineage: seed });
-  for (const c of Ck.check(d, biome)) { if (['passages', 'roof holes'].includes(c.check)) { if (!c.ok) narrow.push(`${d.meta.Name}: ${c.check}: ${c.detail}`); continue; } ok(c.ok, `${d.meta.Name}: ${c.check}: ${c.detail}`); }
+  for (const c of Ck.check(d, biome)) { if (['passages', 'roof holes', 'wall tops'].includes(c.check)) { if (!c.ok) narrow.push(`${d.meta.Name}: ${c.check}: ${c.detail}`); continue; } ok(c.ok, `${d.meta.Name}: ${c.check}: ${c.detail}`); }
 }
 // the old id of the Lamari culture still works
 ok(/^tower_Mistlands_lamari_/.test(G.generate({ type: 'tower', biome: 'Mistlands', culture: 'caucasian-highland', stage: 's2', seed: 1 }).meta.Name), 'caucasian-highland does not map to lamari');
 // the door table: every door the generator places has measured data
 for (const k of ['wood_door', 'wood_gate', 'piece_cloth_hanging_door']) ok(!P.doorSpec(k).guessed, `${k} has no measured door data`);
 console.log(failed ? `${failed} failed` : `all structure rules hold on ${cases.length * 3} designs`);
-if (narrow.length) { console.log(`passages and roof holes (listed, not failed): ${narrow.length}`); for (const l of narrow) console.log('  ' + l); }
+if (narrow.length) { console.log(`passages, roof holes and wall tops (listed, not failed): ${narrow.length}`); for (const l of narrow) console.log('  ' + l); }
 process.exit(failed ? 1 : 0);

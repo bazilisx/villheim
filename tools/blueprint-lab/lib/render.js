@@ -416,9 +416,25 @@ function partColor(part, info) {
 }
 
 const MODEL_CACHE = new Map();
-/** The faces of one piece in its own frame, from its model or the old box shapes. */
-function pieceModel(name, useMesh) {
-  const key = useMesh ? 'mesh:' + name : name;
+// How much of each piece is drawn (opts.detail). 'high': the fine parts (to 2 cm of the game's mesh) and the local mesh
+// pack for every piece, as the measures use them. 'mixed', the default: walls, roofs, floors, beams and other building
+// pieces, and any piece whose fine model passes FINE_CAP faces, are drawn from their coarse parts; small decor and
+// furniture keep the fine parts. 'low': coarse parts for every piece. Drawing only: the checks and measures read
+// lib/mesh.js, which this does not change.
+const FINE_CAP = 1200;
+let DETAIL = 'mixed';
+function setDetail(d) { DETAIL = d === 'high' || d === 'low' ? d : 'mixed'; }
+function pieceModel(name, useMesh, detail) {
+  const lvl = detail || DETAIL;
+  if (lvl === 'high' || name.startsWith('@item:')) return pieceModelAt(name, useMesh, false);
+  const info = Pieces.piece(name);
+  if (lvl === 'low' || info.structural) return pieceModelAt(name, false, true);
+  const m = pieceModelAt(name, useMesh, false);
+  return m.faces.length > FINE_CAP ? pieceModelAt(name, false, true) : m;
+}
+/** The faces of one piece in its own frame, from its model or the old box shapes; coarse: its coarse parts. */
+function pieceModelAt(name, useMesh, coarse) {
+  const key = (useMesh ? 'mesh:' : '') + (coarse ? 'coarse:' : '') + name;
   let m = MODEL_CACHE.get(key);
   if (m) return m;
   if (name.startsWith('@item:')) { m = itemModel(name); MODEL_CACHE.set(key, m); return m; }
@@ -426,7 +442,7 @@ function pieceModel(name, useMesh) {
   const md0 = models()[name];
   // the parts are packed in data/piece-models.json and data/piece-fine.json (lib/mesh.js parts); a model set given
   // to setModels may still carry its own
-  const md = md0 && !md0.parts && MeshR() ? { ...md0, parts: MeshR().parts(name) } : md0;
+  const md = md0 && !md0.parts && MeshR() ? { ...md0, parts: (coarse && MeshR().coarseParts(name)) || MeshR().parts(name) } : md0;
   const mesh = useMesh && meshPack() && meshPack()[name];
   const faces = [];
   if (mesh) {
@@ -519,7 +535,7 @@ function sceneFaces(pieces, opts = {}) {
   let id = 0;
   const useMesh = opts.meshes !== false && !!meshPack();
   for (const p of pieces.concat(standItems(pieces, opts))) {
-    const m = pieceModel(p.name, useMesh), info = m.info;
+    const m = pieceModel(p.name, useMesh, opts.detail), info = m.info;
     if (opts.hide && opts.hide.includes(info.role)) continue;
     if (cut != null && (ROOF_ROLES.includes(info.role) || /^beam\d/.test(info.shape))) continue;
     // the cut goes through walls, posts, doors and stairs; furniture is drawn whole, or left out when it hangs above
@@ -853,6 +869,6 @@ const VIEWS = [
   { key: 'inside', az: 35, el: 55, cut: 2.6, label: 'inside, roof off' },
 ];
 
-const api = { polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern, project, unproject, standItems, ITEM_MISSING };
+const api = { setDetail, polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern, project, unproject, standItems, ITEM_MISSING };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHRender = api;

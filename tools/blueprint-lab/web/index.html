@@ -238,6 +238,7 @@ button.small { font: 500 12.5px var(--body); border-radius: 5px; padding: 3px 9p
         <label for="tilt">Tilt<input type="range" id="tilt" min="5" max="90" step="1" value="30"></label>
         <button id="vreset">Reset view</button>
         <button id="full">Full screen</button>
+        <label for="detail" title="How much of each piece is drawn. Mixed: building pieces and heavy decor plain, small decor fine. High: every piece as the measures see it (slow on big buildings).">Detail<select id="detail"><option value="mixed">Mixed</option><option value="low">Low</option><option value="high">High</option></select></label>
       </div>
       <label class="rooftoggle" for="roofoff"><input type="checkbox" id="roofoff"> Roof off</label>
     </div>
@@ -1022,6 +1023,15 @@ function unpack(pk) {
   return out;
 }
 const PARTS = new Map();
+const COARSE = new Map();
+/** The coarse parts of a piece (its packed k level), or null: the lab page draws these where fine parts cost too much. */
+function coarseParts(name) {
+  if (COARSE.has(name)) return COARSE.get(name);
+  const m = data()[name];
+  const v = m && m.k ? unpack(m.k) : null;
+  COARSE.set(name, v);
+  return v;
+}
 /** The parts to draw a piece with: its fine parts, or its coarse ones when it has no fine level; null when none. */
 function parts(name) {
   if (PARTS.has(name)) return PARTS.get(name);
@@ -1232,7 +1242,7 @@ function dims(name) {
 /** Does the piece show past its collider (its parts are kept)? Where it does not, its solids are what shows. */
 function proud(name) { const m = data()[name]; return !!(m && m.p); }
 
-const apiM = { world, worldFine, aabbOf, depth, deepest, source, lite, proud, dims, prismStrips, parts, unpack, encBoxes, decBoxes, fine: on => { FINE_ON = on; },
+const apiM = { coarseParts, world, worldFine, aabbOf, depth, deepest, source, lite, proud, dims, prismStrips, parts, unpack, encBoxes, decBoxes, fine: on => { FINE_ON = on; },
   setData: d => { LITE = d; FINE = null; LOCAL.clear(); LOCALF.clear(); PARTS.clear(); } };
 if (NODE_M) module.exports = apiM; else window.VHMesh = apiM;
 
@@ -2679,9 +2689,25 @@ function partColor(part, info) {
 }
 
 const MODEL_CACHE = new Map();
-/** The faces of one piece in its own frame, from its model or the old box shapes. */
-function pieceModel(name, useMesh) {
-  const key = useMesh ? 'mesh:' + name : name;
+// How much of each piece is drawn (opts.detail). 'high': the fine parts (to 2 cm of the game's mesh) and the local mesh
+// pack for every piece, as the measures use them. 'mixed', the default: walls, roofs, floors, beams and other building
+// pieces, and any piece whose fine model passes FINE_CAP faces, are drawn from their coarse parts; small decor and
+// furniture keep the fine parts. 'low': coarse parts for every piece. Drawing only: the checks and measures read
+// lib/mesh.js, which this does not change.
+const FINE_CAP = 1200;
+let DETAIL = 'mixed';
+function setDetail(d) { DETAIL = d === 'high' || d === 'low' ? d : 'mixed'; }
+function pieceModel(name, useMesh, detail) {
+  const lvl = detail || DETAIL;
+  if (lvl === 'high' || name.startsWith('@item:')) return pieceModelAt(name, useMesh, false);
+  const info = Pieces.piece(name);
+  if (lvl === 'low' || info.structural) return pieceModelAt(name, false, true);
+  const m = pieceModelAt(name, useMesh, false);
+  return m.faces.length > FINE_CAP ? pieceModelAt(name, false, true) : m;
+}
+/** The faces of one piece in its own frame, from its model or the old box shapes; coarse: its coarse parts. */
+function pieceModelAt(name, useMesh, coarse) {
+  const key = (useMesh ? 'mesh:' : '') + (coarse ? 'coarse:' : '') + name;
   let m = MODEL_CACHE.get(key);
   if (m) return m;
   if (name.startsWith('@item:')) { m = itemModel(name); MODEL_CACHE.set(key, m); return m; }
@@ -2689,7 +2715,7 @@ function pieceModel(name, useMesh) {
   const md0 = models()[name];
   // the parts are packed in data/piece-models.json and data/piece-fine.json (lib/mesh.js parts); a model set given
   // to setModels may still carry its own
-  const md = md0 && !md0.parts && MeshR() ? { ...md0, parts: MeshR().parts(name) } : md0;
+  const md = md0 && !md0.parts && MeshR() ? { ...md0, parts: (coarse && MeshR().coarseParts(name)) || MeshR().parts(name) } : md0;
   const mesh = useMesh && meshPack() && meshPack()[name];
   const faces = [];
   if (mesh) {
@@ -2782,7 +2808,7 @@ function sceneFaces(pieces, opts = {}) {
   let id = 0;
   const useMesh = opts.meshes !== false && !!meshPack();
   for (const p of pieces.concat(standItems(pieces, opts))) {
-    const m = pieceModel(p.name, useMesh), info = m.info;
+    const m = pieceModel(p.name, useMesh, opts.detail), info = m.info;
     if (opts.hide && opts.hide.includes(info.role)) continue;
     if (cut != null && (ROOF_ROLES.includes(info.role) || /^beam\d/.test(info.shape))) continue;
     // the cut goes through walls, posts, doors and stairs; furniture is drawn whole, or left out when it hangs above
@@ -3116,7 +3142,7 @@ const VIEWS = [
   { key: 'inside', az: 35, el: 55, cut: 2.6, label: 'inside, roof off' },
 ];
 
-const api = { polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern, project, unproject, standItems, ITEM_MISSING };
+const api = { setDetail, polygons, draw, plan, planSize, VIEWS, pieceModel, coverage, setModels, meshPack, PAT, pattern, project, unproject, standItems, ITEM_MISSING };
 if (typeof module !== 'undefined') module.exports = api;
 else window.VHRender = api;
 
@@ -22122,7 +22148,7 @@ const cultureLabel = k => (S.CULTURES[k] && S.CULTURES[k].label) || k;
 
 // ---------- the viewer's choices, kept between visits where the browser allows it
 const STORE = 'villheim-lab-choices';
-const KEPT = ['type', 'culture', 'ghouse', 'biome', 'plan', 'roof', 'walls', 'storeys', 'porch', 'pitch', 'tries', 'ibiome', 'imode', 'icount'];
+const KEPT = ['detail', 'type', 'culture', 'ghouse', 'biome', 'plan', 'roof', 'walls', 'storeys', 'porch', 'pitch', 'tries', 'ibiome', 'imode', 'icount'];
 const OPENS = ['gmore', 'gwords', 'imore'];
 // the stage sliders the viewer has moved, by slider id ('gstage': 's3'); a slider not in here is drawn at each build
 let chosen = {};
@@ -22268,6 +22294,7 @@ function captionGen() {
 $('go').onclick = () => draw(false);
 $('next').onclick = () => draw(true);
 $('roofoff').onchange = drawMain;
+$('detail').onchange = () => { VHRender.setDetail($('detail').value); saveKept(); if (current) show(); };
 for (const id of ['plan', 'roof', 'walls', 'storeys', 'porch', 'pitch']) $(id).onchange = () => { saveKept(); rebuild({ more: moreChoices() }); };
 $('biome').onchange = () => { saveKept(); if (G) rebuild({ biome: $('biome').value || any(biomesOf(G.culture)) }); else draw(false); };
 $('tries').onchange = () => { saveKept(); rebuild({ tries: triesOf() }); };
@@ -22376,7 +22403,7 @@ function drawNow(quick) {
   const c = $('view');
   const cut = $('roofoff').checked ? ground(current.d.pieces) + 2.6 : null;
   const cam = view.target ? { ppm: view.ppm, target: view.target } : {};
-  const r = VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, cut, ss: quick ? 1 : 2, width: c.width, height: c.height, ...cam, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
+  const r = VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, cut, ss: quick ? 1 : 2, detail: quick ? 'low' : undefined, width: c.width, height: c.height, ...cam, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
   lastFrame = r && r.ppm ? { s: r.ppm, fit: r.fit, ox: r.ox, oy: r.oy, W: c.width, H: c.height } : null;
   $('tilt').value = Math.round(view.el);
 }
@@ -22688,6 +22715,7 @@ $('tab-int').onclick = () => {
 };
 
 loadKept();
+VHRender.setDetail($('detail').value);
 draw(false);
 </script>
 </body>

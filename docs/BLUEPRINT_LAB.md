@@ -333,6 +333,14 @@ log seams, lattices on shutters, braces on doors, rails on fences, borders on ru
 on black marble, rivets on Dvergr and iron. A pattern is left out when its smallest feature would be under about 4 px,
 so small pictures stay clean. The same code runs in Node (@napi-rs/canvas) and on the request page.
 
+Detail (`opts.detail`, the page's Detail list, kept between visits). Mixed, the default: walls, roofs, floors, beams
+and other building pieces, and any piece whose fine model has more than 1,200 faces (`FINE_CAP`), are drawn from their
+coarse parts; smaller decor and furniture keep their fine parts. Low: coarse parts for every piece. High: fine parts and
+the local mesh pack for every piece. The page draws Low while the view is being dragged. A Meadows s5 hub (seed 7,
+1,254 pieces) has 650,695 faces at High, 37,052 at Mixed and 22,608 at Low; one 1200 by 800 draw takes 2.4 s, 0.19 s
+and 0.12 s in Node. Detail is for drawing only: the checks and measures read `lib/mesh.js` and use the fine parts as
+before.
+
 The models. `lab/extract_models.py` runs on Tyler's PC only (UnityPy over the game's asset bundles). For each
 prefab it walks the GameObject tree with its transforms, keeps the active LOD0 meshes, measures the render bounds,
 reads every collider (box, sphere, capsule; a mesh collider as one or a few boxes) with its layer, and marks it solid

@@ -109,6 +109,15 @@ function unpack(pk) {
   return out;
 }
 const PARTS = new Map();
+const COARSE = new Map();
+/** The coarse parts of a piece (its packed k level), or null: the lab page draws these where fine parts cost too much. */
+function coarseParts(name) {
+  if (COARSE.has(name)) return COARSE.get(name);
+  const m = data()[name];
+  const v = m && m.k ? unpack(m.k) : null;
+  COARSE.set(name, v);
+  return v;
+}
 /** The parts to draw a piece with: its fine parts, or its coarse ones when it has no fine level; null when none. */
 function parts(name) {
   if (PARTS.has(name)) return PARTS.get(name);
@@ -319,6 +328,6 @@ function dims(name) {
 /** Does the piece show past its collider (its parts are kept)? Where it does not, its solids are what shows. */
 function proud(name) { const m = data()[name]; return !!(m && m.p); }
 
-const apiM = { world, worldFine, aabbOf, depth, deepest, source, lite, proud, dims, prismStrips, parts, unpack, encBoxes, decBoxes, fine: on => { FINE_ON = on; },
+const apiM = { coarseParts, world, worldFine, aabbOf, depth, deepest, source, lite, proud, dims, prismStrips, parts, unpack, encBoxes, decBoxes, fine: on => { FINE_ON = on; },
   setData: d => { LITE = d; FINE = null; LOCAL.clear(); LOCALF.clear(); PARTS.clear(); } };
 if (NODE_M) module.exports = apiM; else window.VHMesh = apiM;

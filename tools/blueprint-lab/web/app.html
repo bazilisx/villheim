@@ -238,6 +238,7 @@ button.small { font: 500 12.5px var(--body); border-radius: 5px; padding: 3px 9p
         <label for="tilt">Tilt<input type="range" id="tilt" min="5" max="90" step="1" value="30"></label>
         <button id="vreset">Reset view</button>
         <button id="full">Full screen</button>
+        <label for="detail" title="How much of each piece is drawn. Mixed: building pieces and heavy decor plain, small decor fine. High: every piece as the measures see it (slow on big buildings).">Detail<select id="detail"><option value="mixed">Mixed</option><option value="low">Low</option><option value="high">High</option></select></label>
       </div>
       <label class="rooftoggle" for="roofoff"><input type="checkbox" id="roofoff"> Roof off</label>
     </div>
@@ -309,7 +310,7 @@ const cultureLabel = k => (S.CULTURES[k] && S.CULTURES[k].label) || k;
 
 // ---------- the viewer's choices, kept between visits where the browser allows it
 const STORE = 'villheim-lab-choices';
-const KEPT = ['type', 'culture', 'ghouse', 'biome', 'plan', 'roof', 'walls', 'storeys', 'porch', 'pitch', 'tries', 'ibiome', 'imode', 'icount'];
+const KEPT = ['detail', 'type', 'culture', 'ghouse', 'biome', 'plan', 'roof', 'walls', 'storeys', 'porch', 'pitch', 'tries', 'ibiome', 'imode', 'icount'];
 const OPENS = ['gmore', 'gwords', 'imore'];
 // the stage sliders the viewer has moved, by slider id ('gstage': 's3'); a slider not in here is drawn at each build
 let chosen = {};
@@ -455,6 +456,7 @@ function captionGen() {
 $('go').onclick = () => draw(false);
 $('next').onclick = () => draw(true);
 $('roofoff').onchange = drawMain;
+$('detail').onchange = () => { VHRender.setDetail($('detail').value); saveKept(); if (current) show(); };
 for (const id of ['plan', 'roof', 'walls', 'storeys', 'porch', 'pitch']) $(id).onchange = () => { saveKept(); rebuild({ more: moreChoices() }); };
 $('biome').onchange = () => { saveKept(); if (G) rebuild({ biome: $('biome').value || any(biomesOf(G.culture)) }); else draw(false); };
 $('tries').onchange = () => { saveKept(); rebuild({ tries: triesOf() }); };
@@ -563,7 +565,7 @@ function drawNow(quick) {
   const c = $('view');
   const cut = $('roofoff').checked ? ground(current.d.pieces) + 2.6 : null;
   const cam = view.target ? { ppm: view.ppm, target: view.target } : {};
-  const r = VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, cut, ss: quick ? 1 : 2, width: c.width, height: c.height, ...cam, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
+  const r = VHRender.draw(c.getContext('2d'), current.d.pieces, { az: view.az, el: view.el, cut, ss: quick ? 1 : 2, detail: quick ? 'low' : undefined, width: c.width, height: c.height, ...cam, background: getComputedStyle(document.body).getPropertyValue('--board').trim() || '#e9e4d8' });
   lastFrame = r && r.ppm ? { s: r.ppm, fit: r.fit, ox: r.ox, oy: r.oy, W: c.width, H: c.height } : null;
   $('tilt').value = Math.round(view.el);
 }
@@ -875,6 +877,7 @@ $('tab-int').onclick = () => {
 };
 
 loadKept();
+VHRender.setDetail($('detail').value);
 draw(false);
 </script>
 </body>

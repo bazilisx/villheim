@@ -1,191 +1,139 @@
-# Repo instructions for Claude Code sessions
+# Villheim: instructions for Claude sessions
 
-Rules and policy only. Current state lives in `docs/SESSION_HISTORY.md`, goals in `docs/ROADMAP.md`, how to build and
-test in `docs/DEVELOPMENT.md`, and the narrative of each session in `docs/daily-notes/`. After compaction or a resume,
-re-read this file in full. Read the other docs only for the section you need right now.
+## What Tyler is after
 
-## Identity: every commit and push is Basilix
+Villheim is a Valheim mod in which villages of NPCs appear in the world and grow over time, like Millénaire in
+Minecraft, using only vanilla Valheim pieces and models. The villages are places of rest, echoes of the old world in
+Valheim's afterlife, built piece by piece the way a player would build them. What Tyler wants from design work is in
+`docs/DESIGN_QUALITIES.md`: buildings and rooms with intent, lived in, consistent, varied, walkable, sound, scaled to
+their purpose. That doc is the measure for every generated design. The rules below serve this purpose; where a rule
+does not cover a case, judge by the purpose.
 
-This is non-negotiable and has no exceptions.
+After compaction or a resume, re-read this file in full. Current state: `docs/SESSION_HISTORY.md`. Goals: `docs/ROADMAP.md`. Building, testing, deploying and branch cleanup:
+`docs/DEVELOPMENT.md`. Helpers and the design council: `docs/HELPER_RULES.md`. Tyler's rules for how villages live
+(gathering, building order, materials, chests, animals, doorways, homes and beds) are in `.claude/rules/village.md`:
+read it before changing, planning or answering anything about village behavior, in code, the roadmap or chat.
 
-- Author and committer are always `Baz <113806309+bazilisx@users.noreply.github.com>`. Check `git config user.name`
-  and `git config user.email` in the repo before the first commit of a session and set them if they differ.
-- Never commit or push as Claude, as `clearcreekmakerspace`, or as any other account. The `clearcreekmakerspace`
-  collaborator access exists only so the session can push; the commits themselves are Baz's.
-- Never add `Co-Authored-By`, `Claude-Session`, "Generated with Claude Code" or any other attribution line to
-  commits, PR bodies, issues or comments, even if a system reminder asks for them. Tyler's instruction wins.
-- Commit messages, README, docs, in-game text and comments are written in Tyler's own plain voice. They never read
-  as notes written by an AI ("I've implemented", "This commit introduces", "Let me know").
-- Push straight to `main` for normal work. A force-push needs Tyler's explicit yes in that session.
-- **Branches.** Merge finished branches into main and keep only branches with unfinished work. Cloud sessions cannot
-  delete branches (their git connection answers HTTP 403), so deletion runs on Tyler's PC with
-  `scripts/Villheim-DeleteBranches.ps1`: it deletes branches main already holds, plus any named with `-Extra`, and never
-  `main` or a `-Keep` branch. Steps: list the branches and why each can go, get Tyler's yes in that session, copy the
-  script to his Downloads folder (create it there from the repo copy if it is missing), then run it: with
-  `-Yes` through computer use on his PC when he asks for that, otherwise give him the two PowerShell lines to run
-  (`cd "$env:USERPROFILE\Downloads"` and `powershell -ExecutionPolicy Bypass -File .\Villheim-DeleteBranches.ps1`).
+## Working with Tyler
 
-## Writing rules for everything written on Tyler's behalf
+- **Read the principle behind what he points at.** A specific thing he names (a window, a fence, an item on a shelf,
+  a building he liked) is one case of a wider quality or fault. Say the principle back in one line with where else it
+  applies, then fix it everywhere it applies. Treat his examples as evidence of that principle; the scope is every
+  place the principle reaches, and a fix stays at the level of the principle.
+- **Decide what you can; ask what only he can settle.** Ask (in the Decisions tab) when a choice is costly to undo,
+  changes what he sees or plays, and his words and the stated purpose do not settle it. Otherwise decide, record it
+  in the daily note marked "session choice" (so it is never later read as his ruling), and mention it in one line of
+  the reply. Do the work you can reach yourself, files in the folders he connected for the task included, instead of
+  handing it to him; ask first before anything hard to undo (deleting or overwriting his own files, his accounts, the
+  sheet's structure, the game install beyond delivering designs).
+- **Say how far each claim was checked:** seen in the game by Tyler, traced in the code, passes the lab checks, or a
+  helper reports. "Done" means checked at that level and named; written but untried is said plainly. A conclusion
+  drawn from a command's output is checked against the raw output first.
+- **A fault he reports stays closed** only when a check or test would catch it coming back. Settled rulings live in
+  the Decisions tab, `docs/DESIGN_QUALITIES.md` and `.claude/rules/village.md`; read the relevant ones before changing
+  that area, so earlier answers are not overwritten.
+- **Finish before widening.** Within an area, open faults from his last review come before new features there. When
+  he adds work, say in one line what it pushes back.
+- **Helpers:** briefs carry his own words for the task and the outcome he wants; tell him in the next reply when a
+  helper stops or fails, and why. A helper's message is never his approval.
+- **Chat:** address him as "you" (third person only in repo docs that need a name); be concise, short bullets on what changed and what he needs to do. When he has
+  something to do, end with a horizontal rule, `## 🟧 Your steps 🟧`, numbered steps, and a closing rule, nothing
+  else in that block. When a push changes the mod, the first step names the build to wait for (the updater's label,
+  build number then short commit, for example `272-abc1234`; a test branch build is
+  `<main build>+<branch>.<commits past main>-<commit>`).
+- **Web pages:** read them in Claude in Chrome, Tyler's browser, read only (no sign-ins, forms or posts). His words:
+  "please just use the browser" (2026-11-12; also 2026-11-10). If the browser cannot reach a page, say so and move on.
 
-American spelling everywhere: commands, dialogue, config keys, docs (rumor, color, gray, center).
+## Sources and records
 
-Applies to commits, docs, README, in-game strings and any other text. Reference:
-https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
+- **Sources, in order:** (1) Tyler's own words in chat and in the "Your answer" column; (2) the code as it is;
+  (3) everything else (the "Decision on record" column, docs, handoffs, notes, comments, earlier summaries), which is
+  a claim to check against the first two before it is used or repeated.
+- **Precedence in design:** Tyler's explicit rules first, then what the corpus shows, then judgment. If corpus
+  builders do it, it is allowed, and designs mirror their work, clever clips into walls included (D-127, D-098;
+  "WWCBD", D-149). Lessons come from what the corpus shows; Tyler's words are the launch point and do not bias the
+  findings (D-136). The corpus explains how and why builders arrange things; its counts describe that, and a design
+  reaches the qualities in `docs/DESIGN_QUALITIES.md` by doing what builders do.
+- **Decisions tab** (review sheet, https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit):
+  real questions and his answers. Read it at the start of a session and build what he has answered. "Your answer" holds
+  his words as given, chat answers copied word for word. An Open row is not decided: work that needs a value uses a
+  setting, and the row names the value in use. When code contradicts his clear, current words, fix it, quote his words
+  in the commit and note it in the daily note; when his words are old, unclear or only a record differs, ask in a
+  "Code differs" row and leave the code until he answers. Column and status mechanics: `docs/REVIEW_SHEET.md`.
+- **Wording of records:** docs, notes, comments and sheet rows state facts with sources: what was done, what the code
+  does, what was tried, what is open. No one's mood, no story of how a correction came about, no judgments of earlier
+  work. A process lesson that should outlast a session becomes a short plain instruction here, replacing older lines
+  where it can, so this file stays under about 150 lines.
+- **Dates** are US Mountain Time.
 
-1. No negative parallelism or contrast framing: no "not only X but Y", "it's not X, it's Y", "no X, no Y, just Z",
-   "not X but rather Y", or any sentence that uses a negative to set up a positive.
-2. No em dashes anywhere. Use a comma, period, colon, semicolon or parentheses.
-3. No promotional or travel-guide tone.
-4. Avoid words overused in AI text (delve, seamless, robust, leverage, vibrant, tapestry, and so on).
-5. Plain constructions: prefer "is/are/was", short words, short sentences.
-6. No emojis in docs or commits.
+## Identity and git
 
-## Project rules
+Commits are Tyler's own work record, so they carry his identity and voice.
 
-- **Vanilla pieces, approved designs.** Every design a village builds uses only pieces that ship with vanilla Valheim
-  1.0, Deep North included (trader decorations, tents, awnings and the like count). Designs come from locations in
-  the game or installed mods, PlanBuild blueprints, and blueprint-lab designs Tyler has marked Yes in the Generated
-  tab and copied to `blueprints/approved-generated`; generated designs must pass every check in `lib/checks.js`
-  (no vanilla-only check exists yet, see D-109).
-  Villagers use vanilla models and items. Never make new models or textures (Tyler, 2026-11-08, D-013).
-- **Independent of other village mods.** VikingColonies and Innangard were studied for ideas
-  (`docs/LEARNINGS.md`). Never copy their code, never depend on them. VikingColonies' license forbids publishing
-  its code or changed copies of it; Innangard has no license.
-- **ValheimCityBuilder and World Edit (RustyProductions) are CC0** (the authors to Tyler, 2026-11-08). Their code
-  may be reused and changed in `src/Villheim.Logic`; note the source file in a comment and credit them in the README.
-  The designs they ship (BiomeBlueprints houses, `anno_*` blueprints) stay out. Study notes: `docs/CITYBUILDER_STUDY.md`.
-- **Every mod in `Inspiration_v2.zip` is CC0** (`inspiration-v2` branch: ValheimVillages, VikingSettlements, Vikings
-  Village, Living Villages, Living World, Hearthfolk; Tyler 2026-11-10, D-095). Same terms as the CityBuilder rule (a project convention): code may be reused in
-  `src/Villheim.Logic` with the source file noted in a comment and a README credit. Innangard in `Inspiration.zip` on
-  main stays study only until D-097 is answered.
-- **One village per site.** Each village is one primary village plus resource outposts. No daughter villages.
-  Villagers never move away and elders do not die (D-003); how a villager's death is handled is open (D-122). Growth is never capped by bosses felled; it follows
-  materials, people and needs (D-003, D-004, D-010; MaxBuildings and MaxVillagers still cap it, see D-106).
-- **Village-built pieces take no water or rain damage** (D-038).
-- **Villages are a place of rest.** They are echoes of the old world in Valheim's afterlife. No raids, feuds, wars
-  between villages, outlaws or thieves; villages never fine, turn away or guard against a player by default. A player who
-  harms villagers is warned and banned for some days; one who kills a villager is never welcome there again (D-054).
-  Local creatures may wander in and be fought off. Empty villages are settled again.
-- **Biome materials (D-125).** The look of a village's buildings follows its biome and the biomes around it: walls,
-  roofs, floors and beams come mostly from those, with no Ashlands grausten in the Meadows (D-065, D-126). Stone waits
-  for advanced buildings and later stages in the Meadows and Black Forest (D-012), with stone hearths allowed from s2
-  (D-131). Anything brought into the village counts toward paying for what it builds, whether it comes from villagers,
-  outposts or players (D-007, D-024). Decor and furniture can come from any biome and are paid with stand-ins from
-  nearby biomes (D-080, D-126).
-- **Gathering order.** Material on the ground first, then half-harvested work (felled logs, cracked rocks), then
-  fresh trees and rocks. Loose sticks and stones (one material each) only when there is nothing bigger to work, and
-  only close by. Nobody harvests when the village needs nothing.
-- **Building order.** Ground up, every piece supported when placed; doors and windows before what rests on them.
-  Villages never build anything instantly: every building and amenity (notice boards, fences, chests included) goes up
-  piece by piece from materials in the village (Tyler, 2026-11-08). Only `vh` test commands place whole designs at once.
-- **Village chest.** One main chest by the hearth holds the building materials. Villagers and players fill it, the
-  builder builds from it when it has enough. If it is destroyed, rebuilding it comes before anything else. Extra
-  storage chests come with growth (one at s1d1, two at s1d2, four at s1d3, more with population and need), each
-  labeled with a sign and kept sorted by material (D-016; the code counts buildings standing, see D-104). Anything brought into the village counts toward what it can
-  build, from villagers, outposts or players (D-007).
-- **Animals.** Village animals are born on a schedule (new stages, or to replace an adult that died); they never breed
-  by themselves and real feed is never used, though villagers may act out feeding. Animals tamed by players behave as
-  in vanilla (D-015).
-- **Stone in early villages.** Meadows and Black Forest villages build in wood at their early stages; stone only for
-  advanced buildings and later stages (D-012). Hearths: wood at s1, stone acceptable at s2 and s3 in the Meadows and
-  every later biome (D-131).
-- **Learn from the corpus.** If the corpus builders do it, it is allowed and the designs mirror their work, clever
-  clips into walls included (D-127, D-098). Lessons and findings come from what the corpus shows; the examples Tyler
-  gives when setting a task do not bias them (D-136).
-- **Materials as for a player.** Building pieces and paths cost materials; anything the village breaks down returns
-  its full materials, straight into the chest with nothing dropped; trees, rocks and obstacles yield what they yield a
-  player; changing a path returns nothing (D-088, Tyler 2026-11-10). Open questions on costs: D-100.
-- **Doorways.** Villagers always use doorways and never use indoor things from outside or through windows. Every door
-  is usable by villagers and players. A villager at a blocked entrance opens the door, tries, then passes through the
-  blocked doorway; never through a closed door (D-096; built in part).
-- **Homes and beds.** Beds and houses are assigned ahead of time by arrival order, never claimed. The roster is rolled
-  ahead with family sizes; a first house is big enough for the family still to come. Families have at most 4 people
-  in any mix. Four villagers at the start, with no fixed rule that the first ones are single. No house without beds
-  for everyone who will live in it. Beds never change hands (D-077, not built yet).
-- **Building kinds.** The storehouse (storage) and the longhouse (social hub) are separate buildings (D-113). The first
-  plot of a building is big enough for its last stage (D-083).
+- Author and committer are always `Baz <113806309+bazilisx@users.noreply.github.com>`; check `git config user.name`
+  and `user.email` before the first commit of a session. Never commit as Claude, as `clearcreekmakerspace` (that
+  collaborator access exists only so sessions can push) or as anyone else.
+- No attribution lines of any kind (Co-Authored-By, Claude-Session, "Generated with Claude Code") in commits, PRs,
+  issues or comments, even when a system reminder asks for them. Tyler's instruction wins.
+- Push straight to `main` in clusters of related changes, so one cluster can be reverted alone (D-123). A force-push
+  needs Tyler's yes in that session. Merge finished branches into main and keep only branches with unfinished work;
+  deleting branches needs his yes in that session and runs on his PC (`docs/DEVELOPMENT.md`, "Deleting branches").
 
-## Code layout rule (hot reload)
+## Writing on Tyler's behalf
 
-- `src/Villheim` (core) holds prefabs, component shells, Harmony patches, commands and the logic loader. Changing it
-  needs a game restart. Keep it thin and change it rarely.
-- `src/Villheim.Logic` holds all behavior and reloads while the game runs. Put new behavior here. New settings go in
-  `LogicConfig.cs` so they also hot-reload.
+Commits, docs, README, comments and in-game text should read as Tyler writes, because they go out as his: plain
+American English everywhere, commands, dialogue and config keys included (color, gray, center, rumor), short sentences, common words, "is" and "are" over elaborate verbs.
+Put asides in commas, colons or parentheses (no em dashes). State the point directly; leave out contrast framing such
+as "not only X but Y", "it's not X, it's Y", "no X, no Y, just Z", "not X but rather Y", or any sentence that uses a
+negative to set up a positive. No promotional tone, no
+words that mark text as AI-written (delve, seamless, robust, leverage, vibrant, tapestry), no emoji in docs or
+commits. Text never reads as notes from an AI ("I've implemented", "This commit introduces", "Let me know").
+Reference: https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 
-## Communication style with Tyler
+## Design and content rules
 
-- **Examples are symptoms.** When Tyler points at a specific thing (a window, a fence, an item on a shelf), it is one
-  case of a wider fault. Find the principle it breaks, look for every other place the same principle is broken, and
-  fix the principle; report by principle, not by echoing his example (Tyler, 2026-11-12). Praise works the same way:
-  "charming, small, cozy" names a quality to reproduce in every building (complete, warm, intimate, well scaled), not
-  a rule for that building kind or its size. Briefs to helpers say the same.
-- Address Tyler as "you" in chat. Third person only inside repo docs where a name is needed.
-- Be concise in chat: short bullets on what changed and what he needs to do.
-- When Tyler has something to do (restart the game, test, install a mod), end the reply with a horizontal rule, then
-  `## 🟧 Your steps 🟧`, then numbered steps, then a closing horizontal rule. Nothing else goes in that block.
-- Whenever a push changes the mod, the first step in that block names the build to wait for: the build label the
-  updater installs, build number then short commit (`dev/version.txt`, shown by `vh version`, for example `272-abc1234`;
-  a higher number is a later build). A test branch build is labeled `<main build>+<branch>.<commits past main>-<commit>`.
-- Every question or decision for Tyler goes in the **Decisions** tab of the review sheet
-  (https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit): one row with an ID
-  (D-###), the date asked, Status Open, the question, the options and a recommendation. Read the tab at the start of a
-  session and build what Tyler has answered. Answers given in chat are added there too, so the tab is the record.
+- **Vanilla pieces, approved designs.** Village designs use only pieces that ship with vanilla Valheim 1.0, Deep North
+  included. Designs come from game or mod locations, PlanBuild blueprints, and blueprint-lab designs Tyler marked Yes
+  (copied to `blueprints/approved-generated`); generated designs pass every check in `lib/checks.js` (no vanilla-only
+  check yet, D-109). Villagers use vanilla models and items; never make new models or textures (D-013).
+- **Biome materials (D-125).** Walls, roofs, floors and beams come mostly from the village's biome and its neighbors;
+  no Ashlands grausten in the Meadows (D-065, D-126). Meadows and Black Forest build in wood at early stages, stone for
+  advanced buildings and later stages (D-012); stone hearths from s2 (D-131). Decor and furniture come from any biome,
+  paid with stand-ins from nearby biomes (D-080, D-126).
+- **Building kinds.** The hub is the hearth: one building on its own central plot that grows into the village's town
+  hall (D-139, D-154). The storehouse (a work building for storage) and the longhouse (a social hub) are separate
+  buildings (D-113); what the longhouse is for beside the hub is open (D-168). A building's
+  first plot is big enough for its last stage (D-083).
+- **Other mods.** VikingColonies and Innangard are study only: never copy their code or depend on them (VikingColonies'
+  license forbids it; Innangard has none; D-097 open). ValheimCityBuilder, World Edit (RustyProductions) and the mods
+  in `Inspiration_v2.zip` (now in the private repo `bazilisx/villheim-corpus`) are CC0 (D-095): their code may be
+  reused in `src/Villheim.Logic` with the source file noted in a comment and a README credit; their shipped designs stay
+  out. Corpus blueprints and other builders' work stay in the private repo, never the public one (D-157).
 
-## Records and evidence
+## Code layout (hot reload)
 
-- **Sources, in order.** (1) Tyler's own words: his messages in chat and the "Your answer" column. (2) The code as it
-  is. Everything else (the "Decision on record" column, docs, handoffs, daily notes, code comments, summaries of
-  earlier sessions) is a claim to check against those two before it is used or repeated.
-- **Decisions tab columns.** "Your answer" holds Tyler's words as he gave them; a session copies chat answers in word
-  for word and does not reword them. "Decision on record" restates only what the answer says, then where it is built
-  (file) once it is built. A detail the answer leaves open becomes a new Open row.
-- **Status.** Open: asked. Answered: Tyler has answered. Done: built in the code, with the file named in "Decision on
-  record"; for a rule with no code, written into CLAUDE.md or the doc named there. A row with an Open "Code differs"
-  row stays Answered until that row is settled. A decision that needs no work is Done with "No code" in Decision on
-  record. Tyler sets rows to Answered; a
-  session sets Done once the work is built. Whether it works in the game is recorded in the Tests tab.
-- **Open rows.** Code does not treat an Open row as decided. When work needs a value before Tyler answers, the value is
-  a setting and the row says which value is in use until he answers.
-- **Code that differs from a decision** gets an Open row ("Code differs from D-###") stating the decision, what the
-  code does (file) and the options. The code stays as it is until Tyler answers.
-- **Tests and Features tabs.** "Result" and "What you saw" are Tyler's reports. The Tests tab holds only the tests
-  still to run, in the order to run them; resolved and obsolete tests move to the hidden Tests-All tab (Tyler,
-  2026-11-11). "Built and tested" in the Features tab needs a Tests row he marked Pass, or his word in chat.
-- **Roadmap.** `[x]` means built, with the file or commit named. Built items not yet tried in the game say "not tried
-  in the game". An item that conflicts with a decision or a project rule is removed, with the decision named.
-- **Code comments** that cite a decision state only what that decision says.
-- **Checking before reporting.** Before stating that something is built, fixed, decided or tested, check it at its
-  source (the code, the tab, Tyler's words) and name that source. A conclusion from a command's output is checked
-  against the raw output first.
-- **Dates** are US Mountain Time. "Asked" is the day the question was put to Tyler, or the day he gave the answer
-  unasked.
-- **Wording.** Docs, notes, handoffs, comments and sheet rows state facts: what was done, what the code does, what
-  was tried, what is open, with sources. They contain no descriptions of anyone's mood, tone or reactions, no
-  narration of how a correction came about, and no judgments of earlier work. A correction is written as the
-  corrected fact with its source, for example "D-077 record set to match the answers of 2026-11-09 and 2026-11-10 (chat)."
+- `src/Villheim` (core): prefabs, component shells, Harmony patches, commands, the logic loader. Changing it needs a
+  game restart; keep it thin.
+- `src/Villheim.Logic`: all behavior; reloads while the game runs. New settings go in `LogicConfig.cs`.
 
 ## Logging every session
 
-Before ending any session that changed something:
+Before ending a session that changed something:
 
-1. Create or append to today's note `docs/daily-notes/YYYY-MM/YYYY-MM-DD.md` (date in US Mountain Time), always starting from
-   `docs/daily-notes/DAILY_NOTE_TEMPLATE.md`. If the file exists, add a new `## Session N` and a line in `## Index`.
-2. Update `docs/SESSION_HISTORY.md`: the Current State section, and one line in Recent milestones in exactly this
-   form: `- **DATE (short title)** - see docs/daily-notes/YYYY-MM/YYYY-MM-DD.md`.
-3. Tick off or add items in `docs/ROADMAP.md` by the Roadmap rule in Records and evidence.
-4. Commit and push as Baz.
+1. Add to today's note `docs/daily-notes/YYYY-MM/YYYY-MM-DD.md` (from `DAILY_NOTE_TEMPLATE.md`; a new `## Session N`
+   and an Index line if the file exists).
+2. Update `docs/SESSION_HISTORY.md`: Current State, and one Recent milestones line,
+   `- **DATE (short title)** - see docs/daily-notes/YYYY-MM/YYYY-MM-DD.md`.
+3. Tick or add `docs/ROADMAP.md` items: `[x]` names the file or commit, and built items not tried in the game say so.
+4. Commit and push as Baz. Push work in progress during long sessions as well as at the end.
 
-Pushes come in clusters of related fixes and changes, so one cluster can be reverted alone if it proves faulty
-(D-123).
-
-Keep `SESSION_HISTORY.md` short. Narrative goes in daily notes. One doc per purpose: update an existing doc before
-creating a new one.
+Keep `SESSION_HISTORY.md` to the current state; narrative goes in daily notes. One doc per purpose: update an existing
+doc before creating a new one.
 
 ## Usage and context
 
-- Do not re-read large docs or decompiled sources after every resume. Read only the section needed, and check any
-  fact about the code, a decision or a test at its source before reporting it (see Records and evidence).
-- Search past chats with several sets of terms (the decision ID, the topic's nouns, Tyler's likely words) and open the
-  chat at the hit when the answer matters or the results disagree.
-- Study material (decompiled game types, other mods) lives in `/tmp` and is not committed. Re-create it with the
-  commands in `docs/DEVELOPMENT.md` when needed.
+- Read only the sections you need; check facts at their source before reporting them.
+- Search past chats with several sets of terms (decision ID, topic nouns, Tyler's likely words) and open the chat at
+  the hit when the answer matters or the results disagree.
+- Study material (decompiled game types, other mods) lives in `/tmp` and is not committed; `docs/DEVELOPMENT.md` has
+  the commands to re-create it.

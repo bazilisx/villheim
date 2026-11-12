@@ -1,5 +1,9 @@
 # Council criteria: corpus rooms (track B)
 
+> Since 2026-11-12 this file is a seat's diagnostic notes: what the track measures and how. A design's verdict comes
+> from the qualities in `docs/DESIGN_QUALITIES.md` and Tyler's hard rules there; the pass marks and hard fails below
+> explain shortfalls and do not decide a verdict on their own (`docs/HELPER_RULES.md`, "The design council").
+
 What a generated s3d3 building is judged by, from the room study (`docs/ROOM_STUDY.md`, data in
 `tools/blueprint-lab/data/rooms-corpus/`). Every target is a corpus number unless it is Tyler's rule, and each item
 names its source. Measure with `node lab/rooms_corpus_audit.js <design.blueprint>` (it reads the design with the same

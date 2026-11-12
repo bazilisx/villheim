@@ -1,5 +1,9 @@
 # Council criteria: architecture (track H)
 
+> Since 2026-11-12 this file is a seat's diagnostic notes: what the track measures and how. A design's verdict comes
+> from the qualities in `docs/DESIGN_QUALITIES.md` and Tyler's hard rules there; the pass marks and hard fails below
+> explain shortfalls and do not decide a verdict on their own (`docs/HELPER_RULES.md`, "The design council").
+
 The checklist track H judges a generated s3d3 building by: does the building read as designed with intent, one
 program applied whole with reasoned exceptions. Grounds: `docs/ARCHITECTURE_STUDY.md` (sources and corpus measures),
 `tools/blueprint-lab/data/architecture/` (the numbers), D-165, D-167 and Tyler's words in `../TYLER_NOTES.md` ("windows

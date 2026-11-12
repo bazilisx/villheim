@@ -6,7 +6,7 @@ stands, shelves, tables and armor stands (stand items). Tyler, 2026-11-12 (`TYLE
 stands are "both random and meaningless ... and theyre also repeative and meaningless", "there is nothing currently
 hanging on any of the armorstands", and the helper on interior design should "research images or video stills that
 show how folks in the corpus or elsehwere make interior design elements like potion cabinets, kitchen tables, shelves,
-etc." His examples are instances of wider faults (common.md, "Tyler's examples are symptoms"); the rules below are
+etc." His examples are instances of wider faults (CLAUDE.md, "Working with Tyler"); the rules below are
 written by principle and apply to every item kind and every assembly kind.
 
 - Code: `tools/blueprint-lab/lib/assemblies.js` (find, place, choose recipes), `tools/blueprint-lab/lib/standitems.js`

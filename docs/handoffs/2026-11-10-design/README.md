@@ -662,6 +662,8 @@ were not tried), and request 2 at 75 s or under (three runs 78.7 to 79.9 s; node
 
 ## Rules for every helper (copy of /home/claude/briefs/common.md; /home/claude is not kept between sessions)
 
+Superseded by `docs/HELPER_RULES.md` (2026-11-12).
+
 A new session gives each helper these rules in its brief, with its own branch, working copy and file ownership.
 
 Scope and files:

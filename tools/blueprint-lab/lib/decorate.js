@@ -16,6 +16,7 @@ const SHD = NODE_D ? require('./shapes.js') : window.VHShapes;
 const PERS = () => (NODE_D ? require('./persona.js') : window.VHPersona);
 // what a piece shows, as boxes (lib/mesh.js): where a model stands proud of its collider (the 2x2 wood wall's bars)
 const MESH_D = () => (NODE_D ? require('./mesh.js') : window.VHMesh);
+const WHD = () => (NODE_D ? require('./wallhang.js') : window.VHWallhang);
 let RULES = null, LEARN = null;
 function setRules(r) { RULES = r; }
 function setInterior(d) { LEARN = d; }
@@ -33,7 +34,9 @@ const ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistla
 // spacing between two of the same; see docs/INTERIOR_DESIGN.md). Pivots are in the middle of the footprint.
 // at: floor (stands free), wall (back to a wall), mount (hung on a wall), rug, top (on a table), fire (on a fire),
 // hang (from the ceiling). rel: turn from the wall's inward normal when standing against a wall (0: local +z faces
-// the room). base: pivot height above the floor (floor torches stand 0.75 m below their pivot). b: the first biome
+// the room). base: pivot height above the floor (the standing torches' models reach 0.65 m under their pivot; corpus
+// builders' 0.75 m is over the floor piece's pivot, 0.1 m under the floor's top, and at 0.75 m over the floor's top their
+// foot hovered 10 cm, showcase 2026-11-12). b: the first biome
 // whose village can make it, the lower of the game's notes (design-list.csv) and the recipe.
 // Sizes are at least the game's own: the box round each piece's solid colliders (its mesh for rugs), from
 // data/piece-models.json, so furniture does not clip into walls or each other in the game. For pieces turned 90 or
@@ -100,10 +103,10 @@ const F = {
   wood_dragon1: { s: [3.34, 1.46, 1.0], c: [0.0, 1.69], at: 'mount', b: 'Black Forest', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
   darkwood_raven: { s: [3.09, 1.46, 0.8], c: [0.0, 1.54], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
   darkwood_wolf: { s: [2.18, 1.79, 0.83], c: [0.0, 1.09], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
-  piece_groundtorch_wood: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Meadows', cat: 'light', base: 0.75 },
-  piece_groundtorch: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
-  piece_groundtorch_green: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
-  piece_groundtorch_mist: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Mistlands', cat: 'light', base: 0.75 },
+  piece_groundtorch_wood: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Meadows', cat: 'light', base: 0.65 },
+  piece_groundtorch: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.65 },
+  piece_groundtorch_green: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.65 },
+  piece_groundtorch_mist: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Mistlands', cat: 'light', base: 0.65 },
   piece_walltorch: { s: [0.31, 0.95, 0.45], at: 'mount', b: 'Black Forest', cat: 'light', wall: 0.28, y: 1.55, rel: 270 },
   piece_dvergr_lantern: { s: [0.78, 1.21, 1.11], c: [-0.55, 0.0], at: 'mount', b: 'Mistlands', cat: 'light', wall: 0.42, under: 0.35, rel: 90 },
   piece_brazierceiling01: { s: [0.97, 1.6, 0.91], at: 'hang', b: 'Swamp', cat: 'light', under: 1.6 },
@@ -979,7 +982,17 @@ function clearOfRelief(room, name, spot) {
   return null;
 }
 function putMount(room, name, spot) {
-  spot = clearOfRelief(room, name, spot);
+  // what lib/wallhang.js knows goes up against what shows of the wall at its own height (a plinth and the thinner wall
+  // over it have different faces), turned with its back to the wall, as deep as corpus builders hang it; heights
+  // between the spot's limits are tried in turn when the first has no wall behind it (a 2x2 wall's rails)
+  if (WHD() && WHD().isHung(name) && room.out && spot.face) {
+    const hs = [];
+    if ((F[name] || {}).under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) if (spot.lowY == null || (yy >= spot.lowY && yy <= spot.topY)) hs.push(+yy.toFixed(2));
+    const r = WHD().hang(name, { x: spot.x0 != null ? spot.x0 : spot.x, z: spot.z0 != null ? spot.z0 : spot.z, nx: spot.face.nx, nz: spot.face.nz, y: spot.y }, WHD().backingOf(room.out), { heights: hs, pieces: room.out });
+    if (!r) return null;
+    const [mx, mz] = middleOf(name, r.x, r.z, r.yaw);
+    spot = { ...spot, x: mx, z: mz, y: r.y, yaw: r.yaw, clip: r.wclip ? r.wclip - 0.005 : 0, hung: true };
+  } else spot = clearOfRelief(room, name, spot);
   if (!spot) return null;
   const [w, h] = size(name);
   const f = F[name] || {};
@@ -1578,13 +1591,15 @@ function lightsIn(room, k, n, o) {
     const c = cells[0];
     if (c) {
       const top = room.ceilAt(c.x, c.z);
-      if (top - room.stand > 3.9 && room.add('piece_brazierceiling01', c.x, top - F.piece_brazierceiling01.under, c.z, 0, { mount: true, y0: top - 1.6 })) done++;
+      // (hung from the beam, floor or roof over it as builders hang it, lib/wallhang.js hangFrom)
+      const hy = top - room.stand > 3.9 && WHD() ? WHD().hangFrom({ name: 'piece_brazierceiling01', x: c.x, y: top - F.piece_brazierceiling01.under, z: c.z, yaw: 0 }, room.out) : null;
+      if (hy != null && hy - room.stand > 2.3 && room.add('piece_brazierceiling01', c.x, hy, c.z, 0, { mount: true, y0: hy })) done++;
     }
   }
   if (k.wallLight && lightOk(k.wallLight, room.biome)) {
     const f = F[k.wallLight] || {};
-    // the household's height for its sconces: 1.6 to 2.0 m, or as the piece hangs
-    const y = f.under != null ? undefined : 1.6 + R() * 0.4;
+    // the household's height for its sconces, one through the house (lib/wallhang.js lightY), or as the piece hangs
+    const y = f.under != null ? undefined : WHD() ? WHD().lightY(P) : 1.6 + R() * 0.4;
     const spots = mountSpots(room, k.wallLight, { pairs: true, y });
     while (done < n) {
       const ranked = spots.map(s => {
@@ -3625,7 +3640,8 @@ function auditOne(p, ctx, extra, allow) {
   const hung = it.f.at === 'mount' || p.rest === 'wall';
   if (hung || MOUNT_LIKE.test(p.name)) {
     const d = hungInto(p, hung ? A.struct.map(sb => sb.p).concat(more) : A.struct.map(sb => sb.p).filter(q => !q.decor));
-    if (d > Math.max(hungLimit(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
+    // (a piece lib/wallhang.js put up into an uneven wall carries its depth as p.wclip, D-098)
+    if (d > Math.max(hungLimit(p.name), allow || 0, p.wclip || 0)) { ONE_WHY = 'hung'; return false; }
     if (d > HUNG_CLIP(p.name)) used = Math.max(used, d);
   }
   if (used) p.wclip = +(used + 0.005).toFixed(3);

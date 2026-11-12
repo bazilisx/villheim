@@ -804,7 +804,7 @@ function generate(req) {
     !C.stoneWalls && !/stone|marble|grausten/.test(C.wallStyle || '') && rng((lineage * 4099 + strHash(cultureKey) * 13 + 0x57ac) >>> 0)() < 0.6
     ? stackEndFor(wings, form === 'svan' || stage === 's3' ? { cx: W - 3, n: 3 } : null, { may: true }) : 0;
   const hearth = lit && ventAt ? hearthPlan({ T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK: hearthStoneOK, F, stage, K: KH, cells,
-    doors: [door, backDoor].filter(Boolean), area: cells.size * 4 * storeys, type, midStack: req.hearth === 'middle' ? 0 : midStack }) : { spot: 'middle' };
+    doors: [door, backDoor].filter(Boolean), area: cells.size * 4 * storeys, type, storeys, midStack: req.hearth === 'middle' ? 0 : midStack }) : { spot: 'middle' };
   if (req.hearth === 'middle') hearth.spot = 'middle';
   info.hearth = hearth.spot;
   if (hearth.why) info.hearthWhy = hearth.why;
@@ -909,6 +909,9 @@ function generate(req) {
   // the building program (lib/program.js, track H, D-167): one feature family per facade, storey and run of windows,
   // a reasoned exception at most per run; the details read it for planters and corners
   if (Program) { try { dctx.program = Program.plan({ cultureKey, type, stage, decor, biome, seed, storeys, persona: household, village: req.village, kit: K }); } catch (e) { dctx.program = null; } }
+  // the program's arch: an open light of the window kit becomes an arched one (its motif from the arched corpus windows,
+  // lib/details.js motifWindow)
+  if (dctx.program && dctx.program.front.features.includes('arch') && C.winKit && C.winKit.fill === 'open' && !(req.style && req.style.winKit)) C.winKit = { ...C.winKit, fill: 'arch' };
   dctx.notes = b.notes;
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
   dctx.profile.overhang = req.details && req.details.overhang != null ? req.details.overhang : true;
@@ -948,7 +951,11 @@ function generate(req) {
     const y0 = F + s * SH;
     const up = ladders[s - 1], next = ladders[s], SHw = SHs(s), knee = SHw < SH;
     if (s > 0) {
-      for (const [k, [x, z]] of cells) if (!onLadder(up, x, z, SH) && !(flue && inRect(flue, x, z)) && (!loft || loft.cells.has(k))) b.put(K.floor, x, y0, z);
+      // (over a flight's foot where the wall stands just past it the floor stays open, so the stairwell runs to the wall:
+      // a floor cell there was a 2 m pocket between the well and the wall, a walk one floor piece wide, council tavern
+      // Plains byzantine seed 77)
+      const footOpen = up && up.run && !cells.has(`${up.stand[0] - 2 * up.dir[0]},${up.stand[1] - 2 * up.dir[1]}`) ? `${up.stand[0]},${up.stand[1]}` : null;
+      for (const [k, [x, z]] of cells) if (!onLadder(up, x, z, SH) && k !== footOpen && !(flue && inRect(flue, x, z)) && (!loft || loft.cells.has(k))) b.put(K.floor, x, y0, z);
       if (loft) loftRail(b, K, loft, up, y0, cells);
       if (up && up.run) putStairRun(b, K, up, y0 - SH);
       else if (up) putLadder(b, K, up, y0 - SH, SH);
@@ -1279,18 +1286,29 @@ function generate(req) {
   const stairRun = F >= 0.9 ? 2 * Math.round(Math.min(F, 2)) : 0;
   if (T.field) fieldDesign(b, K, W, D + (C.boardwalk ? { s1: 4, s2: 6, s3: 8 }[stage] + Math.max(2, stairRun) : stairRun), biome, stage, R, doorX);
   if (T.pen) penDesign(b, K, Math.max(...[...cells.values()].map(c => c[0])) + 1, D, stage); // beside the last wing
-  if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1')))
+  // carved heads on the gable ends, in pairs or none (lib/program.js ornament): each hung on what shows of its gable wall
+  // under the ridge (lib/wallhang.js hang); on a ridge beam's end run out past the rake it sat 0.3 to 0.43 m off any
+  // wall (track F's measure)
+  if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1'))) {
+    const WH = typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang;
+    const ridgeY = roofTop + r * (D - 1) / 2, ends = [];
     for (const sx of [-1, 1]) {
       if (hearth.spot === 'stack' && sx === hearth.sg) continue; // the stack stands there
-      // a lower annex in line at that end: its roof meets the main gable below the ridge, so the ridge beam would have no
-      // gable under it (it fell in the game's support rule, home Black Forest slavic s3 seed 1)
+      // (not over a lower annex in line at that end, whose roof meets the main gable below the ridge)
       if (wings.some(w => w.spec && w.spec.at === 'inline' && !w.spec.ext && w.spec.side === sx)) continue;
-      // the carving rides on the ridge beam's end, run out a metre past the gable (it stood on nothing)
-      const rk = (dctx.rake || 0) + (wings.some(w => w.spec && w.spec.ext && w.spec.side === sx) ? 4 : 0); // past the rake, and past an extension
-      // a 2 m ridge beam from inside the gable to half a metre past the rake, so it rests on the gable wall
-      b.put(rk ? (K.beam || 'wood_beam') : (K.beam1 || 'wood_beam_1'), sx * (rk ? W + rk - 0.5 : W + 0.5), roofTop + r * (D - 1) / 2 - 0.35, 0, 0, { trim: true });
-      b.put('wood_dragon1', sx * (W + rk + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);
+      // (the outermost gable wall on the ridge line at that end: an extension in line carries the main ridge further out)
+      const gx = Math.max(-Infinity, ...b.pieces.filter(p => !p.decor && ['wall', 'gable'].includes(P.piece(p.name).role) && Math.abs(p.z) < 1.2 && p.y > ridgeY - 3 && p.y < ridgeY + 0.5 && sx * p.x > 0).map(p => sx * p.x));
+      if (isFinite(gx)) ends.push({ sx, gx });
     }
+    // (the pair at one height: the first under the ridge where both ends take one)
+    let heads = [];
+    const B = WH && ends.length === 2 ? WH.backingOf(b.pieces) : null;
+    if (B) for (const dy of [1.4, 1.0, 1.8, 2.2, 0.6, 2.6]) {
+      const got = ends.map(({ sx, gx }) => WH.hang('wood_dragon1', { x: sx * gx, z: 0, nx: sx, nz: 0, y: ridgeY - dy }, B, { pieces: b.pieces }));
+      if (got.every(Boolean)) { heads = got; break; }
+    }
+    if (heads.length === 2) for (const h of heads) b.put(h.name, h.x, h.y, h.z, h.yaw, { trim: true, ...(h.wclip ? { wclip: h.wclip } : {}) });
+  }
 
   b.outer = edges;
   // the gable end a stone stack may take (a stack hearth's, or the chimney stack on a hall or workshop with a middle fire,
@@ -1468,10 +1486,12 @@ function doorLights(b, o) {
         const yaw = (Math.atan2(ox, oz) * 180 / Math.PI + 270 + 360) % 360;
         const q = name
           ? { name, x: +(e.x + ox * (half + 0.28) + ux * sg * t).toFixed(3), y: +(op.y0 + 1.55).toFixed(3), z: +(e.z + oz * (half + 0.28) + uz * sg * t).toFixed(3), yaw }
-          : { name: ground, x: +(e.x + ox * (half + 0.6) + ux * sg * (t + 0.2)).toFixed(3), y: 0.75, z: +(e.z + oz * (half + 0.6) + uz * sg * (t + 0.2)).toFixed(3), yaw: 0 };
-        if (!name) { // a standing torch stands on the doorstep or floor under it, if any
-          const tops = b.pieces.filter(p => P.piece(p.name).role === 'floor').map(p => Ck.aabb(p)).filter(a => q.x > a.x0 && q.x < a.x1 && q.z > a.z0 && q.z < a.z1 && a.y1 < 1.5).map(a => a.y1);
-          if (tops.length) q.y = +(Math.max(0, ...tops) + 0.75).toFixed(3);
+          : { name: ground, x: +(e.x + ox * (half + 0.6) + ux * sg * (t + 0.2)).toFixed(3), y: 0.653, z: +(e.z + oz * (half + 0.6) + uz * sg * (t + 0.2)).toFixed(3), yaw: 0 };
+        if (!name) { // a standing torch stands on the doorstep or floor under it (lib/wallhang.js settle), else on the
+          // ground, its pivot 0.653 m over its foot (data/piece-models.json; at 0.75 it stood 10 cm over the ground)
+          const WH = typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang;
+          const yy = WH && WH.settle({ ...q, y: 1.2 }, b.pieces, 1.2);
+          if (yy != null && yy > 0.653) q.y = yy;
         }
         const qb = Ck.aabb(q), m = 0.04;
         const hit = b.pieces.some(p => {
@@ -2058,7 +2078,9 @@ function propUp(b, K, biome, o = {}) {
       // ground floor clear of galleries and walkways over it
       const a = (p.yaw || 0) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a);
       let spot = null;
-      for (const [k, m] of [[0, 0], [2, 0], [-2, 0], [4, 0], [-4, 0], [1, 0], [-1, 0], [3, 0], [-3, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      // (the corners 0.9 m out last: a valley's inner corner over the crossing of a cross hall is carried from the
+      // crossing's corner, clear of the middle)
+      for (const [k, m] of [[0, 0], [2, 0], [-2, 0], [4, 0], [-4, 0], [1, 0], [-1, 0], [3, 0], [-3, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1], [0.9, 0.9], [-0.9, 0.9], [0.9, -0.9], [-0.9, -0.9]]) {
         const x = p.x + ux * k + uz * m, z = p.z + uz * k - ux * m;
         // posts stand in rows: none within 1.9 m of another, and on the line of one in the same row when near it
         if (b.pieces.some(q => q.prop && Math.hypot(q.x - x, q.z - z) < 1.9)) continue;
@@ -2094,9 +2116,13 @@ function propUp(b, K, biome, o = {}) {
       const { x, z, top, base } = spot;
       // the longest pieces first; the last one ends at the underside, reaching down into the one below it (no metre of
       // post poking up through the roof, no short soft-wood piece at the top where the load is)
+      // a post over 8 m: wood and iron where the village's biomes allow iron (D-125), else core wood in 2 m pieces (the
+      // game takes a tenth of the support per metre of pivot distance plus 0.1 m, so two 2 m logs hold more than one
+      // 4 m log); lib/checks.js gameSupport
       let y = base;
+      const tall = top - base > 8, iron = tall && P.decorOk('woodiron_pole', biome);
       while (top - y > 0.15) {
-        const left = top - y, name = left >= 3.5 && p4 ? p4 : p2, h = P.piece(name).size[1];
+        const left = top - y, name = iron ? 'woodiron_pole' : left >= 3.5 && p4 && !tall ? p4 : p2, h = P.piece(name).size[1];
         const y0 = Math.min(y, top - h);
         b.put(name, x, Math.max(base, y0) + h / 2, z, 0, { prop: true });
         y = Math.max(base, y0) + h;
@@ -2294,7 +2320,13 @@ function hearthPlan(o) {
   const nearDoor = (x, z, d = 2.4) => doors.some(e => Math.hypot(e.x - x, e.z - z) < d);
   const cell = (x, z) => cells.has(`${x},${z}`) && !wings.some(w => w !== w0 && inside(w, x, z, -0.1));
   // an end is free when nothing joins the gable: no wing past it, and the end cell is the main wing's own
+  // (a shaft through an upper floor leaves walks of two floor pieces (4 m) or none beside it: an end hearth's shaft in
+  // the middle of a gable 9 m wide left 3.5 m either side, council tavern Plains byzantine seed 77; a side hearth's
+  // shaft one bay in from the gable left a 2 m pocket. Upper floors take the end hearth on a gable 10 m wide or more,
+  // the side hearth at the corner or 4 m in)
+  const upper = (o.storeys || 1) > 1;
   const endAt = (s1, force) => {
+    if (upper && w0.D - 1.5 < 3.9) return null; // (the shaft's boards and the wall take 1.5 m of the half depth)
     const xW = w0.cx + s1 * w0.W, x = xW - s1, z = w0.cz;
     if (hip || wings.some(w => w !== w0 && (inside(w, xW + s1 * 1.5, z, 0.3) || inside(w, x, z, 0.3)))) return null;
     if (!cell(x, z) || nearDoor(x, z, 2.2)) return null;
@@ -2312,6 +2344,7 @@ function hearthPlan(o) {
   const runsOn = w => w.alpha === w0.alpha && Math.abs(w.cz - w0.cz) < 0.01 && Math.abs(w.D - w0.D) < 0.01;
   const sideAt = (u, sv, loose) => {
     if (Math.abs(u) > w0.W - 1) return null;
+    if (upper && Math.abs(Math.abs(u) - (w0.W - 1)) > 0.01 && Math.abs(u) > w0.W - 5 + 0.01) return null;
     const x = w0.cx + u, z = w0.cz + sv * (w0.D - 1);
     if (!cell(x, z) || nearDoor(x, z, loose ? 2.2 : 2.4)) return null;
     // nothing joins the wall behind it (a back wing, a cross wing), and the cells beside it are this wing's

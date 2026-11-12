@@ -248,6 +248,56 @@ function floorPoints(pieces, boxes) {
   return pts;
 }
 
+// Open edges (D-164: where people stand high, a rail): the edges of floors people stand on 1.2 m or more over the
+// ground with nothing 0.4 to 1.0 m over the edge line (a wall, a half wall, a fence, a rail beam, a door, a roof) and
+// no other floor past them, sampled every 0.5 m. The way up (a stair or ladder at the edge) is left open. Runs of the
+// samples along one edge line: { y, x, z, nx, nz, len }.
+const OPEN_EDGE_HIGH = 1.2, OPEN_EDGE_MAX = 3;
+function openEdges(pieces, opts = {}) {
+  const boxes = pieces.map(catBox), near = index(boxes);
+  const ys0 = boxes.filter(b => b.info.structural).map(b => b.y0).sort((a, c) => a - c);
+  const ground = opts.ground != null ? opts.ground : Math.max(0, ys0.length ? ys0[Math.floor(ys0.length * 0.02)] : 0);
+  const BAR = ['wall', 'window', 'door', 'fence', 'gable', 'roof', 'roofTop', 'roofCorner'];
+  const isFloor = (p, b) => b.info.role === 'floor' && !p.decor && !p.soil && !p.dais && !tilted(p.q);
+  const pts = new Map();
+  pieces.forEach((p, n) => {
+    const b = boxes[n];
+    if (!isFloor(p, b) || b.y1 < ground + OPEN_EDGE_HIGH) return;
+    const y = b.y1;
+    for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const line = nx ? (nx > 0 ? b.x1 : b.x0) : (nz > 0 ? b.z1 : b.z0), a0 = nx ? b.z0 : b.x0, a1 = nx ? b.z1 : b.x1;
+      for (let t = a0 + 0.25; t < a1; t += 0.5) {
+        const qx = nx ? line : t, qz = nx ? t : line;
+        const look = ptBox(qx + nx * 0.2, y - 0.4, y + 1.1, qz + nz * 0.2);
+        let shut = false;
+        for (const j of near({ x0: qx - 0.6, x1: qx + 0.6, y0: y - 0.6, y1: y + 1.1, z0: qz - 0.6, z1: qz + 0.6 }, 0)) {
+          if (j === n || pieces[j].decor) continue;
+          const o = boxes[j], r = o.info.role;
+          const over = (m) => qx + nx * 0.2 >= o.x0 - m && qx + nx * 0.2 <= o.x1 + m && qz + nz * 0.2 >= o.z0 - m && qz + nz * 0.2 <= o.z1 + m;
+          if (isFloor(pieces[j], o) && Math.abs(o.y1 - y) < 0.35 && over(0)) { shut = true; break; }
+          if (r === 'stair' && over(0.6) && o.y1 > y - 0.6) { shut = true; break; } // the way up
+          const bar = BAR.includes(r) || (r === 'beam' && (o.y0 + o.y1) / 2 > y + 0.4 && (o.y0 + o.y1) / 2 < y + 1.4);
+          if (bar && o.y0 < y + 1.0 && o.y1 > y + 0.4 && (qx >= o.x0 - 0.3 && qx <= o.x1 + 0.3 && qz >= o.z0 - 0.3 && qz <= o.z1 + 0.3)) { shut = true; break; }
+        }
+        void look;
+        if (shut) continue;
+        const key = `${nx},${nz},${line.toFixed(2)},${y.toFixed(1)}`;
+        if (!pts.has(key)) pts.set(key, { nx, nz, line, y, ts: [] });
+        pts.get(key).ts.push(t);
+      }
+    }
+  });
+  const out = [];
+  for (const g of pts.values()) {
+    const ts = [...new Set(g.ts.map(v => +v.toFixed(2)))].sort((a, c) => a - c);
+    let s0 = ts[0], prev = ts[0];
+    const flush = () => { const mid = (s0 + prev) / 2; out.push({ y: +g.y.toFixed(2), x: +(g.nx ? g.line : mid).toFixed(2), z: +(g.nx ? mid : g.line).toFixed(2), nx: g.nx, nz: g.nz, len: +(prev - s0 + 0.5).toFixed(1), high: +(g.y - ground).toFixed(1) }); };
+    for (const t of ts.slice(1)) { if (t - prev > 0.6) { flush(); s0 = t; } prev = t; }
+    flush();
+  }
+  return out.sort((a, c) => c.len - a.len);
+}
+
 // The space a person needs to walk through a door: its opening, then 2.3 m up for a metre in front and behind.
 // Returns the pieces in the way (indices).
 function doorBlockers(o, pieces, boxes, near, skip) {
@@ -362,7 +412,8 @@ function passages(pieces, opts = {}) {
   const ys0 = boxes.filter(b => b.info.structural).map(b => b.y0).sort((a, c) => a - c);
   const ground = opts.ground != null ? opts.ground : Math.max(0, ys0.length ? ys0[Math.floor(ys0.length * 0.02)] : 0);
   const floors = [];
-  pieces.forEach((p, i) => { const b = boxes[i]; if (b.info.role === 'floor' && !p.decor && !tilted(p.q)) floors.push(i); });
+  // (a dais is a platform for a seat, never a walk)
+  pieces.forEach((p, i) => { const b = boxes[i]; if (b.info.role === 'floor' && !p.decor && !p.dais && !tilted(p.q)) floors.push(i); });
   const levels = new Map();
   for (const i of floors) { const k = Math.round(boxes[i].y1 * 4) / 4; if (!levels.has(k)) levels.set(k, []); levels.get(k).push(i); }
   const out = [];
@@ -425,7 +476,7 @@ function passages(pieces, opts = {}) {
     const walled = (i, j) => {
       let n = 0;
       for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        for (let t = 1; t <= 56; t++) { const a = i + di * t, c = j + dj * t; if (a < 0 || c < 0 || a >= nx || c >= nz) break; if (wallm[a * nz + c]) { n++; break; } }
+        for (let t = 1; ; t++) { const a = i + di * t, c = j + dj * t; if (a < 0 || c < 0 || a >= nx || c >= nz) break; if (wallm[a * nz + c]) { n++; break; } }
       }
       return n >= 3;
     };
@@ -1000,6 +1051,6 @@ function check(design, biome, opts = {}) {
   return results;
 }
 
-const apiC = { check, CLIP_MAX, stability, gameSupport, GAME_LOSS, passages, PASSAGE_W, PASSAGE_CLOSET, doorways, DOOR_STEP, DOOR_STEP_MAX, pastureFences, crossedBoards, wallTops, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
+const apiC = { check, CLIP_MAX, stability, gameSupport, GAME_LOSS, openEdges, OPEN_EDGE_HIGH, OPEN_EDGE_MAX, passages, PASSAGE_W, PASSAGE_CLOSET, doorways, DOOR_STEP, DOOR_STEP_MAX, pastureFences, crossedBoards, wallTops, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
   setShapes(on) { SHAPES_DEFAULT = !!on; }, get shapes() { return SHAPES_DEFAULT; } };
 if (NODE_C) module.exports = apiC; else window.VHChecks = apiC;

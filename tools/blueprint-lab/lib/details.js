@@ -327,9 +327,18 @@ function exterior(b, ctx) {
   const isOpen = new Set(openings.map(o => `${o.e.x},${o.e.z},${o.y0}`));
   const added = { windows: 0, doors: 0, corners: 0, gables: 0, braces: 0, gallery: 0, motifs: 0 };
   // the gable banners the roof put up are decor (any biome, from d2: D-065, D-126, lib/persona.js stageOf)
+  // (each one's rod on what shows of its gable wall, lib/wallhang.js; one with no wall behind it comes down: on an
+  // in-line extension's end it hung in the air, Mountain saami storehouse seed 7)
   for (const g of ctx.gableBannerAt || []) {
     const p = b.pieces.find(q => q.name === g.name && Math.abs(q.x - g.x) < 0.05 && Math.abs(q.y - g.y) < 0.05 && Math.abs(q.z - g.z) < 0.05);
-    if (p) { p.decor = true; p.trim = true; ctx.gableBannerDone = true; added.gableBanner = (added.gableBanner || 0) + 1; }
+    if (!p) continue;
+    const a = (p.yaw || 0) * Math.PI / 180, fr = { nx: -Math.sin(a), nz: -Math.cos(a) };
+    // (the banner's front faces out: its local +z, turned by its yaw, is the gable's outward normal)
+    fr.nx = Math.sin(a); fr.nz = Math.cos(a);
+    const dot = (p.x - (ctx.wings[0] ? ctx.wings[0].cx : 0)) * fr.nx + (p.z - (ctx.wings[0] ? ctx.wings[0].cz : 0)) * fr.nz;
+    if (dot < 0) { fr.nx = -fr.nx; fr.nz = -fr.nz; }
+    if (!bannersOnWall(b, [p], fr)) { b.pieces.splice(b.pieces.indexOf(p), 1); continue; }
+    p.decor = true; p.trim = true; ctx.gableBannerDone = true; added.gableBanner = (added.gableBanner || 0) + 1;
   }
   const MT = X.motifs ? (ctx.motifs || (ctx.motifs = MotifsD.plan(ctx))) : null;
   const used = new Set();
@@ -410,7 +419,10 @@ function exterior(b, ctx) {
     // lamps: a pair in line with the door posts, a little outside them, with a frame only; on a raised house at the top
     // of the entry stair where a landing is
     if (wants('lamps') && framed && !o.back && !(mo && mo.lit) && !bannered) {
-      const cands = [-1, 1].map(s => ({ name: 'piece_groundtorch_wood', x: +(dx + ux * s * (dw / 2 + 0.7) + ox * 0.35).toFixed(3), y: F + 0.65, z: +(dz + uz * s * (dw / 2 + 0.7) + oz * 0.35).toFixed(3), q: quatD(0), yaw: 0 }));
+      // (each stands on what is under its foot, lib/wallhang.js settle; on the ground its pivot 0.653 m up)
+      const WHd = NODE_D ? require('./wallhang.js') : window.VHWallhang;
+      const cands = [-1, 1].map(s => ({ name: 'piece_groundtorch_wood', x: +(dx + ux * s * (dw / 2 + 0.7) + ox * 0.35).toFixed(3), y: F + 0.653, z: +(dz + uz * s * (dw / 2 + 0.7) + oz * 0.35).toFixed(3), q: quatD(0), yaw: 0 }))
+        .map(c => { const yy = WHd && WHd.settle({ ...c, y: F + 1.2 }, b.pieces, 1.2); return yy != null && yy > 0.6 ? { ...c, y: yy } : c; });
       const footing = c => F < 0.01 || b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.abs(p.y - F) < 0.2 && Math.abs(p.x - c.x) < 1.05 && Math.abs(p.z - c.z) < 1.05);
       if (cands.every(c => footing(c) && clear(b, c))) for (const c of cands) b.pieces.push({ ...c, decor: true, trim: true });
     }
@@ -647,6 +659,15 @@ function commitMotifs(b, ctx) {
 function pruneMotifs(b, ctx) {
   const Ck = checksD(), keys = ctx.motifKeys || new Set();
   const isMotif = p => p.motif || keys.has(`${p.name}|${Math.round(p.x * 10)}|${Math.round(p.y * 10)}|${Math.round(p.z * 10)}`);
+  // the gable motifs' hung props (banners, carvings) on what shows of their wall (lib/wallhang.js), or out: one on a
+  // gable that ended under it hung in the air (Mountain saami storehouse seed 7); the walls' motifs went through hang
+  // as they were placed (lib/motifs.js)
+  const WH = NODE_D ? require('./wallhang.js') : window.VHWallhang;
+  if (WH) for (const p of b.pieces.filter(q => !q.motif && !q.wallHung && isMotif(q) && WH.isHung(q.name))) {
+    const u = WH.backDir(p);
+    if (bannersOnWall(b, [p], { nx: -u[0], nz: -u[2] })) { p.wallHung = true; p.decor = true; p.trim = true; }
+    else b.pieces.splice(b.pieces.indexOf(p), 1);
+  }
   for (let round = 0; round < 4; round++) {
     const ps = b.pieces, boxes = ps.map(p => Ck.aabb(p)), near = Ck.index(boxes);
     const ys = boxes.filter(x => x.info.structural).map(x => x.y0).sort((a, c) => a - c), ground = ys.length ? ys[Math.floor(ys.length * 0.02)] : 0;

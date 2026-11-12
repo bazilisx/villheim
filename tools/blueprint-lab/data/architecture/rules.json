@@ -1,0 +1,607 @@
+{
+ "meta": {
+  "made": "2026-11-12",
+  "source": "docs/ARCHITECTURE_STUDY.md; numbers from data/architecture/corpus-*.json (lab/arch_facades.js, lab/arch_grammar.js, lab/arch_rooms.js)",
+  "note": "Read by lib/program.js. Shares are corpus shares unless a field says it is a program choice; D-136: the corpus numbers win over outside sources, D-165 caps planters, D-167 asks for one program per facade, storey and run."
+ },
+ "windows": {
+  "adopt": {
+   "note": "share of a culture group's windows with each feature (featureByCulture windowShare): the chance a building puts the feature on its front run; runs hold it whole (fullRun 43 to 68 % against 10 to 29 % for a shuffle)",
+   "byGroup": {
+    "unsorted": {
+     "builds": 599,
+     "windowShare": {
+      "fill:open": 0.856,
+      "posts": 0.312,
+      "sill": 0.142,
+      "brace": 0.123,
+      "hood": 0.09,
+      "fill:bars": 0.086,
+      "head": 0.078,
+      "arch": 0.057,
+      "light": 0.049,
+      "fill:glass": 0.046,
+      "hung": 0.043,
+      "vine": 0.018,
+      "fill:mesh": 0.009,
+      "shutter": 0.006,
+      "fill:closed": 0.003,
+      "planter": 0.001
+     }
+    },
+    "all": {
+     "builds": 878,
+     "windowShare": {
+      "fill:open": 0.849,
+      "posts": 0.33,
+      "sill": 0.16,
+      "brace": 0.127,
+      "fill:bars": 0.095,
+      "hood": 0.086,
+      "head": 0.085,
+      "arch": 0.06,
+      "light": 0.049,
+      "hung": 0.045,
+      "fill:glass": 0.045,
+      "vine": 0.017,
+      "fill:mesh": 0.008,
+      "shutter": 0.007,
+      "fill:closed": 0.003,
+      "planter": 0.001
+     }
+    },
+    "norse-highland": {
+     "builds": 8,
+     "windowShare": {
+      "fill:open": 0.932,
+      "posts": 0.339,
+      "sill": 0.22,
+      "brace": 0.178,
+      "head": 0.136,
+      "hood": 0.068,
+      "fill:glass": 0.042,
+      "light": 0.034,
+      "fill:bars": 0.025,
+      "arch": 0.017
+     }
+    },
+    "norse": {
+     "builds": 71,
+     "windowShare": {
+      "fill:open": 0.81,
+      "posts": 0.431,
+      "brace": 0.2,
+      "sill": 0.193,
+      "fill:bars": 0.121,
+      "head": 0.109,
+      "hood": 0.107,
+      "hung": 0.057,
+      "fill:glass": 0.049,
+      "light": 0.048,
+      "arch": 0.039,
+      "fill:mesh": 0.017,
+      "shutter": 0.006,
+      "vine": 0.004,
+      "fill:closed": 0.002,
+      "planter": 0.001
+     }
+    },
+    "castle": {
+     "builds": 46,
+     "windowShare": {
+      "fill:open": 0.848,
+      "posts": 0.294,
+      "fill:bars": 0.131,
+      "sill": 0.082,
+      "head": 0.082,
+      "arch": 0.058,
+      "brace": 0.054,
+      "light": 0.033,
+      "vine": 0.029,
+      "hood": 0.025,
+      "hung": 0.02,
+      "fill:glass": 0.018,
+      "fill:mesh": 0.002,
+      "shutter": 0.002
+     }
+    },
+    "fantasy": {
+     "builds": 14,
+     "windowShare": {
+      "fill:open": 0.76,
+      "posts": 0.518,
+      "arch": 0.244,
+      "sill": 0.234,
+      "fill:bars": 0.214,
+      "brace": 0.186,
+      "hung": 0.124,
+      "head": 0.116,
+      "light": 0.1,
+      "hood": 0.05,
+      "fill:glass": 0.017,
+      "planter": 0.009,
+      "fill:mesh": 0.009,
+      "vine": 0.009,
+      "shutter": 0.002
+     }
+    },
+    "east-asian": {
+     "builds": 12,
+     "windowShare": {
+      "fill:open": 0.798,
+      "posts": 0.429,
+      "sill": 0.377,
+      "head": 0.216,
+      "hood": 0.205,
+      "fill:bars": 0.197,
+      "brace": 0.063,
+      "hung": 0.03,
+      "light": 0.022,
+      "arch": 0.022,
+      "fill:mesh": 0.005
+     }
+    },
+    "medieval-timber": {
+     "builds": 20,
+     "windowShare": {
+      "fill:open": 0.824,
+      "posts": 0.444,
+      "sill": 0.268,
+      "brace": 0.225,
+      "hood": 0.109,
+      "fill:bars": 0.096,
+      "arch": 0.079,
+      "shutter": 0.067,
+      "head": 0.067,
+      "light": 0.067,
+      "fill:glass": 0.049,
+      "hung": 0.032,
+      "fill:closed": 0.032,
+      "vine": 0.002
+     }
+    },
+    "ashlands": {
+     "builds": 48,
+     "windowShare": {
+      "fill:open": 0.913,
+      "sill": 0.295,
+      "posts": 0.172,
+      "brace": 0.1,
+      "arch": 0.091,
+      "head": 0.075,
+      "hung": 0.073,
+      "fill:glass": 0.07,
+      "light": 0.066,
+      "hood": 0.054,
+      "fill:bars": 0.016,
+      "vine": 0.002,
+      "planter": 0.002,
+      "fill:mesh": 0.001
+     }
+    },
+    "norse-forest": {
+     "builds": 32,
+     "windowShare": {
+      "fill:open": 0.945,
+      "posts": 0.47,
+      "brace": 0.234,
+      "sill": 0.224,
+      "hood": 0.16,
+      "head": 0.103,
+      "hung": 0.044,
+      "light": 0.034,
+      "arch": 0.032,
+      "shutter": 0.027,
+      "fill:glass": 0.027,
+      "fill:bars": 0.019,
+      "vine": 0.015,
+      "fill:closed": 0.004,
+      "planter": 0.004,
+      "fill:mesh": 0.004
+     }
+    }
+   }
+  },
+  "sides": {
+   "sameAsFront": 0.47,
+   "frontRicher": 0.369,
+   "note": "the other sides take the front family whole at this share, else its built frame only (posts, braces, arches, fill, shutters), decor features (sill, head, hood, planters, lights, hung) dropped"
+  },
+  "upper": {
+   "sameAsBelow": 0.524,
+   "alignedShare": 0.298,
+   "note": "an upper storey keeps the family below at this share, else the built frame only"
+  },
+  "onePiece": {
+   "posts": {
+    "runs": 1174,
+    "onePiece": 0.954
+   },
+   "hood": {
+    "runs": 277,
+    "onePiece": 0.989
+   },
+   "shutter": {
+    "runs": 18,
+    "onePiece": 1
+   },
+   "vine": {
+    "runs": 39,
+    "onePiece": 1
+   },
+   "brace": {
+    "runs": 476,
+    "onePiece": 0.987
+   },
+   "arch": {
+    "runs": 168,
+    "onePiece": 0.976
+   },
+   "sill": {
+    "runs": 491,
+    "onePiece": 0.951
+   },
+   "head": {
+    "runs": 252,
+    "onePiece": 0.956
+   },
+   "planter": {
+    "runs": 3,
+    "onePiece": 0.667
+   }
+  },
+  "structural": [
+   "posts",
+   "brace",
+   "arch",
+   "shutter"
+  ],
+  "decorative": [
+   "sill",
+   "head",
+   "hood",
+   "planter",
+   "vine",
+   "light",
+   "hung"
+  ],
+  "planterCap": 0.1,
+  "planterNote": "D-165: at most about 10 % of a village's windows; a household trait (persona hobby.plants, likes.sill); corpus 0.1 % planters and 1.7 % vines"
+ },
+ "exceptions": {
+  "note": "a window that differs from its run needs a room behind it that gives the reason (D-167). Corpus: windows that differ from the run sit behind kitchens 1.45 times their share, storage 1.38, halls 1.24; lone features behind kitchens 1.64, halls 2.2, bedrooms 1.24 (corpus-facades.json odd, lone)",
+  "oddBehind": {
+   "plain": {
+    "n": 104,
+    "share": 0.294,
+    "base": 0.355
+   },
+   "kitchen": {
+    "n": 82,
+    "share": 0.232,
+    "base": 0.16
+   },
+   "workshop": {
+    "n": 43,
+    "share": 0.121,
+    "base": 0.165
+   },
+   "storage": {
+    "n": 39,
+    "share": 0.11,
+    "base": 0.08
+   },
+   "bedroom": {
+    "n": 33,
+    "share": 0.093,
+    "base": 0.093
+   },
+   "small": {
+    "n": 23,
+    "share": 0.065,
+    "base": 0.072
+   },
+   "living": {
+    "n": 15,
+    "share": 0.042,
+    "base": 0.042
+   },
+   "hall": {
+    "n": 15,
+    "share": 0.042,
+    "base": 0.034
+   }
+  },
+  "loneBehind": {
+   "plain": {
+    "n": 98,
+    "share": 0.268,
+    "base": 0.355
+   },
+   "kitchen": {
+    "n": 96,
+    "share": 0.262,
+    "base": 0.16
+   },
+   "workshop": {
+    "n": 50,
+    "share": 0.137,
+    "base": 0.165
+   },
+   "bedroom": {
+    "n": 42,
+    "share": 0.115,
+    "base": 0.093
+   },
+   "hall": {
+    "n": 27,
+    "share": 0.074,
+    "base": 0.034
+   },
+   "small": {
+    "n": 26,
+    "share": 0.071,
+    "base": 0.072
+   },
+   "storage": {
+    "n": 19,
+    "share": 0.052,
+    "base": 0.08
+   },
+   "living": {
+    "n": 8,
+    "share": 0.022,
+    "base": 0.042
+   }
+  },
+  "oddShare": 0.109,
+  "rules": [
+   {
+    "room": "kitchen",
+    "feature": "planter",
+    "plants": [
+     "Pickable_Dandelion",
+     "Pickable_Thistle",
+     "Pickable_Fiddlehead",
+     "Pickable_Onion",
+     "Pickable_Carrot"
+    ],
+    "needs": "household hobby.food or hobby.plants 1.2 or more",
+    "reason": "herbs grown by the kitchen window",
+    "max": 1
+   },
+   {
+    "room": "kitchen",
+    "feature": "hood",
+    "needs": "roof26 in the kit",
+    "reason": "a small roof over the window by the cooking, against rain and smoke",
+    "max": 1
+   },
+   {
+    "room": "hall",
+    "feature": "light",
+    "needs": "decor d2 or more",
+    "reason": "a lamp at the hall window, the room used at night",
+    "max": 2
+   },
+   {
+    "room": "hall",
+    "feature": "hung",
+    "needs": "decor d3, banners in the household",
+    "reason": "the household banner by the hall window",
+    "max": 1
+   },
+   {
+    "room": "storage",
+    "feature": "fill:closed",
+    "needs": "shutters in the kit",
+    "reason": "a store kept dark and shut",
+    "max": "run"
+   },
+   {
+    "room": "storage",
+    "feature": "fill:bars",
+    "needs": "iron in reach",
+    "reason": "a store barred against thieves of the wild",
+    "max": "run"
+   },
+   {
+    "room": "bedroom",
+    "feature": "shutter",
+    "needs": "shutters in the kit",
+    "reason": "shutters on the sleeping room",
+    "max": "run"
+   },
+   {
+    "room": "workshop",
+    "feature": "fill:open",
+    "reason": "a workshop light left open for air and smoke",
+    "max": "run"
+   },
+   {
+    "at": "door",
+    "feature": "light",
+    "reason": "the lamp by the door lights the window beside it",
+    "max": 1
+   },
+   {
+    "at": "gable",
+    "feature": "own",
+    "reason": "a loft or gable window is its own run with its own frame"
+   },
+   {
+    "at": "tower top",
+    "feature": "own",
+    "reason": "a lookout storey is its own run"
+   }
+  ]
+ },
+ "doors": {
+  "oneMain": 0.368,
+  "allEqual": 0.264,
+  "mainOnLongSide": 0.543,
+  "note": "program: one main door carries the richest dressing (frame plus one of hood, lamps, banners); other doors the frame only"
+ },
+ "materials": {
+  "heavyUnder": 0.784,
+  "heavyOver": 0.149,
+  "changeAt": {
+   "floor line": 154,
+   "elsewhere": 126,
+   "plinth (1.5 m or less)": 36
+  },
+  "plinthAllSides": 0.88,
+  "mainFamilies": {
+   "1": 492,
+   "2": 440,
+   "3": 178,
+   "4+": 36
+  },
+  "note": "heavy walls below light ones; the change at a floor line or a plinth course, the same height on every side"
+ },
+ "roofs": {
+  "oneMaterial": 0.882,
+  "oneSlope": 0.474,
+  "twoSlopes": 0.453,
+  "minorLower": 0.49
+ },
+ "trim": {
+  "corners": {
+   "all": 0.284,
+   "none": 0.232,
+   "mixed": 0.484,
+   "onePiece": 0.563
+  },
+  "bands": {
+   "none": 0.707,
+   "some": 0.289,
+   "all": 0.004,
+   "sideShare": 0.051
+  },
+  "note": "program: corner posts on every outside corner, on none, or on the corners of the entry side (mixed builds); wall bands on no side or on the entry side; one post piece per building"
+ },
+ "ornament": {
+  "twinned": 0.857,
+  "nearRoof": 0.888,
+  "perBuild": {
+   "1": 63,
+   "2": 64,
+   "3": 20,
+   "4": 45,
+   "5": 9,
+   "6+": 121
+  },
+  "note": "carved heads come in mirrored pairs on the ridge ends, one kind per building"
+ },
+ "symmetry": {
+  "formal": 0.374,
+  "score": {
+   "n": 1146,
+   "p10": 0.04,
+   "p25": 0.13,
+   "p50": 0.64,
+   "p75": 0.89,
+   "p90": 0.98
+  },
+  "doorOnAxis": 0.792,
+  "byKind": {
+   "other": 0.366,
+   "home": 0.374,
+   "castle": 0.385,
+   "longhouse": 0.506,
+   "temple": 0.351,
+   "tavern": 0.3,
+   "farm": 0.182,
+   "tower": 0.38
+  }
+ },
+ "spacing": {
+  "runs": 961,
+  "evenGaps": 0.254,
+  "sameWidth": 0.465,
+  "evenGap": {
+   "0": 9,
+   "1": 12,
+   "2": 81,
+   "3": 31,
+   "4": 35,
+   "5": 26,
+   "6": 11,
+   "7": 2,
+   "8": 17,
+   "9": 5,
+   "10": 5,
+   "12": 4,
+   "13": 1,
+   "14": 3,
+   "15": 1,
+   "19": 1
+  }
+ },
+ "village": {
+  "builds": 43,
+  "buildings": 205,
+  "wallLead": {
+   "n": 43,
+   "p10": 0.61,
+   "p25": 0.67,
+   "p50": 0.8,
+   "p75": 1,
+   "p90": 1
+  },
+  "roofLead": {
+   "n": 43,
+   "p10": 0.67,
+   "p25": 0.87,
+   "p50": 1,
+   "p75": 1,
+   "p90": 1
+  },
+  "slopeLead": {
+   "n": 43,
+   "p10": 0.67,
+   "p25": 0.67,
+   "p50": 0.88,
+   "p75": 1,
+   "p90": 1
+  },
+  "allThree": {
+   "n": 43,
+   "p10": 0.25,
+   "p25": 0.53,
+   "p50": 0.67,
+   "p75": 0.8,
+   "p90": 0.97
+  }
+ },
+ "rooms": {
+  "note": "one program per room and one per household: rooms take the build's lead kind far above chance",
+  "channels": {
+   "light": {
+    "oneKindInRoom": 0.617,
+    "roomTakesBuildLead": 0.688,
+    "ifShuffled": 0.337
+   },
+   "banner": {
+    "oneKindInRoom": 0.689,
+    "roomTakesBuildLead": 0.742,
+    "ifShuffled": 0.318
+   },
+   "rug": {
+    "oneKindInRoom": 0.46,
+    "roomTakesBuildLead": 0.612,
+    "ifShuffled": 0.356
+   },
+   "drape": {
+    "oneKindInRoom": 0.794,
+    "roomTakesBuildLead": 0.753,
+    "ifShuffled": 0.547
+   },
+   "wood": {
+    "oneKindInRoom": 0.44,
+    "roomTakesBuildLead": 0.658,
+    "ifShuffled": 0.447
+   }
+  }
+ }
+}

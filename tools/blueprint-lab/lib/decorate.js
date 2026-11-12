@@ -1627,10 +1627,21 @@ function lightsIn(room, k, n, o) {
     // the household's height for its sconces, one through the house (lib/wallhang.js lightY), or as the piece hangs
     const y = f.under != null ? undefined : WHD() ? WHD().lightY(P) : 1.6 + R() * 0.4;
     const spots = mountSpots(room, k.wallLight, { pairs: true, y });
+    // with room intent the wall lights go to the slots lib/wallhang.js plan() gives each face (beside an opening, over
+    // what stands against the wall, the middle of a plain stretch), ranked by its rank, then by darkness and purpose
+    // (track F's record: lightsIn ranked by darkness with noise)
+    const WHp = room.intent && WHD() && WHD().plan ? WHD() : null;
+    const slots = new Map();
+    if (WHp) for (const face of room.faces) {
+      const under = room.placed.filter(q => !q.rug && !q.mount && q.spot && q.spot.face === face).map(q => { const w = size(q.name)[0]; return { t0: q.spot.t - w / 2, t1: q.spot.t + w / 2, kind: (F[q.name] || {}).cat }; });
+      try { slots.set(face, WHp.plan(face, { light: true, w: size(k.wallLight)[0], under })); } catch (e) { /* the old ranking */ }
+    }
+    const slotOf = s => { const l = slots.get(s.face); if (!l) return null; let b = null; for (const sl of l) if (Math.abs(sl.t - s.t) < 0.2 && (!b || sl.rank > b.rank)) b = sl; return b; };
     while (done < n) {
       const ranked = spots.map(s => {
         const d0 = dark(s.x0, s.z0);
         if (d0 < 1.2 || fireNear(s.x0, s.z0)) return [s, -99];
+        if (WHp) { const sl = slotOf(s); if (!sl) return [s, -99]; return [s, sl.rank * 1.5 + Math.min(d0, 5) * 0.6 + purpose(s.x0, s.z0) + R() * 0.1]; }
         return [s, Math.min(d0, 5) * 0.6 + purpose(s.x0, s.z0) + R() * 0.6];
       }).filter(([, v]) => v > -50).sort((a, b) => b[1] - a[1]);
       let put = null;
@@ -1906,7 +1917,7 @@ function decorate(b, ctx) {
   // room intent (lib/rooms_intent.js): one furniture suite, light kinds, rugs and color for the whole building, then a
   // purpose, focal point and zones per room; ctx.intent === false keeps the furnishing of before
   const RI = ctx.intent !== false && intentD();
-  const intentPlan = RI ? RI.planBuilding({ type, culture: ctx.culture, biome, persona: HP }) : null;
+  const intentPlan = RI ? RI.planBuilding({ type, culture: ctx.culture, biome, persona: HP, decor }) : null;
   if (intentPlan) { Object.assign(kit, RI.kitFor(intentPlan, kit, use)); b.intentPlan = intentPlan; (b.notes || (b.notes = [])).push(...intentPlan.why); }
   const report = [], furnished = [];
   const usedTemplates = ctx.usedTemplates || new Set();

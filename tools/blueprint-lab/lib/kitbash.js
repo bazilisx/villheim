@@ -2223,8 +2223,9 @@ const BUILT_KITS = [
   // a chest of drawers: two chests stacked against the wall with a plank top, a candle and a jar of jam on it
   kit('BK-drawers', 'wall', ['home', 'kitchen', 'tavern', 'storage', 'sleeping'], [
     kp('piece_chest_wood', 0, 0, 0.42, 0, 'floor', null, { key: true }), kp('piece_chest_wood', 0, 0.75, 0.42, 0, 'on', 0, { key: true }),
-    kp('wood_ledge', -0.5, 1.5, 0.36, 0, 'on', 1), kp('wood_ledge', 0.5, 1.5, 0.36, 0, 'on', 1),
-    kp('QueensJam', -0.45, 1.55, 0.4, 0, 'on', 2), kp('Candle_resin', 0.5, 1.55, 0.4, 0, 'on', 3)]),
+    // (the ledges lie on the upper chest's lid at 1.28 m; at 1.5 m they stood 22 cm over it, track F's measure)
+    kp('wood_ledge', -0.5, 1.28, 0.36, 0, 'on', 1), kp('wood_ledge', 0.5, 1.28, 0.36, 0, 'on', 1),
+    kp('QueensJam', -0.45, 1.33, 0.4, 0, 'on', 2), kp('Candle_resin', 0.5, 1.33, 0.4, 0, 'on', 3)]),
   // a bedside table: a barrel by the head of the bed with a candle and a mead on it
   kit('BK-bedside', 'bed', ['home', 'sleeping'], [
     kp('piece_chest_barrel', 1.3, 0, -0.95, 0, 'floor'), kp('Candle_resin', 1.2, 0.9, -1.05, 0, 'on', 0), kp('MeadTasty', 1.45, 0.9, -0.85, 40, 'on', 0)],

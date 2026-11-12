@@ -1,0 +1,215 @@
+{
+ "meta": {
+  "made": "2026-11-12",
+  "source": "lab/arch_grammar.js",
+  "set": "showcase",
+  "builds": 16,
+  "buildings": 16
+ },
+ "fields": {
+  "materials": "buildings: wall material families holding 10 % or more of the walls (count per building, and the mixes); with heavy (stone, black marble, grausten) and light walls both, the heavy below (mean height 0.3 m lower), above, and where the heavy walls give way to light ones on top of them; with a plinth, whether heavy walls stand at the foot of all four sides",
+  "roofs": "twoFamilies: buildings with two slope families of 10 % or more, the minor family 0.5 m or more lower on average, the main family the steeper; buildings with 6 or more roof pieces: one slope family on 90 % of them, one roof material on 90 %, the lead slope and material, slope families with 10 % or more",
+  "bays": "lines of 3 or more posts (same wall line, same foot, gaps 6 m or less): gaps all equal within 0.15 m, the gap of even lines; buildings with 75 % of their lines even",
+  "symmetry": "share of walls, roofs, posts, doors and windows with a same piece at the mirrored place across the building middle (better axis), per building; formal: 0.8 or more; door on the axis (within 1.1 m) where the score is 0.6 or more",
+  "ornament": "carved heads (wood_dragon1, darkwood_raven, darkwood_wolf): builds, pieces, share near a roof (8 m), of those within 2.5 m of the highest roof piece near it, share with a twin (same piece, same height, on one line across)",
+  "doors": "buildings with 2 or more outer doors: dressing score per door (posts, beams over, roof over, lights, banners, stairs, a gate); one door clearly richest (2 or more points over the next), all equal; the richest door on a long side",
+  "village": "builds with 3 or more buildings: share of buildings holding the lead wall material, the lead roof material, the lead roof slope, and all three"
+ },
+ "materials": {
+  "buildings": 16,
+  "mainFamilies": {
+   "1": 4,
+   "2": 9,
+   "3": 3
+  },
+  "mixes": {
+   "stone+wood": 6,
+   "log+stone+wood": 2,
+   "stone": 2,
+   "marble+wood": 1,
+   "wood": 1,
+   "log+wood": 1,
+   "marble": 1,
+   "grausten+stone": 1,
+   "grausten+stone+wood": 1
+  },
+  "heavyAndLight": 10,
+  "heavyUnder": 0.9,
+  "heavyOver": 0.1,
+  "changeAt": {
+   "plinth (1.5 m or less)": 5,
+   "floor line": 2
+  },
+  "plinthAllSides": 1,
+  "plinthSidesRead": 4
+ },
+ "roofs": {
+  "twoFamilies": 1,
+  "minorLower": 0,
+  "mainSteeper": 0,
+  "buildings": 15,
+  "oneSlope": 0.933,
+  "oneMaterial": 1,
+  "leadSlope": {
+   "26": 6,
+   "45": 9
+  },
+  "leadMaterial": {
+   "thatch": 9,
+   "darkwood": 6
+  },
+  "slopeFamilies": {
+   "1": 14,
+   "2": 1
+  }
+ },
+ "bays": {
+  "lines": 118,
+  "even": 0.873,
+  "evenGap": {
+   "2": 103
+  },
+  "buildings": 8,
+  "buildingsMostlyEven": 0.875
+ },
+ "symmetry": {
+  "buildings": 16,
+  "score": {
+   "n": 16,
+   "p10": 0.29,
+   "p25": 0.5,
+   "p50": 0.59,
+   "p75": 0.91,
+   "p90": 0.98
+  },
+  "formal": 0.438,
+  "doorOnAxis": 0.857,
+  "doorRead": 7,
+  "byKind": {
+   "other": {
+    "n": 4,
+    "p10": 0.36,
+    "p25": 0.71,
+    "p50": 0.94,
+    "p75": 0.98,
+    "p90": 0.99,
+    "formal": 0.75
+   },
+   "temple": {
+    "n": 1,
+    "p10": 0.84,
+    "p25": 0.84,
+    "p50": 0.84,
+    "p75": 0.84,
+    "p90": 0.84,
+    "formal": 1
+   },
+   "longhouse": {
+    "n": 1,
+    "p10": 0.09,
+    "p25": 0.09,
+    "p50": 0.09,
+    "p75": 0.09,
+    "p90": 0.09,
+    "formal": 0
+   },
+   "tavern": {
+    "n": 2,
+    "p10": 0.59,
+    "p25": 0.64,
+    "p50": 0.74,
+    "p75": 0.83,
+    "p90": 0.88,
+    "formal": 0.5
+   },
+   "home": {
+    "n": 5,
+    "p10": 0.45,
+    "p25": 0.47,
+    "p50": 0.51,
+    "p75": 0.63,
+    "p90": 0.79,
+    "formal": 0.2
+   },
+   "tower": {
+    "n": 1,
+    "p10": 0.99,
+    "p25": 0.99,
+    "p50": 0.99,
+    "p75": 0.99,
+    "p90": 0.99,
+    "formal": 1
+   },
+   "castle": {
+    "n": 2,
+    "p10": 0.53,
+    "p25": 0.53,
+    "p50": 0.53,
+    "p75": 0.53,
+    "p90": 0.53,
+    "formal": 0
+   }
+  }
+ },
+ "ornament": {
+  "builds": 5,
+  "pieces": 8,
+  "perBuild": {
+   "1": 4,
+   "4": 1
+  },
+  "high": 0.625,
+  "nearRoof": 1,
+  "twinned": 0.5
+ },
+ "doors": {
+  "buildings": 3,
+  "oneMain": 1,
+  "allEqual": 0,
+  "mainOnLongSide": 0.333,
+  "gap": {
+   "n": 3,
+   "p10": 2,
+   "p25": 2,
+   "p50": 2,
+   "p75": 4,
+   "p90": 5.2
+  }
+ },
+ "village": {
+  "builds": 0,
+  "buildings": 0,
+  "wallLead": {
+   "n": 0,
+   "p10": null,
+   "p25": null,
+   "p50": null,
+   "p75": null,
+   "p90": null
+  },
+  "roofLead": {
+   "n": 0,
+   "p10": null,
+   "p25": null,
+   "p50": null,
+   "p75": null,
+   "p90": null
+  },
+  "slopeLead": {
+   "n": 0,
+   "p10": null,
+   "p25": null,
+   "p50": null,
+   "p75": null,
+   "p90": null
+  },
+  "allThree": {
+   "n": 0,
+   "p10": null,
+   "p25": null,
+   "p50": null,
+   "p75": null,
+   "p90": null
+  }
+ }
+}

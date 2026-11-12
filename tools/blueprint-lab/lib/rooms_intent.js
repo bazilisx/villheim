@@ -39,6 +39,7 @@ function pickI(R, list) {
   for (const [v, w] of l) { r -= w; if (r <= 0) return v; }
   return l[l.length - 1][0];
 }
+const PROG_I = () => { try { return NODE_I ? require('./program.js') : window.VHProgram; } catch (e) { return null; } };
 const pc = id => (data() && data().pieces[id]) || null;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -160,6 +161,16 @@ function planBuilding(ctx) {
     R, persona: P, culture: ctx.culture, biome: ctx.biome, type: ctx.type,
     used: {}, floor: 0, why: [],
   };
+  // the household's room program (track H, lib/program.js room): the building's lead kinds, and per room whether it
+  // keeps them or takes its own for its purpose (corpus: a room takes its build's lead light in 69 % of rooms, rugs
+  // 61 %, the furniture family 66 %)
+  const PR = PROG_I();
+  if (PR && PR.plan) {
+    try {
+      plan.program = PR.plan({ cultureKey: ctx.culture, type: ctx.type, stage: ctx.stage || 's3', decor: ctx.decor || 'd3', biome: ctx.biome, seed: (P.salt || 1) >>> 0, persona: P });
+      PR.setLead(plan.program, 'light', lead); PR.setLead(plan.program, 'rug', rug || null); PR.setLead(plan.program, 'banner', banner); PR.setLead(plan.program, 'wood', pc(table).f);
+    } catch (e) { plan.program = null; }
+  }
   plan.why.push(`Suite: ${pc(table).n}, seats ${pc(plan.suite.seat).n}, ${pc(bed).n}, ${pc(chest).n}; lead light ${pc(lead).n}${lights.length > 1 ? ' with ' + lights.slice(1).map(n => pc(n).n).join(', ') : ''}.`);
   return plan;
 }
@@ -272,7 +283,19 @@ function furnishRoom(room, role, c, H) {
   const tally = m => { for (const q of room.placed.slice(m)) note(plan, q.name); };
   const capBed = n => Math.max(0, Math.min(n, c.bedCap - c.counts.bed));
   const beds = (n, row) => { const m = mark(); const r = H.placeBeds(room, k, capBed(n), d, row); c.counts.bed += r.length; tally(m); return r; };
-  const lightsN = n => { if (d < 2) return 0; const m = mark(); const got = H.placeLights(room, k, n, { hang: plan.lights.includes('piece_brazierceiling01') ? 0.6 : 0 }); tally(m); return got; };
+  // the room's light program (lib/program.js room): the household's lead light, or the room's own kind where its
+  // purpose gives one (the other light kind of the building), with a second kind only where the program allows it
+  const ch = plan.program && PROG_I() ? PROG_I().room(plan.program, { kind: I.kind, key: `${I.kind}|${Math.round(room.cx)}|${Math.round(room.cz)}|${Math.round(room.stand)}` }) : null;
+  I.program = ch ? Object.fromEntries(Object.entries(ch).map(([c2, v]) => [c2, v.use + (v.second ? '+second' : '')])) : null;
+  const roomLights = () => {
+    const own = ch && ch.light.use === 'own' && plan.lights.length > 1 ? plan.lights.slice(1) : plan.lights.slice(0, 1);
+    const list = ch && ch.light.second ? [...new Set([...own, ...plan.lights])].slice(0, 2) : own.slice(0, 1);
+    const out = { wallLight: list.find(n => WALL_L.test(n)) || null, floorLight: list.find(n => /groundtorch/.test(n)) || null, hang: list.includes('piece_brazierceiling01') };
+    // (a room too low or small for a hanging brazier takes the building's other light)
+    if (!out.wallLight && !out.floorLight) { out.wallLight = plan.lights.find(n => WALL_L.test(n)) || null; out.floorLight = plan.lights.find(n => /groundtorch/.test(n)) || null; }
+    return out;
+  };
+  const lightsN = n => { if (d < 2) return 0; const L2 = roomLights(); const m = mark(); const got = H.placeLights(room, { ...k, wallLight: L2.wallLight, floorLight: L2.floorLight }, n, { hang: L2.hang ? 0.6 : 0 }); tally(m); return got; };
   const lightN = mult => Math.max(0, Math.round(countFor(I.kind, 'light', room) * mult) - (room.fire ? 1 : 0));
   const tableSet = o => {
     if (!k.table || c.counts.table >= c.tableCap || !canUse(plan, o.table || k.table)) return null;
@@ -285,7 +308,8 @@ function furnishRoom(room, role, c, H) {
   };
   const rugAt = (near, mode) => {
     if (d < 2 || !plan.rugs.length) return null;
-    const rug = plan.rugs[(I.zones.length + (mode === 'beside' ? 1 : 0)) % plan.rugs.length];
+    // (one rug kind for the room: the household's, or the room's own where the program says so)
+    const rug = ch && ch.rug.use === 'own' && plan.rugs.length > 1 ? plan.rugs[1] : plan.rugs[0];
     if (!canUse(plan, rug)) return null;
     return counted(H.placeRug(room, { ...k, rug }, near, { mode, rug }));
   };

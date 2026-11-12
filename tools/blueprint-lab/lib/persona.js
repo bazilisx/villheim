@@ -669,39 +669,6 @@ function storyKits(P) {
   return themes.slice(0, 2).flatMap(t => t[2]);
 }
 
-// Window planters, a household and culture trait (D-165, Tyler 2026-11-12: "Families that like plants can have
-// planters. But not, not every single window should have planters. Its dependent on the culture, the people living
-// there"; D-167: a program with intent, a lone exception with a reason). Returns the household's program for the
-// builder of sills (track D, lib/details.js):
-//   { mode: 'none' | 'run' | 'kitchen', plant, why }
-//   run: every ground-floor window of the house's front wall, one species in all of them (corpus clusters are one
-//   species in 73 %); kitchen: the one window nearest the cooking corner, herbs (someone grows herbs for the pot).
-// Who: a household whose plants hobby leads (hobby.plants 0.6 or more), in a culture and biome that keep window boxes;
-// a food household with a cooking corner gets the kitchen window. What grows: vines in most (87 % of corpus planters
-// are vines), else the culture's flowers or the kitchen's herbs, one species per house. With the hobby drawn for about
-// one household in five, and the run on one wall of four, about 5 % of a village's windows carry planters, under the
-// 10 % D-165 allows.
-const SILL_CULTURE = { 'middle-eastern': 0.4, steppe: 0.2, saami: 0.1, 'norse-highland': 0.5, dwarven: 0.3 };
-const SILL_FLOWERS = { Meadows: ['Pickable_Dandelion', 'Pickable_Thistle'], 'Black Forest': ['Pickable_Thistle', 'Pickable_Mushroom_yellow'], Swamp: ['Pickable_Mushroom', 'Pickable_Thistle'],
-  Mountain: ['Pickable_Dandelion'], Plains: ['Pickable_Dandelion', 'Pickable_Onion'], Mistlands: ['Pickable_Mushroom_blue', 'Pickable_Mushroom_yellow'], Ashlands: [] };
-const SILL_HERBS = ['Pickable_Onion', 'Pickable_Carrot', 'Pickable_Turnip'];
-function planters(P, o = {}) {
-  if (!P) return { mode: 'none', why: 'no household' };
-  const biome = o.biome || 'Meadows', culture = o.culture || 'norse';
-  const R = rngP((P.salt ^ 0x5111) >>> 0);
-  R(); R();
-  const keep = SILL_CULTURE[culture] != null ? SILL_CULTURE[culture] : 1;
-  const plants = (P.hobby && P.hobby.plants) || 0;
-  if (biome !== 'Ashlands' && plants >= 0.6 && R() < keep) {
-    const flowers = SILL_FLOWERS[biome] || [];
-    const plant = R() < 0.6 || !flowers.length ? 'vines' : flowers[Math.floor(R() * flowers.length)];
-    return { mode: 'run', plant, why: `the household keeps plants (${plants}); ${plant} along the front windows` };
-  }
-  if (biome !== 'Ashlands' && o.kitchen && ((P.hobby && P.hobby.food) || 0) >= 0.6 && R() < 0.5 * keep)
-    return { mode: 'kitchen', plant: SILL_HERBS[Math.floor(R() * SILL_HERBS.length)], why: 'herbs for the pot at the kitchen window' };
-  return { mode: 'none', why: 'no planters: the household does not keep plants' };
-}
-
-const apiPer = { planters, growth, storyKits, stageOf, persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
+const apiPer = { growth, storyKits, stageOf, persona, PRESETS, CULTURE_P, HOBBIES, ITEMS, extraWeights, fillShare, wallWeights, wallGap, wallSkip, torchGap, underStair, kitWeight, kitBudget,
   standItem, standAt, kindLean, AT_KINDS, itemFrom, dressStands, roleAt, rng: rngP, hash: hashP, pickW: pickWP };
 if (NODE_P) module.exports = apiPer; else window.VHPersona = apiPer;

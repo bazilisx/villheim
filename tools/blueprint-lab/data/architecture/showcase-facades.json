@@ -9,6 +9,7 @@
  },
  "fields": {
   "runs": "runs of 2 or more windows on one wall line and level: count, share whose windows all carry the same treatment (feature classes and light fill), by run length; shuffle: the same with each build's windows dealt to its runs at random",
+  "spacing": "runs of 3 or more: gaps between window middles all equal within 0.3 m, the gap (m) of even runs, and all windows the same width (0.5 m steps)",
   "feat": "per feature: windows with it, builds, runs holding it, of those the share where every window of the run has it (fullRun), exactly one (loneInRun), some (partial), fullRun after the shuffle, and the share of builds whose windows with the feature all use one piece for it",
   "sides": "levels with windows on 2 or more sides: share where every side's lead treatment is the same; on the lowest level, the front (side with the most outer doors) against the other sides",
   "stacks": "sides with windows on 2 or more levels: upper windows over a lower run (a window of the level below on a wall line within 1 m), with a window right under them (middles within 0.35 m) or within 1 m, and of the aligned pairs the share with the same architectural treatment",
@@ -16,6 +17,7 @@
   "odd": "runs of 3 or more where one treatment holds most windows: the windows that differ, what room is behind them and where they sit, against all windows of those runs (base)",
   "lone": "runs of 3 or more where one window alone has a feature: the feature, the room behind, where it sits",
   "bands": "outer faces 3 m or longer, by side and level: beams at the foot proud of the face along half the side or more; builds (3 or more sides read) with all, none or some sides banded, and the share of sides banded",
+  "featureByCulture": "per corpus culture group (data/culture-corpus/members.json) and all: windows with each feature over the group's windows, and builds with the feature on any window over its builds",
   "corners": "outside corners of the lowest level: a post within 0.55 m; builds with all, none or some corners posted, and the share of posted builds with one post piece at every corner"
  },
  "runs": {
@@ -72,6 +74,18 @@
    }
   },
   "shuffleUniform": 0.225
+ },
+ "spacing": {
+  "runs": 22,
+  "evenGaps": 0.364,
+  "sameWidth": 0.455,
+  "evenGap": {
+   "0": 3,
+   "2": 1,
+   "3": 1,
+   "10": 1,
+   "12": 2
+  }
  },
  "feat": {
   "sill": {
@@ -406,6 +420,68 @@
    "runs": 10,
    "uniform": 1,
    "uniformShare": 0.1
+  }
+ },
+ "featureByCulture": {
+  "unsorted": {
+   "builds": 14,
+   "windows": 195,
+   "windowShare": {
+    "fill:open": 0.769,
+    "hood": 0.231,
+    "fill:bars": 0.231,
+    "sill": 0.195,
+    "posts": 0.19,
+    "planter": 0.082,
+    "light": 0.077,
+    "vine": 0.077,
+    "head": 0.077,
+    "brace": 0.067,
+    "hung": 0.046
+   },
+   "buildShare": {
+    "fill:open": 1,
+    "posts": 0.714,
+    "sill": 0.5,
+    "hood": 0.5,
+    "hung": 0.429,
+    "head": 0.429,
+    "light": 0.357,
+    "vine": 0.357,
+    "planter": 0.357,
+    "fill:bars": 0.286,
+    "brace": 0.286
+   }
+  },
+  "all": {
+   "builds": 14,
+   "windows": 195,
+   "windowShare": {
+    "fill:open": 0.769,
+    "hood": 0.231,
+    "fill:bars": 0.231,
+    "sill": 0.195,
+    "posts": 0.19,
+    "planter": 0.082,
+    "light": 0.077,
+    "vine": 0.077,
+    "head": 0.077,
+    "brace": 0.067,
+    "hung": 0.046
+   },
+   "buildShare": {
+    "fill:open": 1,
+    "posts": 0.714,
+    "sill": 0.5,
+    "hood": 0.5,
+    "hung": 0.429,
+    "head": 0.429,
+    "light": 0.357,
+    "vine": 0.357,
+    "planter": 0.357,
+    "fill:bars": 0.286,
+    "brace": 0.286
+   }
   }
  },
  "perBuildUniform": {

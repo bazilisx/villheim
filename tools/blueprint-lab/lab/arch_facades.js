@@ -1,5 +1,8 @@
 // Facade consistency in the corpus (docs/ARCHITECTURE_STUDY.md, track H of the showcase review, D-167).
 //   node lab/arch_facades.js <compact.jsonl> <rooms extract dir> <out json> [--examples <private json>] [--limit N]
+//     [--perbuild <json>]  one line per build: runs, built-treatment uniform share, mixed runs, lone features without a
+//                          room reason, planter share (for generated designs and the council; corpus file names are
+//                          builders' work, so keep a corpus perbuild file out of the repo)
 // The rooms extract dir is lab/rooms_corpus_extract.js output (rooms.jsonl, builds.jsonl, in build order). Its room
 // faces give the windows (wall runs read as window, 0.6 m or wider) with the wall line, the room side and the sill. The
 // compact pieces, turned by the build's rot, give what stands round each window on the outside.
@@ -23,7 +26,7 @@ const { P, qs, share, top, inc } = L;
 const args = process.argv.slice(2);
 const [compact, exDir, outFile] = args;
 const opt = k => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
-const exOut = opt('--examples'), LIMIT = +(opt('--limit') || 1e9), LABEL = opt('--label') || 'corpus';
+const pbOut = opt('--perbuild'), exOut = opt('--examples'), LIMIT = +(opt('--limit') || 1e9), LABEL = opt('--label') || 'corpus';
 if (!compact || !exDir || !outFile) { console.error('usage: node lab/arch_facades.js <compact.jsonl> <extract dir> <out json>'); process.exit(1); }
 const r3 = v => Math.round(v * 1000) / 1000;
 const G = 0.5;
@@ -126,7 +129,7 @@ const asig = w => [...ARCH.filter(k => w.f.has(k)), 'fill:' + w.fill].join('+');
 // ---------------------------------------------------------------- accumulators
 const A = {
   builds: 0, buildsWithRuns: 0, windows: 0, runs: { n: 0, uniform: 0, auniform: 0, byLen: {} }, shuffle: { n: 0, uniform: 0, auniform: 0 },
-  pieceRuns: {},
+  pieceRuns: {}, cultFeat: {}, pb: [], spacing: { runs: 0, even: 0, sameSize: 0, gap: {} },
   feat: Object.fromEntries([...FEATS, ...FILLS.map(f => 'fill:' + f)].map(k => [k, { windows: 0, runsWith: 0, full: 0, lone: 0, partial: 0, shufFull: 0, shufRuns: 0, buildsWith: 0, buildsOnePiece: 0 }])),
   sides: { storeys: 0, allSame: 0, frontDiffers: 0, frontRicher: 0, frontPoorer: 0, featFront: {}, featOther: {} },
   stacks: { lines: 0, upper: 0, aligned: 0, sameSig: 0, pairs: 0 },
@@ -138,6 +141,7 @@ const A = {
 };
 const EX = { lone: [], uniform: [], odd: [] };
 
+const w0 = l => l[0];
 function rate(arr) { return arr.length ? arr.filter(Boolean).length / arr.length : 0; }
 
 function measure(b, rooms, rot, bi, cul, kindB) {
@@ -243,6 +247,15 @@ function measure(b, rooms, rot, bi, cul, kindB) {
       }
     }
     if (u && l.length >= 4 && l[0].f.size >= 2 && EX.uniform.length < 40) EX.uniform.push({ file: b.file, sig: l[0].sig, run: l.length });
+    // spacing: in runs of 3 or more, are the gaps between window middles equal (within 0.3 m), and is the run centered
+    // on its wall (its middle within 0.5 m of the wall face's middle)
+    if (l.length >= 3) {
+      const cs = l.map(w => (w.a0 + w.a1) / 2).sort((x, y) => x - y), gaps = cs.slice(1).map((c, i) => c - cs[i]);
+      A.spacing.runs++;
+      if (gaps.every(g => Math.abs(g - gaps[0]) < 0.3)) { A.spacing.even++; inc(A.spacing.gap, String(Math.round(gaps[0]))); }
+      const sizes = l.map(w => Math.round((w.a1 - w.a0) * 2) / 2);
+      if (sizes.every(z => z === sizes[0])) A.spacing.sameSize++;
+    }
     // the odd window: runs of 3 or more with one signature held by most
     if (l.length >= 3) {
       const cnt = {};
@@ -378,6 +391,33 @@ function measure(b, rooms, rot, bi, cul, kindB) {
     if (d.length >= 2) { A.corners.withPosts++; if (d.every(n => n === d[0])) A.corners.onePiece++; }
   }
   A.perBuild.push({ cul, kind: kindB, windows: WS.length, runs: R.length, uniform: R.filter(l => l.every(w => w.sig === l[0].sig)).length });
+  if (pbOut) {
+    // the council's reading of one building (docs/handoffs/2026-11-12-showcase-review/criteria/architecture.md): runs
+    // whose built treatment differs beyond one window with a room reason (lib/program.js exceptions), lone features
+    // with no reason, planters
+    const REASON = { kitchen: ['planter', 'hood'], hall: ['light', 'hung'], storage: ['shutter'], bedroom: ['shutter'] };
+    let mixed = 0, lone = 0, reasoned = 0;
+    const faults = [];
+    for (const l of R) {
+      if (l.every(w => w.asig === l[0].asig)) continue;
+      const cnt = {};
+      for (const w of l) inc(cnt, w.asig);
+      const [maj, mc] = Object.entries(cnt).sort((x, y) => y[1] - x[1])[0];
+      const odd = l.filter(w => w.asig !== maj), mw = l.find(w => w.asig === maj);
+      const ok = odd.length === 1 && mc >= 2 && (() => { const w = odd[0]; const plus = ARCH.filter(k => w.f.has(k) && !mw.f.has(k)), minus = ARCH.filter(k => !w.f.has(k) && mw.f.has(k)); return !minus.length && plus.length === 1 && ((REASON[w.kind] || []).includes(plus[0]) || (w.byDoor && plus[0] === 'light')); })();
+      if (ok) { reasoned++; continue; }
+      if (l.length >= 3 && odd.length === 1 && mc >= 2) { lone++; faults.push({ kind: 'lone', lvl: w0(l).lvl, side: l[0].side, run: l.length, odd: odd[0].asig, maj, behind: odd[0].kind }); }
+      else { mixed++; faults.push({ kind: 'mixed', lvl: w0(l).lvl, side: l[0].side, run: l.length, sigs: Object.keys(cnt) }); }
+    }
+    A.pb.push({ file: b.file, windows: WS.length, runs: R.length, archUniform: R.length ? r3(R.filter(l => l.every(w => w.asig === l[0].asig)).length / R.length) : null,
+      mixedRuns: mixed, loneUnreasoned: lone, reasonedExceptions: reasoned, planterShare: r3(WS.filter(w => w.f.has('planter')).length / WS.length), faults: faults.slice(0, 12) });
+  }
+  // window share of each feature by corpus culture group (and over all builds)
+  for (const c of [cul || 'unsorted', 'all']) {
+    const o = A.cultFeat[c] = A.cultFeat[c] || { builds: 0, windows: 0, f: {}, buildsWith: {} };
+    o.builds++; o.windows += WS.length;
+    for (const k of keys) { const n = WS.filter(w => has(w, k)).length; if (n) { inc(o.f, k, n); inc(o.buildsWith, k); } }
+  }
 }
 
 async function main() {
@@ -435,6 +475,7 @@ async function main() {
     meta: { made: new Date().toISOString().slice(0, 10), source: 'lab/arch_facades.js', set: LABEL, builds: A.builds, buildsWithRuns: A.buildsWithRuns, windows: A.windows },
     fields: {
       runs: 'runs of 2 or more windows on one wall line and level: count, share whose windows all carry the same treatment (feature classes and light fill), by run length; shuffle: the same with each build\'s windows dealt to its runs at random',
+      spacing: 'runs of 3 or more: gaps between window middles all equal within 0.3 m, the gap (m) of even runs, and all windows the same width (0.5 m steps)',
       feat: 'per feature: windows with it, builds, runs holding it, of those the share where every window of the run has it (fullRun), exactly one (loneInRun), some (partial), fullRun after the shuffle, and the share of builds whose windows with the feature all use one piece for it',
       sides: 'levels with windows on 2 or more sides: share where every side\'s lead treatment is the same; on the lowest level, the front (side with the most outer doors) against the other sides',
       stacks: 'sides with windows on 2 or more levels: upper windows over a lower run (a window of the level below on a wall line within 1 m), with a window right under them (middles within 0.35 m) or within 1 m, and of the aligned pairs the share with the same architectural treatment',
@@ -442,10 +483,12 @@ async function main() {
       odd: 'runs of 3 or more where one treatment holds most windows: the windows that differ, what room is behind them and where they sit, against all windows of those runs (base)',
       lone: 'runs of 3 or more where one window alone has a feature: the feature, the room behind, where it sits',
       bands: 'outer faces 3 m or longer, by side and level: beams at the foot proud of the face along half the side or more; builds (3 or more sides read) with all, none or some sides banded, and the share of sides banded',
+      featureByCulture: 'per corpus culture group (data/culture-corpus/members.json) and all: windows with each feature over the group\'s windows, and builds with the feature on any window over its builds',
       corners: 'outside corners of the lowest level: a post within 0.55 m; builds with all, none or some corners posted, and the share of posted builds with one post piece at every corner',
     },
     runs: { n: A.runs.n, uniform: sh(A.runs.uniform, A.runs.n), archUniform: sh(A.runs.auniform, A.runs.n), archUniformIfShuffled: sh(A.shuffle.auniform, A.shuffle.n),
       onePieceInFullRun: Object.fromEntries(Object.entries(A.pieceRuns).map(([k, v]) => [k, { runs: v.n, onePiece: sh(v.one, v.n) }])), byLen: Object.fromEntries(Object.entries(A.runs.byLen).map(([k, v]) => [k, { n: v.n, uniform: sh(v.uniform, v.n) }])), shuffleUniform: sh(A.shuffle.uniform, A.shuffle.n) },
+    spacing: { runs: A.spacing.runs, evenGaps: sh(A.spacing.even, A.spacing.runs), sameWidth: sh(A.spacing.sameSize, A.spacing.runs), evenGap: A.spacing.gap },
     feat,
     sides: { levels: A.sides.storeys, allSidesSame: sh(A.sides.allSame, A.sides.storeys), frontLevels: A.sides.frontN || 0, frontDiffers: sh(A.sides.frontDiffers, A.sides.frontN), frontRicher: sh(A.sides.frontRicher, A.sides.frontN), frontPoorer: sh(A.sides.frontPoorer, A.sides.frontN),
       featureShareFront: Object.fromEntries(FEATS.map(k => [k, sh(A.sides.featFront[k] || 0, A.sides.frontN)])), featureShareOther: Object.fromEntries(FEATS.map(k => [k, sh(A.sides.featOther[k] || 0, A.sides.frontN)])) },
@@ -456,11 +499,15 @@ async function main() {
     bands: { builds: A.bands.builds, all: sh(A.bands.all, A.bands.builds), none: sh(A.bands.none, A.bands.builds), mixed: sh(A.bands.mixed, A.bands.builds), faceShare: sh(A.bands.banded, A.bands.faces) },
     corners: { builds: A.corners.builds, all: sh(A.corners.all, A.corners.builds), none: sh(A.corners.none, A.corners.builds), mixed: sh(A.corners.mixed, A.corners.builds), cornerShare: sh(A.corners.dressed, A.corners.n), onePieceWhenPosted: sh(A.corners.onePiece, A.corners.withPosts) },
     byCulture: byCul, byKind,
+    featureByCulture: Object.fromEntries(Object.entries(A.cultFeat).map(([c, o]) => [c, { builds: o.builds, windows: o.windows,
+      windowShare: Object.fromEntries(Object.entries(o.f).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, sh(v, o.windows)])),
+      buildShare: Object.fromEntries(Object.entries(o.buildsWith).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, sh(v, o.builds)])) }])),
     perBuildUniform: qs(perB.map(x => x.uniform / x.runs)),
   };
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
   fs.writeFileSync(outFile, JSON.stringify(res, null, 1));
   if (exOut) fs.writeFileSync(exOut, JSON.stringify(EX, null, 1));
+  if (pbOut) fs.writeFileSync(pbOut, JSON.stringify(A.pb, null, 1));
   console.log(outFile, A.builds, 'builds', A.windows, 'windows', ((Date.now() - t0) / 1000).toFixed(0), 's');
 }
 main();

@@ -654,6 +654,8 @@ function builtZone(room, plan, H, I) {
   const anchors = room.placed.filter(r => !r.rug && !r.mount && !r.onTable);
   for (const r of list.slice(0, 8)) {
     const w = r.foot.x[1] - r.foot.x[0], d = Math.max(0.3, r.foot.z[1] - Math.max(0, r.foot.z[0]));
+    // (sized to the room, as every supporting piece: sizedFor)
+    if (w * d > 0.12 * room.area) continue;
     // plain wall stretches the recipe's width, away from what stands already
     const spots = [];
     for (const face of room.faces) for (let t = face.a0 + w / 2; t <= face.a1 - w / 2 + 0.01; t += 0.5) {
@@ -727,15 +729,23 @@ function supportZones(room, I, plan, H, c, k) {
   }
   return n;
 }
+// A supporting piece is sized to its room (D-163, Tyler 2026-11-12: wood stacks "way too large" by an indoor hearth;
+// the principle for every piece): its footprint at most a tenth of the room's floor, and no large or huge piece
+// (catalog size class) in a room under 25 m2 beyond its core set.
+function sizedFor(room, name, H) {
+  const [w, , d] = H.size(name);
+  if (w * d > 0.1 * room.area) return false;
+  return !(room.area < 25 && ['large', 'huge'].includes((pc(name) || {}).sz));
+}
 const putAgainst = (room, plan, H, name, score, o) => {
-  if (!H.F[name] || !canUse(plan, name)) return null;
+  if (!H.F[name] || !canUse(plan, name) || !sizedFor(room, name, H)) return null;
   const r = H.placeAgainst(room, name, score, o);
   if (r) note(plan, name);
   return r;
 };
 // beside an anchor on the same wall: the next free stretch either way
 function beside(room, plan, H, anchor, name, gap = 0.15) {
-  if (!anchor || !anchor.spot || !H.F[name] || !canUse(plan, name)) return null;
+  if (!anchor || !anchor.spot || !H.F[name] || !canUse(plan, name) || !sizedFor(room, name, H)) return null;
   const [w] = H.size(anchor.name), [ew] = H.size(name);
   for (const sg of [1, -1]) for (let g = gap; g < gap + 1.2; g += 0.25) {
     const t = anchor.spot.t + sg * (w / 2 + g + ew / 2);

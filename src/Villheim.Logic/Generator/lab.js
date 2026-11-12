@@ -2673,7 +2673,7 @@ const SHP = NODE_C ? require('./shapes.js') : window.VHShapes;
 
 // A player is about 1.8 m tall. Walkable rooms need 2.4 m clear under every roof and ceiling piece; a doorway needs its
 // own height, and 2.3 m in front of it and behind it, for a metre each way.
-const HEADROOM = 2.4, DOOR_CLEAR = 2.3, CORRIDOR = 1.0, WALL_MIN = 2.5;
+const HEADROOM = 2.4, DOOR_CLEAR = 2.3, CORRIDOR = 1.0, WALL_MIN = 2.5, ROOF_HOLE = 2.5;
 // A clip the generator means (a piece marked p.clip = depth in metres, set into a fence, a wall or another piece) is
 // allowed up to its mark and never past the median clip of props in the corpus builds (lab/mine_yards.js: 0.36 m).
 const CLIP_MAX = 0.36;
@@ -3008,6 +3008,383 @@ function stability(pieces, boxes, near, ground) {
   return out;
 }
 
+// Passages (Tyler, showcase review 2026-11-11, a hard rule): "Anything small passageway must be at minimum two
+// wood_floor pieces wide. Wider hallways can be 3 or more. But 1 of them is far too narrow for anything besides a
+// small closet or hidden passageway." Measured on each floor level in floor pieces: the floor under a roof between
+// walls on three sides or more, and floors 0.6 m or more over the ground (balconies, galleries, decks, raised porches). Walls and windows count at
+// their middle line (a stone wall's thickness is the builder's choice, the floor between is what the rule names);
+// stairs and ladders count as they stand (a post stands in open floor). A point is in a passage of full width when a circle PASSAGE_W wide
+// (less a little for rounding) fits round it on that floor. What is left over, in pieces of more than PASSAGE_CLOSET
+// m2, is a passage too narrow when it runs PASSAGE_LONG m or more: a closet of one piece across stays under that, and
+// the corners of a room are short. Furniture is left out here; the space
+// beside furniture is the furnishing's own check.
+const PASSAGE_W = 4, PASSAGE_CLOSET = 6, PASSAGE_LONG = 3, PASSAGE_CELL = 0.25;
+function passages(pieces, opts = {}) {
+  // (the walls' band takes a quarter metre off each side)
+  const G = PASSAGE_CELL, R = PASSAGE_W / 2 - 0.4;
+  const boxes = pieces.map(catBox);
+  const ys0 = boxes.filter(b => b.info.structural).map(b => b.y0).sort((a, c) => a - c);
+  const ground = opts.ground != null ? opts.ground : Math.max(0, ys0.length ? ys0[Math.floor(ys0.length * 0.02)] : 0);
+  const floors = [];
+  pieces.forEach((p, i) => { const b = boxes[i]; if (b.info.role === 'floor' && !p.decor && !tilted(p.q)) floors.push(i); });
+  const levels = new Map();
+  for (const i of floors) { const k = Math.round(boxes[i].y1 * 4) / 4; if (!levels.has(k)) levels.set(k, []); levels.get(k).push(i); }
+  const out = [];
+  for (const [y, list] of levels) {
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const i of list) { const b = boxes[i]; x0 = Math.min(x0, b.x0); x1 = Math.max(x1, b.x1); z0 = Math.min(z0, b.z0); z1 = Math.max(z1, b.z1); }
+    x0 -= 1; z0 -= 1; x1 += 1; z1 += 1;
+    const nx = Math.ceil((x1 - x0) / G), nz = Math.ceil((z1 - z0) / G), N = nx * nz;
+    if (N > 600000) continue;
+    const free = new Uint8Array(N), wallm = new Uint8Array(N), cx = i => x0 + (i + 0.5) * G, cz = j => z0 + (j + 0.5) * G;
+    const raised = y > ground + 0.6;
+    for (const n of list) {
+      const b = boxes[n];
+      for (let i = Math.max(0, Math.floor((b.x0 - x0) / G)); i < Math.min(nx, Math.ceil((b.x1 - x0) / G)); i++)
+        for (let j = Math.max(0, Math.floor((b.z0 - z0) / G)); j < Math.min(nz, Math.ceil((b.z1 - z0) / G)); j++) {
+          const x = cx(i), z = cz(j);
+          if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1) continue;
+          free[i * nz + j] = 1;
+        }
+    }
+    // what stands on this floor: walls at their middle line, climbs, posts
+    pieces.forEach((p, n) => {
+      const b = boxes[n], role = b.info.role;
+      if (p.decor || b.y1 < y + 0.3 || b.y0 > y + 1.8) return;
+      if (['wall', 'window', 'gable'].includes(role)) {
+        if (tilted(p.q)) return;
+        const s = p.s || [1, 1, 1], w = b.info.size[0] * s[0], a = yawDeg(p) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a);
+        // (a block a metre wide or less standing alone is a jamb or a column, as a hearth's surround)
+        if (w <= 1.01 && !pieces.some((q, m) => m !== n && ['wall', 'window', 'door'].includes(boxes[m].info.role) && boxes[m].info.size[0] > 1.01 && Math.hypot(q.x - p.x, q.z - p.z) < 1.6 && boxes[m].y0 < y + 1.6 && boxes[m].y1 > y + 0.3)) return;
+        // a band a cell wide each way of the line, so a wall at an angle leaves no gap a ray could pass
+        for (let t = -w / 2; t <= w / 2 + 1e-6; t += G / 4) for (const [ex, ez] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+          const i = Math.floor((p.x + ux * t + ex * G / 2 - x0) / G), j = Math.floor((p.z + uz * t + ez * G / 2 - z0) / G);
+          if (i >= 0 && j >= 0 && i < nx && j < nz) { free[i * nz + j] = 0; wallm[i * nz + j] = 1; }
+        }
+      } else if (role === 'stair' || (role === 'fence' && b.y0 > y - 0.3)) {
+        for (let i = Math.max(0, Math.floor((b.x0 - x0) / G)); i < Math.min(nx, Math.ceil((b.x1 - x0) / G)); i++)
+          for (let j = Math.max(0, Math.floor((b.z0 - z0) / G)); j < Math.min(nz, Math.ceil((b.z1 - z0) / G)); j++) free[i * nz + j] = 0;
+      }
+    });
+    // only the floor under a roof or an upper floor (rooms, halls, porches), or raised floor outside
+    const use = new Uint8Array(N);
+    const over = new Uint8Array(N);
+    if (!raised) pieces.forEach((p, n) => {
+      const b = boxes[n], role = b.info.role;
+      if (p.decor || !['roof', 'roofTop', 'roofCorner', 'floor'].includes(role) || b.y0 < y + 1.5 || b.y0 > y + 14) return;
+      for (let i = Math.max(0, Math.floor((b.x0 - x0) / G)); i < Math.min(nx, Math.ceil((b.x1 - x0) / G)); i++)
+        for (let j = Math.max(0, Math.floor((b.z0 - z0) / G)); j < Math.min(nz, Math.ceil((b.z1 - z0) / G)); j++) over[i * nz + j] = 1;
+    });
+    // (roof pieces turned round a crown leave thin gaps between their boxes: a metre round each closes them)
+    if (!raised) {
+      const o2 = new Uint8Array(N);
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+        if (!over[i * nz + j]) continue;
+        for (let a = Math.max(0, i - 4); a <= Math.min(nx - 1, i + 4); a++) for (let c = Math.max(0, j - 4); c <= Math.min(nz - 1, j + 4); c++) o2[a * nz + c] = 1;
+      }
+      over.set(o2);
+    }
+    // on the ground, a floor between walls on three sides or more (rooms, halls, a passage with a door at its end);
+    // an open porch or stoop with the house wall behind it is an entrance, its depth the porch's own choice
+    const walled = (i, j) => {
+      let n = 0;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        for (let t = 1; t <= 56; t++) { const a = i + di * t, c = j + dj * t; if (a < 0 || c < 0 || a >= nx || c >= nz) break; if (wallm[a * nz + c]) { n++; break; } }
+      }
+      return n >= 3;
+    };
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const k = i * nz + j; if (free[k] && (raised || (over[k] && walled(i, j)))) use[k] = 1; }
+    // distance (chamfer 3-4, in metres) from every usable cell to the nearest unusable one
+    const dist = (src, edge) => {
+      const d = new Float32Array(N);
+      for (let k = 0; k < N; k++) d[k] = src[k] ? 1e9 : 0;
+      const a = G, bD = G * Math.SQRT2;
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+        const k = i * nz + j; if (!d[k]) continue;
+        let v = d[k];
+        if (i > 0) { v = Math.min(v, d[k - nz] + a); if (j > 0) v = Math.min(v, d[k - nz - 1] + bD); if (j < nz - 1) v = Math.min(v, d[k - nz + 1] + bD); } else if (edge) v = Math.min(v, a);
+        if (j > 0) v = Math.min(v, d[k - 1] + a); else if (edge) v = Math.min(v, a);
+        d[k] = v;
+      }
+      for (let i = nx - 1; i >= 0; i--) for (let j = nz - 1; j >= 0; j--) {
+        const k = i * nz + j; if (!d[k]) continue;
+        let v = d[k];
+        if (i < nx - 1) { v = Math.min(v, d[k + nz] + a); if (j > 0) v = Math.min(v, d[k + nz - 1] + bD); if (j < nz - 1) v = Math.min(v, d[k + nz + 1] + bD); } else if (edge) v = Math.min(v, a);
+        if (j < nz - 1) v = Math.min(v, d[k + 1] + a); else if (edge) v = Math.min(v, a);
+        d[k] = v;
+      }
+      return d;
+    };
+    const dIn = dist(use, true);
+    const notCentre = new Uint8Array(N);
+    for (let k = 0; k < N; k++) notCentre[k] = use[k] && dIn[k] >= R ? 0 : 1;
+    const dC = dist(notCentre, false);
+    const narrow = new Uint8Array(N);
+    for (let k = 0; k < N; k++) if (use[k] && dC[k] > R + G) narrow[k] = 1;
+    // pieces of narrow floor
+    const seen = new Uint8Array(N);
+    for (let k0 = 0; k0 < N; k0++) {
+      if (!narrow[k0] || seen[k0]) continue;
+      const st = [k0]; seen[k0] = 1; let n = 0, bx0 = Infinity, bx1 = -Infinity, bz0 = Infinity, bz1 = -Infinity;
+      while (st.length) {
+        const k = st.pop(); n++;
+        const i = Math.floor(k / nz), j = k % nz;
+        bx0 = Math.min(bx0, cx(i)); bx1 = Math.max(bx1, cx(i)); bz0 = Math.min(bz0, cz(j)); bz1 = Math.max(bz1, cz(j));
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const a = i + di, c = j + dj;
+          if (a < 0 || c < 0 || a >= nx || c >= nz) continue;
+          const kk = a * nz + c;
+          if (narrow[kk] && !seen[kk]) { seen[kk] = 1; st.push(kk); }
+        }
+      }
+      const area = n * G * G;
+      // a passage runs on: leftovers in the corners of a room, by a post or a doorway are short
+      const len = Math.max(bx1 - bx0, bz1 - bz0) + G;
+      if (area > (opts.min != null ? opts.min : PASSAGE_CLOSET) && len >= PASSAGE_LONG) out.push({ y, area: +area.toFixed(1), x0: +bx0.toFixed(1), x1: +bx1.toFixed(1), z0: +bz0.toFixed(1), z1: +bz1.toFixed(1), raised });
+    }
+  }
+  return out;
+}
+
+// Doorways clear and stepped (D-096; Tyler, showcase review 2026-11-11: a beam across a doorway stopped him at the door of a
+// Meadows home, "something we discussed and resolved days ago"). Through every door and every opening a door piece
+// stands in, a lane 0.9 m wide from a metre outside to a metre inside: with the game's colliders, nothing solid from
+// 0.25 m over the walking surface to the opening's top (2 m) or DOOR_CLEAR beyond the frame, and the surface itself
+// steps no more than DOOR_STEP from one 0.2 m sample to the next (a beam laid across the threshold, a log or a raised
+// sill). A stair is a way up and counts as surface. Returns a list of problems: { door, at, what }.
+// DOOR_STEP is the rise the generator builds treads to; the check fails a step over DOOR_STEP_MAX (a log across a
+// threshold stood 0.45 to 0.64 m over the ground outside it).
+const DOOR_STEP = 0.3, DOOR_STEP_MAX = 0.4;
+const PLANT_FALL = /^(Pickable_(Dandelion|Onion|Thistle|Carrot|Turnip|Mushroom)|Vineberry|Bush01|Bush02_en|RaspberryBush|BlueberryBush|CloudberryBush|shrub_2_heath)$/;
+function doorways(pieces, opts = {}) {
+  const boxes = pieces.map(gameBox), near = index(boxes), out = [];
+  // the game's ground: the mod sets a design's lowest pivot on the terrain (src/Villheim.Logic/Designs/Blueprints.cs,
+  // the lowest piece at y = 0), so a bush or a stone floor sunk under the house floor lifts the house that much over it
+  const ground = opts.ground != null ? opts.ground : Math.min(0, ...pieces.map(p => p.y));
+  pieces.forEach((d, n) => {
+    if (boxes[n].info.role !== 'door') return;
+    const o = PC.doorOpening(d);
+    if (o.w < 1.2) return;
+    // the walking surface along the lane's middle line, and what stands over it
+    let last = null;
+    for (let si = -5; si <= 5; si++) {
+      const s = si / 5, inPlane = Math.abs(s) < 0.55, top = o.y + (inPlane ? Math.min(o.h, DOOR_CLEAR) : DOOR_CLEAR);
+      let surf = -Infinity;
+      for (const t of [-0.3, 0, 0.3]) {
+        const x = o.x + o.nx * s + o.ux * t, z = o.z + o.nz * s + o.uz * t;
+        const col = ptBox(x, o.y - 0.8, o.y + 0.6, z, 0.02);
+        let here = Math.abs(s) < 0.3 ? o.y : ground; // the sill of the opening itself
+        for (const j of near(col, 0)) {
+          if (j === n) continue;
+          const b = boxes[j];
+          if (b.pass || ['rug', 'nature', 'misc', 'door', 'light', 'deco'].includes(b.info.role) || pieces[j].decor && !b.info.structural) continue;
+          const tp = b.sol && b.sol.length ? SHP.topAt(b.sol, x, z) : (b.x0 <= x && x <= b.x1 && b.z0 <= z && z <= b.z1 ? b.y1 : null);
+          if (tp != null && tp <= o.y + 0.6 && tp > here) here = tp;
+        }
+        surf = Math.max(surf, here);
+      }
+      if (last != null && surf - last > DOOR_STEP_MAX && !opts.noStep) out.push({ door: d.name, at: +s.toFixed(1), what: `a step of ${(surf - last).toFixed(2)} m` });
+      if (last != null && last - surf > DOOR_STEP_MAX && !opts.noStep) out.push({ door: d.name, at: +s.toFixed(1), what: `a drop of ${(last - surf).toFixed(2)} m` });
+      last = surf;
+      // nothing solid over the surface up to the top
+      for (const t of [-0.45, 0, 0.45]) {
+        const x = o.x + o.nx * s + o.ux * t, z = o.z + o.nz * s + o.uz * t;
+        const col = ptBox(x, surf + 0.25, top - 0.03, z, 0.02);
+        for (const j of near(col, 0)) {
+          if (j === n) continue;
+          const b = boxes[j], role = b.info.role;
+          if (b.pass || ['rug', 'door', 'nature', 'misc'].includes(role)) continue;
+          if (role === 'stair') continue;
+          if (blocks(col, b, -0.01)) { out.push({ door: d.name, at: +s.toFixed(1), what: pieces[j].name }); break; }
+        }
+      }
+    }
+  });
+  const seen = new Set();
+  return out.filter(p => { const k = p.door + p.what; if (seen.has(k)) return false; seen.add(k); return true; });
+}
+
+// Pasture fences (Tyler, showcase review 2026-11-11): wood_fence is "really only intended for pastures, garden fences,
+// maybe village perimeter fencing. Never for building fences atop towers, etc. and certainly never indoors." A
+// wood_fence whose foot is 0.6 m or more over the ground, or that stands under a roof or floor, fails.
+function pastureFences(pieces, opts = {}) {
+  const boxes = pieces.map(catBox), near = index(boxes), out = [], walls = wallGrid(pieces, boxes);
+  // (the lab's ground: a design lifted by a piece sunk under it is the ground check's matter, lab/shell_ground.js)
+  const ground = opts.ground != null ? opts.ground : 0;
+  pieces.forEach((p, i) => {
+    if (p.name !== 'wood_fence') return;
+    if (boxes[i].y0 > ground + 0.6) { out.push(`${p.name} ${(boxes[i].y0 - ground).toFixed(1)} m up`); return; }
+    // indoors: under a roof or floor and between walls (an eave over a yard fence is outdoors)
+    if (!walls.inside(p.x, boxes[i].y0 + 0.1, p.z)) return;
+    const col = ptBox(p.x, boxes[i].y1 + 0.3, boxes[i].y1 + 12, p.z, 0.05);
+    for (const j of near(col, 0)) {
+      const r = boxes[j].info.role;
+      if (['roof', 'roofTop', 'roofCorner', 'floor'].includes(r) && !pieces[j].decor && touch(col, boxes[j], 0)) { out.push(`${p.name} indoors`); break; }
+    }
+  });
+  return out;
+}
+
+// Crossed boards on a gable (wood_wall_roof_top_45, wood_wall_roof_top): corpus builders run their boards on in line
+// with the sloped bargeboards beside them (lab/shell_mine.js: of 5,042 sloped 45 degree beams in a cross's plane
+// within 3.2 m, 1,881 lie on a board's line and nearly all the rest 2 m or more off it, the next bargeboard row). A
+// cross with sloped beams of its pitch in its plane and none on a board's line fails (showcase 13: a metre under it).
+function crossedBoards(pieces) {
+  const out = [];
+  for (const c of pieces) {
+    const m = c.name === 'wood_wall_roof_top_45' ? 1 : c.name === 'wood_wall_roof_top' ? 0.5 : 0;
+    if (!m) continue;
+    const a = yawDeg(c) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a), nx = Math.sin(a), nz = Math.cos(a);
+    let any = 0, inLine = 0;
+    for (const q of pieces) {
+      if (q === c || !(m === 1 ? /beam_45$/ : /beam_26$/).test(q.name)) continue;
+      const dx = q.x - c.x, dz = q.z - c.z, dy = q.y - c.y;
+      if (Math.hypot(dx, dz) > 3.2 || Math.abs(dy) > 3.2) continue;
+      const along = dx * ux + dz * uz, norm = dx * nx + dz * nz, rel = ((yawDeg(q) - yawDeg(c)) % 360 + 360) % 360;
+      if (Math.abs(norm) > 0.35 || Math.round(rel) % 180 !== 0) continue;
+      // a wood beam's pivot is its middle; the board's line through the crossing (m over the pivot) at slope +-m
+      const sg = Math.round(rel) % 360 === 0 ? 1 : -1;
+      const yMid = /^wood_beam_26$/.test(q.name) ? dy + 0.5 : dy;
+      any++;
+      if (Math.abs(yMid - sg * m * along - m) < 0.2) inLine++;
+    }
+    if (any && !inLine) out.push(`${c.name} at ${c.x.toFixed(1)},${c.y.toFixed(1)},${c.z.toFixed(1)}`);
+  }
+  return out;
+}
+
+// Wall tops meet the roof (Tyler, showcases 03 and 15: "gaps up top on the wall that dont complete the wall-to-roof
+// connection"). Along each outside wall or gable piece (floor on one side of it only), at its ends and middle: when
+// the next solid straight over its top is a roof piece, it is no more than WALL_GAP m higher, unless a window or door
+// is in between. Returns the gaps found.
+const WALL_GAP = 0.25;
+function wallTops(pieces) {
+  const boxes = pieces.map(gameBox), near = index(boxes), out = [];
+  // (a smoke louver's raised caps over a fire are open at the sides on purpose)
+  const fires = pieces.filter(p => PC.piece(p.name).role === 'fire' || /fire_pit|hearth|bonfire/.test(p.name));
+  const floorAt = (x, z, y1) => { for (const j of near(ptBox(x, y1 - 4.5, y1, z), 0)) { const b = boxes[j]; if (b.info.role === 'floor' && !pieces[j].decor && b.x0 <= x && x <= b.x1 && b.z0 <= z && z <= b.z1 && b.y1 < y1 && b.y1 > y1 - 4.5) return true; } return false; };
+  pieces.forEach((p, n) => {
+    const b = boxes[n], role = b.info.role;
+    if (p.decor || !['wall', 'window', 'gable'].includes(role) || tilted(p.q) || /arch/.test(p.name)) return;
+    const a = yawDeg(p) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a), w = b.info.size[0];
+    if (floorAt(p.x - uz, p.z + ux, b.y1) && floorAt(p.x + uz, p.z - ux, b.y1)) return;
+    for (const t of [-w / 2 + 0.25, 0, w / 2 - 0.25]) {
+      const x = p.x + ux * t, z = p.z + uz * t, top = b.y1;
+      let next = Infinity, by = -1;
+      for (const j of near(ptBox(x, top + 0.02, top + 4, z), 0)) {
+        if (j === n || pieces[j].decor || boxes[j].pass) continue;
+        const o = boxes[j];
+        let y0 = null;
+        if (o.sol && o.sol.length) { for (const sd of o.sol) { const sp = SHP.spanY(sd, x, z); if (sp && sp[1] > top - 0.05 && (y0 == null || sp[0] < y0)) y0 = sp[0]; } }
+        else if (o.x0 <= x && x <= o.x1 && o.z0 <= z && z <= o.z1 && o.y1 > top) y0 = o.y0;
+        if (y0 != null && y0 < next) { next = Math.max(y0, top); by = j; }
+      }
+      if (!isFinite(next) || next - top <= WALL_GAP || !['roof', 'roofTop', 'roofCorner'].includes(boxes[by].info.role)) continue;
+      if (fires.some(f => Math.hypot(f.x - x, f.z - z) < 4)) continue; // (and a smoke shaft's boards end under the ridge)
+      const opening = pieces.some((q, m) => m !== n && ['window', 'door'].includes(boxes[m].info.role) && boxes[m].x0 <= x + 0.3 && boxes[m].x1 >= x - 0.3 && boxes[m].z0 <= z + 0.3 && boxes[m].z1 >= z - 0.3 && boxes[m].y0 < next && boxes[m].y1 > top);
+      if (!opening) out.push({ name: p.name, x: +x.toFixed(1), y: +top.toFixed(2), z: +z.toFixed(1), gap: +(next - top).toFixed(2), under: pieces[by].name });
+    }
+  });
+  return out;
+}
+
+// The game's own support rule (WearNTear.UpdateSupport in assembly_valheim, decompiled 2026-11-12). A piece looks at
+// every collider that reaches into its own colliders grown by 0.15 m on each side. The ground gives the material's
+// max. From each touching piece it may take that piece's support less its own material's horizontal loss times the
+// distance between the two pivots (plus 0.1 m), whichever way the other piece lies, above included; from a piece whose
+// nearest point lies under its pivot, the loss is blended toward the vertical loss by how steeply down that point
+// lies, again times the distance. Two such points on opposite sides (100 degrees or more apart seen from above) give
+// the mean of their vertical values (a span between two posts). It falls under its material's min. Because the loss
+// grows with the distance between pivots, a 2 m piece loses twice what a 1 m piece loses per step, and long pieces
+// hung off one end (a roof row, a beam out from a wall) lose the most. Pivots stand in for the centre of mass (the
+// prefabs' m_comOffset is not measured). Returns the support per piece (NaN for pieces the rule skips) and the ones
+// that fall.
+const GAME_LOSS = {
+  wood: { max: 100, min: 10, v: 0.125, h: 0.2 }, hardwood: { max: 140, min: 10, v: 0.1, h: 1 / 6 },
+  stone: { max: 1000, min: 100, v: 0.125, h: 1 }, iron: { max: 1500, min: 20, v: 1 / 13, h: 1 / 13 },
+  marble: { max: 1500, min: 100, v: 0.125, h: 0.5 }, ashstone: { max: 2000, min: 100, v: 0.1, h: 1 / 3 },
+};
+function gameSupport(pieces, opts = {}) {
+  const n = pieces.length, sol = new Array(n), grown = new Array(n), mat = new Array(n), bb = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const p = pieces[i], info = PC.piece(p.name);
+    if (!info.structural || p.decor) continue;
+    let W = SHP && SHP.world(p);
+    if (!W || !W.length) W = SHP ? [SHP.boxOf(catBox(p))] : null;
+    if (!W) continue;
+    sol[i] = W;
+    mat[i] = GAME_LOSS[PC.supportClass(p.name)] || GAME_LOSS.wood;
+    grown[i] = W.map(o => { const h = o.h.map(v => v + 0.15), g = { c: o.c, a: o.a, h }; const e = [0, 1, 2].map(k => Math.abs(o.a[0][k]) * h[0] + Math.abs(o.a[1][k]) * h[1] + Math.abs(o.a[2][k]) * h[2]); return Object.assign(g, { x0: o.c[0] - e[0], x1: o.c[0] + e[0], y0: o.c[1] - e[1], y1: o.c[1] + e[1], z0: o.c[2] - e[2], z1: o.c[2] + e[2] }); });
+    const b = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity, z0: Infinity, z1: -Infinity };
+    for (const o of grown[i]) { b.x0 = Math.min(b.x0, o.x0); b.x1 = Math.max(b.x1, o.x1); b.y0 = Math.min(b.y0, o.y0); b.y1 = Math.max(b.y1, o.y1); b.z0 = Math.min(b.z0, o.z0); b.z1 = Math.max(b.z1, o.z1); }
+    bb[i] = b;
+  }
+  const list = [];
+  for (let i = 0; i < n; i++) if (sol[i]) list.push(i);
+  const ys = list.map(i => Math.min(...sol[i].map(o => o.y0))).sort((a, b) => a - b);
+  // the lab's ground is y = 0 (floors on the ground stand there; stone floors and footings go half into it), or lower
+  // when the whole design stands lower
+  const ground = opts.ground != null ? opts.ground : Math.max(0, ys.length ? ys[Math.floor(ys.length * 0.02)] : 0);
+  const boxes = new Array(n);
+  for (const i of list) boxes[i] = bb[i];
+  const fake = boxes.map(b => b || { x0: 1e9, x1: 1e9, z0: 1e9, z1: 1e9 });
+  const near = index(fake);
+  // the ways each piece can take support: [other, horizontal factor, vertical factor or -1, support point dir x, z]
+  const ways = new Array(n), grounded = new Uint8Array(n);
+  const closest = (o, q) => { const d = [q[0] - o.c[0], q[1] - o.c[1], q[2] - o.c[2]]; const r = [...o.c]; for (let k = 0; k < 3; k++) { const t = Math.max(-o.h[k], Math.min(o.h[k], d[0] * o.a[k][0] + d[1] * o.a[k][1] + d[2] * o.a[k][2])); r[0] += o.a[k][0] * t; r[1] += o.a[k][1] * t; r[2] += o.a[k][2] * t; } return r; };
+  for (const i of list) {
+    const p = pieces[i], m = mat[i], com = [p.x, p.y, p.z], W = [];
+    if (bb[i].y0 <= ground + 0.02) grounded[i] = 1;
+    for (const j of near(bb[i], 0)) {
+      if (j === i || !sol[j]) continue;
+      const q = pieces[j], dist = Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) + 0.1;
+      for (const o of sol[j]) {
+        if (!grown[i].some(g => SHP.hit(g, o))) continue;
+        const hf = 1 - m.h * dist;
+        const pt = closest(o, com);
+        let vf = -1, dx = 0, dz = 0, item = -1;
+        if (pt[1] < com[1] + 0.05) {
+          const d = [pt[0] - com[0], pt[1] - com[1], pt[2] - com[2]], l = Math.hypot(d[0], d[1], d[2]) || 1;
+          if (d[1] / l < 0) { const t = Math.acos(1 - Math.abs(d[1] / l)) / (Math.PI / 2); vf = 1 - (m.h + (m.v - m.h) * t) * dist; }
+          item = 1 - m.v * dist; dx = d[0]; dz = d[2];
+        }
+        W.push([j, hf, vf, item, dx, dz]);
+      }
+    }
+    ways[i] = W;
+  }
+  const s = new Float64Array(n).fill(NaN);
+  for (const i of list) s[i] = grounded[i] ? mat[i].max : 0;
+  for (let sweep = 0; sweep < 400; sweep++) {
+    let moved = 0;
+    for (const i of list) {
+      if (grounded[i]) continue;
+      let best = 0;
+      const pts = [];
+      for (const [j, hf, vf, item, dx, dz] of ways[i]) {
+        const sj = s[j];
+        if (!(sj > 0)) continue;
+        best = Math.max(best, sj * hf);
+        if (vf > -1) best = Math.max(best, sj * vf);
+        if (item > -1) pts.push([sj * item, dx, dz]);
+      }
+      for (let a = 0; a < pts.length - 1; a++) for (let c = a + 1; c < pts.length; c++) {
+        const mean = (pts[a][0] + pts[c][0]) / 2;
+        if (mean <= best) continue;
+        const la = Math.hypot(pts[a][1], pts[a][2]), lc = Math.hypot(pts[c][1], pts[c][2]);
+        if (la < 1e-6 || lc < 1e-6) continue;
+        const cos = (pts[a][1] * pts[c][1] + pts[a][2] * pts[c][2]) / (la * lc);
+        if (Math.acos(Math.max(-1, Math.min(1, cos))) * 180 / Math.PI >= 100) best = mean;
+      }
+      const v = Math.min(best, mat[i].max);
+      if (Math.abs(v - s[i]) > 1e-4) { moved++; s[i] = v; }
+    }
+    if (!moved) break;
+  }
+  const fall = list.filter(i => s[i] < mat[i].min - 1e-6);
+  return { support: s, fall, ground };
+}
+
 // A loft under the roof (storeys track, 2026-11-11): on an upper floor, a point under a roof slope may be lower than
 // the headroom where people stand up close by: the roof over it is at least LOFT_LOW over the floor, and a point of
 // the same floor with full headroom (and walls) lies within LOFT_REACH. People walk where they can stand; the low
@@ -3136,7 +3513,7 @@ function check(design, biome, opts = {}) {
   // wall are left out (nobody stands in the wall)
   const walls = wallGrid(pieces, boxes);
   let low = 0, inside = 0;
-  const lowBy = new Set(), where = [], stand = [], lows = [];
+  const lowBy = new Set(), where = [], stand = [], lows = [], open = [];
   for (const pt of pts) {
     // the lowest roof or ceiling over the point; a floor open to the sky (a roof terrace, a yard) is left out
     const col = ptBox(pt.x, pt.y + 0.05, pt.y + 30, pt.z);
@@ -3151,7 +3528,7 @@ function check(design, biome, opts = {}) {
       if (u != null && pieces[j].decor && u < pt.y + 1.8) continue;
       if (u != null && u > pt.y + (useShapes ? 0.5 : 0.05) && u < lowest) { lowest = u; by = pieces[j].name; }
     }
-    if (!isFinite(lowest)) continue;
+    if (!isFinite(lowest)) { if (walls.inside(pt.x, pt.y, pt.z) && !walls.near(pt.x, pt.y, pt.z, 0.45)) open.push(pt); continue; }
     if (!walls.inside(pt.x, pt.y, pt.z) || walls.near(pt.x, pt.y, pt.z, 0.45)) continue;
     inside++;
     let bad = lowest < pt.y + HEADROOM - 0.01 ? by : null;
@@ -3165,6 +3542,20 @@ function check(design, biome, opts = {}) {
     const { pt, bad } = L;
     low++; lowBy.add(bad); if (where.length < 6) where.push({ x: +pt.x.toFixed(2), y: +pt.y.toFixed(2), z: +pt.z.toFixed(2), under: bad });
   }
+  // holes in the roof (Tyler, showcase 09: "gaps and holes in the ceiling, roof pieces dont connect"): a floor point
+  // inside walls with nothing over it while roofed points of the same floor lie on all four sides of it within
+  // ROOF_HOLE m. The edge of a court's yard has roof on one side only; a smoke hole over a fire is meant.
+  const roofed = new Set([...stand, ...lows.map(L => L.pt)].map(q => `${Math.round(q.x * 2)},${Math.round(q.y * 20)},${Math.round(q.z * 2)}`));
+  const fires = pieces.filter(p => PC.piece(p.name).role === 'fire' || /fire_pit|hearth|bonfire/.test(p.name));
+  const holes = open.filter(pt => {
+    if (fires.some(f => Math.hypot(f.x - pt.x, f.z - pt.z) < 2.6)) return false;
+    const ky = Math.round(pt.y * 20);
+    return [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dz]) => {
+      for (let t = 0.5; t <= ROOF_HOLE + 1e-6; t += 0.5) if (roofed.has(`${Math.round((pt.x + dx * t) * 2)},${ky},${Math.round((pt.z + dz * t) * 2)}`)) return true;
+      return false;
+    });
+  });
+  results.push({ check: 'roof holes', ok: holes.length === 0, detail: holes.length ? `${holes.length} floor points inside walls open to the sky with roof all round (${holes.slice(0, 3).map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`).join('; ')})` : 'no holes in the roof' });
   results.push({ check: 'headroom', ok: low === 0, where,
     detail: low ? `${low} of ${inside} floor points under ${HEADROOM} m or by low walls (${[...lowBy].slice(0, 4).join(', ')})` : `${inside} floor points inside, all with ${HEADROOM} m or more and walls of ${WALL_MIN} m or more` });
 
@@ -3243,10 +3634,37 @@ function check(design, biome, opts = {}) {
   }
   const free = area ? 1 - used / area : 1;
   results.push({ check: 'space', ok: free >= 0.45, detail: `${Math.round(free * 100)} % of the floor is free to walk` });
+
+  // the shell rules of the showcase review (2026-11-12), each from one of Tyler's notes; opts.shell false leaves them out
+  if (opts.shell !== false) {
+    const gs = gameSupport(pieces);
+    results.push({ check: 'game support', ok: gs.fall.length === 0, detail: gs.fall.length ? `${gs.fall.length} pieces the game would let fall (${[...new Set(gs.fall.map(i => pieces[i].name))].slice(0, 4).join(', ')})` : 'every piece holds by the game\'s support rule' });
+    const ps = passages(pieces);
+    results.push({ check: 'passages', ok: ps.length === 0, where: ps, detail: ps.length ? `${ps.length} walks narrower than ${PASSAGE_W} m (${ps.slice(0, 3).map(p => `${p.area} m2 at y ${p.y}`).join('; ')})` : `every walk at least ${PASSAGE_W} m wide` });
+    const dw = doorways(pieces);
+    results.push({ check: 'doorways', ok: dw.length === 0, detail: dw.length ? `${dw.length} problems (${dw.slice(0, 3).map(p => `${p.door}: ${p.what} at ${p.at}`).join('; ')})` : 'every doorway clear and stepped' });
+    const pf = pastureFences(pieces);
+    results.push({ check: 'railings', ok: pf.length === 0, detail: pf.length ? `${pf.length} pasture fences used as rails (${pf.slice(0, 3).join('; ')})` : 'no pasture fence raised or indoors' });
+    // one masonry family in the walls (Tyler, showcases 15 and 16: "Stone is chunky and light gray. Grausten is smooth
+    // and dark gray and half the width"; the corpus mixes them in 150 of 1,001 masonry builds, mostly large castles,
+    // lab/shell_mine.js); a hearth's own stone is the hearth's
+    const fam = p => /^stone_(wall|arch|pillar)/.test(p.name) ? 'stone' : /^Piece_grausten_(wall|pillar)/i.test(p.name) ? 'grausten' : null;
+    const fams = [...new Set(pieces.filter(p => !p.decor && !p.hearthStone && fam(p)).map(fam))];
+    results.push({ check: 'masonry', ok: fams.length < 2, detail: fams.length < 2 ? 'one masonry family in the walls' : `walls of ${fams.join(' and ')}` });
+    // plants the game drops to the terrain (StaticPhysics without solids, read from the prefabs: lib/details.js
+    // PLANTS_FALL) standing over the ground: on a sill or a shelf they fall (showcase 05, the onion and the dandelion)
+    const G0 = Math.min(0, ...pieces.map(p => p.y));
+    const falls = pieces.filter(p => PLANT_FALL.test(p.name) && p.y > G0 + 0.3);
+    results.push({ check: 'plants held', ok: falls.length === 0, detail: falls.length ? `${falls.length} plants over the ground the game drops (${[...new Set(falls.map(p => p.name))].slice(0, 4).join(', ')})` : 'no plant the game drops stands over the ground' });
+    const wt = wallTops(pieces);
+    results.push({ check: 'wall tops', ok: wt.length === 0, detail: wt.length ? `${wt.length} gaps over outside walls under the roof (${wt.slice(0, 3).map(g => `${g.name} ${g.gap} m under ${g.under}`).join('; ')})` : 'outside walls meet the roof' });
+    const cb = crossedBoards(pieces);
+    results.push({ check: 'crossed boards', ok: cb.length === 0, detail: cb.length ? `${cb.length} out of line with the bargeboards (${cb.slice(0, 2).join('; ')})` : 'crossed boards in line' });
+  }
   return results;
 }
 
-const apiC = { check, CLIP_MAX, stability, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
+const apiC = { check, CLIP_MAX, stability, gameSupport, GAME_LOSS, passages, PASSAGE_W, PASSAGE_CLOSET, doorways, DOOR_STEP, DOOR_STEP_MAX, pastureFences, crossedBoards, wallTops, aabb, catBox, gameBox, aabbShapes, underside, undersideOf, blocks, localOf, doorBlockers, index, HEADROOM, DOOR_CLEAR, CORRIDOR,
   setShapes(on) { SHAPES_DEFAULT = !!on; }, get shapes() { return SHAPES_DEFAULT; } };
 if (NODE_C) module.exports = apiC; else window.VHChecks = apiC;
 
@@ -7632,6 +8050,301 @@ const apiM = { wtFamily, depthM, flatOnWall, lite: liteSet, classOf, matOf, xAsy
 if (NODE_M) module.exports = apiM; else window.VHMotifs = apiM;
 
 })();
+// ---- program.js
+(function () {
+// Villheim building program: one plan of intent per building (and per village) that the shell, the details and the
+// interior follow, so a feature is chosen once and applied to every place it belongs (D-167). Track H of the showcase
+// review; the study and every number are in docs/ARCHITECTURE_STUDY.md, the data in data/architecture/rules.json.
+//
+//   const Program = require('./program.js');
+//   const V = Program.village({ cultureKey, biome, seed });                       // shared vernacular (optional)
+//   const prog = Program.plan({ cultureKey, type, stage, decor, biome, seed, storeys, persona, village: V, kit });
+//   Program.run(prog, { side, storey })        -> the window family of one run: { features, fill, pieces, why }
+//   Program.window(prog, { side, storey, room, byDoor }) -> the run's family, or the run's family plus one reasoned
+//                                                         exception for the room behind: { ...family, exception }
+//   Program.door(prog, { main })               -> { rank, dressing }
+//   Program.room(prog, room)                   -> one feature program per room for the interior (light, woods, fabrics)
+//   Program.check(prog, windows)               -> faults: lone features without a reason, runs with mixed treatments
+//
+// side: 'front' (the main door's wall), 'back', 'side', 'gable' (a loft or gable window), 'court' (a courtyard face).
+// storey: 0 for the ground floor. room: { kind } with kinds as lib/decorate.js names them (kitchen, sleeping, hall,
+// storage, workshop, ...). Everything is drawn from the building's own make (culture, type, seed, household), never
+// from the random stream the generator uses, so the program is the same at every decor stage and can be asked again.
+//
+// Rules, in short (each with its corpus number in rules.json):
+//   - a run (the windows of one wall, one storey) carries one treatment: every window or none (corpus 67 % of runs
+//     uniform in their built treatment against 29 % if the same windows were dealt at random), with one piece per
+//     feature along the run (95 to 99 % of full runs)
+//   - the front is chosen first; the other sides take the front family whole at 47 %, else its built frame only
+//   - an upper storey keeps the family below at 52 %, else its built frame only; a gable or tower top is its own run
+//   - an exception is one window per run at most and needs the room behind it (kitchen, hall, storage, bedroom) or
+//     the door beside it
+//   - planters are a household trait capped at 10 % of a village's windows (D-165)
+//   - one main door, one roof material, heavy walls under light ones with the change at a plinth or floor line, corner
+//     posts all, none or the entry side's, carved heads in pairs, one light kind and one wood family per household
+const NODE_PR = typeof module !== 'undefined';
+let RULES = null;
+function rules() {
+  if (RULES) return RULES;
+  if (NODE_PR) { try { RULES = require('../data/architecture/rules.json'); } catch (e) { RULES = null; } }
+  if (!RULES && typeof window !== 'undefined' && window.VH_ARCH) RULES = window.VH_ARCH;
+  return RULES || { windows: { adopt: { byGroup: {} }, sides: {}, upper: {} }, exceptions: { rules: [] } };
+}
+
+// the generator's cultures to the corpus groups the window counts come from (lib/decorate.js CULT_GROUP, kept in step)
+const GROUP = { norse: 'norse', 'anglo-saxon': 'medieval-timber', 'frankish-norman': 'medieval-timber', 'norse-forest': 'norse-forest',
+  celtic: 'medieval-timber', slavic: 'norse-forest', 'celtic-crannog': 'norse-forest', baltic: 'norse-forest', 'fen-folk': 'norse-forest',
+  'norse-highland': 'norse-highland', saami: 'norse-highland', byzantine: 'castle', steppe: 'all', lamari: 'fantasy', 'middle-eastern': 'all',
+  'black-forest': 'norse-forest', swamp: 'norse-forest', mountain: 'norse-highland', 'east-asian': 'east-asian', 'castle-medieval': 'castle',
+  dwarven: 'fantasy', ashlands: 'ashlands' };
+// what each culture builds round a window when it builds anything (CULTURE_STYLES.md and the vernacular sources in
+// ARCHITECTURE_STUDY.md); the corpus shares above say how often. A culture never takes a feature off its list.
+const PALETTE = {
+  norse: ['posts', 'brace', 'sill', 'hood', 'head', 'shutter'], 'norse-forest': ['posts', 'brace', 'hood', 'sill', 'head', 'shutter'],
+  'norse-highland': ['posts', 'sill', 'brace', 'head', 'shutter'], 'anglo-saxon': ['posts', 'sill', 'brace', 'shutter'],
+  'frankish-norman': ['posts', 'sill', 'head', 'brace', 'shutter', 'arch'], celtic: ['posts', 'sill', 'shutter'],
+  'celtic-crannog': ['posts', 'sill'], slavic: ['posts', 'sill', 'head', 'shutter', 'brace'], baltic: ['posts', 'sill', 'head', 'shutter'],
+  'fen-folk': ['posts', 'sill', 'hood'], saami: ['posts'], byzantine: ['arch', 'sill', 'head'], 'middle-eastern': ['arch', 'sill'],
+  steppe: ['posts'], lamari: ['posts', 'arch', 'sill', 'head'], 'castle-medieval': ['arch', 'sill', 'head', 'posts'],
+  'east-asian': ['posts', 'sill', 'head', 'hood'], dwarven: ['posts', 'sill', 'head', 'arch'],
+};
+// cultures whose street walls stay plain and whose rich faces look onto a court (Syrian courtyard houses, Muslim
+// Heritage; CULTURE_STYLES.md middle-eastern): the program gives their outer sides the built frame only
+const INWARD = new Set(['middle-eastern']);
+// the share of buildings laid out formally (symmetric about the main door, 0.8 or more of the shell mirrored), by kind
+// (corpus-grammar.json symmetry.byKind); formal cultures lean further that way
+const FORMAL_CULT = { byzantine: 1.5, 'castle-medieval': 1.3, 'middle-eastern': 1.3, lamari: 1.2, steppe: 0.6, saami: 0.5, 'fen-folk': 0.7, 'celtic-crannog': 0.7 };
+
+const STRUCT = new Set(['posts', 'brace', 'arch', 'shutter']);
+
+function hashPR(s) { let h = 2166136261; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+// a number 0 to 1 from the program's make and a key
+function u(prog, key) {
+  let x = (prog.hash ^ 0x9e3779b9) >>> 0;
+  const s = String(key);
+  for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); }
+  x ^= x >>> 15; x = Math.imul(x, 0x2c1b3c6d); x ^= x >>> 12; x = Math.imul(x, 0x297a2d39); x ^= x >>> 15;
+  return (x >>> 0) / 4294967296;
+}
+const pickWPR = (v, list) => { const t = list.reduce((s, x) => s + x[1], 0); let x = v * t; for (const [k, w] of list) { x -= w; if (x <= 0) return k; } return list[list.length - 1][0]; };
+const sN = st => +String(st || 's1')[1] || 1, dN = d => +String(d || 'd1')[1] || 1;
+
+// ---------------------------------------------------------------- village
+
+// The shared vernacular: one window family, one roof material and one corner treatment that most buildings of the
+// village keep, with room for variation. Corpus builds of three or more buildings: the lead wall material on 80 % of
+// the buildings (p50), the lead roof material on 100 %, the lead roof slope on 88 %, all three together on 67 %
+// (corpus-grammar.json village). So about one building in three changes one thing, and the program lets a building
+// break from the village's window family at that share.
+function village(ctx) {
+  const v = { cultureKey: ctx.cultureKey, biome: ctx.biome, seed: ctx.seed, hash: hashPR(`${ctx.cultureKey}|${ctx.biome}|${ctx.seed}|village`) };
+  v.base = baseFamily(v, ctx.cultureKey, 'village');
+  v.corners = pickWPR(u(v, 'corners'), cornerModes());
+  v.vary = 0.33;
+  v.planterCap = (rules().windows || {}).planterCap || 0.10;
+  v.planterWindows = 0; v.windows = 0; // counters a village planner may keep as it places buildings
+  return v;
+}
+
+function cornerModes() {
+  const c = (rules().trim || {}).corners || { all: 0.28, none: 0.23, mixed: 0.48 };
+  return [['all', c.all], ['none', c.none], ['entry', c.mixed]];
+}
+
+// a front family from the culture's palette at the corpus shares of its group
+function baseFamily(prog, cultureKey, salt) {
+  const R = rules(), by = (R.windows.adopt || {}).byGroup || {};
+  const g = by[GROUP[cultureKey] || 'all'] || by.all || { windowShare: {} }, all = by.all || g;
+  // a small group counts for less: blended with the whole corpus by builds / (builds + 40), as lib/decorate.js does
+  const l = g.builds ? g.builds / (g.builds + 40) : 0;
+  const share = k => l * ((g.windowShare || {})[k] || 0) + (1 - l) * ((all.windowShare || {})[k] || 0);
+  const pal = PALETTE[cultureKey] || ['posts', 'sill'];
+  // the share is of windows; a front run carries a feature whole, and the front is the richer side in 37 % of
+  // buildings against 28 % poorer (corpus-facades.json sides), so the front takes it at about 1.3 times that share
+  const feats = pal.filter(k => u(prog, `${salt}|${k}`) < Math.min(0.9, share(k) * 1.3));
+  // every built window has at least its frame: the culture's first frame feature when the draw left it bare
+  if (!feats.some(k => STRUCT.has(k)) && u(prog, `${salt}|frame`) < 0.7) feats.unshift(pal[0]);
+  const fills = [['open', share('fill:open') || 0.85], ['bars', share('fill:bars')], ['glass', share('fill:glass')], ['closed', share('fill:closed')]];
+  return { features: feats, fill: pickWPR(u(prog, `${salt}|fill`), fills.filter(x => x[1] > 0)) };
+}
+
+// ---------------------------------------------------------------- building
+
+function plan(ctx) {
+  const R = rules();
+  const P = ctx.persona || {}, V = ctx.village || null;
+  const prog = { cultureKey: ctx.cultureKey, type: ctx.type, stage: sN(ctx.stage), decor: dN(ctx.decor), biome: ctx.biome, storeys: ctx.storeys || 1,
+    persona: P, village: V, kit: ctx.kit || {}, why: [] };
+  prog.hash = hashPR(`${ctx.cultureKey}|${ctx.type}|${ctx.biome}|${ctx.seed}|${P.salt || 0}|program`);
+  // the front family: the village's, or the building's own at the village's variation share (or with no village)
+  const own = baseFamily(prog, ctx.cultureKey, 'front');
+  const fromVillage = V && V.base && u(prog, 'vary') >= (V.vary || 0.33);
+  prog.front = fromVillage ? { features: [...V.base.features], fill: V.base.fill } : own;
+  prog.why.push(fromVillage ? 'Windows: the village family.' : 'Windows: this building\'s own family.');
+  // early stages build plainer: s1 keeps the frame features only
+  if (prog.stage < 2) prog.front.features = prog.front.features.filter(k => STRUCT.has(k));
+  // a tidy, well-off household dresses a little more (hood, head) on the front; an austere one drops the decor
+  if ((P.likes && P.likes.banners < 0.5) || P.plain) prog.front.features = prog.front.features.filter(k => STRUCT.has(k));
+  // planters: a household trait (D-165), the whole front ground run, inside the village cap
+  const plants = ((P.hobby && P.hobby.plants) || 1) * ((P.likes && P.likes.sill) || 1);
+  prog.planters = prog.decor >= 2 && plants >= 1.5 && u(prog, 'planters') < Math.min(0.6, (plants - 1) * 0.5) && !(V && V.windows > 20 && V.planterWindows / V.windows >= V.planterCap);
+  if (prog.planters) prog.why.push('Planters under the front ground-floor windows: a household that grows plants.');
+  // the other sides: the front family whole, or its built frame only (corpus 47 % the same)
+  const same = (R.windows.sides || {}).sameAsFront != null ? R.windows.sides.sameAsFront : 0.47;
+  prog.sidesSame = !INWARD.has(ctx.cultureKey) && u(prog, 'sides') < same;
+  const up = (R.windows.upper || {}).sameAsBelow != null ? R.windows.upper.sameAsBelow : 0.52;
+  prog.upperSame = u(prog, 'upper') < up;
+  // formal or free: symmetric about the main door
+  const fk = ((R.symmetry || {}).byKind || {})[ctx.type === 'home' ? 'home' : ctx.type] || (R.symmetry || {}).formal || 0.37;
+  prog.formal = u(prog, 'formal') < Math.min(0.9, fk * (FORMAL_CULT[ctx.cultureKey] || 1));
+  if (prog.formal) prog.why.push('Formal front: windows mirrored about the main door, the door on the middle bay.');
+  // the pieces each feature uses, one per building (one piece on every window of a full run in 95 to 99 % of runs)
+  const K = prog.kit;
+  prog.pieces = { sill: K.beam || 'wood_beam', head: K.beam || 'wood_beam', posts: K.pole1 || 'wood_pole', brace: (K.beam || 'wood_beam').replace(/^wood_beam$/, 'wood_beam_45'),
+    hood: K.roof26 || 'wood_roof', shutter: 'wood_window', arch: /stone|marble|grausten/.test(K.wall || '') ? 'stone_arch' : 'darkwood_arch',
+    planter: ['Pickable_Dandelion', 'Pickable_Thistle', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead'][Math.floor(u(prog, 'plant') * 4)] };
+  // trim: corners all, none or the entry side's; the village's mode when there is one; bands on no side or the entry
+  prog.corners = V ? V.corners : pickWPR(u(prog, 'corners'), cornerModes());
+  const bands = (R.trim || {}).bands || { none: 0.71, some: 0.29 };
+  prog.bands = u(prog, 'bands') < bands.none ? 'none' : 'entry';
+  prog.cornerPiece = K.pole || 'wood_pole2';
+  // carved heads: in pairs on the main ridge's ends or none (86 % twinned), one kind
+  prog.ornament = { pairs: true, kind: null };
+  // materials: heavy under light, the change at a plinth or a floor line and level all round
+  prog.materials = { heavyUnder: true, changeAt: (R.materials && R.materials.changeAt && R.materials.changeAt['floor line'] >= (R.materials.changeAt['plinth (1.5 m or less)'] || 0)) ? ['floor line', 'plinth'] : ['plinth', 'floor line'], allSides: true };
+  prog.roof = { oneMaterial: true, secondSlope: u(prog, 'slopes') < ((R.roofs || {}).twoSlopes || 0.45) };
+  // the household's interior program (room)
+  prog.household = household(prog);
+  prog.exceptions = { used: {} };
+  return prog;
+}
+
+// the window family of one run
+function run(prog, { side = 'front', storey = 0 } = {}) {
+  if (side === 'gable') return { features: ['posts', 'sill'].filter(k => (PALETTE[prog.cultureKey] || ['posts']).includes(k)), fill: prog.front.fill, pieces: prog.pieces, why: 'a gable or loft window is its own run with its own frame' };
+  let f = [...prog.front.features];
+  let why = 'the front family';
+  const frameOnly = l => l.filter(k => STRUCT.has(k));
+  if (side !== 'front' && side !== 'court' && !prog.sidesSame) { f = frameOnly(f); why = 'the front family\'s built frame (the back and sides plainer)'; }
+  if (INWARD.has(prog.cultureKey) && side !== 'court') { f = frameOnly(f); why = 'a plain outer wall; the rich face looks onto the court'; }
+  if (storey > 0 && !prog.upperSame) { f = frameOnly(f); why += ', the upper storey with the frame only'; }
+  if (prog.planters && side === 'front' && storey === 0) f.push('planter');
+  return { features: f, fill: prog.front.fill, pieces: prog.pieces, why };
+}
+
+// one window: its run's family, and at most one exception with the reason the room behind gives
+function windowOf(prog, w = {}) {
+  const fam = run(prog, w);
+  const kind = w.room && w.room.kind ? normalKind(w.room.kind) : null;
+  const P = prog.persona || {};
+  for (const r of (rules().exceptions || {}).rules || []) {
+    if (r.room && r.room !== kind) continue;
+    if (r.at === 'door' && !w.byDoor) continue;
+    if (r.at && r.at !== 'door') continue;
+    if (fam.features.includes(r.feature) || (r.feature.startsWith('fill:') && fam.fill === r.feature.slice(5))) continue;
+    const key = `${r.room || r.at}|${r.feature}`, runKey = `${w.side || 'front'}|${w.line != null ? w.line : ''}|${w.storey || 0}`;
+    const used = prog.exceptions.used[key] || 0;
+    // one exception per run, and each rule at most its max per building (a whole-run rule counts as one)
+    if (prog.exceptions.runs && prog.exceptions.runs.has(runKey)) break;
+    if (used >= (r.max === 'run' ? 1 : (r.max || 1))) continue;
+    if (!needsMet(prog, r, P)) continue;
+    // the exception is a household choice, at about half the corpus share of windows that differ from their run (11 %;
+    // the rest of the corpus's odd windows have no room reason the program can read), weighted by how much more often
+    // the room kind holds a lone feature (kitchens 1.6, halls 2.2)
+    const LB = (rules().exceptions || {}).loneBehind || {};
+    const lift = kind && LB[kind] && LB[kind].base ? LB[kind].share / LB[kind].base : 1;
+    if (u(prog, `exc|${key}|${w.key || runKey}`) >= Math.min(0.5, ((rules().exceptions || {}).oddShare || 0.11) * 0.5 * lift)) continue;
+    prog.exceptions.used[key] = used + 1;
+    (prog.exceptions.runs = prog.exceptions.runs || new Set()).add(runKey);
+    return { ...fam, exception: { feature: r.feature, reason: r.reason, room: kind } };
+  }
+  return { ...fam, exception: null };
+}
+function needsMet(prog, r, P) {
+  const n = r.needs || '';
+  if (/hobby\.food|hobby\.plants/.test(n)) return ((P.hobby && (P.hobby.food || 0)) >= 1.2) || ((P.hobby && (P.hobby.plants || 0)) >= 1.2);
+  if (/decor d2/.test(n)) return prog.decor >= 2;
+  if (/decor d3/.test(n)) return prog.decor >= 3;
+  if (/shutters/.test(n)) return (PALETTE[prog.cultureKey] || []).includes('shutter');
+  if (/roof26/.test(n)) return true; // every kit has a 26 degree roof piece
+  if (/iron/.test(n)) return ['Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'].includes(prog.biome);
+  return true;
+}
+const normalKind = k => (/kitchen|cook/.test(k) ? 'kitchen' : /sleep|bed|guest/.test(k) ? 'bedroom' : /hall|tavern|dining/.test(k) ? 'hall' : /stor|pantry|larder/.test(k) ? 'storage' : /work|smith|forge|craft/.test(k) ? 'workshop' : k);
+
+// doors: one main door, the richest; the others carry the frame only
+function door(prog, { main = false } = {}) {
+  if (!main) return { rank: 'secondary', dressing: ['frame'] };
+  const P = prog.persona || {};
+  const opts = [['hood', 1], ['lamps', prog.decor >= 2 ? 1 : 0], ['banners', prog.decor >= 3 && (!P.likes || (P.likes.banners || 1) >= 1) ? 0.8 : 0]].filter(x => x[1] > 0);
+  const extra = opts.length ? pickWPR(u(prog, 'door'), opts) : null;
+  return { rank: 'main', dressing: ['frame', 'step', ...(extra ? [extra] : [])] };
+}
+
+// ---------------------------------------------------------------- interiors
+
+// One program per household and per room (track E). Corpus (corpus-room-programs.json): a room takes its build's lead
+// light kind in 69 % of rooms against 34 % for rooms drawn at random, banners 74 % against 32 %, drapes 75 % against
+// 55 %, rugs 61 % against 36 %, the furniture family 66 % against 45 %. Within a room: one light kind in 62 % of rooms
+// with two or more lights, one drape kind in 79 %, one rug kind in 46 %, one furniture family in 44 % (two in most of
+// the rest; ROOM_STUDY.md section 4 for the pairs that go together).
+function household(prog) {
+  const R = rules(), ch = ((R.rooms || {}).channels) || {};
+  const take = c => (ch[c] && ch[c].roomTakesBuildLead) || 0.65;
+  return { light: { lead: null, keep: take('light'), oneInRoom: (ch.light || {}).oneKindInRoom || 0.62 },
+    banner: { lead: null, keep: take('banner'), oneInRoom: (ch.banner || {}).oneKindInRoom || 0.69 },
+    rug: { lead: null, keep: take('rug'), oneInRoom: (ch.rug || {}).oneKindInRoom || 0.46 },
+    drape: { lead: null, keep: take('drape'), oneInRoom: (ch.drape || {}).oneKindInRoom || 0.79 },
+    wood: { lead: null, keep: take('wood'), oneInRoom: (ch.wood || {}).oneKindInRoom || 0.44 } };
+}
+// room: { kind, key } -> per channel: 'lead' (use the household's lead kind), or 'own' (this room picks its own kind
+// with a reason from its purpose), and whether a second kind may join the lead in this room. The interior owner fills
+// the lead kinds (Program.setLead) from the catalog and the culture, once per household.
+function room(prog, rm = {}) {
+  const H = prog.household, out = {};
+  for (const [c, h] of Object.entries(H)) {
+    const own = u(prog, `room|${rm.key || rm.kind}|${c}`) >= h.keep;
+    out[c] = { use: own ? 'own' : 'lead', lead: h.lead, second: u(prog, `room2|${rm.key || rm.kind}|${c}`) >= h.oneInRoom,
+      why: own ? `this room's own ${c} (its purpose: ${rm.kind || 'room'})` : `the household's ${c}` };
+  }
+  return out;
+}
+function setLead(prog, channel, kind) { if (prog.household[channel]) prog.household[channel].lead = kind; return prog; }
+
+// ---------------------------------------------------------------- check
+
+// windows: [{ side, storey, line, features: [...], fill, room: { kind }, byDoor }] read from a blueprint (lab/arch_facades.js
+// reads them from the corpus the same way). Faults: a run whose windows differ beyond one reasoned exception, a feature
+// on one window of a run of three or more with no room reason, planters over the cap.
+function check(prog, windows) {
+  const runs = new Map(), faults = [];
+  for (const w of windows) { const k = `${w.side}|${w.line != null ? w.line : ''}|${w.storey}`; if (!runs.has(k)) runs.set(k, []); runs.get(k).push(w); }
+  const sigOf = w => [...(w.features || [])].sort().join('+') + '|' + (w.fill || 'open');
+  const reasons = new Set(((rules().exceptions || {}).rules || []).map(r => `${r.room || r.at}|${r.feature}`));
+  for (const [k, l] of runs) {
+    if (l.length < 2) continue;
+    const cnt = {};
+    for (const w of l) cnt[sigOf(w)] = (cnt[sigOf(w)] || 0) + 1;
+    const [maj] = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+    const odd = l.filter(w => sigOf(w) !== maj);
+    const majF = new Set(maj.split('|')[0].split('+').filter(Boolean));
+    const unreasoned = odd.filter(w => {
+      const extra = (w.features || []).filter(f => !majF.has(f)), missing = [...majF].filter(f => !(w.features || []).includes(f));
+      const kind = w.room && w.room.kind ? normalKind(w.room.kind) : null;
+      const ok = f => (kind && reasons.has(`${kind}|${f}`)) || (w.byDoor && reasons.has(`door|${f}`));
+      return missing.length > 0 || extra.some(f => !ok(f)) || extra.length > 1;
+    });
+    if (odd.length > 1 || unreasoned.length) faults.push({ run: k, kind: unreasoned.length ? (l.length >= 3 && odd.length === 1 ? 'lone feature without a reason' : 'mixed treatments in one run') : 'more than one exception in a run', windows: l.length, odd: odd.length });
+  }
+  const pl = windows.filter(w => (w.features || []).includes('planter')).length;
+  if (windows.length >= 10 && pl / windows.length > ((rules().windows || {}).planterCap || 0.1)) faults.push({ kind: 'planters over the cap', share: +(pl / windows.length).toFixed(3) });
+  return faults;
+}
+
+const apiPR = { plan, village, run, window: windowOf, door, room, setLead, check, rules, PALETTE, GROUP };
+if (NODE_PR) module.exports = apiPR; else window.VHProgram = apiPR;
+
+})();
 // ---- details.js
 (function () {
 // Villheim building details: the trim, framing and small additions that make a generated shell look built by hand.
@@ -7672,7 +8385,7 @@ function relief(name) {
 }
 
 const normD = a => ((a % 360) + 360) % 360;
-const SILL_PLANTS = ['Pickable_Dandelion', 'Pickable_Thistle', 'Pickable_Mushroom', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Carrot', 'Pickable_Onion', 'Pickable_Turnip', 'Pickable_Dandelion', 'Pickable_Mushroom_blue'];
+const PRD = NODE_D ? (() => { try { return require('./program.js'); } catch (e) { return null; } })() : (typeof window !== 'undefined' ? window.VHProgram : null);
 const quatD = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_D = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
 const reachesD = (biome, b) => BIOMES_D.indexOf(biome) >= BIOMES_D.indexOf(b);
@@ -7855,6 +8568,11 @@ function axes(e) {
 function cornerDressed(ctx, edges, x, z) {
   const es = edges.filter(e => { const { ux, uz } = axes(e); return [-1, 1].some(s => Math.abs(e.x + ux * s - x) < 0.01 && Math.abs(e.z + uz * s - z) < 0.01); });
   const a = es.find(e => e.yaw === 0), bb = es.find(e => e.yaw !== 0);
+  // the building program's corner mode (D-167: one treatment for the building): all, none, or the entry side's
+  const mode = ctx.program && ctx.program.corners;
+  if (mode === 'all') return true;
+  if (mode === 'none') return false;
+  if (mode === 'entry' && ctx.door) return es.some(e => e.out[0] === ctx.door.out[0] && e.out[1] === ctx.door.out[1]);
   if (!a || !bb || es.length !== 2) return true;
   const d1 = (a.x - x) * bb.out[0] + (a.z - z) * bb.out[1], d2 = (bb.x - x) * a.out[0] + (bb.z - z) * a.out[1];
   if (d1 > 0.5 && d2 > 0.5) return dressed(ctx, 'icorner', `${x},${z}`);
@@ -7870,6 +8588,77 @@ function clear(b, cand, roles, pad = 0.05) {
     if (roles && !roles.includes(PD.piece(p.name).role)) return false;
     const o = Ck.aabb(p);
     return o.x0 < cb.x1 - pad && o.x1 > cb.x0 + pad && o.y0 < cb.y1 - pad && o.y1 > cb.y0 + pad && o.z0 < cb.z1 - pad && o.z1 > cb.z0 + pad;
+  });
+}
+
+// ---------------------------------------------------------------- window planters
+
+// Plants that stay up on a planter in the game (read from the prefabs on Tyler's PC, 2026-11-12). A pickable or bush
+// with the game's StaticPhysics and m_checkSolids off drops to the terrain under it 20 s after it loads, whatever it
+// stands on: Pickable_Dandelion, Pickable_Onion, Pickable_Thistle, Pickable_Carrot, Pickable_Turnip, Pickable_Mushroom,
+// Vineberry and the berry and heath bushes (Bush01, Bush02_en, RaspberryBush, BlueberryBush, CloudberryBush,
+// shrub_2_heath). That is why the onion and dandelion on the showcase 05 sills fell to the ground. Pickable_Fiddlehead
+// checks solids and settles on the planter's floor; vines, shrub_2, Pickable_Mushroom_yellow, Pickable_Mushroom_blue,
+// FirTree_small and Beech_small1 have no StaticPhysics and stay where they are put. Which of them go in a planter, and
+// how many, is the furnishing's (track E); this list is what the game holds.
+const PLANTS_HOLD = ['Pickable_Fiddlehead', 'Pickable_Mushroom_yellow', 'Pickable_Mushroom_blue', 'vines', 'shrub_2', 'FirTree_small', 'Beech_small1'];
+const PLANTS_FALL = ['Pickable_Dandelion', 'Pickable_Onion', 'Pickable_Thistle', 'Pickable_Carrot', 'Pickable_Turnip', 'Pickable_Mushroom', 'Vineberry',
+  'Bush01', 'Bush02_en', 'RaspberryBush', 'BlueberryBush', 'CloudberryBush', 'shrub_2_heath'];
+
+// One planter under a window, as Tyler's mockup: a box a metre deep under the light, its floor of 1 m floor pieces (the
+// surface plants stand on), a 1 m beam along its front and down each side at the box's top edge, a sill beam under
+// the light against the wall, and a 1 m post up each side of the light. Lined up on the light itself, never on the
+// 2 m bay (the boxes stood under the bay's middle while the light sat in one half of it). Returns the pieces, marked
+// planter with the window's key; planterSurfaces(b) gives where plants go.
+function planter(b, ctx, o) {
+  const { K } = ctx, e = o.e, { ux, uz, ox, oz } = axes(e);
+  const Ck = checksD();
+  // the light: its middle and width along the wall (generate.js wallSegment's lastLight), else the bay
+  const L = o.light || { x: e.x, z: e.z, w: 2, h: 1 };
+  const lu = (L.x - e.x) * ux + (L.z - e.z) * uz, lw = Math.max(1, Math.round(L.w || 2)), lh = L.h || 1, y0 = o.y0;
+  // the wall's outer face at this bay
+  const wall = b.pieces.filter(p => !p.decor && ['wall', 'window'].includes(PD.piece(p.name).role) && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 1.01 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.6 && p.y > y0 - 0.5 && p.y < y0 + 1.5);
+  let face = 0.15;
+  for (const p of wall) { const a = Ck.aabb(p); face = Math.max(face, ...[[a.x0, a.z0], [a.x1, a.z1], [a.x0, a.z1], [a.x1, a.z0]].map(([x, z]) => (x - e.x) * ox + (z - e.z) * oz).filter(v => v < 0.8)); }
+  // nothing out there: a deck, a stair, a porch post, a floor at sill height
+  const zone = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
+  for (const [u, v] of [[lu - lw / 2 - 0.2, face], [lu + lw / 2 + 0.2, face + 1.1]]) { const x = e.x + ux * u + ox * v, z = e.z + uz * u + oz * v; zone.x0 = Math.min(zone.x0, x); zone.x1 = Math.max(zone.x1, x); zone.z0 = Math.min(zone.z0, z); zone.z1 = Math.max(zone.z1, z); }
+  if (b.pieces.some(p => { if (wall.includes(p)) return false; const a = Ck.aabb(p); return a.x0 < zone.x1 && a.x1 > zone.x0 && a.z0 < zone.z1 && a.z1 > zone.z0 && a.y1 > y0 + 0.1 && a.y0 < y0 + 1 + lh; })) return null;
+  const key = `${e.x},${e.z},${y0}`, T = { trim: true, planter: key };
+  const at = (u, v) => [e.x + ux * u + ox * v, e.z + uz * u + oz * v];
+  const yawAlong = e.yaw, yawAcross = (e.yaw + 90) % 360;
+  const floor1 = K.floor1 || 'wood_floor_1x1', beam1 = K.beam1 || 'wood_beam_1', pole1 = K.pole1 || 'wood_pole';
+  const n0 = b.pieces.length;
+  // the box's floor: its top 0.35 m under the light, a metre out from the face
+  const yFloor = y0 + 1 - 0.45;
+  for (let k = 0; k < lw; k++) { const [x, z] = at(lu - lw / 2 + 0.5 + k, face + 0.5); b.put(floor1, x, yFloor, z, yawAlong, { ...T, soil: true }); }
+  // the box's front and sides at its top edge, a 1 m beam each metre
+  const yEdge = yFloor + 0.25;
+  for (let k = 0; k < lw; k++) { const [x, z] = at(lu - lw / 2 + 0.5 + k, face + 0.95); b.put(beam1, x, yEdge, z, yawAlong, T); }
+  for (const sg of [-1, 1]) { const [x, z] = at(lu + sg * (lw / 2 + 0.05), face + 0.5); b.put(beam1, x, yEdge, z, yawAcross, T); }
+  // the sill under the light, against the wall
+  for (let k = 0; k < lw; k++) { const [x, z] = at(lu - lw / 2 + 0.5 + k, face + 0.15); b.put(beam1, x, y0 + 1 - 0.15, z, yawAlong, T); }
+  // a post up each side of the light
+  for (const sg of [-1, 1]) { const [x, z] = at(lu + sg * (lw / 2 + 0.1), face + 0.1); for (let y = y0 + 1; y < y0 + 1 + lh - 0.01; y += 1) b.put(pole1, x, y + 0.5, z, 0, T); }
+  return b.pieces.slice(n0);
+}
+
+/** Where plants go on a building's window planters: one entry per planter, its soil top (x, y, z at the middle),
+ * width along the wall, depth out (1 m), the wall's yaw and outward normal, and the window's key. For the furnishing
+ * (track E) to plant in clusters; PLANTS_HOLD lists what the game keeps up there. */
+function planterSurfaces(b) {
+  const by = new Map();
+  for (const p of b.pieces) {
+    if (!p.soil || !p.planter) continue;
+    if (!by.has(p.planter)) by.set(p.planter, []);
+    by.get(p.planter).push(p);
+  }
+  const Ck = checksD();
+  return [...by.entries()].map(([key, list]) => {
+    const tops = list.map(p => Ck.catBox(p).y1), y = Math.max(...tops);
+    const cx = list.reduce((a, p) => a + p.x, 0) / list.length, cz = list.reduce((a, p) => a + p.z, 0) / list.length;
+    const yaw = list[0].yaw || 0, a = yaw * Math.PI / 180;
+    return { window: key, x: +cx.toFixed(3), y: +y.toFixed(3), z: +cz.toFixed(3), w: list.length, d: 1, yaw, along: [+Math.cos(a).toFixed(3), +(-Math.sin(a)).toFixed(3)], pieces: list };
   });
 }
 
@@ -8062,30 +8851,44 @@ function exterior(b, ctx) {
       // outside corners only: each wall lies on the far side of the other's outward direction
       const [a, c] = v.es;
       if ((a.x - x) * c.out[0] + (a.z - z) * c.out[1] > -0.5 || (c.x - x) * a.out[0] + (c.z - z) * a.out[1] > -0.5) continue;
-      if (!dressed(ctx, 'corner', `${x},${z}`)) continue;
+      if (!cornerDressed(ctx, ctx.edges || [], x, z)) continue;
       if (marble && reachesD(ctx.biome, 'Black Forest')) for (let y = F; y + 2 <= top + 0.01; y += 2) put('stone_pillar', x, y + 1, z, 0);
       else for (let y = F; y < top - 0.01;) { const h = top - y >= 2 ? 2 : 1; put(h === 2 ? pole : pole1, x, y + h / 2, z, 0); y += h; }
       added.corners++;
     }
   }
 
-  // ---- window boxes under the ground-floor front windows: two 1 m boards on the wall under the sill, a lip in front,
-  // flowers in them (a motif of its own so it is tested the same way)
-  if (X.windowBoxes && ctx.door) for (const o of openings) {
-    if (o.kind !== 'window' || o.storey || o.bare) continue;
-    const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
-    if (e.out[0] !== ctx.door.out[0] || e.out[1] !== ctx.door.out[1]) continue;
-    if (b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.hypot(p.x - (e.x + ox), p.z - (e.z + oz)) < 1.1 && Math.abs(p.y - y0) < 0.6)) continue;
-    const quarter = K.wallQuarter && b.pieces.find(p => p.name === K.wallQuarter && Math.abs(p.y - (y0 + 1.5)) < 0.3 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.2 && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 0.8);
-    const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
-    const as = quarter ? [-sd * 0.5] : [-0.5, 0.5], lip = K.beam1 || 'wood_beam_1';
-    const kept = [];
-    // what grows in each box: any flower, herb or vegetable (Tyler, 2026-11-10: no one plant per sill), by the box's
-    // place so it is the same at every decor stage
-    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], [SILL_PLANTS[(Math.abs(Math.round((e.x + ux * a) * 7 + (e.z + uz * a) * 13 + y0 * 3)) + (makeHash({ ...ctx, decor: '' }) >>> 0)) % SILL_PLANTS.length], a, 0.6, -0.25, 0, 'flower', 0]);
-    const c = { m: { id: 'window-box', kind: 'box', fit: {} }, kept };
-    const placed = MotifsD.place(b, c, { x: e.x, y: y0 + 1, z: e.z, nx: ox, nz: oz }, null, { ground: 0, dry: true, minShare: 1 });
-    if (placed.length) { hold(b, placed); added.boxes = (added.boxes || 0) + 1; }
+  // ---- window planters (D-165, Tyler 2026-11-12: "Families that like plants can have planters. But not, not every
+  // single window should have planters"; at most about 10 % of a village's windows). Which windows get one is the
+  // household's: ctx.planterWindows(openings, ctx) when the furnishing gives it (track E), else the whole front run of
+  // the ground storey of a household fond of plants (lib/persona.js hobby plants 0.5 or more; D-167: one feature on a
+  // whole run of windows). The planter is Tyler's mockup
+  // (frames/shot-c-sill-mockup.jpg): "the sill is under the window. Theres additional 1x1 beams outlining the window,
+  // and outling the other two sides of the planter" (planter()).
+  if (X.windowBoxes && ctx.door) {
+    const fronts = openings.filter(o => o.kind === 'window' && !o.storey && !o.bare && o.e.out[0] === ctx.door.out[0] && o.e.out[1] === ctx.door.out[1]);
+    const P = ctx.persona || {};
+    // (D-167, Tyler: "windows in a row would all have the same feature": the whole front run of the ground storey)
+    // (the building program decides when there is one: its front ground run holds 'planter', D-165 and D-167)
+    const progRun = ctx.program && PRD ? PRD.run(ctx.program, { side: 'front', storey: 0 }) : null;
+    const chosen = ctx.planterWindows ? ctx.planterWindows(fronts, ctx) : progRun ? (progRun.features.includes('planter') ? fronts : [])
+      : ((P.hobby || {}).plants || 0) >= 0.5 ? fronts : [];
+    for (const o of chosen) {
+      const got = planter(b, ctx, o);
+      if (!got) continue;
+      added.boxes = (added.boxes || 0) + 1;
+      // what grows in it: the furnishing's (ctx.plantPlanter, track E); until then one plant the game holds up per
+      // metre, by the box's place so it is the same at every decor stage
+      const surf = planterSurfaces({ pieces: got })[0];
+      if (ctx.plantPlanter) ctx.plantPlanter(b, surf, ctx);
+      else for (let k = 0; k < surf.w; k++) {
+        const t = k - (surf.w - 1) / 2, x = surf.x + surf.along[0] * t, z = surf.z + surf.along[1] * t;
+        // (one species on the run, the program's when the game holds it up there)
+        const pp = ctx.program && ctx.program.pieces && ctx.program.pieces.planter;
+        const name = PLANTS_HOLD.includes(pp) ? pp : PLANTS_HOLD[(makeHash({ ...ctx, decor: '' }) >>> 0) % 3];
+        b.put(name, x, surf.y, z, Math.round((x * 31 + z * 17) % 4) * 90, { trim: true, decor: true, planter: surf.window });
+      }
+    }
   }
 
   // ---- bands: a beam at the foot of the walls and along the floor line of each upper storey; a rail at 1 m on
@@ -8596,7 +9399,7 @@ function gablePorch(b, ctx) {
     b.put(slopeBeam(K, 45), x + s, yR - 1, zf - 2.08, s > 0 ? 180 : 0, T); // bargeboard on the open front
   }
   b.put(K.roofTop45, x, yR, zf - 1, 90, T);
-  if (ctx.profile.crossed) b.put('wood_wall_roof_top_45', x, yR - 1, zf - 2, 0, T); // crossed boards over the porch gable, crossing on its apex
+  if (ctx.profile.crossed) b.put('wood_wall_roof_top_45', x, yR - 1, zf - 2, 0, T); // crossed boards over the porch gable, crossing where the bargeboards' lines meet (this roof's rows sit a metre closer to the ridge than a house's)
   if (!b.pieces.some(p => p.name === K.floor && Math.abs(p.x - x) < 0.1 && Math.abs(p.z - (zf - 1)) < 0.1)) b.put(K.floor, x, F, zf - 1, 0, T);
   b.notes.push('A gabled porch over the front door.');
   return true;
@@ -8736,10 +9539,12 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
       else add(name, u, pivot(rows) - r / 2, sv * (2 + 2 * rows + 1), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
     }
     // crossed boards over the apex: the game's Wood Roof Cross (the piece is the pair of crossed boards that Norwegian
-    // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it
-    // the piece's boards cross 1 m (26 degrees: 0.5 m) over its pivot, so the crossing sits on the apex (it stood a
-    // metre too high, its arms 2 m over the ridge)
-    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * (w.W + rk), capY - (r === 2 ? 1 : 0.5), 0, 90, 'trim', capY + 1);
+    // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it. Corpus
+    // builds set its pivot at the ridge cap's height (958 of the crosses beside a 45 degree cap, the next most common
+    // 142 at 2 m) and its boards run on in line with the 45 degree bargeboards (1,881 of 5,042 in-plane beams on a
+    // board's line, the rest 2 m or more off it: lab/shell_mine.js), so the boards carry the bargeboards on past the
+    // apex and cross over the ridge (showcase 13: set a metre lower, they ran a metre under the bargeboards' line)
+    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * (w.W + rk), capY, 0, 90, 'trim', capY + (r === 2 ? 2 : 1));
   });
 }
 
@@ -8765,7 +9570,9 @@ function partition(b, ctx, wallSegment) {
     const blocked = (ladders || []).some(L => [L.stand, L.hole, L.land, ...(L.run || [])].some(c => Math.abs(c[0] - xp) < 1.01));
     if (blocked) continue;
     const mid = zs.slice().sort((a, c) => Math.abs(a - w0.cz) - Math.abs(c - w0.cz))[0];
-    for (const z of zs) wallSegment(b, K, C, xp, F, z, 90, SH, z === mid ? 'door' : 'wall');
+    // (an inside wall is timber: masonry on a timber floor takes no support from it and falls, an Ashlands stone-base
+    // tavern's grausten partition on its ash floor)
+    for (const z of zs) wallSegment(b, K, C, xp, F, z, 90, SH, z === mid ? 'door' : 'wall', F > 0.01 || !/stone|marble|grausten/.test(C.wallStyle || '') || C.wallStyle === 'stone-base' ? 'plank' : null);
     b.pieces.push(...[]);
     b.notes.push('A back room behind a wall with a door.');
     b.partitionX = xp;
@@ -8914,7 +9721,7 @@ function interior(b, ctx) {
   }
 }
 
-const apiD = { profile, exterior, bargeboards, partition, interior, slopeBeam, commitMotifs, roundTrim };
+const apiD = { profile, exterior, bargeboards, partition, interior, slopeBeam, commitMotifs, roundTrim, planter, planterSurfaces, PLANTS_HOLD, PLANTS_FALL };
 if (NODE_D) module.exports = apiD; else window.VHDetails = apiD;
 
 })();
@@ -13691,7 +14498,11 @@ function survey(b) {
     const ex = Math.abs(o.ux) * 2 + Math.abs(o.nx) * 1.15, ez = Math.abs(o.uz) * 2 + Math.abs(o.nz) * 1.15;
     zones.push({ x0: o.x + o.nx * 1.15 - ex, x1: o.x + o.nx * 1.15 + ex, y0: -1, y1: 3, z0: o.z + o.nz * 1.15 - ez, z1: o.z + o.nz * 1.15 + ez, door: true });
   }
-  return { W, B, solid, wallBoxes, zones, doors, minY: Math.min(...b.pieces.map(p => p.y)) };
+  // (the lowest pivot as the game will see it: pieces that stand on their pivot go down to their foot at the end of
+  // the generator, so a 2 m grausten footing course ends a metre lower than its middle; the yard was set on the middle
+  // and stood a metre over the ground in the game, Ashlands workshop s2 seed 3)
+  const footY = p => { const pi = PY.piece(p.name); return pi.onPivot && !p.decor && !p.footed ? p.y - pi.size[1] / 2 : p.y; };
+  return { W, B, solid, wallBoxes, zones, doors, minY: Math.min(...b.pieces.map(footY)) };
 }
 
 // ---------------------------------------------------------------- the outline
@@ -15679,8 +16490,20 @@ function polyWalls(b, K, C, T, N, L, ap, y0, SHt, kind, style) {
   }
   return bays;
 }
-// A wood fence as a rail at the edge between two 2 m cells at floor height y (a gallery or walkway edge).
-function rail(b, K, x, y, z, yaw) { b.put(K.fence, x, y + 0.6, z, yaw); }
+// A rail at the edge between two 2 m cells at floor height y (a gallery or walkway edge): a 1 m post at each end and a
+// beam on them at 1 m, as corpus builders rail galleries (lib/generate.js railing). The wood fence it was stood 0.6 m
+// over the floor and touched nothing, so the game let it fall (the Meadows hub, 2026-11-11), and Tyler keeps the wood
+// fence to pastures and gardens.
+function rail(b, K, x, y, z, yaw) {
+  const a = yaw * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a), post = K.pole1 || 'wood_pole', beam = K.beam || 'wood_beam';
+  // a post stands on the floor: an end past the floor's edge (a polygon's corner) moves in along the rail
+  const onFloor = (px, pz) => b.pieces.some(p => !p.decor && PH.piece(p.name).role === 'floor' && (() => { const c = CkH().catBox(p); return px > c.x0 - 0.05 && px < c.x1 + 0.05 && pz > c.z0 - 0.05 && pz < c.z1 + 0.05 && Math.abs(c.y1 - y) < 0.35; })());
+  for (const sg of [-1, 1]) {
+    const t = [1, 0.8, 0.6].find(k => onFloor(x + ux * sg * k, z + uz * sg * k));
+    if (t != null) b.put(post, x + ux * sg * t, y + 0.5, z + uz * sg * t, 0);
+  }
+  b.put(beam, x, y + 1.0, z, yaw);
+}
 // Cells within a rect (x, z on the 2 m grid, even), and rects merged from cells row by row: rooms for the walk test.
 function cellRects(cells, y, use) {
   const rows = new Map();
@@ -16095,11 +16918,12 @@ function crossHall(b, K, C, T, o) {
   const G = new Map(), stairs = [];
   const addG = (x, z) => { if (has(x, z)) G.set(`${x},${z}`, [x, z]); };
   if (gallery && k === 4) {
-    for (let x = -D + 1; x < D; x += 2) addG(x, -Wz + 1);
+    // (two cells deep everywhere: Tyler's two-piece rule for anything people walk along)
+    for (let x = -D + 1; x < D; x += 2) { addG(x, -Wz + 1); addG(x, -Wz + 3); }
     // (the stair on the side the village drew, the gallery along the other wall)
-    for (let z = -Wz + 3; z <= -D - 1; z += 2) addG(-sS * (D - 1), z);
+    for (let z = -Wz + 3; z <= -D - 1; z += 2) { addG(-sS * (D - 1), z); addG(-sS * (D - 3), z); }
     // (the landing joins the row over the door along the stair's wall)
-    for (let z = -Wz + 3; z <= -D - 7; z += 2) addG(sS * (D - 1), z);
+    for (let z = -Wz + 3; z <= -D - 7; z += 2) { addG(sS * (D - 1), z); addG(sS * (D - 3), z); }
     stairs.push({ run: [[sS * (D - 1), -D - 1], [sS * (D - 1), -D - 3], [sS * (D - 1), -D - 5]], stand: [sS * (D - 1), -D + 1], land: [sS * (D - 1), -D - 7], dir: [0, -1] });
     addG(sS * (D - 1), -D - 7);
   } else if (gallery) {
@@ -16872,6 +17696,10 @@ function generate(req, T) {
       : roundHall(b, Kw, C, T, { stage, variant: line, ext, wallStyle, has, cultureKey, V });
     info.plan = line; info.roof = line === 'cross' ? 'gable' : F.style === 'flat' ? 'flat' : F.drum ? 'drum' : 'conical';
     if (line !== 'cross') b.notes.push(`${line === 'octagon' ? 'Octagonal' : line === 'part' ? 'Part round' : 'Round'} hall of ${F.N} sides, ${(2 * F.ap).toFixed(1)} m across round the fire.`);
+    // posts under what the game would let fall (before the furnishing, so it keeps clear of them)
+    // (clear of the fire and of the high seat's place: the back arm's end in a cross hall, the axis behind the fire
+    // in a round one)
+    T.propUp(b, Kw, biome, { keepOut: (x, z) => line === 'cross' ? (Math.abs(x) < 1.5 && Math.abs(z) < 1.5) || (z > F.Wz - 3.5 && Math.abs(x) < 2.5) : Math.hypot(x, z) < 2.2 || (z > 0 && z < 6 && Math.abs(x) < 2.2) });
     const place = placer(b, T);
     // the notice board in the hearth area (D-140): freestanding outside the main door, and from s4 signs on a wall by
     // the door inside as well
@@ -16908,6 +17736,8 @@ function generate(req, T) {
   else b.pieces = b.pieces.filter(p => !p.decor || p.hearth || p.notice || p.highSeat || p.spouseSeat);
   // pieces that stand on their pivot in the game go down to their foot (as lib/generate.js finish)
   for (const p of b.pieces) { const pi = PH.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
+  // steps down from the doors to the ground the game sets the hall on (lib/generate.js doorSteps)
+  if (T.doorSteps) T.doorSteps(b);
   const L = b.leader || { x: 0, y: 0, z: 3, yaw: 180 };
   const mk = (m, extra) => ({ kind: 'seat', x: +m.x.toFixed(3), y: +m.y.toFixed(3), z: +m.z.toFixed(3), yaw: Math.round(m.yaw || 0), ...extra });
   const markers = [...b.markers, mk(L, { leader: true })];
@@ -16993,10 +17823,16 @@ const Landscape = NODE ? require('./landscape.js') : window.VHLandscape;
 const Persona = NODE ? require('./persona.js') : window.VHPersona;
 const checksLib = () => (NODE ? require('./checks.js') : window.VHChecks);
 const layoutLib = () => (NODE ? require('./layout.js') : window.VHLayout);
+const shapesLib = () => (NODE ? require('./shapes.js') : window.VHShapes);
+const Program = NODE ? (() => { try { return require('./program.js'); } catch (e) { return null; } })() : (typeof window !== 'undefined' ? window.VHProgram : null);
 
 // Heights (Tyler's in-game review, 2026-11-09). A player is about 1.8 m tall: rooms get walls of 3 m, so doors, beams
 // and roofs clear the head; sunken huts, low by nature, get 2.5 m under a steep roof.
 const MIN_STOREY = 3, LOW_STOREY = 2.5;
+// Tyler's rule (showcase review, 2026-11-11): passages, porches and balconies are at least two wood_floor pieces wide.
+const LOGGIA_ROWS = 2, DECK_MIN = 4;
+// The wall height of a one-storey building at s3 (corpus eaves, see generate).
+const TALL_ONE = 4;
 
 function rng(seed) {
   let s = (seed >>> 0) || 1;
@@ -17014,7 +17850,8 @@ class Build {
     // Ashlands timber stands in for wood pieces whose pivots sit elsewhere (measured from the game's snap points,
     // 2026-11-09): the 2 m beam hangs 1 m under its pivot, the 1 m pole under its, the 45 degree beam rises from its
     // foot. The generator places by the wood pieces' pivots, so these move to match.
-    if (PIVOT_SHIFT[name]) y += PIVOT_SHIFT[name];
+    // (a motif's pieces come at the pivots corpus builders set, so they keep them)
+    if (PIVOT_SHIFT[name] && !(extra && extra.motif)) y += PIVOT_SHIFT[name];
     const key = `${name}|${Math.round(x * 100)}|${Math.round(y * 100)}|${Math.round(z * 100)}|${Math.round(yaw) % 360}`; // rounded so -0.00 and 0.00 match
     if (this.keys.has(key)) return; // the same piece in the same place once only (porch eaves, meeting wings)
     this.keys.add(key);
@@ -17024,7 +17861,14 @@ class Build {
 
 // Wing-local (u along the ridge, v across, local yaw) to world. alpha is the wing's yaw: 0 = ridge along x,
 // 270 = ridge along z (Unity's yaw maps local x to (cos a, -sin a)).
-const PIVOT_SHIFT = { ashwood_beam_2m: 1, ashwood_pole_1m: 0.5, ashwood_wall_beam_45: -1, ashwood_wall_beam_45_alt: -1 };
+// The dark wood beams' colliders stand 0.05 to 0.45 m over their pivot where the wood beam's is centred on it
+// (data/piece-models.json): placed as wood beams, a dark wood band rose 0.25 m into a doorway (a 0.35 m kerb at the
+// upper doors of the Plains and Mistlands homes) and a bar's top beam hovered 0.15 m over its half walls (showcase 06,
+// Tyler: "the darkwood beams are hovering above the woodwall_half").
+// The same holds for every stand-in whose snap points stand off the wood piece's (data/piece-models.json snap,
+// compared kit by kit: dark wood beams 0.25 m over, the dark 26 degree beam 0.25 m under; poles, 45 degree beams,
+// roofs, ridge caps and corners match).
+const PIVOT_SHIFT = { ashwood_beam_2m: 1, ashwood_pole_1m: 0.5, ashwood_wall_beam_45: -1, ashwood_wall_beam_45_alt: -1, darkwood_beam: -0.25, darkwood_beam4x4: -0.25, darkwood_beam_26: 0.25 };
 function toWorld(w, u, v, yaw) {
   const a = w.alpha * Math.PI / 180;
   return [w.cx + u * Math.cos(a) + v * Math.sin(a), w.cz - u * Math.sin(a) + v * Math.cos(a), norm(yaw + w.alpha)];
@@ -17098,9 +17942,14 @@ function formFor(C, type, stage) {
 // Wings for a plan, from the main wing's half sizes W (along x) and D (across, odd). Every wing's cells must fall on
 // the main wing's 2 m grid, so a side wing runs through the main wing's whole depth and out the other side: its half
 // length is D plus the part that sticks out, and its centre sits on the right parity.
+// Tyler's rule (showcase review, 2026-11-11): "Anything small passageway must be at minimum two wood_floor pieces
+// wide. Wider hallways can be 3 or more. But 1 of them is far too narrow for anything besides a small closet or
+// hidden passageway." A wing with a gable over it is an odd number of 2 m cells across (the ridge over a cell's
+// middle), so a wing is never under three cells (6 m) across: two cells take a different roof, one is a closet.
+const WING_MIN = 3;
 function wingsFor(plan, W, D, R, o = {}) {
   const odd = n => (n % 2 ? n : n + 1);
-  const wD = Math.max(1, odd(D - 2)); // side wings are a bay narrower
+  const wD = Math.max(WING_MIN, odd(D - 2)); // side wings are a bay narrower, never under WING_MIN
   const ext = Math.max(2, Math.ceil(D * 0.8)); // how far a wing sticks out, metres in 2 m steps below
   const out = 2 * Math.round(ext / 2);
   const main = { cx: 0, cz: 0, W, D, alpha: 0, main: true };
@@ -17158,7 +18007,7 @@ function wingsFor(plan, W, D, R, o = {}) {
 
 const strHash = s => [...String(s)].reduce((h, ch) => (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0, 7);
 const oddUp = n => (n % 2 ? n : n + 1);
-function wingDepth(spec, D) { return spec.ext || (spec.full && D <= 3) ? D : Math.max(1, oddUp(D - 2)); }
+function wingDepth(spec, D) { return spec.ext || (spec.full && D <= 3) ? D : Math.max(WING_MIN, oddUp(D - 2)); }
 function wingsFromSpec(specs, W, D) {
   const out0 = 2 * Math.round(Math.max(2, Math.ceil(D * 0.8)) / 2); // how far a wing sticks out, as wingsFor
   const ws = [{ cx: 0, cz: 0, W, D, alpha: 0, main: true }];
@@ -17192,6 +18041,22 @@ function wingsClear(ws) {
   const main = ws[0], own = ws.slice(1).map(w => [...cellsOf([w]).values()].filter(([x, z]) => !inside(main, x, z)));
   for (let i = 0; i < own.length; i++) for (let j = i + 1; j < own.length; j++)
     for (const [x, z] of own[i]) if (own[j].some(([u, v]) => Math.abs(u - x) <= 2 && Math.abs(v - z) <= 2)) return false;
+  return true;
+}
+
+// Wings across the main wing from both its sides line up or stand well apart (Tyler, showcase 09: "If its intended to
+// be a cross, its not. Tons of the pieces are misaligned, and one side of the roof is shifted left 5 feet compared to
+// the other side"). An end wing out the front and a middle wing out the back, a bay or two apart along the ridge,
+// read as one cross gone wrong, and their roofs met the main roof in a tangle of valleys with holes between them.
+// Two such wings either share their middle line or leave a full bay of roof between their roofs' edges.
+function crossLined(ws) {
+  const main = ws[0], across = ws.slice(1).filter(w => w.alpha === 270);
+  for (let i = 0; i < across.length; i++) for (let j = i + 1; j < across.length; j++) {
+    const a = across[i], c = across[j];
+    if (Math.sign(a.cz - main.cz) === Math.sign(c.cz - main.cz) || !(a.cz - main.cz) || !(c.cz - main.cz)) continue;
+    const gap = Math.abs(a.cx - c.cx) - (a.D + c.D);
+    if (Math.abs(a.cx - c.cx) > 0.01 && gap < 2) return false;
+  }
   return true;
 }
 
@@ -17280,7 +18145,8 @@ function massingPath(o) {
     if (fam.roof === 'hip' && n.specs.filter(x => x.at === 'end').length > 1) return null; // a hip roof takes one wing (an L) and keeps its roof
     // an end wing must not reach the middle: a front one leaves the door a bay of the main wing's front
     if (n.specs.some(x => x.at === 'end' && n.W - wingDepth(x, n.D) < (x.dir === 'front' ? 2 : 1))) return null;
-    return wingsClear(wingsFromSpec(n.specs, n.W, n.D)) ? n : null;
+    const ws = wingsFromSpec(n.specs, n.W, n.D);
+    return wingsClear(ws) && crossLined(ws) ? n : null;
   };
   const cStoreys = C.storeys && C.storeys[type];
   ['s1', 's2', 's3'].forEach((stage, i) => {
@@ -17444,7 +18310,8 @@ function generate(req) {
     // a home or hall has a fire in the middle and at least one bed: a 4.8 m round house has no room for both (T-102)
     if (['home', 'hall'].includes(T.use) && kind !== 'tent' && side < 4) side = 4;
     const r = kind === 'yurt' ? 1 : (C.pitch === 26 && kind === 'round' ? 1 : 2);
-    const SH = MIN_STOREY;
+    // (one storey at s3 stands taller, as the rest below)
+    const SH = stage === 's3' && !T.tower && kind !== 'tent' && storeys === 1 ? TALL_ONE : MIN_STOREY;
     const F = C.stilts ? (C.stiltH || 2) : (T.raised || C.raised ? 1 : 0);
     let wallStyle = req.walls && req.walls !== 'auto' ? req.walls : wallStyleFor(R, C, cultureKey, biome);
     if (T.tower && stoneOK) wallStyle = 'stone';
@@ -17453,11 +18320,13 @@ function generate(req) {
     const Kr = kind === 'tent' && reaches(biome, 'Plains') ? { ...K, ...S.ROOF_SETS.dark } : K;
     C.baseTop = F + 0.6; // stone-base courses on the ground storey only
     if (F > 0.01 && /stone|marble|grausten/.test(C.wallStyle)) { C.wallStyle = 'plank'; wallStyle = 'plank'; } // stone on posts would fall
-    octagonDesign(b, Kr, C, { side, F, SH, storeys, r, T, kind, stage, deck: C.stilts ? (C.deck || 2) : 0,
+    octagonDesign(b, Kr, C, { side, F, SH, storeys, r, T, kind, stage, deck: C.stilts ? Math.max(DECK_MIN, C.deck || 2) : 0,
       walk: C.boardwalk ? { s1: 6, s2: 8, s3: 10 }[stage] : 0, fence: !!C.stilts && stage === 's3' });
     info.plan = 'octagon'; info.roof = kind === 'yurt' ? 'crown' : 'conical'; info.walls = kind === 'tent' ? 'none' : wallStyle;
     const ctx = { K: Kr, C, biome, use: T.use, stoneOK, F, SH, storeys, top: F + storeys * SH };
     clearDoorways(b);
+    // posts where the game would let the roof fall (a round tower's crown), clear of the fire's place
+    propUp(b, Kr, biome, { raisedOk: true, keepOut: (x, z) => !T.tower && Math.hypot(x, z) < 2.2 });
     if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt: { x: 0, z: 0 }, persona: household, layout: layoutCtx });
     // things on item stands (lib/stands.js; round houses have no interior library pass)
     if (!req.skipDecor) Kitbash.stands(b, { K: Kr, C, T, type, use: T.use, biome, decor, persona: household }, keepClear(b));
@@ -17540,8 +18409,13 @@ function generate(req) {
     Object.assign(wingOpts, { n: n[i], deeper: ['home', 'longhouse', 'tavern'].includes(type) && stage === 's3' });
     bx = depth[i]; bz = 3;
   } else if (plan === 'court') {
-    Object.assign(wingOpts, { Q: stage === 's3' && type !== 'home' ? 8 : 6, dW: 2 });
-    bx = wingOpts.Q; bz = 2;
+    // wings four cells deep round a yard of at least two (Tyler, showcase 08: "exceptionally tight, almost too tight to
+    // walk around. It needs to be wider in all areas"; his two-piece rule for the arcade walk round the yard): 20 m
+    // square, 24 m for an s3 hall (the corpus one-storey homes are 11.5 to 17 m across at the quartile and median,
+    // data/measures-storeys.json; the one middle-eastern home in the corpus is 34 by 38 m)
+    // (four cells deep: an arcade walk two cells wide on the yard side and rooms two cells deep behind it)
+    Object.assign(wingOpts, { Q: stage === 's3' && type !== 'home' ? 12 : 10, dW: 4 });
+    bx = wingOpts.Q; bz = 4;
   } else if (MS) { bx = MS.W; bz = MS.D; if (roofKind === 'hip' && bx < bz) bx = bz; }
   else if (form === 'keep') { bx = bz = { s1: 3, s2: 3, s3: 5 }[stage]; }
   else if (form === 'dome') { bx = { s1: 3, s2: 5, s3: 7 }[stage]; bz = { s1: 3, s2: 3, s3: 5 }[stage]; }
@@ -17586,13 +18460,19 @@ function generate(req) {
   if (plan === 'gables') F = 0; else if (T.dock) F = 1; else if (C.stilts) F = C.stiltH || 2; else if (podklet) F = 2; else if (form === 'raised') F = C.storeH || 1;
   else if (T.raised || C.raised) F = C.stiltChance && (MS ? M.fam.stilt2 : R() < C.stiltChance) ? 2 : 1; else if (stoneBase) F = C.plinthHigh ? 2 : 1;
   else if (postsTillStone) F = C.plinthHigh ? 2 : 1;
-  const deck = C.stilts && plan !== 'octagon' ? (C.deck || 2) : 0;
+  // a deck all round on stilts: at least two floor pieces wide, as every walk (Tyler's two-piece rule)
+  const deck = C.stilts && plan !== 'octagon' ? Math.max(DECK_MIN, 2 * Math.ceil((C.deck || 2) / 2)) : 0;
   // no tower blocks: the eave stays within 1.1 times the short side of the footprint (2026-11-09 review: three storeys
   // on a 6 to 8 m plan read as a tower); towers, keeps and the like keep their height
   // (a second storey counts its walls from the ground floor up, without the footing under them: two 3 m storeys on a
   // 6 m deep plan with a 1 m footing are 9 to 10 m to the ridge, the corpus median for Norse buildings is 9.3 m)
   const eaveOf = n => (n <= 2 && stage === 's3' ? 0 : F) + n * SH;
   if (!T.tower && !form && !req.storeys) while (storeys > 1 && eaveOf(storeys) > 1.1 * 2 * Math.min(W, D) + 0.01) storeys--;
+  // a one-storey building at s3 stands taller (Tyler, showcase review 2026-11-11: the steppe tavern's "walls are also a
+  // bit short, its underwhelming"; the middle-eastern home "could also be one wall-height higher"). Corpus main
+  // buildings of one storey have their eaves 5 m up at the quartile (homes, 78 builds; workshops 6.5, storehouses 6,
+  // other 4; data/measures-storeys.json), where ours stood at 3 m.
+  if (stage === 's3' && storeys === 1 && !T.low && !T.tower && form !== 'sunken' && form !== 'stave' && plan !== 'gables') SH = Math.max(SH, TALL_ONE);
   info.storeys = storeys; if (MS && MS.storeys !== storeys) info.storeysDrawn = MS.storeys;
   // stone and marble walls take no support from wooden posts or floors in Valheim: on posts the walls are planks
   C.baseTop = F + 0.6; // stone-base courses only at the bottom (F may still become 0.5 for a stone floor)
@@ -17628,22 +18508,24 @@ function generate(req) {
   const loggia = !kneeLoft && (req.details && req.details.loggia != null ? req.details.loggia
     : ['anglo-saxon', 'frankish-norman', 'castle-medieval', 'slavic', 'norse', 'norse-forest'].includes(cultureKey) && stage === 's3' &&
       ['home', 'tavern', 'storage', 'workshop'].includes(type) && rng(seed * 13 + 5)() < 0.6) &&
-    ['rect', 'long'].includes(plan) && wings.length === 1 && w0L.alpha === 0 && w0L.D >= 5 && storeys >= 2 && F === 0 &&
+    // (two rows of cells deep, as any walk under a roof (Tyler's two-piece rule), and three rows of room left behind it)
+    ['rect', 'long'].includes(plan) && wings.length === 1 && w0L.alpha === 0 && w0L.D >= 2 * LOGGIA_ROWS + 3 && storeys >= 2 && F === 0 &&
     !C.stoneWalls && !deck && !podklet && roofKind === 'gable' && !T.tower && !form;
-  const zFront = w0L.cz - w0L.D, rowZ = zFront + 1;
-  const inLoggia = c => loggia && Math.abs(c[1] - rowZ) < 0.01;
+  const zFront = w0L.cz - w0L.D, zBack = zFront + 2 * LOGGIA_ROWS;
+  const inLoggia = c => loggia && c[1] < zBack - 0.01;
   let gEdges = edges;
   if (loggia) {
     const inYaw = (edges.find(e => e.out[1] < 0) || {}).inYaw;
     gEdges = edges.filter(e => !inLoggia(e.cell) || e.out[0] !== 0); // the loggia's ends stay walled; its front is open
-    for (const [, c] of cells) if (inLoggia(c)) gEdges.push({ x: c[0], z: zFront + 2, yaw: 0, out: [0, -1], cell: [c[0], rowZ + 2], inYaw });
+    for (const [, c] of cells) if (Math.abs(c[1] - (zBack - 1)) < 0.01) gEdges.push({ x: c[0], z: zBack, yaw: 0, out: [0, -1], cell: [c[0], zBack + 1], inYaw });
   }
 
   // courtyard: cells next to the yard are a gallery; their yard side is an arcade
   const Q = wingOpts.Q;
   const inYard = (x, z) => plan === 'court' && Math.abs(x) < Q && Math.abs(z) < Q && !cells.has(`${x},${z}`);
   const arcade = new Set(edges.filter(e => inYard(e.cell[0] + 2 * e.out[0], e.cell[1] + 2 * e.out[1])));
-  const gallery = new Set([...arcade].map(e => `${e.cell[0]},${e.cell[1]}`));
+  // (the walk under the arcade two cells deep: the cells on the yard and the row behind them)
+  const gallery = new Set([...arcade].flatMap(e => [`${e.cell[0]},${e.cell[1]}`, `${e.cell[0] - 2 * e.out[0]},${e.cell[1] - 2 * e.out[1]}`]).filter(k => cells.has(k)));
 
   // footing: stilts and short posts on a grid, a log ground storey, or a stone course round the edge
   if (F > 0) {
@@ -17652,7 +18534,7 @@ function generate(req) {
       b.notes.push('Log ground storey (podklet) for storage under the living floor.');
     } else if (C.stilts || T.dock || T.raised || C.raised || form === 'raised' || !stoneBase) {
       const grid = new Map(verts.map(v => [`${v[0]},${v[1]}`, v]));
-      if (deck) for (const [, [x, z]] of cells) for (const dx of [-1, 1]) for (const dz of [-1, 1]) for (let k = 0; k <= 1; k++) { const vx = x + dx * (1 + k * 2), vz = z + dz * (1 + k * 2); grid.set(`${vx},${vz}`, [vx, vz]); }
+      if (deck) for (const [, [x, z]] of cells) for (const dx of [-1, 1]) for (const dz of [-1, 1]) for (let k = 0; k <= deck / 2; k++) { const vx = x + dx * (1 + k * 2), vz = z + dz * (1 + k * 2); grid.set(`${vx},${vz}`, [vx, vz]); }
       for (const [, [x, z]] of grid) posts(b, K, x, z, F);
     } else {
       // stone courses down from the floor; a 2 m course stands half in the ground under a 1 m floor
@@ -17775,7 +18657,7 @@ function generate(req) {
   const cellsG = loggia ? new Map([...cells].filter(([, c]) => !inLoggia(c))) : cells; // the ground rooms' cells
   // (a ladder keeps a cell off a wall hearth where it can: the spit on the fire reaches a metre either side)
   const fireRing = ['side', 'end'].includes(hearth.spot) ? cellRect([hearth.x, hearth.z]) : null;
-  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue: stackKeep || flue, ring: fireRing }) : [];
+  const ladders = climbsUp > 0 ? ladderPlan(cellsG, climbsUp, { door: doorCell, back: backCell, flue: stackKeep || flue, ring: fireRing, rise: SH }) : [];
   // a straight stair along a wall in place of the first ladder, where a long enough wall has room for it (most of the
   // best-liked builds climb by stairs; bench: req.details.stair true or false)
   const stairWanted = req.details && req.details.stair != null ? req.details.stair
@@ -17809,6 +18691,9 @@ function generate(req) {
   const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
     ladders, flue, fireKeep: stackKeep || flue, hearth, dragonsHere, R: rng(seed * 31337 + 7), persona: household };
   dctx.profile = Details.profile(dctx);
+  // the building program (lib/program.js, track H, D-167): one feature family per facade, storey and run of windows,
+  // a reasoned exception at most per run; the details read it for planters and corners
+  if (Program) { try { dctx.program = Program.plan({ cultureKey, type, stage, decor, biome, seed, storeys, persona: household, village: req.village, kit: K }); } catch (e) { dctx.program = null; } }
   dctx.notes = b.notes;
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
   dctx.profile.overhang = req.details && req.details.overhang != null ? req.details.overhang : true;
@@ -17842,7 +18727,7 @@ function generate(req) {
     }
     const isTopLookout = lookout && s === storeys - 1;
     for (const e of (s === 0 ? gEdges : edges)) {
-      if (isTopLookout) { if (K.fence) b.put(K.fence, e.x, y0, e.z, e.yaw); else b.put(K.wallHalf, e.x, y0 + 0.5, e.z, e.yaw); continue; } // the fence's pivot is at its foot
+      if (isTopLookout) { railing(b, K, e.x, y0, e.z, e.yaw); continue; }
       if (open === 'all') continue;
       if (open === 'front' && e.out[1] < 0) continue;
       if (open === 'sides' && !(e.out[1] > 0)) continue;
@@ -17888,7 +18773,7 @@ function generate(req) {
     }
     for (const w of wings) {
       const a = w.alpha === 270;
-      const room = { x0: w.cx - (a ? w.D : w.W), x1: w.cx + (a ? w.D : w.W), z0: w.cz - (a ? w.W : w.D) + (loggia && s === 0 && w === w0L ? 2 : 0), z1: w.cz + (a ? w.W : w.D),
+      const room = { x0: w.cx - (a ? w.D : w.W), x1: w.cx + (a ? w.D : w.W), z0: w.cz - (a ? w.W : w.D) + (loggia && s === 0 && w === w0L ? 2 * LOGGIA_ROWS : 0), z1: w.cz + (a ? w.W : w.D),
         y: y0, h: SHw, use: T.use, upper: s > 0, door: s === 0 && w.main ? { x: doorX, z: doorZ } : null, main: !!w.main, slots: [] };
       // over a hall with a loft the upper room is the loft alone; the rest is open to the roof
       if (loft && s > 0) { if (!w.main) continue; if (!loft.knee) Object.assign(room, { x0: loft.x0, x1: loft.x1, loft: 'hall' }); }
@@ -18015,7 +18900,7 @@ function generate(req) {
     // (over an end hearth only the rake's ridge cap, raised with the others; over a side one the row, the eave, and the
     // bargeboards that lay on them)
     const over = (p, m) => (o => o.x0 < col.x1 - 0.05 + m && o.x1 > col.x0 + 0.05 - m && o.z0 < col.z1 - 0.05 + m && o.z1 > col.z0 + 0.05 - m && o.y1 > top - 0.3)(checksLib().catBox(p));
-    const extra = !col ? [] : hearth.spot === 'end' ? takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && over(p, 0))
+    const extra = !col ? [] : hearth.spot === 'end' ? takeOut(b, p => !p.decor && isCap(p) && over(p, 0))
       : takeOut(b, p => !p.decor && (['roof', 'roofTop', 'roofCorner'].includes(P.piece(p.name).role) ? over(p, 0)
         : P.piece(p.name).role === 'beam' && (p.trim || /_(26|45)$/.test(p.name)) && over(p, /_(26|45)$/.test(p.name) ? 1.2 : 0)));
     // the ridge caps over the fire's place stay out for smoke; the last pass puts them back if no fire is laid
@@ -18165,6 +19050,9 @@ function generate(req) {
   if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1')))
     for (const sx of [-1, 1]) {
       if (hearth.spot === 'stack' && sx === hearth.sg) continue; // the stack stands there
+      // a lower annex in line at that end: its roof meets the main gable below the ridge, so the ridge beam would have no
+      // gable under it (it fell in the game's support rule, home Black Forest slavic s3 seed 1)
+      if (wings.some(w => w.spec && w.spec.at === 'inline' && !w.spec.ext && w.spec.side === sx)) continue;
       // the carving rides on the ridge beam's end, run out a metre past the gable (it stood on nothing)
       const rk = (dctx.rake || 0) + (wings.some(w => w.spec && w.spec.ext && w.spec.side === sx) ? 4 : 0); // past the rake, and past an extension
       // a 2 m ridge beam from inside the gable to half a metre past the rake, so it rests on the gable wall
@@ -18208,7 +19096,7 @@ function generate(req) {
     const at = { x: Math.max(w0.cx - w0.W + 1, Math.min(w0.cx + w0.W - 1, doorX)), z: w0.cz }, fr = flueRect(w0, at, w0.W - 1);
     const climbs = ladders.flatMap(l => [l.hole, l.land, l.stand, ...(l.run || [])].filter(Boolean));
     if (fr && !climbs.some(c => inRect(fr, c[0], c[1], -0.1))) {
-      const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && inRect(fr, p.x, p.z) && p.y > top - 0.3);
+      const caps = takeOut(b, p => !p.decor && isCap(p) && inRect(fr, p.x, p.z) && p.y > top - 0.3);
       if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y, rect: rectOf(caps), from: storeys > 1 && !(loft && !loft.knee) ? F + SH : caps[0].y });
     }
   }
@@ -18231,6 +19119,8 @@ function generate(req) {
   let fireAt = ventAt && lit && flue ? { x: avg(rectXs(flue)), z: avg(rectZs(flue)) } : null;
   if (hearth.spot === 'side' || hearth.spot === 'stack') fireAt = { x: hearth.x, z: hearth.z }; // a stack's fire moves into its alcove after the furnishing
   if (flatCell) { fireAt = { x: flatCell[0], z: flatCell[1] }; b.vents.push({ kind: 'flat', x: flatCell[0], z: flatCell[1], rect: flue, from: storeys > 1 ? F + SH : top }); }
+  // posts where the game would let the roof fall, clear of the fire
+  propUp(b, K, biome, { raisedOk: true, keepOut: (x, z) => fireAt && Math.hypot(x - fireAt.x, z - fireAt.z) < 2.2 });
   if (!req.skipDecor) Decor.decorate(b, { use: T.use, decor, biome, type, R, culture: cultureKey, doorX: b.doorX, fireAt, persona: household, layout: layoutCtx });
   settle(b, { K, C, biome, use: T.use, type, stoneOK, F, SH, storeys, top, flat, cells, wing: w0, roofTop, skipDecor: !!req.skipDecor });
   if (!req.skipDecor) tidyFurniture(b);
@@ -18267,15 +19157,20 @@ function balcony(b, K, C, w, edges, o) {
   const busyCell = (x, z) => !cells.has(`${x},${z}`) || L.some(l => [l.hole, l.land, l.stand, ...(l.run || [])].some(c => c && c[0] === x && c[1] === z));
   const ends = edges.filter(e => e.yaw === 90 && Math.abs(Math.abs(e.x - w.cx) - w.W) < 0.01 && Math.abs(e.z - w.cz) < w.D)
     .sort((a, c) => Math.abs(a.z - w.cz) - Math.abs(c.z - w.cz) || a.x - c.x);
-  const brackets = SH >= 3;
+  // two floor pieces out from the wall and two along it (Tyler, showcase review 2026-11-11: the lookout balcony "is far
+  // too narrow at only 1 wood_floor piece wide"), on posts from the ground at its outer corners and middle, a beam
+  // under every edge, a rail of posts and a beam at 1 m round its three open sides
   for (const e of ends) {
     const sg = e.out[0], x0 = e.x, z = e.z;
     if (o.hearthSg === sg) continue; // the hearth's hood or stack is at that end
     if (busyCell(x0 - sg, z)) continue;
+    // the second piece along the wall on whichever side the gable has room (the wall runs on past it)
+    const sz = [1, -1].find(d => Math.abs(z + 2 * d - w.cz) < w.D - 0.5);
+    if (sz == null) continue;
+    const zA = Math.min(z, z + 2 * sz) - 1, zB = Math.max(z, z + 2 * sz) + 1;
     // nothing out there already: a stack, a woodshed, a porch
-    const y0 = brackets ? yU - 1.4 : 0.1;
-    const box = { x0: Math.min(x0 + sg * 0.2, x0 + sg * 2.4), x1: Math.max(x0 + sg * 0.2, x0 + sg * 2.4), z0: z - 1.4, z1: z + 1.4 };
-    if (b.pieces.some(p => { if (Math.abs(p.x - x0) < 0.35) return false; const a = Ck.aabb(p); return a.x0 < box.x1 && a.x1 > box.x0 && a.z0 < box.z1 && a.z1 > box.z0 && a.y0 < yU + 2.1 && a.y1 > y0; })) continue;
+    const box = { x0: Math.min(x0 + sg * 0.2, x0 + sg * 4.4), x1: Math.max(x0 + sg * 0.2, x0 + sg * 4.4), z0: zA - 0.4, z1: zB + 0.4 };
+    if (b.pieces.some(p => { if (Math.abs(p.x - x0) < 0.35) return false; const a = Ck.aabb(p); return a.x0 < box.x1 && a.x1 > box.x0 && a.z0 < box.z1 && a.z1 > box.z0 && a.y0 < yU + 2.1; })) continue;
     // the upper bay: wall and window out, a door in
     const inBay = p => Math.abs(p.z - z) < 1.01 && Math.abs(p.x - x0) < 0.3 && p.y > yU + 0.05 && p.y < yU + SH - 0.05 &&
       ['wall', 'window', 'door', 'beam'].includes(P.piece(p.name).role) && !p.decor;
@@ -18284,19 +19179,18 @@ function balcony(b, K, C, w, edges, o) {
     wallSegment(b, K, C, x0, yU, z, e.yaw, SH, 'door', null);
     b.openings.push({ e, y0: yU, SH, storey: 1, kind: 'door', balcony: true });
     const T = { trim: true }, pole = framePole(K, C), pole1 = K.pole1 || 'wood_pole', beam = K.beam || 'wood_beam';
-    const xo = x0 + sg * 2;
-    b.put(K.floor, x0 + sg, yU, z, 0, T);
+    const xo = x0 + sg * 4;
+    for (const dx of [1, 3]) for (const zc of [z, z + 2 * sz]) b.put(K.floor, x0 + sg * dx, yU, zc, 0, T);
+    // posts from the ground under the outer edge and the middle of the sides
+    for (const [px, pz] of [[xo, zA], [xo, zB], [xo, (zA + zB) / 2], [x0 + sg * 2, zA], [x0 + sg * 2, zB]])
+      for (let y = 0; y < yU - 0.01;) { const h = yU - y >= 2 ? 2 : 1; b.put(h === 2 ? pole : pole1, px, y + h / 2, pz, 0, T); y += h; }
     // beams under the outer edge and the sides
-    b.put(beam, xo, yU - 0.15, z, 90, T);
-    for (const dz of [-1, 1]) b.put(beam, x0 + sg, yU - 0.15, z + dz, 0, T);
-    for (const dz of [-1, 1]) {
-      if (brackets) b.put(/darkwood/.test(beam) ? 'darkwood_beam_26' : /ashwood/.test(beam) ? 'ashwood_wall_beam_26' : 'wood_beam_26', x0 + sg, yU - 0.75, z + dz * 0.85, sg > 0 ? 0 : 180, T);
-      else for (let y = 0; y < yU - 0.01;) { const h = yU - y >= 2 ? 2 : 1; b.put(h === 2 ? pole : pole1, xo, y + h / 2, z + dz, 0, T); y += h; }
-      b.put(pole1, xo, yU + 0.5, z + dz, 0, T); // the rail's posts
-    }
-    // one hand rail on the posts (two rows read as a crate stuck to the wall, r5 review)
-    b.put(beam, xo, yU + 1.05, z, 90, T);
-    for (const dz of [-1, 1]) b.put(beam, x0 + sg, yU + 1.05, z + dz, 0, T);
+    for (const zc of [z, z + 2 * sz]) b.put(beam, xo, yU - 0.15, zc, 90, T);
+    for (const dx of [1, 3]) for (const zc of [zA, zB]) b.put(beam, x0 + sg * dx, yU - 0.15, zc, 0, T);
+    // the rail: posts at every 2 m, one beam on them at 1 m (two rows read as a crate stuck to the wall, r5 review)
+    for (const [px, pz] of [[xo, zA], [xo, zB], [xo, (zA + zB) / 2], [x0 + sg * 2, zA], [x0 + sg * 2, zB]]) b.put(pole1, px, yU + 0.5, pz, 0, T);
+    for (const zc of [z, z + 2 * sz]) b.put(beam, xo, yU + 1.05, zc, 90, T);
+    for (const dx of [1, 3]) for (const zc of [zA, zB]) b.put(beam, x0 + sg * dx, yU + 1.05, zc, 0, T);
     b.balcony = true;
     b.notes.push('A balcony on a gable end, with a door from the upper room.');
     return true;
@@ -18602,7 +19496,10 @@ function hangBraziers(b, ctx, fire) {
     const room = b.rooms.filter(r => br.x >= r.x0 - 0.5 && br.x <= r.x1 + 0.5 && br.z >= r.z0 - 0.5 && br.z <= r.z1 + 0.5 && br.y >= r.y - 0.2)
       .sort((a, c) => c.y - a.y)[0];
     if (!room) continue;
-    if (br.y >= room.y + 2.3 && Math.min(br.x - room.x0, room.x1 - br.x, br.z - room.z0, room.z1 - br.z) > 1.4 && !(fire && Math.hypot(fire.x - br.x, fire.z - br.z) < 1.5)) { used.push([br.x, br.z]); continue; }
+    // where it is, it hangs from what is over it (a 4 m room's brazier hung for a 3 m one stood 2.4 m under its roof)
+    const ceilAt = (x, z) => { let c = Infinity; for (const p of structure) { let u = Ck.underside(p, x, z); if (u == null) { const bx = Ck.aabb(p); if (['wall', 'beam'].includes(bx.info.role) && x > bx.x0 && x < bx.x1 && z > bx.z0 && z < bx.z1) u = bx.y0; } if (u != null && u > room.y + 0.5 && u < c) c = u; } return c; };
+    const c0 = ceilAt(br.x, br.z);
+    if (isFinite(c0) && c0 - 1.6 >= room.y + 2.3 && Math.min(br.x - room.x0, room.x1 - br.x, br.z - room.z0, room.z1 - br.z) > 1.4 && !(fire && Math.hypot(fire.x - br.x, fire.z - br.z) < 1.5)) { br.y = +(c0 - 1.6).toFixed(3); used.push([br.x, br.z]); continue; }
     const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2, longX = room.x1 - room.x0 >= room.z1 - room.z0;
     const L = longX ? room.x1 - room.x0 : room.z1 - room.z0;
     const spots = [0, -L / 4, L / 4, -L / 8, L / 8].map(t => (longX ? [cx + t, cz] : [cx, cz + t]));
@@ -18625,12 +19522,15 @@ function hangBraziers(b, ctx, fire) {
       br.x = +x.toFixed(3); br.z = +z.toFixed(3); br.y = +(ceil - 1.6).toFixed(3); br.yaw = 0; br.q = quat(0);
       used.push([x, z]); placed = true; break;
     }
-    if (!placed) { br.name = reaches(ctx.biome, 'Swamp') ? 'piece_groundtorch' : 'piece_groundtorch_wood'; br.y = room.y + 0.85; br.toWall = true; } // a floor torch's pivot is 0.75 m up
+    if (!placed) { br.name = reaches(ctx.biome, 'Swamp') ? 'piece_groundtorch' : 'piece_groundtorch_wood'; br.y = room.y + 0.85; br.toWall = true; } // a floor torch's pivot is 0.75 m up (set on the floor under it below)
   }
   // standing torches put back against the wall they were hung on, a little out from it
   for (const br of list) if (br.toWall) {
     const room = b.rooms.find(r => br.x >= r.x0 - 0.5 && br.x <= r.x1 + 0.5 && br.z >= r.z0 - 0.5 && br.z <= r.z1 + 0.5);
     if (room) { const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2, d = Math.hypot(cx - br.x, cz - br.z) || 1; br.x = +(br.x + (cx - br.x) / d * 0.5).toFixed(3); br.z = +(br.z + (cz - br.z) / d * 0.5).toFixed(3); }
+    // on the floor under it (a thick stone floor's top is not the room's height)
+    const tops = structure.filter(p => P.piece(p.name).role === 'floor').map(p => Ck.catBox(p)).filter(a => br.x > a.x0 && br.x < a.x1 && br.z > a.z0 && br.z < a.z1 && a.y1 < br.y).map(a => a.y1);
+    if (tops.length) br.y = +(Math.max(...tops) + 0.653).toFixed(3); // (the standing torches stand 0.653 m under their pivot, data/piece-models.json)
     delete br.toWall;
   }
 }
@@ -18849,6 +19749,134 @@ function dropLoose(b) {
   }
 }
 
+// Steps down from every outside door to the ground the game puts the design on (D-096). The mod sets a design's
+// lowest pivot on the terrain (src/Villheim.Logic/Designs/Blueprints.cs Center), so a stone hearth floor half in the
+// ground (-0.4 m) or a bush set into it (-0.49 m) lifts the whole house that much over the terrain. The doorstep beams
+// laid 5 cm over the floor (2026-11-09) then stood 0.6 m over the ground outside, a log across the doorway that stopped
+// Tyler at the door of a Meadows home (showcase 11, 2026-11-11). Where the floor in a doorway stands more than
+// checks.js DOOR_STEP over that ground and nothing lies within a step of it outside, the doorstep beams come out and
+// treads of beams go down to the ground, each no more than DOOR_STEP under the one before.
+function doorSteps(b) {
+  const Ck = checksLib(), step = Ck.DOOR_STEP || 0.3;
+  const G = Math.min(0, ...b.pieces.map(p => p.y));
+  const beam = 'wood_beam';
+  for (const d of b.pieces.filter(p => P.piece(p.name).role === 'door' && !p.decor)) {
+    const o = P.doorOpening(d);
+    if (o.w < 1.2) continue;
+    const top = o.y + 0.1;
+    if (top - G <= step + 0.01) continue;
+    // the outside: the side with no floor, deck or stair within a step of the door's floor a metre out
+    const near = (sg, dist) => b.pieces.some(p => {
+      const role = P.piece(p.name).role;
+      if (p === d || !['floor', 'stair'].includes(role) && !(role === 'beam' && p.trim)) return false;
+      const a = Ck.aabb(p), x = o.x + o.nx * sg * dist, z = o.z + o.nz * sg * dist;
+      return x > a.x0 - 0.05 && x < a.x1 + 0.05 && z > a.z0 - 0.05 && z < a.z1 + 0.05 && a.y1 > top - step - 0.05 && a.y1 < top + 0.4;
+    });
+    const stairOut = sg => b.pieces.some(p => P.piece(p.name).role === 'stair' && Math.abs((p.x - o.x) * o.ux + (p.z - o.z) * o.uz) < 1.2 && (p.x - o.x) * o.nx * sg + (p.z - o.z) * o.nz * sg > 0 && (p.x - o.x) * o.nx * sg + (p.z - o.z) * o.nz * sg < 3);
+    for (const sg of [-1, 1]) {
+      if (stairOut(sg)) continue;
+      if (near(sg, 1.0) && !near(sg, 0.5)) continue;
+      // a floor a metre out at the door's height: inside, or a deck
+      const floorOut = b.pieces.some(p => P.piece(p.name).role === 'floor' && (() => { const a = Ck.aabb(p), x = o.x + o.nx * sg * 1.2, z = o.z + o.nz * sg * 1.2; return x > a.x0 && x < a.x1 && z > a.z0 && z < a.z1 && Math.abs(a.y1 - top) < 0.25; })());
+      if (floorOut) continue;
+      // the doorstep beams laid in the lane come out
+      const inLane = p => P.piece(p.name).role === 'beam' && !p.decor && (() => { const s = (p.x - o.x) * o.nx * sg + (p.z - o.z) * o.nz * sg, t = (p.x - o.x) * o.ux + (p.z - o.z) * o.uz; return s > 0.1 && s < 1.2 && Math.abs(t) < 0.6 && Math.abs(p.y - (top - 0.15)) < 0.25; })();
+      const old = b.pieces.filter(inLane), name = old.length ? old[0].name : beam;
+      b.pieces = b.pieces.filter(p => !inLane(p));
+      const m = Math.ceil((top - G) / step - 1e-6), h = (top - G) / m;
+      for (let k = 1; k < m; k++) {
+        const y = top - k * h, s = 0.35 + 0.4 * (k - 1);
+        // a tread: one beam along the door, its top at y (the beam's collider is 0.4 m deep and tall)
+        b.put(name, o.x + o.nx * sg * s, y - 0.2, o.z + o.nz * sg * s, d.yaw || 0, { trim: true, step: true });
+        // and the beams under it to the ground, so it stands on something
+        for (let yy = y - 0.6; yy >= G + 0.2 - 1e-6; yy -= 0.4) b.put(name, o.x + o.nx * sg * s, yy, o.z + o.nz * sg * s, d.yaw || 0, { trim: true, step: true });
+      }
+    }
+  }
+}
+// Posts where the game's support rule (checks.js gameSupport, WearNTear) would let a roof, ridge, tie beam or wall
+// up high fall (hubs, round towers' crowns, wide halls). The hubs are the widest roofs the generator makes: on the Meadows s5 cross hall (14 m arms, 6 m walls)
+// the ridge caps and valley pieces over the crossing and along the arms held 7 to 9 support where wood needs 10, and the
+// game took them down when the hall was put up in one go (2026-11-11). A wood piece loses its material's share of
+// support times the distance between pivots at every step, so a 45 degree roof loses about 40 % a row up from the wall
+// top; corpus halls carry their ridges on posts. Each round puts a post column under the weakest falling piece of
+// each 4 m stretch, from the floor under it up into its underside, in core wood where the biome builds it (hard wood
+// loses less per metre), and checks again. A spot on the fire, a stair, a doorway or the opening over the fire is
+// skipped. Returns the number of columns.
+function propUp(b, K, biome, o = {}) {
+  const Ck = checksLib(), Sx = shapesLib(), hard = P.decorOk('wood_pole_log_4', biome);
+  const p4 = hard ? 'wood_pole_log_4' : (K.poleLong && /4/.test(K.poleLong) ? K.poleLong : null), p2 = hard ? 'wood_pole_log' : (K.pole || 'wood_pole2'), p1 = K.pole1 || 'wood_pole';
+  const ROLES = ['roof', 'roofTop', 'roofCorner', 'beam', 'floor', 'wall', 'gable', 'window'];
+  let n = 0;
+  for (let round = 0; round < 12; round++) {
+    const shell = b.pieces.filter(p => !p.decor);
+    const r = Ck.gameSupport(shell);
+    // (trim that would fall is the trim's own matter: no post goes up under a bargeboard)
+    const fall = r.fall.map(i => shell[i]).filter(p => ROLES.includes(P.piece(p.name).role) && !p.trim);
+    if (!fall.length) break;
+    fall.sort((a, c) => r.support[shell.indexOf(a)] - r.support[shell.indexOf(c)]);
+    const chosen = [];
+    for (const p of fall) if (!chosen.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 4)) chosen.push(p);
+    let added = 0;
+    for (const p of chosen) {
+      const W = Sx.world(p);
+      // the spot: under the piece, or along its length (a ridge cap's ridge) up to 4 m on, where the post stands on the
+      // ground floor clear of galleries and walkways over it
+      const a = (p.yaw || 0) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a);
+      let spot = null;
+      for (const [k, m] of [[0, 0], [2, 0], [-2, 0], [4, 0], [-4, 0], [1, 0], [-1, 0], [3, 0], [-3, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+        const x = p.x + ux * k + uz * m, z = p.z + uz * k - ux * m;
+        // posts stand in rows: none within 1.9 m of another, and on the line of one in the same row when near it
+        if (b.pieces.some(q => q.prop && Math.hypot(q.x - x, q.z - z) < 1.9)) continue;
+        const top = W && W.length ? Sx.undersideAt(W, x, z) : (k === 0 ? p.y : null);
+        let under = top;
+        if (top == null) {
+          // past the piece's own end: the next piece of the same kind in its row (a ridge cap's, a tie beam's neighbor)
+          const q = shell.find(f2 => f2 !== p && f2.name === p.name && Math.abs(f2.y - p.y) < 0.3 && Math.hypot(f2.x - x, f2.z - z) < 1.05);
+          const Wq = q && Sx.world(q);
+          under = Wq && Wq.length ? Sx.undersideAt(Wq, x, z) : null;
+        }
+        if (under == null) continue;
+        let base = 0, raisedFloor = false;
+        for (const q of shell) {
+          if (P.piece(q.name).role !== 'floor' || q === p) continue;
+          const bq = Ck.catBox(q);
+          if (x < bq.x0 || x > bq.x1 || z < bq.z0 || z > bq.z1 || bq.y1 > under - 1) continue;
+          if (bq.y1 > 0.6 && !o.raisedOk) raisedFloor = true; else base = Math.max(base, bq.y1);
+        }
+        if (raisedFloor) continue;
+        const blocked = b.pieces.some(q => {
+          const role = P.piece(q.name).role;
+          if (role === 'fire' || q.hearth) return Math.hypot(q.x - x, q.z - z) < 2.2;
+          if (role === 'stair') { const bq = Ck.catBox(q); return x > bq.x0 - 0.6 && x < bq.x1 + 0.6 && z > bq.z0 - 0.6 && z < bq.z1 + 0.6; }
+          if (role === 'door') { const op = P.doorOpening(q); return Math.abs((x - op.x) * op.ux + (z - op.z) * op.uz) < op.w / 2 + 0.5 && Math.abs((x - op.x) * op.nx + (z - op.z) * op.nz) < 2.5; }
+          return false;
+        }) || (o.keepOut && o.keepOut(x, z));
+        if (blocked) continue;
+        spot = { x, z, top: under, base };
+        break;
+      }
+      if (!spot) continue;
+      const { x, z, top, base } = spot;
+      // the longest pieces first; the last one ends at the underside, reaching down into the one below it (no metre of
+      // post poking up through the roof, no short soft-wood piece at the top where the load is)
+      let y = base;
+      while (top - y > 0.15) {
+        const left = top - y, name = left >= 3.5 && p4 ? p4 : p2, h = P.piece(name).size[1];
+        const y0 = Math.min(y, top - h);
+        b.put(name, x, Math.max(base, y0) + h / 2, z, 0, { prop: true });
+        y = Math.max(base, y0) + h;
+        if (y0 < y - h - 1e-6 || h > left) break;
+      }
+      added++;
+    }
+    n += added;
+    if (!added) break;
+  }
+  if (n) b.notes.push(`${n} post${n > 1 ? 's' : ''} up to the roof where it would not hold by itself.`);
+  return n;
+}
+
 function finish(b, info) {
   dropLoose(b);
   // a table rolled dressed that the passes left bare gets one thing on it (lib/kitbash.js redressTables)
@@ -18865,6 +19893,7 @@ function finish(b, info) {
   dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
   for (const p of b.pieces) { const pi = P.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
+  doorSteps(b);
   const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}${info.asked || ''}_${info.stage}${info.decor}_${info.seed}`;
   return {
     ground: 0,
@@ -18891,6 +19920,9 @@ const inRect = (r, x, z, pad = 0) => x > r.x0 - pad && x < r.x1 + pad && z > r.z
 // low enough to catch the smoke.
 const HOOD = 2.55;
 // Take pieces out of a build (and out of its key set, so they can be put back in the same place later).
+// a ridge cap (the crossed boards on a gable share the catalog's roofTop role; they stay on the bargeboards' line when
+// the caps over a fire are lifted for smoke: showcase 09 had them 0.6 m up with the caps)
+function isCap(p) { return P.piece(p.name).role === 'roofTop' && !/wall_roof_top/.test(p.name); }
 function takeOut(b, test) {
   const out = b.pieces.filter(test);
   if (!out.length) return out;
@@ -19111,6 +20143,8 @@ function ladderPlan(cells, n, o = {}) {
   for (const [, [x, z]] of cells) for (const [dx, dz] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
     const stand = [x - 2 * dx, z - 2 * dz], land = [x + 2 * dx, z + 2 * dz];
     if (!has(...stand) || !has(...land)) continue;
+    // a climb of more than 3 m runs on into the cell before the stand (2 m along for every 2 m up): that cell is floor
+    if (o.rise > 3.01 && !has(x - 4 * dx, z - 4 * dz)) continue;
     if (o.flue && [stand, [x, z], land].some(c => inRect(o.flue, c[0], c[1]))) continue;
     const wallSide = !has(x + 2 * dz, z + 2 * dx) || !has(x - 2 * dz, z - 2 * dx);
     all.push({ hole: [x, z], dir: [dx, dz], stand, land, wallSide });
@@ -19172,8 +20206,30 @@ function loftRail(b, K, lo, up, y0, cells) {
     if (lo.cells.has(k) || !cells.has(k)) continue;
     if (climb.some(c => (c[0] === nx && c[1] === nz) || (c[0] === x && c[1] === z))) continue;
     const ex = x + dx / 2, ez = z + dz / 2, yaw = dx ? 90 : 0;
-    if (K.fence) b.put(K.fence, ex, y0, ez, yaw); else b.put(K.wallHalf, ex, y0 + 0.5, ez, yaw);
+    railing(b, K, ex, y0, ez, yaw);
   }
+}
+
+// A rail along a 2 m edge of a raised floor or a stair well, its middle at (x, z) on the floor at y0, turned yaw (the
+// edge along the piece's local x): a 1 m post at each end and a beam on them at 1 m. Corpus builders rail their
+// balconies, galleries and towers with posts and beams (the pieces on open edges of floors 1.2 m or more over the
+// ground, by builds: wood_beam 747, wood_pole 593, wood_pole2 547, wood_wall_half 537, wood_beam_1 504, wood_fence in
+// none of the top 40; lab/shell_mine.js). Tyler (showcase review, 2026-11-11): wood_fence is "really only intended for
+// pastures, garden fences, maybe village perimeter fencing. Never for building fences atop towers, etc. and certainly
+// never indoors."
+function railing(b, K, x, y0, z, yaw, extra) {
+  const a = yaw * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a), post = K.pole1 || 'wood_pole', beam = K.beam || 'wood_beam';
+  // a post stands on the floor: an end past the floor's edge moves in along the rail (lofts of 1 m pieces)
+  const Ck = checksLib();
+  const onFloor = (px, pz) => b.pieces.some(p => !p.decor && P.piece(p.name).role === 'floor' && (c => px > c.x0 - 0.05 && px < c.x1 + 0.05 && pz > c.z0 - 0.05 && pz < c.z1 + 0.05 && Math.abs(c.y1 - y0) < 0.35)(Ck.catBox(p)));
+  let n = 0;
+  for (const sg of [-1, 1]) {
+    const t = [1, 0.8, 0.6, 0.4].find(k => onFloor(x + ux * sg * k, z + uz * sg * k));
+    if (t != null) { b.put(post, x + ux * sg * t, y0 + 0.5, z + uz * sg * t, 0, extra); n++; }
+  }
+  // (a beam with no post under it would stand on nothing: a post at its middle, or no rail there)
+  if (!n && onFloor(x, z)) { b.put(post, x, y0 + 0.5, z, 0, extra); n++; }
+  if (n) b.put(beam, x, y0 + 1.0, z, yaw, extra);
 }
 
 // Ladder pieces for one plan entry, from the floor at yLow up 'rise' metres. A wood_stepladder climbs 2 m over 2 m
@@ -19369,20 +20425,25 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
   b.woodBays = b.woodBays || new Set();
   const noSpan = P.support(stonePiece).h >= 0.99;
   let style = styleOverride || C.wallStyle || 'plank';
-  if (noSpan && style === 'stone' && b.woodBays.has(bay)) style = 'plank';
+  // (and a bay a 2 m course family left in timber, or that has timber under it, stays timber up: masonry takes no
+  // support from wood)
+  if ((noSpan || /2x2/.test(stonePiece)) && ['stone', 'marble', 'grausten'].includes(style) && b.woodBays.has(bay)) style = 'plank';
   const stoneLike = ['stone', 'marble', 'grausten'].includes(style);
   // over an opening: planks where the stone cannot span it (stone), or where the metre left over would be a stone
   // course (2 m grausten courses leave a 1 m gap); a stone that cannot span also takes the bay above to planks
   const lintel = () => {
     if (!stoneLike) return;
-    if (noSpan) b.woodBays.add(bay);
+    if (noSpan || stoneCourse === 2) b.woodBays.add(bay);
     if (noSpan || stoneCourse === 2) style = 'plank';
   };
   const stoneCourse = /2x2/.test(stonePiece) ? 2 : 1;
   const pieceFor = y => {
     if (style === 'stone' || style === 'marble' || style === 'grausten') return [stonePiece, stoneCourse];
     // the stone course is the ground storey's footing only; upper storeys are all planks (stone on planks would fall)
-    if (style === 'stone-base' && y < y0 + 0.99 && y0 <= (C.baseTop != null ? C.baseTop : Infinity)) return [stoneCourse === 1 ? stonePiece : 'stone_wall_2x1', 1];
+    // (a family of 2 m courses lays a 2 m footing course of its own: grausten has no 1 m course, and stone between
+    // grausten read wrong, Tyler on showcases 15 and 16: "Stone is chunky and light gray. Grausten is smooth and dark gray
+    // and half the width")
+    if (style === 'stone-base' && y < y0 + stoneCourse - 0.01 && y0 <= (C.baseTop != null ? C.baseTop : Infinity)) return [stonePiece, stoneCourse];
     if (style === 'log') return ['wood_wall_log', 0.5];
     return [plank, 2];
   };
@@ -19392,9 +20453,9 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
       const left = to - y;
       const [main, course] = pieceFor(y);
       if (course <= left + 0.01) { b.put(main, x, y + course / 2, z, yaw); y += course; }
-      // a 1 m course in a wall of 2 m stone courses is stone too (a plank course there would leave the stone above it
-      // standing on wood, which falls)
-      else if (left >= 0.99 && main !== 'wood_wall_log') { b.put(course === 1 ? main : (main === stonePiece ? 'stone_wall_2x1' : K.wallHalf), x, y + 0.5, z, yaw); y += 1; }
+      // a metre left in a wall of 2 m courses is the wall's own timber, never another family's stone: the bay is
+      // timber from there up, as over an opening)
+      else if (left >= 0.99 && main !== 'wood_wall_log') { if (course !== 1 && main === stonePiece) { b.put(K.wallHalf, x, y + 0.5, z, yaw); b.woodBays.add(bay); } else b.put(course === 1 ? main : K.wallHalf, x, y + 0.5, z, yaw); y += 1; }
       else { if (main === 'wood_wall_log') b.put(main, x, y + 0.25, z, yaw); else b.put(K.wallHalf, x, y + 0.5, z, yaw); y += 0.5; } // a half wall standing on the gap pokes 0.5 m up into the roof
     }
   };
@@ -19530,6 +20591,7 @@ function valleys(parts, b) {
   return n;
 }
 
+const CAP_GAP = 0.5;
 function gablePieces(K, C, w, top, r, ends, vent, dctx) {
   const roof = r === 2 ? K.roof45 : K.roof26, roofTop = r === 2 ? K.roofTop45 : K.roofTop26, gable = r === 2 ? K.gable45 : K.gable26;
   const capY = capOf(w, top, r), low = i => capY - r * (i + 1), pivot = i => low(i) + (r === 2 ? 1 : 0);
@@ -19559,6 +20621,11 @@ function gablePieces(K, C, w, top, r, ends, vent, dctx) {
       for (const yb of [yw - 0.1, yw + 1.1]) add(K.beam || 'wood_beam', u + Math.sign(u) * 0.25, yb, 0, 90, 'trim', yb + 0.1);
       gableFill(K, add, u, yw + 1, 0, capY - yw - 1, C.stoneWalls);
     } else gableFill(K, add, u, top, 0, capY - top, C.stoneWalls);
+    // a 1 m square piece on the apex, up into the ridge cap: the cap's underside stands well over its
+    // pivot at the ridge (0.86 m at a 45 degree cap's middle), and a gable filled only to the apex left a triangle of sky
+    // under every cap (the gaps at the wall tops of showcases 03 and 15); a metre wide, its corners stay in the cap's
+    // boards
+    add(K.wallQuarter || K.wallHalf, u, capY + 0.2, 0, 90, 'gable', capY + 0.2 + CAP_GAP);
     for (let i = 0; i <= wallRow; i++) for (const sv of [-1, 1]) {
       const v = sv * (2 + 2 * i);
       gableFill(K, add, u, top, v, low(i) - top, C.stoneWalls);
@@ -19846,7 +20913,7 @@ function octagonDesign(b, K, C, o) {
       for (let k = 0; k < n; k++) {
         const t = -(n - 1) + 2 * k;
         if (i === 4 && Math.abs(t) < 1.5) continue;
-        b.put(K.fence, nx * Rf + tx * t, F, nz * Rf + tz * t, a);
+        railing(b, K, nx * Rf + tx * t, F, nz * Rf + tz * t, a); // a deck rail, posts and a beam (no pasture fence on a deck)
       }
     }
   }
@@ -19875,12 +20942,13 @@ function stairUpX(b, K, xEdge, z, F, out) {
 }
 
 // Timber trackway out from a door at (x, zDoor), len metres, on short posts.
+// Two floor pieces wide (Tyler's rule for anything people walk along).
 function boardwalk(b, K, x, zDoor, F, len) {
   const y = Math.max(F, 0);
   let z = zDoor - 1;
   for (let k = 0; k < len / 2; k++, z -= 2) {
-    b.put(K.floor, x, y, z);
-    if (y > 0.01) for (const dx of [-1, 1]) posts(b, K, x + dx, z, y);
+    for (const dx of [-1, 1]) b.put(K.floor, x + dx, y, z);
+    if (y > 0.01) for (const dx of [-2, 0, 2]) posts(b, K, x + dx, z, y);
   }
   stairUp(b, K, x, z + 1, y);
 }
@@ -20130,7 +21198,7 @@ function endFallback(b, h, w0, o) {
   const fr = flueRect(w0, { x: h.x, z: h.z }, w0.W - 1);
   if (!fr) return null;
   const Ck = checksLib();
-  const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && p.y > (o.top != null ? o.top : o.F + o.storeys * o.SH) - 0.3 &&
+  const caps = takeOut(b, p => !p.decor && isCap(p) && p.y > (o.top != null ? o.top : o.F + o.storeys * o.SH) - 0.3 &&
     (a => a.x0 < fr.x1 - 0.05 && a.x1 > fr.x0 + 0.05 && a.z0 < fr.z1 - 0.05 && a.z1 > fr.z0 + 0.05)(Ck.catBox(p)));
   if (!caps.length) return null;
   b.vents.push({ kind: 'ridge', caps, x: h.x, z: h.z, y: Math.max(...caps.map(c => c.y)), rect: fr, from: o.F + HOOD, hood: true });
@@ -20357,9 +21425,9 @@ function campDesign(b, K, biome, stage, R, decor) {
 }
 
 // what lib/hub.js builds with
-const HUB_TOOLS = { Build, quat, wallSegment, gablePieces, posts, putLadder, column, putDoor, valleys, inside, surfaceAt };
+const HUB_TOOLS = { Build, quat, doorSteps, propUp, wallSegment, gablePieces, posts, putLadder, column, putDoor, valleys, inside, surfaceAt };
 
-if (NODE) module.exports = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE, windowKit };
+if (NODE) module.exports = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE, windowKit, propUp, doorSteps };
 else window.VHGenerate = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };
 
 })();
@@ -20491,7 +21559,9 @@ const TYPE_WORDS = { hearth: 'hub', house: 'home', hall: 'longhouse', greathall:
   storehouse: 'storage', watchtower: 'tower', market: 'stall', shrine: 'temple', church: 'temple', boathouse: 'dock' };
 
 function evaluate(d, biome, scorer) {
-  const checks = CQ.check(d, biome);
+  // (the shell checks of the showcase review are the lab's gates, lab/test_structure.js; ranking seeds leaves them out,
+  // so the game's engine stays inside its time limit)
+  const checks = CQ.check(d, biome, { shell: false });
   const score = rank(scorer, d.pieces, d.request && d.request.stage);
   return { checks, score, pass: checks.filter(c => c.ok).length };
 }
@@ -21478,6 +22548,613 @@ window.VH_ROOMS = {"templates":[{"kind":"workshop","W":5.5,"D":10,"fill":0.93,"d
 window.VH_ROOM_WEIGHTS = {"RT-0001":1.48,"RT-0002":1.58,"RT-0003":1.23,"RT-0004":1.23,"RT-0005":1.18,"RT-0006":1.23,"RT-0007":1.23,"RT-0008":1.02,"RT-0009":0.93,"RT-0010":0.93,"RT-0011":1.32,"RT-0012":1.32,"RT-0013":1.58,"RT-0014":1.58,"RT-0015":1.58,"RT-0017":1.32,"RT-0018":1.23,"RT-0019":1.23,"RT-0020":1.48,"RT-0021":1.48,"RT-0022":1.23,"RT-0023":1.23,"RT-0024":0.93,"RT-0025":1.23,"RT-0026":1.58,"RT-0027":1.58,"RT-0028":1.23,"RT-0029":1.58,"RT-0030":1.58,"RT-0031":1.32,"RT-0032":1.58,"RT-0033":1.18,"RT-0034":1.48,"RT-0035":1.58,"RT-0036":1.23,"RT-0037":1.58,"RT-0039":1.27,"RT-0040":1.32,"RT-0041":1.32,"RT-0042":1.02,"RT-0043":1.58,"RT-0044":1.58,"RT-0054":1.58,"RT-0055":0.98,"RT-0056":1.58,"RT-0057":0.93,"RT-0058":1.48,"RT-0059":1.32,"RT-0060":1.32,"RT-0061":1.02,"RT-0062":1.32,"RT-0063":1.58,"RT-0064":1.32,"RT-0065":1.23,"RT-0066":1.48,"RT-0067":1.58,"RT-0068":1.32,"RT-0069":1.32,"RT-0070":0.93,"RT-0071":1.32,"RT-0072":1.23,"RT-0073":1.48,"RT-0074":1.23,"RT-0075":1.48,"RT-0076":1.23,"RT-0077":1.48,"RT-0078":1.23,"RT-0079":1.48,"RT-0080":1.23,"RT-0081":1.58,"RT-0082":1.23,"RT-0083":1.32,"RT-0084":1.58,"RT-0085":1.58,"RT-0086":1.32,"RT-0087":1.58,"RT-0088":1.27,"RT-0089":0.93,"RT-0090":1.02,"RT-0091":1.58,"RT-0092":1.48,"RT-0093":0.93,"RT-0094":1.32,"RT-0095":1.58,"RT-0097":1.23,"RT-0098":0.93,"RT-0099":1.23,"RT-0100":1.32,"RT-0101":1.58,"RT-0102":1.58,"RT-0103":0.93,"RT-0104":1.58,"RT-0105":1.27,"RT-0106":1.58,"RT-0107":1.48,"RT-0108":1.58,"RT-0109":1.48,"RT-0110":1.48,"RT-0111":1.58,"RT-0112":1.23,"RT-0113":1.48,"RT-0114":1.58,"RT-0115":1.58,"RT-0116":1.58,"RT-0117":1.23,"RT-0118":1.32,"RT-0119":1.58,"RT-0120":1.48,"RT-0121":1.23,"RT-0122":0.93,"RT-0123":1.58,"RT-0124":0.93,"RT-0125":0.91,"RT-0126":1.56,"RT-0127":1.01,"RT-0128":1.21,"RT-0129":1.21,"RT-0130":1.21,"RT-0131":1.46,"RT-0132":1.21,"RT-0133":1.46,"RT-0134":1.21,"RT-0135":0.96,"RT-0136":1.2,"RT-0137":1.55,"RT-0138":1.54,"RT-0139":1.54,"RT-0140":1.19,"RT-0141":1.28,"RT-0142":1.54,"RT-0143":1.44,"RT-0144":1.53,"RT-0145":1.53,"RT-0146":1.53,"RT-0148":1.43,"RT-0149":1.43,"RT-0150":1.18,"RT-0151":1.18,"RT-0152":1.43,"RT-0153":1.28,"RT-0155":1.18,"RT-0156":1.27,"RT-0157":1.52,"RT-0158":1.42,"RT-0159":1.42,"RT-0160":1.17,"RT-0161":1.52,"RT-0162":1.52,"RT-0163":1.27,"RT-0164":1.52,"RT-0165":0.62,"RT-0166":1.22,"RT-0167":0.97,"RT-0168":1.22,"RT-0169":1.52,"RT-0170":1.42,"RT-0171":1.42,"RT-0172":1.16,"RT-0173":1.16,"RT-0175":1.51,"RT-0176":1.41,"RT-0177":1.16,"RT-0178":1.16,"RT-0179":0.85,"RT-0180":0.85,"RT-0181":1.5,"RT-0182":0.6,"RT-0183":0.6,"RT-0184":0.85,"RT-0185":0.85,"RT-0186":1.2,"RT-0187":1.4,"RT-0188":1.4,"RT-0189":1.5,"RT-0190":1.15,"RT-0191":1.5,"RT-0192":1.15,"RT-0193":1.4,"RT-0194":1.5,"RT-0195":1.5,"RT-0196":1.4,"RT-0197":1.4,"RT-0198":0.7,"RT-0199":1.49,"RT-0200":1.49,"RT-0201":1.49,"RT-0202":1.39,"RT-0204":1.38,"RT-0205":1.13,"RT-0206":0.83,"RT-0207":1.18,"RT-0208":1.38,"RT-0209":1.13,"RT-0210":1.48,"RT-0211":1.37,"RT-0212":1.37,"RT-0213":1.37,"RT-0215":1.37,"RT-0216":1.47,"RT-0217":1.47,"RT-0218":1.22,"RT-0219":1.47,"RT-0220":1.36,"RT-0221":1.36,"RT-0222":1.11,"RT-0223":1.47,"RT-0224":1.47,"RT-0225":1.11,"RT-0226":0.81,"RT-0227":0.67,"RT-0228":1.47,"RT-0229":1.16,"RT-0230":1.21,"RT-0232":1.21,"RT-0233":1.46,"RT-0234":0.8,"RT-0235":1.46,"RT-0236":1.35,"RT-0237":0.91,"RT-0238":1.1,"RT-0239":1.45,"RT-0240":1.45,"RT-0241":1.15,"RT-0242":1.15,"RT-0243":1.2,"RT-0244":1.45,"RT-0245":1.45,"RT-0246":1.45,"RT-0247":1.45,"RT-0248":1.45,"RT-0249":1.45,"RT-0250":1.1,"RT-0251":1.45,"RT-0252":0.8,"RT-0253":1.35,"RT-0254":0.8,"RT-0255":0.8,"RT-0256":1.1,"RT-0257":1.45,"RT-0258":1.2,"RT-0259":1.1,"RT-0260":1.1,"RT-0261":1.45,"RT-0262":0.55,"RT-0263":1.45,"RT-0264":1.45,"RT-0265":1.45,"RT-0266":1.1,"RT-0267":1.15,"RT-0268":0.9,"RT-0269":1.35,"RT-0270":1.35,"RT-0271":1.15,"RT-0272":1.45,"RT-0273":1.2,"RT-0274":1.45,"RT-0275":1.45,"RT-0276":0.84,"RT-0277":1.45,"RT-0278":1.04,"RT-0279":1.09,"RT-0280":1.45,"RT-0281":1.09,"RT-0284":1.14,"RT-0287":1.19,"RT-0288":1.44,"RT-0289":1.44,"RT-0290":1.09,"RT-0291":1.09,"RT-0292":1.33,"RT-0293":1.08,"RT-0294":1.08,"RT-0295":1.44,"RT-0296":1.19,"RT-0297":1.19,"RT-0298":1.08,"RT-0299":0.78,"RT-0300":1.08,"RT-0301":1.08,"RT-0302":1.19,"RT-0303":1.43,"RT-0304":0.88,"RT-0305":1.32,"RT-0306":1.13,"RT-0307":1.43,"RT-0308":1.43,"RT-0309":1.32,"RT-0310":1.17,"RT-0311":1.42,"RT-0312":1.07,"RT-0313":1.42,"RT-0314":1.42,"RT-0315":0.77,"RT-0316":0.77,"RT-0317":1.02,"RT-0318":0.77,"RT-0319":1.06,"RT-0320":1.06,"RT-0321":1.02,"RT-0322":1.42,"RT-0323":1.42,"RT-0324":1.42,"RT-0325":1.17,"RT-0326":1.31,"RT-0327":0.51,"RT-0328":0.51,"RT-0329":1.42,"RT-0330":1.06,"RT-0331":1.42,"RT-0332":1.42,"RT-0333":1.11,"RT-0334":1.31,"RT-0335":0.61,"RT-0336":1.06,"RT-0337":1.16,"RT-0338":0.76,"RT-0339":1.41,"RT-0340":1.41,"RT-0341":1.16,"RT-0342":1.41,"RT-0343":1.11,"RT-0344":1.3,"RT-0346":1.41,"RT-0347":1.41,"RT-0348":1.4,"RT-0349":1.3,"RT-0350":0.75,"RT-0351":1.05,"RT-0352":1.4,"RT-0353":1.29,"RT-0354":1.15,"RT-0358":1.29,"RT-0359":1.4,"RT-0360":0.75,"RT-0361":1.29,"RT-0362":0.5,"RT-0363":0.79,"RT-0364":0.5,"RT-0365":1.04,"RT-0366":1.09,"RT-0367":1,"RT-0368":1.4,"RT-0369":1.29,"RT-0370":1.04,"RT-0371":1.14,"RT-0372":0.74,"RT-0373":1.14,"RT-0374":1.04,"RT-0375":0.59,"RT-0376":1.04,"RT-0377":1.04,"RT-0378":0.5,"RT-0379":0.5,"RT-0380":1.39,"RT-0381":0.99,"RT-0382":1.03,"RT-0383":1.13,"RT-0384":1.03,"RT-0385":1.28,"RT-0386":1.03,"RT-0387":1.03,"RT-0388":0.83,"RT-0389":1.38,"RT-0390":1.28,"RT-0391":0.88,"RT-0392":1.38,"RT-0393":1.02,"RT-0394":1.02,"RT-0395":1.27,"RT-0396":1.07,"RT-0397":0.73,"RT-0398":0.82,"RT-0399":1.07,"RT-0400":1.02,"RT-0401":1.27,"RT-0402":1.13,"RT-0404":1.02,"RT-0405":1.02,"RT-0406":1.02,"RT-0407":1.02,"RT-0408":1.27,"RT-0409":1.27,"RT-0410":0.73,"RT-0411":1.02,"RT-0412":1.27,"RT-0413":1.38,"RT-0414":0.5,"RT-0415":1.38,"RT-0416":1.02,"RT-0420":1.27,"RT-0421":1.27,"RT-0422":0.97,"RT-0423":1.27,"RT-0424":1.36,"RT-0425":1.36,"RT-0426":1.36,"RT-0427":1.26,"RT-0428":1.36,"RT-0429":1.11,"RT-0430":1.36,"RT-0431":1.06,"RT-0432":0.81,"RT-0433":1.36,"RT-0434":1.01,"RT-0435":1.11,"RT-0436":1.36,"RT-0437":1.36,"RT-0438":1.01,"RT-0439":1.11,"RT-0440":1,"RT-0441":1.1,"RT-0442":1.35,"RT-0443":1.25,"RT-0444":0.8,"RT-0445":0.7,"RT-0446":1.05,"RT-0447":1,"RT-0448":0.7,"RT-0449":1.25,"RT-0450":1.34,"RT-0451":1.09,"RT-0452":0.75,"RT-0454":1.34,"RT-0456":0.69,"RT-0457":0.99,"RT-0458":1.24,"RT-0459":1.24,"RT-0460":1.24,"RT-0461":1.33,"RT-0462":1.33,"RT-0463":1.33,"RT-0464":1.33,"RT-0465":1.03,"RT-0466":0.94,"RT-0467":1.24,"RT-0468":0.99,"RT-0469":0.68,"RT-0470":1.33,"RT-0471":0.93,"RT-0472":0.68,"RT-0473":0.98,"RT-0474":1.08,"RT-0475":1.33,"RT-0476":1.08,"RT-0477":1.33,"RT-0478":1.33,"RT-0479":0.78,"RT-0480":1.33,"RT-0481":0.78,"RT-0482":1.33,"RT-0483":0.93,"RT-0484":0.78,"RT-0485":1.23,"RT-0486":0.68,"RT-0487":1.03,"RT-0488":1.03,"RT-0489":1.33,"RT-0490":0.98,"RT-0491":1.07,"RT-0492":1.07,"RT-0493":0.93,"RT-0494":1.32,"RT-0495":1.32,"RT-0496":1.23};
 window.VH_MOTIFS = {"motifs":[{"id":"MC-0008","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"woodwall"},"src":"large-farm","p":[["wood_pole2",0,0,1,225,0.39],["wood_pole2",0,0,3,225,0.39]]},{"id":"MW-0001","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["woodiron_pole",-0.5,0.5,0,90,0.15]]},{"id":"MW-0002","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"tavern-in-the-meadows-contest","p":[["wood_pole2",-0.54,0.51,-0.98,360,0.2],["wood_pole2",-0.54,0.51,1.02,360,0.2]]},{"id":"MW-0003","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["wood_pole2",-0.5,0.5,1,90,0.2]]},{"id":"MW-0005","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["wood_pole2",-0.5,0.5,0,360,0.2],["wood_pole2",0.5,0.5,0,360,0.2]]},{"id":"ME-0015","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"wood_wall_log","wt":"log"},"src":"deep-north-1-0-ready-base","p":[["wood_pole2",-1,0,-1,0,0.2],["wood_beam",0,0,0,360,0.2]]},{"id":"MW-0006","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"tavern-in-the-meadows-contest","p":[["woodiron_pole",-0.61,0.05,0.45,180]]},{"id":"MC-0133","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_pole2",0,0,0,45,0.39],["wood_pole2",0,0,2,45,0.39]]},{"id":"MW-0007","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.11,-0.22,-0.29,180,0.3],["woodiron_pole",-0.11,-0.22,1.71,90,0.3]]},{"id":"MW-0008","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.23,-0.12,-0.29,360,0.3],["woodiron_pole",-0.23,-0.12,1.71,270,0.3]]},{"id":"MW-0009","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.19,-0.2,-0.21,91,0.3],["woodiron_pole",-0.19,-0.2,1.79,91,0.3]]},{"id":"MW-0010","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.31,-0.02,-0.21,90,0.3],["woodiron_pole",-0.31,-0.02,1.79,90,0.3]]},{"id":"MC-0029","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"large-farm","p":[["wood_pole2",0,0,2,135]]},{"id":"MW-0011","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",-1.5,0.5,-0.25,180,0.2]]},{"id":"MW-0012","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-1.14,-0.21,-0.21,180,0.3],["woodiron_pole",-1.14,-0.21,1.79,180,0.3]]},{"id":"ME-0021","kind":"eave","fit":{"slope":45,"overhang":1.25,"wall":"wood_wall_half","wt":"stone"},"src":"tavern-in-the-meadows-contest","p":[["wood_beam",-0.47,0,0,180]]},{"id":"MW-0013","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["woodiron_pole",-0.5,0.5,-1,270,0.15],["woodiron_pole",-0.5,0.5,0,270,0.15],["wood_pole2",-0.5,0.5,1,90,0.2],["wood_pole2",0.5,0.5,1,90,0.2]]},{"id":"MW-0014","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["woodiron_pole",0.5,0.5,-1,90],["wood_pole2",0.5,0.5,0,180,0.2],["stone_pillar",-1.24,0.01,1,90],["wood_pole2",-0.5,0.5,1,180,0.2],["woodiron_pole",0.5,0.5,1,90]]},{"id":"MW-0015","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["wood_pole2",-0.5,0.5,0,180,0.2],["wood_pole2",0.5,0.5,0,0,0.2],["woodiron_pole",-0.5,0.5,1,180],["wood_pole2",-0.5,0.5,2,0,0.2],["wood_pole2",0.5,0.5,2,270,0.2]]},{"id":"MW-0016","kind":"window","fit":{"w":1,"h":2,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["wood_pole2",-1.5,0.5,1,270,0.2],["stone_pillar",-0.8,0.02,1,180],["stone_pillar",0.77,0.03,1,180],["wood_pole2",-1.5,0.5,3,270,0.2]]},{"id":"MW-0017","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["woodiron_pole",0.5,0.5,0,270],["stone_pillar",-1.2,-0.02,1,270],["wood_pole2",-0.5,0.5,1,270,0.2],["wood_pole2",0.5,0.5,1,180,0.2]]},{"id":"MW-0018","kind":"window","fit":{"w":2,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["woodiron_pole",-2,0.5,-1,90],["woodiron_pole",-2,0.5,0,90],["wood_pole2",-2,0.5,1,270,0.2],["wood_pole2",-1,0.5,1,90,0.2]]},{"id":"MW-0019","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["woodiron_pole",0.5,0.5,-1,90],["stone_pillar",-1.17,-0.02,1,270],["wood_pole2",-0.67,0.48,1,90,0.22],["wood_pole2",0.5,0.5,1,360,0.2]]},{"id":"ME-0024","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"main-tower-of-the-castle-5","p":[["wood_beam_1",-1,-0.5,0,270]]},{"id":"MW-0020","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.27,0.06,0.79,180,0.3]]},{"id":"MW-0021","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.23,0.03,0.71,91,0.3]]},{"id":"MW-0022","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.28,-0.16,0.79,180,0.3]]},{"id":"MW-0023","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",0.09,-0.28,0.79,180,0.3]]},{"id":"MW-0024","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",0.12,0.31,0.71,270,0.3]]},{"id":"MW-0025","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.11,-0.22,-0.29,90,0.3]]},{"id":"MW-0026","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",0.1,0.11,-0.29,270,0.3]]},{"id":"MW-0027","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["stone_pillar",-1,0,1,270]]},{"id":"MG-0001","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_beam",0,0,-2,0,0.2],["wood_pole2",-1,0,-1,180],["wood_pole2",1,0,-1,180]]},{"id":"MW-0028","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.38,-0.22,-0.29,180,0.3],["woodiron_pole",-0.38,-0.22,1.71,90,0.3]]},{"id":"MW-0029","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["woodiron_pole",-0.5,0.5,-1,90],["wood_pole2",-0.5,0.5,1,270,0.2],["wood_pole2",0.5,0.5,1,270,0.2]]},{"id":"MW-0030","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["wood_pole2",-0.5,0.5,0,270,0.2],["wood_pole2",0.5,0.5,1,90,0.2],["wood_pole2",-0.5,0.5,2,270,0.2]]},{"id":"MW-0031","kind":"window","fit":{"w":2,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["woodiron_pole",-2,0.5,-1,270],["wood_pole2",-2,0.5,1,0,0.2],["wood_pole2",-1,0.5,1,270,0.2]]},{"id":"MG-0002","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"mage-house-wip-inspired-by-apudma","p":[["wood_pole2",-2.99,0.37,-3,360],["darkwood_pole",3,0,-3,360,0.2],["wood_beam",-2.01,-0.37,-2,360,0.2],["wood_pole",-1.01,-0.38,-1.5,360,0.2],["wood_beam",-2.01,-0.37,-1,360,0.2],["wood_beam",0,0,-1,180,0.2],["wood_pole",-1,0,-0.5,180,0.2],["wood_pole",1,0,-0.5,180],["wood_beam_45",-1,1,0,270,0.2]]},{"id":"MG-0003","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"plank"},"src":"mage-house-wip-inspired-by-apudma","p":[["wood_pole2",-2,-0.03,-4,90],["wood_beam",2.62,-0.02,-4,270],["wood_beam_45",4,-0.03,-4,0],["wood_beam_1",-3.86,0,-3.9,360,0.3],["wood_beam_1",-2.5,-0.03,-3,360],["wood_pole2",2.62,-0.02,-3,270],["wood_pole",-2,-0.03,-2.5,90],["wood_beam_45",-1,-0.03,0,360,0.3],["wood_beam_45",1,-0.03,0,180,0.3]]},{"id":"MG-0005","kind":"gable","fit":{"slope":45,"overhang":-0.25,"wall":"woodwall","wt":"plank"},"src":"mage-house-wip-inspired-by-apudma","p":[["darkwood_pole4",-1.62,0,-2.69,90,0.2],["darkwood_pole4",1.38,0,-2.69,90,0.2],["wood_beam",-1.62,1,-1.69,90,0.17],["wood_beam",-0.62,0,-1.69,0,0.2],["wood_beam",0.38,0,-1.69,0,0.2],["wood_beam",1.38,1,-1.69,270],["wood_beam",-0.62,0,0.31,0,0.2],["wood_beam",0.38,0,0.31,0,0.2]]},{"id":"ME-0028","kind":"eave","fit":{"slope":45,"overhang":1.25,"wall":"iron_wall_1x1","wt":"plank"},"src":"mage-house-wip-inspired-by-apudma","p":[["darkwood_beam",0.04,-1.21,-2.15,180,0.15],["wood_pole2",-1.04,0.39,-1.9,79],["wood_pole2",-1,0,-1.9,90],["darkwood_pole",-0.96,-1.21,-1.9,270,0.2],["darkwood_pole",1.04,-1.21,-1.9,270],["wood_pole",-1,0,-0.5,90],["wood_pole",-1.04,0.39,-0.4,79],["darkwood_pole",1.04,-1.21,0.1,270]]},{"id":"MW-0033","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gigantic-medieval-watchtower-3","p":[["wood_pole2",-1.43,0.39,-1,91,0.21],["wood_pole2",-1.43,0.39,1,91,0.21]]},{"id":"MC-0135","kind":"corner","fit":{"angle":90,"wt":"half-timber","wall":"wood_wall_half"},"src":"starter-community-home-2","p":[["wood_pole2",0,0,1,135,0.39],["wood_pole2",0,0,3,135]]},{"id":"ME-0032","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"stone_wall_2x1","wt":"stone"},"src":"upper-class-medieval-house-w-download","p":[["wood_beam",-1,0,0,180],["wood_beam",0,0,0,180]]},{"id":"ME-0033","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"hs_meadows_starterhouse","p":[["wood_beam_1",-1,-0.5,0,270,0.15]]},{"id":"ME-0034","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":null,"wt":"stone"},"src":"house-realm-of-rhovanion-hymir","p":[["darkwood_beam",-1,0,-0.25,180]]},{"id":"MW-0035","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",0.09,0.23,0.79,360,0.3]]},{"id":"MW-0036","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["woodiron_pole",0.74,0.49,-1,270,0.16],["wood_pole2",-0.5,0.5,0,180,0.2],["wood_pole2",0.74,0.49,1,270,0.21],["wood_pole2",-0.5,0.5,2,180,0.2]]},{"id":"MW-0038","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["wood_pole2",-0.5,0.5,1,90,0.2],["wood_pole2",0.5,0.5,1,270,0.2]]},{"id":"MC-0127","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_pole",0,0,0.5,135,0.39],["wood_pole2",0,0,2,315,0.39]]},{"id":"ME-0037","kind":"eave","fit":{"slope":45,"overhang":1,"wall":"iron_wall_1x1","wt":"plank"},"src":"mage-house-wip-inspired-by-apudma","p":[["darkwood_beam",-0.13,-1.1,-2.08,180],["darkwood_pole",0.87,-1.1,-1.83,270],["darkwood_pole",0.87,-1.1,0.17,270]]},{"id":"MC-0136","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_pole2",0,0,1,124,0.38],["wood_pole2",0,0,3,124,0.38]]},{"id":"MG-0006","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"ashwood_wall_cross_26","wt":"half-timber"},"src":"kj-klingur","p":[["wood_pole2",-1,0,-3,270,0.2],["wood_pole2",1,0,-3,270,0.2],["wood_pole2",-1,0,-1,180],["wood_pole2",1,0,-1,180]]},{"id":"ME-0038","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"stone_wall_1x1","wt":"stone"},"src":"gate-to-the-castle-4","p":[["wood_beam",-1,-1,0,270],["wood_beam",0,0,0,0]]},{"id":"MG-0007","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"ashwood_wall_cross_26","wt":"half-timber"},"src":"simple-storage-shack","p":[["wood_pole2",-1,0,-1,0,0.15],["wood_pole2",1,0,-1,0,0.15]]},{"id":"MD-0001","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"wood_wall_half"},"src":"hub-long-house-inn-2","p":[["wood_beam_26",-1,1,-1,90,0.2],["wood_stair",0,1,-1,360,0.17],["wood_beam_26",1,1,-1,90,0.2],["wood_pole2",-1,0,1,270,0.2],["wood_pole",-1,0,2.5,270,0.2]]},{"id":"MC-0137","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"large-farm","p":[["wood_pole2",0,0,1,45,0.39],["wood_pole2",0,0,2,45],["wood_pole2",0,0,3,45]]},{"id":"MG-0008","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"market-stall","p":[["wood_pole2",-1,0,-2,360,0.2],["wood_pole2",1,0,-2,360,0.2],["piece_walltorch",-0.1,0.38,-1.44,259],["wood_pole",-1,0,-0.5,281],["wood_pole",1,0,-0.5,281]]},{"id":"MG-0009","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_quarter","wt":"plank"},"src":"market-stall","p":[["wood_pole2",-1,0,-2,180,0.2],["wood_pole2",1,0,-2,180,0.2],["piece_walltorch",-0.14,0.35,-1.52,270],["wood_pole",-1,0,-0.5,101],["wood_pole",1,0,-0.5,101]]},{"id":"ME-0041","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"ashwood_quarterwall_1x1","wt":"half-timber"},"src":"ultimate-outpost","p":[["wood_beam_1",0,-0.5,0,90,0.15]]},{"id":"ME-0044","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"iron_wall_2x2","wt":"half-timber"},"src":"main-tower-of-the-castle-5","p":[["wood_beam_1",-1,-0.5,0,270],["wood_beam",0,0,0,0]]},{"id":"MW-0046","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"medieval-watchtower-2-1","p":[["woodiron_pole",-0.5,0.5,-1,0,0.15],["wood_pole2",-0.5,0.5,0,180,0.2],["wood_pole2",0.5,0.5,1,180,0.2],["wood_pole",-0.5,0.5,1.5,90,0.2]]},{"id":"MW-0701","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"medieval-watchtower-2-1","p":[["wood_pole",-0.5,0.5,-0.5,90,0.2],["woodiron_pole",-0.5,0.5,0,0],["wood_pole2",-0.5,0.5,1,90,0.2],["wood_pole2",0.5,0.5,1,270,0.2]]},{"id":"MF-0203","kind":"base","fit":{"w":2,"wt":"plank","wall":"wood_wall_quarter"},"src":"beautiful-cozy-cabin-valheim-vanilla-build","p":[["wood_floor_1x1",-0.5,0.5,0,0],["ashwood_floor_1x1",0.5,0.5,0,270]]},{"id":"MW-0047","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["wood_pole2",-0.5,0.5,0,180,0.2],["wood_beam",-1.5,0.5,1,180,0.2]]},{"id":"MW-0050","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"henry-s-forge-kcd2-vanilla","p":[["wood_beam",-1.61,0.54,1,180]]},{"id":"MA-0064","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["piece_walltorch",-1,0.35,2.09,270]]},{"id":"MA-0391","kind":"wallface","fit":{"h":4,"wt":"plank","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["piece_walltorch",-0.82,0.35,1.99,90]]},{"id":"MW-0051","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",0.03,-0.14,0.71,270,0.3]]},{"id":"MW-0052","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"the-tradesman-barndominium","p":[["ashwood_pole_2m",0.35,0.4,-1,180,0.2],["ashwood_beam_2m",-0.65,0.4,0,180,0.19],["ashwood_pole_2m",0.35,0.4,1,180,0.2]]},{"id":"MC-0138","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"large-farm","p":[["wood_pole2",0,0,0,45,0.39],["woodiron_pole",0,0,1,315,0.32],["wood_pole2",0,0,2,45,0.39],["wood_pole2",0,0,3,45,0.39]]},{"id":"MW-0053","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_1x1"},"src":"multiplayer-base","p":[["wood_pole2",-0.5,0.5,0,90,0.2],["wood_pole2",-0.5,0.5,1,90,0.2],["wood_pole2",0.5,0.5,1,90,0.2]]},{"id":"ME-0301","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"apudma-s-mage-house","p":[["wood_beam_1",-0.81,-0.54,-2,293,0.2],["wood_beam_1",-0.12,-0.08,-2,360],["wood_beam_1",0.12,-0.08,-2,360],["wood_beam_1",0.81,-0.54,-2,248,0.2]]},{"id":"MW-0058","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"starter-community-home","p":[["wood_beam",-1.98,0.01,-1,360],["wood_pole2",-0.98,0.01,-1,360,0.2],["wood_beam",-1.98,0.01,0,360,0.2],["wood_beam",0.02,0.02,2,360,0.2],["wood_pole",-0.98,0.01,2.5,270,0.2]]},{"id":"MC-0139","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_pole2",0,0,1,315,0.39],["wood_pole",0,0,2.5,315,0.39]]},{"id":"MG-0010","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"stone-base"},"src":"open-longboat-dock","p":[["wood_pole2",3,0,-4,90,0.2],["wood_beam_45",-4,0,-3,360,0.3],["wood_beam",-2,0,-3,360,0.2],["wood_pole",3,0,-2.5,90,0.2],["wood_beam_45",-1,0,0,360,0.3],["wood_beam_45",1,0,0,180,0.3]]},{"id":"MG-0011","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"stone-base"},"src":"open-longboat-dock","p":[["wood_pole2",-3,0,-4,180,0.2],["wood_beam_45",-4,0,-3,360,0.3],["wood_pole2",-3,0,-3,180,0.2],["wood_beam",-2,0,-3,180,0.2],["wood_beam",0,0,-3,180,0.2],["wood_beam",2,0,-3,180,0.2],["wood_beam_45",-1,0,0,360,0.3],["wood_beam_45",1,0,0,180,0.3]]},{"id":"MG-0012","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"cosy-home","p":[["wood_log_45",-1,0,-4,360,0.18],["wood_log_45",1.85,0.06,-3.2,360,0.3],["wood_log_45",-2.17,0.01,-3.18,360,0.3],["wood_log_45",-2,0,-3,180,0.3],["wood_log_45",0,0,-3,180],["wood_log_45",2,-0.08,-3,180,0.3],["wood_log_45",-3,0,-2,360,0.18],["wood_log_45",-1,0,-2,180,0.18],["wood_log_45",1,0,-2,360,0.18],["wood_log_45",3,0,-2,180,0.18],["wood_log_45",0,-0.09,-1,180],["wood_log_45",0,0,-1,360],["wood_log_45",-1,0,0,360],["wood_log_45",1,0,0,180]]},{"id":"MG-0013","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"cosy-home","p":[["wood_beam",3,0,-4,360,0.2],["wood_beam",4,0,-4,360],["wood_log_45",-2,1,-2,270,0.3],["wood_log_45",-1,0,-2,360,0.3],["wood_log_45",1,0,-2,180,0.3],["wood_log_45",2,1,-2,270,0.3],["wood_pole_log_4",-2,0,-1,270,0.3],["wood_pole_log_4",2,0,-1,270,0.3],["piece_banner01",0.03,-0.3,-0.43,270],["wood_log_45",-0.98,0.2,0,11,0.3],["wood_log_45",1,0,0,180,0.3]]},{"id":"MG-0014","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"darkwood_decowall","wt":"half-timber"},"src":"cosy-home","p":[["wood_wall_log_4x0.5",-3,0,-3.75,360,0.3],["wood_wall_log_4x0.5",-1,0,-3.75,360,0.3],["wood_wall_log_4x0.5",3,0,-3.75,360,0.3],["piece_walltorch",2.08,-0.36,-3.17,90],["piece_walltorch",-2.01,-0.36,-3.09,90],["wood_log_45",-4,0,-3,360,0.18],["wood_log_45",4,0,-3,180,0.17],["wood_pole_log_4",-1,0,-2,270,0.2],["wood_pole_log_4",1,0,-2,270,0.2],["wood_log_45",-2,0,-1,360,0.18],["wood_log_45",2,0,-1,180,0.18],["wood_log_45",-1,0,0,360,0.5],["wood_log_45",1,0,0,180,0.5]]},{"id":"ME-0067","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"woodwall","wt":"plank"},"src":"cute-little-blacksmith-vbuild","p":[["wood_beam",-1,1,-2,90],["wood_beam",-1,-1,-2,90],["wood_pole2",-1,0,-1,90]]},{"id":"MC-0140","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"hetjurheim-community-house","p":[["wood_pole2",0,0,1,225,0.39],["wood_pole2",0,0,2,225,0.39]]},{"id":"ME-0068","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"core-wood-mansion","p":[["wood_pole2",0,-0.73,-0.99,0,0.18],["wood_beam",-1,0,0,360],["wood_beam_1",0,-0.5,0,270,0.2],["wood_beam",1,0,0,360],["wood_beam",-1,-0.73,0.01,0,0.18],["wood_beam",1,-0.73,0.01,0,0.18]]},{"id":"ME-0069","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"core-wood-mansion","p":[["wood_beam",-1,0,0,0],["wood_beam",1,0,0,0],["wood_beam",-1,-0.73,0.01,0,0.18],["wood_beam",1,-0.73,0.01,0,0.18]]},{"id":"MG-0015","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole",-3,0,-1.5,180,0.2],["wood_pole",3,0,-1.5,180,0.2],["wood_beam_1",-0.5,0,-1,180,0.2],["wood_beam_1",0.5,0,-1,180,0.2],["wood_pole",-1,0,-0.5,180],["wood_pole",1,0,-0.5,180],["wood_pole2",0,0,0,180]]},{"id":"MI-0001","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_beam",-0.71,0.71,1,45,0.2],["wood_beam",0.71,0.71,1,315,0.2],["wood_pole2",0,0,2,315,0.39],["wood_beam",-0.71,0.71,3,225,0.2],["wood_pole2",0,0,3,315,0.39],["wood_beam",0.71,0.71,3,315,0.2]]},{"id":"MD-0004","kind":"door","fit":{"w":2,"h":3,"rise":0.25,"wt":"other","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_beam",-2,0,0,0,0.2],["wood_beam",0,0,0,0],["wood_beam",2,0,0,0,0.2],["wood_beam",-2,0,2,0,0.2],["wood_beam",2,0,2,0,0.2],["wood_beam",-2,0,4,0,0.2],["wood_beam",0,0,4,0,0.2],["wood_beam",2,0,4,0,0.2]]},{"id":"MG-0016","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_beam",-4,0,-4,180,0.2],["wood_beam",-2,0,-4,180,0.2],["wood_beam",0,0,-4,180,0.2],["wood_beam",2,0,-4,180,0.2],["wood_beam",4,0,-4,180,0.2],["piece_banner02",1.9,-0.3,-2.36,270],["piece_banner02",-2.08,-0.3,-2.33,270],["wood_beam",-2,0,-2,0,0.2],["wood_beam",0,0,-2,0,0.2],["wood_beam",2,0,-2,0,0.2]]},{"id":"MG-0017","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_beam",-4,0,-4,360,0.2],["wood_beam",-2,0,-4,360,0.2],["wood_beam",2,0,-4,360,0.2],["wood_beam",4,0,-4,360,0.2],["wood_beam",-2,0,-2,360,0.2],["wood_beam",0,0,-2,360,0.2],["wood_beam",2,0,-2,360,0.2]]},{"id":"MD-0005","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_wall_log_4x0.5",-0.74,0,-0.25,360],["wood_floor",-1.74,1,0,270],["wood_floor",0.26,1,0,270],["wood_floor",2.26,1,0,270],["wood_pole_log_4",1.26,0,2,90,0.2]]},{"id":"MG-0018","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-2,0,-1,180,0.2],["wood_pole2",2,0,-1,180,0.2],["wood_beam",-1,1,0,90,0.17],["wood_beam",1,1,0,90,0.16]]},{"id":"MG-0019","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1,0,-4,360,0.2],["wood_pole2",-1,0,-2,360,0.2],["wood_beam",0,0,-2,180,0.2],["wood_pole2",1,0,-2,360,0.2],["wood_pole",-1,0,-0.5,360],["wood_pole",1,0,-0.5,360]]},{"id":"MG-0020","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-3,0,-4,90,0.2],["wood_pole2",3,0,-4,90,0.2],["wood_beam_45",-4,0,-3,0,0.21],["wood_pole2",-3,0,-3,90,0.2],["wood_pole2",-1,1,-3,0],["wood_pole2",1,1,-3,0],["wood_pole2",3,0,-3,90,0.2],["wood_beam_45",4,0,-3,180,0.21],["wood_beam_1",-1,0.5,-2,90,0.15],["wood_beam_1",1,0.5,-2,90],["wood_beam_1",0,0.5,-1,90],["wood_beam_1",-1,0.5,0,90],["wood_beam_1",1,0.5,0,90]]},{"id":"MG-0021","kind":"gable","fit":{"slope":45,"overhang":0,"wall":null,"wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-3,0,-3,0],["wood_pole2",3,0,-3,0],["wood_beam",-3,1,-2,270],["wood_beam",3,1,-2,270],["wood_beam",0,0,0,180]]},{"id":"MG-0022","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_beam",-2,0,-4,180],["wood_beam",0,0,-4,180],["wood_beam",2,0,-4,180],["wood_pole2",-3,0,-3,180],["wood_pole2",3,0,-3,180],["wood_beam",-3,1,-2,90],["wood_beam",3,1,-2,90],["wood_beam",0,0,0,0]]},{"id":"MI-0004","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"wood_wall_quarter"},"src":"houses-homes-and-tinies","p":[["wood_pole2",0,0,1,135,0.39],["wood_pole",0,0,2.5,135,0.39],["wood_beam",-0.71,0.71,3,45,0.2],["wood_beam",0.71,0.71,3,315,0.2]]},{"id":"MD-0006","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["stone_floor_2x2",-2,1,-0.5,180],["stone_floor_2x2",0,1,-0.5,180],["stone_floor_2x2",2,1,-0.5,180],["piece_banner07",2.03,-0.3,3.59,270],["piece_banner07",-2.01,-0.3,3.62,270]]},{"id":"MG-0023","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["darkwood_beam",-4,0,-2.25,180,0.2],["darkwood_beam",-2,0,-2.25,180,0.2],["darkwood_beam",0,0,-2.25,180,0.2],["darkwood_beam",2,0,-2.25,180,0.2],["darkwood_beam",4,0,-2.25,180,0.2],["darkwood_pole",-2,0,-1,180,0.3],["darkwood_pole",-1,0,-1,180,0.2],["darkwood_pole",1,0,-1,180,0.2],["darkwood_pole",2,0,-1,180,0.3],["darkwood_pole",-1.88,-0.14,-0.98,180,0.21],["darkwood_beam",-1,0,-0.25,180],["darkwood_beam",1,0,-0.25,180]]},{"id":"MG-0024","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["darkwood_beam",-4,0,-2.25,180,0.2],["darkwood_beam4x4",-1,0,-2.25,180,0.2],["darkwood_beam4x4",3,0,-2.25,180,0.2],["wood_beam_26",-2,0,-1,0],["darkwood_pole",-1,0,-1,270],["darkwood_pole",1,0,-1,270],["wood_beam_26",2,0,-1,180],["darkwood_pole",0,0,-0.5,270],["darkwood_beam4x4",0,0,-0.25,180]]},{"id":"MD-0007","kind":"door","fit":{"w":2,"h":3,"rise":1.5,"wt":"other","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_floor",-2,1,0,0],["wood_floor",0,1,0,0],["wood_floor",2,1,0,0],["wood_roof_45",-2,1,4,0,0.18],["wood_roof_45",0,1,4,0,0.18],["wood_roof_45",2,1,4,0,0.18]]},{"id":"MG-0025","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1,0,-4,180],["wood_pole2",1,0,-4,180],["wood_pole2",-1,0,-3,180,0.2],["wood_beam",0,0,-3,180,0.2],["wood_pole2",1,0,-3,180,0.2],["wood_pole2",-1,0,-1,180,0.2],["wood_pole2",1,0,-1,180,0.2]]},{"id":"MG-0026","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_beam",0,0,-4,360,0.2],["wood_pole2",-1,0,-3,360,0.2],["wood_beam",0,0,-3,360],["wood_pole2",1,0,-3,360,0.2],["wood_beam",0,0,-2,360,0.2]]},{"id":"MG-0027","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1,0,-3,360,0.2],["wood_pole2",1,0,-3,360,0.2],["wood_pole2",-1,0,-1,180,0.2],["wood_beam",0,0,-1,360,0.2],["wood_pole2",1,0,-1,180,0.2]]},{"id":"MG-0028","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_beam_1",-2.5,0,-3,360,0.2],["wood_beam_1",-1.5,0,-3,360,0.2],["wood_beam_1",-0.5,0,-3,360,0.2],["wood_beam_1",0.5,0,-3,360,0.2],["wood_beam_1",1.5,0,-3,360,0.2],["wood_beam_1",2.5,0,-3,360,0.2],["wood_pole",-3,0,-2.5,360],["wood_pole",-2,0,-2.5,360],["wood_pole",-1,0,-2.5,360],["wood_pole",0,0,-2.5,360],["wood_pole",1,0,-2.5,360],["wood_pole",2,0,-2.5,360],["wood_pole",3,0,-2.5,180],["wood_beam_1",-2.5,0,-2,360],["wood_beam_1",-1.5,0,-2,360],["wood_beam_1",-0.5,0,-2,360,0.2],["wood_beam_1",0.5,0,-2,360,0.2],["wood_beam_1",1.5,0,-2,360],["wood_beam_1",2.5,0,-2,360],["piece_banner06",-1.57,-0.3,-1.13,270],["piece_banner06",1.65,-0.3,-1.09,270],["piece_walltorch",-0.04,-0.36,-1.01,270]]},{"id":"MG-0029","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-3,0,-3,270,0.2],["wood_pole2",3,0,-3,270,0.2],["piece_banner01",-1.83,0.3,-2.1,90],["piece_banner01",1.95,0.3,-2.09,90],["piece_banner01",0.05,0.3,-0.13,90]]},{"id":"MD-0009","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_stair",0,1,-1,0,0.17],["wood_pole",-1,0,0.5,90,0.2],["wood_pole",1,0,0.5,90,0.2],["wood_beam_1",-1.5,0,1,180,0.2],["wood_beam_1",1.5,0,1,180,0.2],["wood_beam_1",-1.5,0,2,180],["wood_pole2",-1,0,2,270],["wood_pole2",1,0,2,270],["wood_beam_1",1.5,0,2,180],["wood_pole2",2,0,2,270,0.2],["wood_pole",-2,0,2.5,180,0.2],["wood_beam_1",-1.5,0,3,180],["wood_beam",0,0,3,180],["wood_beam_1",1.5,0,3,180]]},{"id":"MG-0030","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-3,0,-3,180,0.2],["wood_beam",-2,0,-3,180,0.2],["wood_beam",0,0,-3,180,0.2],["wood_beam",2,0,-3,180,0.2],["wood_pole2",3,0,-3,180,0.2],["wood_beam",-2,0,-2,180,0.2],["wood_beam",0,0,-2,180,0.2],["wood_beam",2,0,-2,180,0.2],["wood_beam",0,0,-1,0,0.2],["wood_pole",-1,0,-0.5,0],["wood_pole",1,0,-0.5,0]]},{"id":"MC-0148","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-0.27,0.29,0.99,135],["wood_pole2",0,0,1,135,0.39],["wood_pole",-0.27,0.29,2.49,315],["wood_pole",0,0,2.5,315,0.39]]},{"id":"MG-0031","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-3.01,-0.4,-4,180,0.2],["wood_pole2",-3,0,-4,180],["wood_pole2",3,0,-4,180],["wood_beam_1",-3.01,0.1,-3,90],["wood_beam",-2.01,0.6,-3,180],["wood_beam",-2.01,-0.4,-3,180,0.2],["wood_beam_1",-1.01,0.1,-3,90,0.15],["wood_pole2",-1.01,-0.4,-3,180,0.2],["wood_beam_1",0.99,0.1,-3,90],["wood_pole2",0.99,-0.4,-3,180,0.2],["wood_beam",1.99,0.6,-3,180],["wood_beam_1",2.99,0.1,-3,90,0.15],["wood_pole",-3.01,-0.4,-2.5,180],["wood_pole",-3,0,-2.5,180],["wood_pole",-1,0,-2.5,180],["wood_pole",1,0,-2.5,180],["wood_pole",3,0,-2.5,180],["wood_beam",-2.01,-0.4,-2,180],["wood_beam_45",-2,0,-1,0],["wood_pole2",-1.01,-0.4,-1,0],["wood_pole2",-1,0,-1,0],["wood_pole2",0.99,-0.4,-1,0],["wood_pole2",1,0,-1,0],["wood_beam_45",2,0,-1,180]]},{"id":"MD-0010","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_stair",0,1,-1,0,0.17],["wood_beam",-2,0,0,180,0.2],["wood_beam",2,0,0,180,0.2],["wood_beam",-2,0,1,180,0.3],["wood_beam",2,0,1,180,0.3],["wood_beam",-2,0,2,180,0.2],["wood_beam",2,0,2,180,0.2]]},{"id":"MG-0032","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_beam_1",-3,0.5,-4,270,0.15],["wood_beam_1",3,0.5,-4,270],["wood_pole2",-3,0,-3,0,0.2],["wood_pole2",-3,1,-3,180],["wood_pole2",3,0,-3,0,0.2],["wood_pole2",3,1,-3,180],["wood_beam_1",-3,0.5,-2,270,0.15],["wood_beam_1",3,0.5,-2,270],["wood_beam_45",-2,1,-1,0],["wood_beam_45",2,1,-1,180],["wood_beam_1",-1,0.5,0,270],["wood_beam_1",1,0.5,0,270],["wood_beam_1",0,0.5,0.5,270]]},{"id":"MG-0033","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_beam",-2,1,-4,90],["wood_pole2",-1,0,-4,0,0.2],["wood_pole2",-4,0,-3,90,0.2],["wood_pole2",-1,0,-3,270,0.2],["wood_beam",0,0,-3,0,0.2],["wood_pole2",1,0,-3,270,0.2],["wood_pole2",4,0,-3,90,0.2],["wood_pole2",-1,0,-1,270],["wood_pole2",1,0,-1,270]]},{"id":"MG-0034","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_beam_1",-3,0.5,-4,90,0.15],["wood_beam_1",3,0.5,-4,90,0.15],["wood_pole2",-3,0,-3,180,0.2],["wood_pole2",-3,1,-3,90],["wood_pole2",3,0,-3,180,0.2],["wood_pole2",3,1,-3,90],["wood_beam_1",-3,0.5,-2,90,0.15],["wood_beam_1",3,0.5,-2,90,0.15],["wood_beam_45",-2,1,-1,0],["wood_beam_45",2,1,-1,180],["wood_beam_1",0,0.5,0.5,90]]},{"id":"MG-0035","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-3,0,-4,180,0.2],["wood_pole2",3,0,-4,180,0.2],["wood_beam_45",-4.03,0.39,-3.01,0],["wood_beam_45",-2.03,0.39,-3.01,180],["wood_beam_45",1.97,0.39,-3.01,0],["wood_beam_45",3.97,0.39,-3.01,180],["wood_beam_45",-4,0,-3,0,0.21],["wood_beam_45",4,0,-3,180,0.21],["wood_pole",-3,0,-2.5,180,0.2],["wood_pole",3,0,-2.5,180,0.2],["wood_beam_45",-2.03,0.39,-1.01,0],["wood_beam_45",1.97,0.39,-1.01,180]]},{"id":"MW-0059","kind":"window","fit":{"w":2,"h":1,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["crystal_wall_1x1",-1.37,-0.09,0,1],["crystal_wall_1x1",-0.37,-0.1,0,1],["crystal_wall_1x1",0.63,-0.11,0,1],["crystal_wall_1x1",1.63,-0.12,0,1]]},{"id":"MW-0062","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["crystal_wall_1x1",-0.37,-0.1,0,1],["crystal_wall_1x1",0.63,-0.11,0,1],["crystal_wall_1x1",-0.37,-0.1,1,1],["crystal_wall_1x1",0.63,-0.11,1,1]]},{"id":"MW-0064","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_beam",-0.19,0.11,0,360,0.2],["wood_pole2",-1.19,0.1,1,360,0.2],["wood_beam",-0.19,0.11,1,360],["wood_pole2",0.81,0.11,1,360,0.2],["wood_beam",-0.19,0.11,2,360,0.2]]},{"id":"ME-0077","kind":"eave","fit":{"slope":26,"overhang":1.25,"wall":"ashwood_wall_2x2","wt":"half-timber"},"src":"food-stall","p":[["wood_pole2",-1,0,-1,90],["wood_beam",-1,-1,0,270]]},{"id":"MC-0151","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"ashwood_halfwall_1x2"},"src":"hs_ashlands_bakedgoodsstall","p":[["ashwood_pole_1m",0,-0.02,1,45,0.35],["ashwood_pole_2m",0,-0.02,2,45,0.39]]},{"id":"MW-0074","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"wood_wall_log"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["wood_pole2",1.06,0.01,-1,90,0.2],["wood_wall_log_4x0.5",-0.94,0.01,0.25,360,0.5],["wood_pole",1.06,0.01,0.5,180],["wood_wall_log_4x0.5",-0.94,0.01,0.75,360,0.5],["wood_wall_log_4x0.5",-0.94,0.01,1.25,360,0.5],["wood_pole",1.06,0.01,1.5,360],["wood_wall_log_4x0.5",-0.94,0.01,1.75,360,0.5]]},{"id":"MG-0301","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"stone_wall_2x1","wt":"half-timber"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["wood_pole2",-2,1,-2,270,0.2],["wood_pole2",-1.74,1,-2,90],["wood_pole2",0,0,-2,360,0.3],["wood_pole",-1.37,-0.01,-1.12,180,0.3],["wood_beam_26",-2,0,-1,360,0.27],["wood_pole2",-1,0,-1,180,0.2],["wood_pole2",-0.49,0.04,-1,180],["wood_pole2",0.5,0.03,-1,180],["wood_pole2",1,0,-1,180,0.2],["wood_pole2",0,0,-0.5,360],["wood_pole2",-1.74,1,0,90],["woodiron_pole",0,0,0,180]]},{"id":"MG-0036","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["wood_beam_26",-4,0,-2,360],["wood_pole2",-3,0,-2,180,0.2],["wood_beam",-1,1,-2,270],["wood_beam",1,1,-2,270],["wood_pole2",3,0,-2,180,0.2],["wood_beam_26",4,0,-2,180],["woodiron_beam",-3,0,-1.5,180,0.3],["woodiron_beam",-1,0,-1.5,180,0.3],["woodiron_beam",0,1,-1.5,270,0.15],["woodiron_beam",1,0,-1.5,180,0.3],["woodiron_beam",3,0,-1.5,180,0.3],["wood_pole2",-1,0,-1,180,0.2],["wood_pole2",1,0,-1,180,0.2]]},{"id":"MG-0037","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["wood_pole2",-3,0,-2,360,0.2],["wood_beam",-1,1,-2,270],["wood_pole2",-1,0,-1,360,0.2],["wood_pole2",1,0,-1,90,0.2],["wood_pole2",0,0,-0.5,360],["wood_pole2",-0.54,0,-0.4,360],["wood_pole2",0.5,0,-0.4,360]]},{"id":"MG-0039","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["wood_beam",-4,0,-2,0,0.2],["wood_beam",-2,0,-2,0,0.2],["wood_beam",0,0,-2,0,0.2],["wood_beam",2,0,-2,0,0.2],["wood_beam",4,0,-2,0,0.2],["wood_beam",0,1,0.5,90]]},{"id":"MG-0040","kind":"gable","fit":{"slope":26,"overhang":-0.25,"wall":"stone_wall_2x1","wt":"half-timber"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["wood_beam_26",-2,0.74,-2,180],["wood_beam",-1,-0.26,-2,90,0.3],["wood_pole2",3,-0.26,-2,90,0.3],["wood_pole2",3,0,-2,180,0.2],["wood_pole2",3.26,-0.26,-2,180,0.2],["wood_beam",-3,-0.26,-1,90],["wood_beam_26",-2,-0.26,-1,360,0.3]]},{"id":"ME-0303","kind":"eave","fit":{"slope":26,"overhang":0.5,"wall":"stone_wall_2x1","wt":"half-timber"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["wood_pole2",-1,-0.74,-2,0,0.2],["wood_pole2",0,1,-2,90,0.3],["wood_pole2",1,-0.74,-2,0,0.2],["wood_pole",-0.01,-0.37,-1.12,270,0.3],["wood_pole2",0,0,-1,270,0.2],["wood_pole2",0.04,0.51,-1,270],["wood_pole2",0,1,-0.5,90],["wood_beam",-1,0,0,360],["wood_pole2",-1,-0.74,0,0,0.2],["woodiron_pole",0,1,0,270],["wood_pole2",1,-0.74,0,0,0.2]]},{"id":"ME-0084","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"ashwood_halfwall_1x2","wt":"half-timber"},"src":"a-true-viking-house-vbuild","p":[["wood_beam_1",-1,-0.5,0,90,0.15],["wood_beam_1",1,-0.5,0,90,0.15]]},{"id":"MG-0041","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"small-store","p":[["wood_beam_26",-4,0,-2,0],["wood_pole2",-3,0,-2,270,0.2],["wood_pole2",3,0,-2,0,0.2],["wood_beam",-2,0,-1,180,0.2],["wood_beam",0,0,-1,180,0.2],["wood_beam",2,0,-1,180,0.2]]},{"id":"MG-0042","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"small-store","p":[["wood_pole2",-1,0,-2,180,0.2],["wood_beam",0,0,-2,360,0.2],["wood_pole2",1,0,-2,180,0.2],["wood_pole",-1,0,-0.5,180],["wood_pole",1,0,-0.5,180],["wood_beam",0,0,0,180]]},{"id":"MG-0043","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"small-store","p":[["wood_pole2",-1,0,-1,360,0.2],["wood_beam",0,0,-1,180,0.2],["wood_pole2",1,0,-1,360,0.2],["wood_beam",0,0,0,360]]},{"id":"MW-0080","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ultimate-outpost","p":[["stone_arch",-1.5,0,0.51,360]]},{"id":"MW-0081","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ultimate-outpost","p":[["stone_arch",-1.5,0,0.51,180]]},{"id":"MC-0153","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"market-stall","p":[["wood_pole2",0,0,1,45,0.39],["wood_pole",0,0,2.5,124,0.38]]},{"id":"MW-0082","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"mage-house-wip-inspired-by-apudma","p":[["crystal_wall_1x1",-1.49,0.11,0,181],["crystal_wall_1x1",-0.49,0.1,0,1],["crystal_wall_1x1",0.51,0.09,0,1],["wood_pole2",1.02,0.1,0,79,0.22],["crystal_wall_1x1",-1.49,0.11,1,181],["crystal_wall_1x1",-0.48,0.11,1,181],["crystal_wall_1x1",0.52,0.11,1,181],["wood_pole2",1.02,0.1,2,79,0.24]]},{"id":"MW-0083","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"mage-house-wip-inspired-by-apudma","p":[["wood_wall_quarter",-1.47,-0.11,2,337],["wood_beam_1",-1.43,-0.06,2,157],["wood_beam",-0.04,0.14,2,180,0.2],["wood_wall_quarter",1.42,-0.04,2,22],["wood_beam_1",1.42,-0.04,2,202]]},{"id":"MW-0084","kind":"window","fit":{"w":1,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"mage-house-wip-inspired-by-apudma","p":[["wood_wall_quarter",-1.1,-0.19,-1.05,337],["crystal_wall_1x1",-1.1,-0.19,-0.05,157],["crystal_wall_1x1",-0.13,0.03,-0.05,360],["crystal_wall_1x1",-1.09,-0.17,0.95,157],["crystal_wall_1x1",-0.13,0.03,0.95,180],["wood_wall_quarter",-1.1,-0.19,1.95,337],["wood_beam_1",-1.1,-0.19,2.95,337]]},{"id":"MW-0087","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"mage-house-wip-inspired-by-apudma","p":[["wood_beam",-1.51,0.52,0,1],["wood_pole2",-0.51,0.51,0,1,0.2],["wood_beam",-1.51,0.52,1,1],["wood_beam",-1.51,0.52,2,1],["wood_pole2",-0.51,0.51,2,1,0.2]]},{"id":"MW-0088","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"mage-house-wip-inspired-by-apudma","p":[["crystal_wall_1x1",-1.61,0.06,0,180],["crystal_wall_1x1",-0.61,0.07,0,360],["crystal_wall_1x1",0.39,0.08,0,360],["wood_pole2",0.91,0.1,0,78,0.22],["crystal_wall_1x1",-1.61,0.06,1,180],["crystal_wall_1x1",-0.59,0.08,1,180],["crystal_wall_1x1",0.41,0.09,1,180],["wood_pole2",0.91,0.1,2,78,0.24]]},{"id":"MW-0089","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"mage-house-wip-inspired-by-apudma","p":[["wood_wall_quarter",-1.57,-0.15,-1,337],["crystal_wall_1x1",-1.57,-0.15,0,157],["crystal_wall_1x1",-0.59,0.07,0,360],["crystal_wall_1x1",0.39,0.06,0,180],["crystal_wall_1x1",1.39,0.07,0,360],["crystal_wall_1x1",-1.57,-0.15,1,157],["crystal_wall_1x1",-0.61,0.05,1,180],["crystal_wall_1x1",0.39,0.06,1,180],["crystal_wall_1x1",1.41,0.08,1,180],["wood_wall_quarter",-1.55,-0.13,2,337],["wood_beam_1",-1.57,-0.15,3,337]]},{"id":"MW-0090","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"mage-house-wip-inspired-by-apudma","p":[["wood_wall_quarter",-1.36,-0.1,2,338],["wood_beam_1",-1.32,-0.06,2,158],["wood_beam",0.07,0.12,2,181,0.2],["wood_beam_1",1.53,-0.08,2,203],["wood_wall_quarter",1.53,-0.08,2,23]]},{"id":"MW-0091","kind":"window","fit":{"w":1,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"mage-house-wip-inspired-by-apudma","p":[["wood_wall_quarter",-0.99,-0.1,-1.05,338],["crystal_wall_1x1",-0.99,-0.1,-0.05,158],["crystal_wall_1x1",-0.02,0.1,-0.05,1],["crystal_wall_1x1",-0.98,-0.08,0.95,158],["crystal_wall_1x1",-0.02,0.1,0.95,181],["wood_wall_quarter",-0.99,-0.1,1.95,338],["wood_beam_1",-0.99,-0.1,2.95,338]]},{"id":"MG-0044","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"the-tradesman-barndominium","p":[["ashwood_wall_beam_26",-4,0,-2,0],["ashwood_wall_beam_26",4,0,-2,180],["ashwood_wall_beam_26",-2,0,-1,0,0.34],["ashwood_wall_beam_26",2,0,-1,180,0.34]]},{"id":"MG-0045","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"hetjurheim-community-house","p":[["wood_pole2",-1,0,-2,0,0.2],["wood_pole2",1,0,-2,0,0.2],["wood_pole",-1,0,-0.5,0],["wood_pole",1,0,-0.5,0]]},{"id":"MG-0046","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"hs_blackforest_mister_basestart_simple","p":[["wood_beam_45",-4,0,-3,0],["wood_pole2",-3,0,-3,180],["wood_pole2",-1,0,-3,180,0.2],["wood_pole2",1,0,-3,180,0.2],["wood_pole2",3,0,-3,180],["wood_beam_45",4,0,-3,180],["wood_beam_45",-2,0,-1,0,0.21],["wood_pole2",-1,0,-1,180],["wood_pole2",1,0,-1,180],["wood_beam_45",2,0,-1,180,0.21]]},{"id":"MG-0049","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"hs_meadows_starterhouse","p":[["wood_beam",-1,0,-4,180,0.2],["wood_beam",1,0,-4,180,0.2],["wood_pole_log",-2,0,-3,23,0.26],["wood_pole_log",2,0,-3,23,0.26],["wood_beam",-3,0,-2,90],["wood_beam_1",-2.65,0.23,-2,180],["wood_beam_1",-2.5,0,-2,180],["wood_beam",-1.15,0.23,-2,180],["wood_beam_26",-1.08,0.62,-2,203,0.15],["wood_beam_26",1.08,0.62,-2,338,0.15],["wood_beam",1.15,0.23,-2,180],["wood_beam_1",2.65,0.23,-2,180],["wood_beam_45",-2,1,-1,0],["wood_pole2",-0.15,0.23,-1,180],["wood_pole2",0.15,0.23,-1,180],["wood_beam_45",2,1,-1,180],["wood_beam_45",-1,1,0,0],["wood_beam_45",1,1,0,180]]},{"id":"MG-0050","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"hs_meadows_starterhouse","p":[["wood_beam",-2,0.74,-4,270],["wood_beam",2.23,0.89,-4,90],["wood_pole",2.23,-0.11,-3.5,90],["wood_beam",2.23,0.89,-3,90],["wood_beam",-3,1,-2,270],["wood_beam_1",-2.5,0,-2,0],["wood_beam",-2,1,-2,270],["wood_beam_1",2.5,0,-2,0]]},{"id":"ME-0094","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"hs_meadows_starterhouse","p":[["wood_beam_1",-0.35,-0.77,-2,180],["wood_beam_26",0.92,-0.38,-1,203,0.15],["wood_beam_1",-0.5,0,0,0],["wood_beam_1",0,-0.5,0,90,0.15],["wood_beam",1,0,0,0]]},{"id":"ME-0095","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"hs_meadows_starterhouse","p":[["wood_beam",-0.85,-0.77,-2,0],["wood_beam",0.85,-0.77,-2,0],["wood_pole",-0.15,-0.77,-1.5,0],["wood_pole",0.15,-0.77,-1.5,0],["wood_beam_26",-1.08,-0.38,-1,203,0.15],["wood_beam_26",1.08,-0.38,-1,338,0.15],["wood_beam",-1,0,0,0],["wood_beam",1,0,0,0]]},{"id":"ME-0096","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"hs_meadows_starterhouse","p":[["wood_beam_26",0.92,-0.38,-1,203,0.15],["wood_beam_1",-0.5,0,0,0],["wood_beam_1",0,-0.5,0,270,0.15],["wood_beam",1,0,0,0]]},{"id":"ME-0097","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"hs_meadows_starterhouse","p":[["wood_beam",-0.11,-0.77,-2,0],["wood_pole",0.89,-0.77,-1.5,0],["wood_beam_26",-0.08,-0.38,-1,203,0.15],["wood_beam",-1,0,0,180],["wood_beam_1",-1,-0.5,0,90],["wood_beam",0,0,0,180],["wood_beam_1",1,-0.5,0,90,0.15]]},{"id":"ME-0098","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"hs_meadows_starterhouse","p":[["wood_beam",0.89,-0.77,-2,0],["wood_beam_26",0.92,-0.38,-1,203,0.15],["wood_beam_1",-0.23,-0.35,0,90],["wood_beam",0,0,0,180],["wood_beam_1",0,-0.5,0,90],["wood_beam",1,0,0,180]]},{"id":"MG-0051","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"hs_swamp_babe_estacao_de_trabalho","p":[["wood_beam",1,1,-2,270],["wood_beam_1",-3,0.5,-1,270],["wood_beam",-2,0,-1,180],["wood_beam_1",-1,0.5,-1,270],["wood_beam_1",1,0.5,-1,270],["wood_beam",2,0,-1,180],["wood_beam",3,1,-1,90]]},{"id":"MG-0052","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"hs_swamp_babe_estacao_de_trabalho","p":[["wood_beam",1,1,-2,90],["wood_beam_1",-3.5,0,-1,180],["wood_beam_1",-3,0.5,-1,90],["wood_beam",-2,0,-1,180],["wood_beam_1",-1,0.5,-1,90],["wood_beam_1",1,0.5,-1,90],["wood_beam",2,0,-1,180],["wood_beam",3,1,-1,270]]},{"id":"MG-0053","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"iron_wall_1x1","wt":"stone"},"src":"house-realm-of-rhovanion-hymir","p":[["wood_pole2",-2,0,-2,180,0.2],["wood_pole2",2,0,-2,180,0.2],["wood_beam",-3,0,-1,360,0.2],["wood_beam_26",-2,1,-1,270,0.2],["wood_beam",-1,0,-1,360,0.2],["wood_beam",1,0,-1,360,0.2],["wood_beam_26",2,1,-1,270,0.2],["wood_beam",3,0,-1,360,0.2],["wood_pole",-1,0,-0.5,360],["wood_pole",1,0,-0.5,360]]},{"id":"MG-0054","kind":"gable","fit":{"slope":45,"overhang":0,"wall":null,"wt":"half-timber"},"src":"house-troll-hunter-s-lodge","p":[["wood_beam_45",-4,0,-3,360],["wood_beam_45",4,0,-3,180],["wood_beam_45",-2,0,-1,360],["wood_beam_45",2,0,-1,180],["wood_beam_45",-1,0,0,0],["wood_beam_45",1,0,0,180]]},{"id":"MW-0094","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"hub-dawn-hill-retreat","p":[["wood_beam_26",-0.49,0.53,-1,180,0.23],["wood_beam_26",0.51,0.53,-1,180,0.22],["wood_beam_26",-1.49,0.52,0,180,0.22],["darkwood_arch",-0.48,-0.47,0,22,0.27]]},{"id":"ME-0103","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"apudma-s-mage-house","p":[["wood_pole",-1,-1,-0.5,0,0.17],["darkwood_beam",-1,0,-0.25,0],["darkwood_beam",0.03,-0.03,-0.25,180]]},{"id":"MW-0098","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"stone-chateau","p":[["stone_arch",-1.75,0,1.49,180]]},{"id":"ME-0109","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_log","wt":"stone"},"src":"kai-s-tavern","p":[["wood_beam",-1,0,0,360],["wood_beam_1",0,-0.5,0,270],["wood_beam",1,0,0,360]]},{"id":"ME-0110","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_log","wt":"stone"},"src":"kai-s-tavern","p":[["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,270],["wood_beam",1,0,0,0]]},{"id":"MW-0706","kind":"window","fit":{"w":1,"h":2,"wt":"stone","wall":"stone_wall_1x1"},"src":"tavern-in-the-meadows-contest","p":[["wood_pole",-0.32,0.54,-0.48,270,0.2],["wood_pole",0.68,0.54,-0.48,270,0.2],["wood_beam_1",-0.82,0.54,0.02,180],["wood_beam_1",-0.32,0.04,0.02,270,0.2],["wood_beam_1",0.68,0.04,0.02,270,0.2],["wood_beam_1",-0.72,-0.01,0.18,90],["woodiron_pole",0.83,0.02,0.59,270],["wood_floor_1x1",1.18,0.04,2.02,270],["wood_floor_1x1",1.6,0.04,2.02,270,0.13],["woodiron_pole",0.83,0.02,2.59,270]]},{"id":"MG-0056","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"stone"},"src":"tavern-in-the-meadows-contest","p":[["wood_pole2",-1,0,-3,0,0.2],["wood_pole2",1,0,-3,0,0.2],["wood_pole2",-1,0,-1,0],["wood_pole2",1,0,-1,0,0.2],["wood_beam",-0.6,0.35,-0.22,180],["wood_beam",0,0,0,0]]},{"id":"MD-0019","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"wood_wall_half"},"src":"survival-farm-all-purpose-base","p":[["wood_pole",-1,2.11,-0.5,180],["stone_floor_2x2",0,1,-0.5,180],["stone_floor_2x2",2,1,-0.5,180],["wood_floor",-2,1,0,270],["wood_beam",-2,2.11,0,180],["wood_beam",-1,1,0,270],["wood_wall_half",-1,1,0.5,270],["wood_pole2",-1,2.11,1,180],["wood_beam",-2,2,2,0],["wood_beam",0,2.11,2,180],["wood_beam_45",-1,1.11,3,90,0.2],["wood_wall_half",1.92,-0.27,3.5,203],["wood_beam",-2,0.11,4,180],["wood_beam",0,0.11,4,180,0.2],["wood_beam",1.92,-0.27,4,203]]},{"id":"MW-0116","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["woodiron_pole",0.74,0.5,-1,270,0.16],["wood_pole2",-0.5,0.5,0,90,0.2],["woodiron_pole",0.5,0.5,0,270],["wood_pole2",0.74,0.5,1,270,0.21],["wood_pole2",-0.5,0.5,2,180,0.2]]},{"id":"MW-0123","kind":"window","fit":{"w":2,"h":2,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["wood_beam",0,0.5,0,360,0.2],["wood_pole2",-1,0.5,1,360,0.2],["wood_pole2",1,0.5,1,360,0.2],["wood_beam",0,0.5,2,360,0.2]]},{"id":"MW-0127","kind":"window","fit":{"w":1,"h":2,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["wood_beam",-0.5,0.5,0,360,0.2],["wood_pole2",-1.5,0.5,1,360,0.2],["wood_pole2",0.5,0.5,1,360,0.2],["wood_beam",-0.5,0.5,2,360,0.2]]},{"id":"MD-0020","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["stone_stair",-1.98,1.61,-1,0],["stone_stair",2.02,1.61,-1,0],["wood_wall_quarter",-0.98,1.11,0,270],["wood_beam_1",-0.98,1.11,0,90],["wood_pole2",-0.98,0.61,0,180,0.2],["wood_floor",0.02,2.61,0,0],["wood_floor",0.02,1.61,0,0],["wood_beam",1.02,1.61,0,270],["wood_pole2",1.02,0.61,0,180,0.2],["wood_wall_half",1.02,1.61,0.5,90],["wood_beam_45",-1.98,1.61,1,180],["wood_pole2",-0.98,0.61,2,180,0.2],["wood_pole2",1.02,0.61,2,180,0.2],["wood_beam",0.02,0.61,3,180,0.2]]},{"id":"MD-0021","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["stone_stair",-0.06,1.36,-1,0],["wood_pole2",-1.06,0.36,0,0,0.2],["wood_pole2",0.94,0.36,0,0,0.2],["wood_pole2",-1.06,0.36,2,0,0.2],["wood_pole2",0.94,0.36,2,0,0.2],["wood_beam",-2.06,0.36,3,0,0.2],["wood_beam",-0.06,0.36,3,0,0.2],["wood_beam",1.94,0.36,3,0,0.2],["wood_beam",-2.06,0.36,4,0,0.2]]},{"id":"MW-0128","kind":"window","fit":{"w":2,"h":1,"wt":"plank","wall":"wood_wall_half"},"src":"multiplayer-base","p":[["wood_beam",0,0,0,0,0.2],["wood_beam",0,0,1,0,0.2]]},{"id":"MC-0164","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_pole",0,0,0.5,135,0.39],["wood_pole2",0,0,2,315,0.39],["wood_pole2",0,0,3,315,0.39]]},{"id":"ME-0123","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_quarter","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1,-1,-1,180,0.2],["wood_beam_1",-0.5,-1,-1,180,0.2],["wood_beam",1,-1,-1,180,0.2]]},{"id":"MW-0129","kind":"window","fit":{"w":1,"h":1,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["crystal_wall_1x1",-1.13,-0.1,0,360],["crystal_wall_1x1",-0.13,-0.09,0,360],["crystal_wall_1x1",0.87,-0.08,0,360]]},{"id":"MG-0058","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1,0,-2,360],["wood_pole2",1,0,-1,180,0.2],["wood_pole",-1,0,-0.5,180]]},{"id":"MG-0059","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1,0,-1,360,0.2],["wood_beam",0,0,-1,360,0.2],["wood_pole2",1,0,-1,360,0.2]]},{"id":"MD-0022","kind":"door","fit":{"w":2,"h":2,"rise":1,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_stair",0,1.26,-1,360],["piece_banner01",-1.83,0.3,2.9,90],["piece_banner01",1.95,0.3,2.91,90]]},{"id":"ME-0132","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"stone_wall_2x1","wt":"stone"},"src":"house-realm-of-rhovanion-hymir","p":[["stone_pillar",-0.5,0.5,-2,180]]},{"id":"MC-0169","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"house-house-3245","p":[["wood_pole_log",0,0,0,315,0.39]]},{"id":"MC-0170","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"house-house-3245","p":[["wood_pole_log",0.01,0.01,0,203,0.37]]},{"id":"MW-0130","kind":"window","fit":{"w":1,"h":2,"wt":"plank","wall":"woodwall"},"src":"deep-forest-luxury","p":[["wood_beam_1",0,0,0,180,0.2],["crystal_wall_1x1",0,0,0,0],["wood_pole2",-0.5,0,1,270,0.2],["crystal_wall_1x1",0,0,1,0],["wood_pole2",0.5,0,1,270,0.2],["wood_beam_1",0,0,2,180,0.2]]},{"id":"MW-0131","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1","p":[["woodiron_pole",-0.96,-0.31,-0.21,270,0.3],["woodiron_pole",1.75,-0.33,-0.21,270,0.3],["woodiron_pole",-0.96,-0.31,1.79,270,0.3],["woodiron_pole",1.75,-0.33,1.79,270,0.2]]},{"id":"ME-0135","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"hunter-cabin","p":[["wood_beam",0,-1,-2,360,0.2],["wood_pole2",-1,-1,-1,90,0.2],["wood_beam",-1,-1,0,180,0.2],["wood_beam",1,-1,0,180,0.2]]},{"id":"ME-0143","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"hunter-cabin","p":[["wood_beam",0,-1,-2,0,0.2],["wood_pole2",-1,-1,-1,270,0.2],["wood_beam_1",-0.5,-1,0,180,0.2],["wood_beam",1,-1,0,180,0.2]]},{"id":"ME-0145","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_half","wt":"half-timber"},"src":"hs_meadows_starterhouse","p":[["wood_beam_1",0,-0.5,0,270]]},{"id":"MW-0133","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",-0.5,0.5,-1.25,360,0.2]]},{"id":"MG-0060","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["wood_beam_26",-4,0,-2,360],["wood_beam_26",4.18,0.26,-2,180],["wood_beam",0,1,0.5,270]]},{"id":"MG-0061","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_quarter","wt":"log"},"src":"treehouse","p":[["piece_walltorch",-0.54,0.35,-2.14,90],["piece_walltorch",-3.52,0.38,-2.13,90],["woodiron_pole",0,0,-2,0,0.15],["wood_pole_log_4",-3.03,-0.03,-1,180,0.2],["wood_pole_log_4",-1.03,-0.03,-1,180,0.2],["wood_log_26",-1,1,-0.5,90,0.25],["woodiron_pole",0,0,0,180,0.15]]},{"id":"MG-0062","kind":"gable","fit":{"slope":45,"overhang":0.25,"wall":"wood_wall_log","wt":"log"},"src":"treehouse","p":[["wood_pole_log_4",-2.97,0,-4,180,0.2],["wood_pole_log_4",-1.65,-0.32,-4,45,0.24],["wood_pole_log_4",-0.94,-0.03,-4,180,0.2],["wood_pole_log_4",1.03,0,-4,113,0.26],["wood_pole_log_4",1.76,-0.32,-4,315,0.21],["wood_pole_log_4",3.03,0,-4,270,0.2],["piece_dvergr_lantern",-0.97,0,-2.31,90,0.25],["wood_beam",-2.5,0.99,-2.04,90,0.24],["woodiron_beam",-2.94,0.97,-2,90],["wood_beam",-1.94,-0.03,-2,360,0.2],["woodiron_beam",3.03,1,-2,90],["wood_pole_log",1.03,0,-1,113,0.26],["wood_pole_log_4",-0.97,0,0,270,0.2]]},{"id":"ME-0304","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_quarter","wt":"log"},"src":"treehouse","p":[["woodiron_pole",-0.97,0.97,-2,180],["wood_pole2",-0.77,0.73,-2,315,0.19],["wood_pole2",-0.76,1.16,-2,225,0.24],["wood_pole2",-1,1.24,-1,270,0.3],["wood_pole2",-0.97,0.62,-1,270],["wood_pole2",-0.65,0.95,-1,270,0.3],["woodiron_pole",-0.97,0.97,0,180],["wood_pole2",-0.77,0.73,0,225,0.19],["wood_pole2",-0.76,1.16,0,315,0.24]]},{"id":"ME-0305","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_quarter","wt":"log"},"src":"treehouse","p":[["woodiron_pole",-1,1.03,-2,180,0.15],["wood_pole2",-0.79,0.81,-2,45,0.21],["wood_pole2",-0.77,1.27,-2,135,0.2],["wood_pole2",-1.02,0.72,-1,180],["wood_pole2",-0.99,1.36,-1,90,0.3],["wood_pole2",-0.72,1.03,-1,90,0.3],["woodiron_pole",-1,1.03,0,180,0.15],["wood_pole2",-0.79,0.81,0,135,0.24],["wood_pole2",-0.77,1.27,0,135,0.2]]},{"id":"MW-0139","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["wood_beam",-0.5,0.5,0,360,0.2]]},{"id":"ME-0151","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"ashwood_wall_2x2","wt":"half-timber"},"src":"the-tradesman-barndominium","p":[["ashwood_pole_2m",-1,-1,-2,0,0.2],["ashwood_pole_2m",1,-1,-2,0,0.2],["ashwood_beam_2m",0,-1,0,0,0.17]]},{"id":"MW-0143","kind":"window","fit":{"w":1.5,"h":1,"wt":"half-timber","wall":"wood_wall_half"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",1.04,-0.02,-1.24,181,0.2],["woodiron_beam",-1.96,0,-0.99,181,0.15],["wood_beam_26",-1.96,0,0.01,1,0.27],["wood_beam_1",-1.46,0,0.01,181,0.2],["wood_beam",0.04,-0.01,0.01,181,0.2],["wood_beam",2.04,-0.03,0.01,181,0.2],["wood_beam_26",-0.03,0.4,0.64,181],["wood_beam_26",1.97,0.38,0.64,1]]},{"id":"MW-0710","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",-1.5,0.5,-1.25,180,0.2],["darkwood_beam",-0.5,0.5,-1.25,180,0.2]]},{"id":"ME-0156","kind":"eave","fit":{"slope":45,"overhang":0.5,"wall":"Piece_grausten_wall_1x2","wt":"stone"},"src":"a-teeny-house-for-a-friendly-family-of-4-vikings-1900inst","p":[["ashwood_beam_1m",-0.52,-0.82,-2,180,0.2],["ashwood_pole_2m",-0.02,-0.82,-2,0,0.2],["ashwood_beam_2m",0.98,-0.82,0,180],["ashwood_beam_2m",-0.52,-0.82,0.5,0,0.36]]},{"id":"ME-0157","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"Piece_grausten_wall_2x2","wt":"stone"},"src":"a-teeny-house-for-a-friendly-family-of-4-vikings-1900inst","p":[["ashwood_beam_2m",-1,-1,-1,360,0.19],["ashwood_beam_2m",1,-1,-1,360,0.19],["ashwood_beam_2m",-1,-1,0.5,180,0.36],["ashwood_beam_2m",1,-1,0.5,180,0.36]]},{"id":"MW-0144","kind":"window","fit":{"w":2,"h":1,"wt":"half-timber","wall":"woodwall"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",0.82,-0.05,-1.24,181,0.2],["woodiron_beam",-2.18,-0.02,-0.99,1,0.15],["wood_beam_26",-2.18,-0.02,0.01,1,0.27],["wood_beam_1",-1.68,-0.03,0.01,1,0.2],["wood_beam",-0.18,-0.04,0.01,1,0.2],["wood_beam_26",-0.11,0.37,0.64,181]]},{"id":"MW-0146","kind":"window","fit":{"w":2,"h":1,"wt":"half-timber","wall":"woodwall"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",1.18,0.09,-1.24,180,0.2],["woodiron_beam",-1.82,0.07,-0.99,360,0.15],["wood_beam_26",-1.82,0.07,0.01,360,0.27],["wood_beam_1",-1.32,0.07,0.01,360,0.2],["wood_beam",0.18,0.08,0.01,360,0.2],["wood_beam_26",0.11,0.49,0.64,180]]},{"id":"MW-0147","kind":"window","fit":{"w":1.5,"h":1,"wt":"half-timber","wall":"woodwall"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",0.96,0.05,-1.24,180,0.2],["woodiron_beam",-2.04,0.02,-0.99,360,0.15],["wood_beam_26",-2.04,0.02,0.01,360,0.27],["wood_beam_1",-1.54,0.03,0.01,180,0.2],["wood_beam",-0.04,0.04,0.01,180,0.2],["wood_beam_26",0.03,0.45,0.64,180]]},{"id":"MW-0148","kind":"window","fit":{"w":1.5,"h":1,"wt":"half-timber","wall":"woodwall"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",1.04,-0.09,-1.24,181,0.2],["woodiron_beam",-1.96,-0.07,-0.99,181,0.15],["wood_beam_26",-1.96,-0.07,0.01,1,0.27],["wood_beam_1",-1.46,-0.07,0.01,181,0.2],["wood_beam",0.04,-0.08,0.01,181,0.2],["wood_beam_26",-0.03,0.33,0.64,181]]},{"id":"MW-0149","kind":"window","fit":{"w":2,"h":2,"wt":"half-timber","wall":"woodwall"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",-0.85,-0.12,-1.24,360,0.2],["woodiron_beam",2.15,-0.1,-0.99,180,0.15],["wood_beam_26",-1.95,0.28,-0.47,360],["crystal_wall_1x1",-0.35,-0.12,0.01,360],["wood_beam",0.15,-0.12,0.01,360,0.2],["crystal_wall_1x1",0.65,-0.11,0.01,360],["crystal_wall_1x1",1.65,-0.1,0.01,360],["wood_beam",2.15,-0.1,0.01,360,0.2],["crystal_wall_1x1",0.65,-0.11,1.01,180],["crystal_wall_1x1",1.65,-0.1,1.01,180],["wood_beam_45",2.15,-0.1,1.01,180,0.21],["wood_beam_45",0.05,0.29,1.53,360],["crystal_wall_1x1",1.65,-0.1,2.01,180]]},{"id":"MW-0150","kind":"window","fit":{"w":2,"h":2,"wt":"half-timber","wall":"wood_wall_half"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",-1.15,-0.02,-1.24,181,0.2],["woodiron_beam",1.85,-0.05,-0.99,181,0.15],["wood_beam_26",-2.05,0.4,-0.47,1],["crystal_wall_1x1",-0.65,-0.02,0.01,1],["wood_beam",-0.15,-0.03,0.01,1,0.2],["crystal_wall_1x1",0.35,-0.03,0.01,1],["crystal_wall_1x1",1.35,-0.04,0.01,1],["wood_beam",1.85,-0.05,0.01,1,0.2],["crystal_wall_1x1",0.35,-0.03,1.01,181],["crystal_wall_1x1",1.35,-0.04,1.01,1],["wood_beam_45",1.85,-0.05,1.01,181,0.21],["wood_beam_45",-0.05,0.38,1.53,1],["crystal_wall_1x1",1.35,-0.04,2.01,1]]},{"id":"MW-0153","kind":"window","fit":{"w":1,"h":2,"wt":"half-timber","wall":"woodwall"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",-1.18,0.12,-1.24,1,0.2],["crystal_wall_1x1",-0.68,0.12,0.01,1],["wood_beam",-0.18,0.11,0.01,1,0.2],["crystal_wall_1x1",0.32,0.11,0.01,1],["crystal_wall_1x1",1.32,0.1,0.01,1],["crystal_wall_1x1",0.32,0.11,1.01,1],["crystal_wall_1x1",1.32,0.1,1.01,1],["wood_beam_45",-0.18,0.52,1.57,1],["crystal_wall_1x1",1.32,0.1,2.01,1]]},{"id":"MW-0154","kind":"window","fit":{"w":1,"h":2,"wt":"half-timber","wall":"woodwall"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",-1.32,0.02,-1.24,360,0.2],["woodiron_beam",1.68,0.04,-0.99,360,0.15],["crystal_wall_1x1",-0.82,0.02,0.01,360],["wood_beam",-0.32,0.03,0.01,360,0.2],["crystal_wall_1x1",0.18,0.03,0.01,360],["crystal_wall_1x1",1.18,0.04,0.01,360],["wood_beam",1.68,0.04,0.01,360,0.2],["crystal_wall_1x1",0.18,0.03,1.01,360],["crystal_wall_1x1",1.18,0.04,1.01,360],["wood_beam_45",1.68,0.04,1.01,180,0.21],["wood_beam_45",-0.32,0.44,1.57,360],["crystal_wall_1x1",1.18,0.04,2.01,360]]},{"id":"MW-0155","kind":"window","fit":{"w":1.5,"h":2,"wt":"half-timber","wall":"woodwall"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",-0.93,-0.07,-1.24,1,0.2],["wood_beam_26",-1.88,0.35,-0.42,1],["crystal_wall_1x1",-0.43,-0.07,0.01,1],["wood_beam",0.07,-0.08,0.01,1,0.2],["crystal_wall_1x1",0.57,-0.08,0.01,1],["crystal_wall_1x1",1.57,-0.09,0.01,1],["crystal_wall_1x1",0.57,-0.08,1.01,1],["crystal_wall_1x1",1.57,-0.09,1.01,181],["wood_beam_45",0.12,0.33,1.58,1],["crystal_wall_1x1",1.57,-0.09,2.01,1]]},{"id":"MW-0157","kind":"window","fit":{"w":1.5,"h":2,"wt":"half-timber","wall":"wood_wall_half"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",1.07,0.08,-1.24,1,0.2],["woodiron_beam",-1.93,0.1,-0.99,181,0.15],["wood_beam",-1.93,0.1,0.01,1,0.2],["crystal_wall_1x1",-1.43,0.1,0.01,181],["crystal_wall_1x1",-0.43,0.09,0.01,181],["wood_beam",0.07,0.09,0.01,1,0.2],["crystal_wall_1x1",0.57,0.08,0.01,1],["wood_beam_45",-1.93,0.1,1.01,1,0.21],["crystal_wall_1x1",-1.43,0.1,1.01,181],["crystal_wall_1x1",-0.43,0.09,1.01,1],["wood_beam_45",0.12,0.49,1.58,181],["crystal_wall_1x1",-1.43,0.1,2.01,181]]},{"id":"MW-0158","kind":"window","fit":{"w":1.5,"h":1,"wt":"half-timber","wall":"woodwall"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",0.96,0.04,-1.24,360,0.2],["woodiron_beam",-2.04,0.02,-0.99,180,0.15],["wood_beam_26",-2.04,0.02,0.01,360,0.27],["wood_beam",-2.04,0.02,0.01,180,0.2],["wood_beam",-0.04,0.03,0.01,180,0.2],["wood_beam_26",-0.04,0.44,0.56,180]]},{"id":"MW-0159","kind":"window","fit":{"w":1.5,"h":1,"wt":"half-timber","wall":"wood_wall_half"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",1.04,-0.03,-1.24,1,0.2],["woodiron_beam",-1.96,0,-0.99,181,0.15],["wood_beam",-1.96,0,0.01,181,0.2],["wood_beam_26",-1.96,0,0.01,1,0.27],["wood_beam",0.04,-0.02,0.01,181,0.2],["wood_beam",2.04,-0.04,0.01,181,0.2],["wood_beam_26",0.04,0.39,0.56,181],["wood_beam_26",2.04,0.37,0.56,1]]},{"id":"MW-0160","kind":"window","fit":{"w":1.5,"h":1,"wt":"half-timber","wall":"wood_wall_half"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",0.96,-0.03,-1.24,360,0.2],["woodiron_beam",-2.04,-0.05,-0.99,180,0.15],["wood_beam_26",-2.04,-0.05,0.01,360,0.27],["wood_beam",-2.04,-0.05,0.01,180,0.2],["wood_beam",-0.04,-0.04,0.01,180,0.2],["wood_beam",1.96,-0.02,0.01,180,0.2],["wood_beam_26",-0.04,0.37,0.56,180],["wood_beam_26",1.96,0.39,0.56,360]]},{"id":"MW-0161","kind":"window","fit":{"w":1.5,"h":1,"wt":"half-timber","wall":"woodwall"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_beam4x4",1.04,-0.1,-1.24,1,0.2],["woodiron_beam",-1.96,-0.07,-0.99,181,0.15],["wood_beam",-1.96,-0.07,0.01,181,0.2],["wood_beam_26",-1.96,-0.07,0.01,1,0.27],["wood_beam",0.04,-0.09,0.01,181,0.2],["wood_beam_26",0.04,0.32,0.56,181]]},{"id":"MG-0063","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"garllok-039-s-longhouse-tutorial","p":[["darkwood_pole4",-3.02,0,-4,0,0.2],["darkwood_pole4",-2.02,0,-4,0,0.2],["darkwood_pole4",1.98,0,-4,270,0.2],["darkwood_pole4",2.98,0,-4,270,0.2],["woodiron_pole",-3.02,0,-2,180,0.15],["woodiron_pole",2.98,0,-2,180]]},{"id":"MG-0302","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"decorative-starter-building-for-small-community","p":[["wood_beam_26",-4,0,-4,0,0.27],["wood_beam_26",-2,0,-4,0,0.27],["wood_beam",0,0,-4,0,0.2],["wood_beam_26",2,0,-4,180,0.27],["wood_beam_26",4,0,-4,180,0.27],["wood_beam",2,0,-3.93,0],["wood_beam",4,0,-3.93,0],["wood_beam",-4.08,0.02,-3.92,0],["wood_beam",-2.08,0.02,-3.92,0],["wood_beam",-0.08,0.02,-3.92,0],["wood_beam_45",-4,0,-3,0,0.21],["wood_beam_45",4,0,-3,180,0.21],["wood_beam_45",-2,0,-2,0],["wood_beam_45",2,0,-2,180],["wood_beam_45",-2,0,-1,0],["wood_beam_45",2,0,-1,180]]},{"id":"MW-0162","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"large-manor-house","p":[["wood_floor_1x1",-1.03,-0.07,1.02,360]]},{"id":"MD-0023","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"wood_wall_half"},"src":"several-longhouses","p":[["wood_stair",0,1,-1,0,0.17],["wood_pole2",-1,0,1,270,0.2],["wood_pole",-1,0,2.5,270,0.2]]},{"id":"ME-0159","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_quarter","wt":"stone-base"},"src":"halls-of-valhalla","p":[["itemstand",-1,-1,-2,0,0.09],["wood_beam_1",-1,-0.5,0,90,0.15],["wood_beam_1",-0.5,0,0,0],["wood_beam",1,0,0,0]]},{"id":"MC-0175","kind":"corner","fit":{"angle":135,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["stone_wall_1x1",-0.12,-0.04,0.58,90,0.38],["wood_pole2",-0.62,0.46,1.08,338,0.26],["wood_pole2",0.38,0.46,1.08,113,0.26],["stone_wall_1x1",-0.12,-0.04,1.58,90,0.38],["stone_wall_1x1",-0.12,-0.04,2.58,90,0.38],["wood_pole2",-0.62,0.46,3.08,338,0.26],["wood_pole2",0.38,0.46,3.08,113,0.26]]},{"id":"ME-0160","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"halls-of-valhalla","p":[["wood_pole2",-1.01,-0.74,-1,360,0.19],["wood_beam",-1.01,-0.74,-1,360,0.19],["wood_beam",0.99,-0.74,-1,360,0.19],["itemstand",-1.04,-0.5,-0.94,0],["wood_beam",-1,0,0,0],["wood_beam",1,0,0,0]]},{"id":"ME-0161","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_quarter","wt":"stone-base"},"src":"halls-of-valhalla","p":[["itemstand",1,-1,-2,0,0.09],["wood_beam_1",-1,-0.5,0,90],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,270,0.15],["wood_beam",1,0,0,0],["wood_beam_1",1,-0.5,0,270]]},{"id":"ME-0162","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_quarter","wt":"stone-base"},"src":"halls-of-valhalla","p":[["itemstand",-1,-1,-2,360,0.09],["wood_beam",-1,0,0,360],["wood_beam_1",-1,-0.5,0,270],["wood_beam",1,0,0,360]]},{"id":"MW-0176","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["stone_wall_1x1",-1.62,-0.2,-0.5,247],["stone_wall_1x1",-1.62,-0.2,0.5,247],["wood_pole2",-1.36,0.45,1,360],["stone_wall_1x1",-1.62,-0.2,1.5,247]]},{"id":"MW-0178","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam4x4",-1.5,0.5,-0.25,180,0.2],["wood_pole",-1.5,0.5,0.5,270,0.2],["darkwood_beam_45",-0.5,0.5,1,0,0.2],["darkwood_pole",-1.5,0.5,2,180,0.2]]},{"id":"MW-0711","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",-1.5,0.5,-1.25,180,0.2],["darkwood_beam",-0.5,0.5,-1.25,180,0.2],["darkwood_beam",-1.5,0.5,-0.25,180,0.2],["darkwood_beam",-0.5,0.5,-0.25,180,0.2]]},{"id":"ME-0165","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"halls-of-valhalla","p":[["wood_pole2",-0.22,-0.74,-2,135],["wood_pole2",0.25,-0.72,-2,135],["darkwood_pole",-0.31,-0.96,-1,180],["darkwood_pole",0.02,-0.62,-1,180],["wood_pole2",0.99,-0.74,-1,360,0.19],["wood_beam",0.99,-0.74,-1,360,0.19],["itemstand",0.96,-0.5,-0.94,0],["wood_pole",-0.22,-0.74,-0.5,135],["wood_pole",0.25,-0.72,-0.5,135],["wood_beam_1",-1,-0.5,0,90],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,270,0.15],["wood_beam",1,0,0,0]]},{"id":"ME-0306","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"halls-of-valhalla","p":[["wood_beam",0.01,-0.74,-1,0,0.19],["wood_beam_1",-1,0.5,0,90],["wood_beam_1",-0.46,0.19,0,203],["wood_beam",0,0,0,360]]},{"id":"ME-0166","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"halls-of-valhalla","p":[["wood_pole2",-0.21,-0.76,-2,225],["wood_pole2",0.24,-0.76,-2,225,0.2],["darkwood_pole",0,-0.63,-1,360],["wood_beam",1.01,-0.75,-1,0,0.2],["wood_pole2",1.01,-0.75,-1,0,0.2],["itemstand",1.02,-0.5,-0.94,0],["wood_pole",-0.21,-0.76,-0.5,225],["wood_pole",0.24,-0.76,-0.5,225,0.2],["wood_beam_1",-1,-0.5,0,270],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,90,0.15],["wood_beam",1,0,0,180]]},{"id":"ME-0307","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"halls-of-valhalla","p":[["wood_beam",-0.01,-0.74,-1,360,0.19],["wood_beam_1",-1,0.5,0,270],["wood_beam_1",-0.46,0.19,0,203],["wood_beam",0,0,0,0]]},{"id":"ME-0167","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"halls-of-valhalla","p":[["wood_pole2",-0.22,-0.79,-2,135],["wood_pole2",0.24,-0.77,-2,225,0.21],["darkwood_pole",0.01,-0.69,-1,180],["wood_pole2",0.99,-0.75,-1,360,0.19],["itemstand",0.96,-0.5,-0.94,360],["wood_pole",-0.22,-0.79,-0.5,135],["wood_pole",0.24,-0.77,-0.5,225,0.21],["wood_beam_1",-1,-0.5,0,90],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,90,0.15],["wood_beam",1,0,0,360]]},{"id":"ME-0170","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_quarter","wt":"stone-base"},"src":"halls-of-valhalla","p":[["itemstand",1,-1,-2,360,0.09],["wood_beam_1",-1,-0.5,0,270],["wood_beam_1",-0.5,0,0,360],["wood_beam_1",0,-0.5,0,90,0.15],["wood_beam",1,0,0,360]]},{"id":"ME-0171","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"stone_wall_2x1","wt":"stone"},"src":"medieval-church","p":[["wood_beam_1",-0.96,-0.81,-2.2,90],["wood_beam",-1.05,-0.81,-1.2,180,0.16],["wood_beam",0.95,-0.81,-1.2,180,0.16],["wood_beam_1",-1,0.5,0,90],["wood_beam",0,0,0,0],["wood_beam_1",1,0.5,0,90]]},{"id":"MW-0202","kind":"window","fit":{"w":2,"h":1,"wt":"stone","wall":"stone_wall_1x1"},"src":"gigantic-medieval-watchtower-3","p":[["wood_pole2",-1.89,-0.24,0,225],["wood_pole2",-0.19,0.48,0,180,0.21],["wood_pole2",0.81,0.49,0,360,0.2],["stone_wall_1x1",-1.18,-0.24,0.5,45]]},{"id":"MW-0203","kind":"window","fit":{"w":2,"h":1,"wt":"stone","wall":"stone_wall_1x1"},"src":"gigantic-medieval-watchtower-3","p":[["wood_pole2",-0.81,0.49,0,1,0.2],["wood_pole2",0.19,0.48,0,181,0.21],["wood_pole2",1.89,-0.24,0,136],["stone_wall_1x1",1.18,-0.24,0.5,316],["wood_beam",-0.81,0.49,1,1,0.2]]},{"id":"MW-0235","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_1x1"},"src":"main-tower-of-the-castle-5","p":[["stone_wall_1x1",-1.67,-0.23,-0.5,68,0.38],["wood_pole2",-1.4,0.42,0,271,0.2],["wood_beam",-0.4,0.41,0,181,0.2],["stone_wall_1x1",-1.67,-0.23,0.5,68,0.38],["wood_pole2",0.6,0.41,1,181,0.2],["stone_wall_1x1",-1.67,-0.23,1.5,68,0.38],["wood_pole2",-1.4,0.42,2,271,0.2]]},{"id":"MW-0236","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_1x1"},"src":"main-tower-of-the-castle-5","p":[["stone_wall_1x1",1.67,-0.23,-0.5,292,0.38],["wood_pole2",1.4,0.42,0,90,0.2],["stone_wall_1x1",1.67,-0.23,0.5,292,0.38],["wood_pole2",-0.6,0.41,1,180,0.2],["stone_wall_1x1",1.67,-0.23,1.5,292,0.38],["wood_beam",-1.6,0.4,2,180,0.2],["wood_pole2",1.4,0.42,2,90,0.2]]},{"id":"MW-0715","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["wood_pole",0.36,0.44,-0.5,180,0.2],["wood_beam",-0.64,0.43,0,180,0.2],["wood_beam_26",-0.64,0.43,0,360,0.22],["woodiron_pole",0.36,0.44,0,180,0.15],["wood_pole2",0.36,0.44,1,180,0.2],["wood_beam_45",-0.64,0.43,2,180,0.22]]},{"id":"MW-0246","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["wood_beam_45",-0.64,0.43,0,180,0.22],["woodiron_pole",0.36,0.44,0,180,0.15],["wood_pole2",0.36,0.44,1,180,0.2],["wood_pole",-1.64,0.43,1.5,180,0.2]]},{"id":"MW-0247","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["wood_pole",-1.64,0.43,-0.5,180,0.2],["woodiron_pole",0.36,0.44,0,180,0.15],["wood_beam_45",-0.64,0.43,1,360,0.22],["wood_pole2",0.36,0.44,1,180,0.2]]},{"id":"MW-0248","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["wood_beam_45",-0.64,0.43,-1,180,0.22],["woodiron_pole",0.36,0.44,0,180,0.15],["wood_pole2",-1.64,0.43,1,270,0.2],["wood_pole2",0.36,0.44,1,180,0.2]]},{"id":"MW-0249","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["wood_beam_45",-0.36,0.4,-1,181,0.23],["woodiron_pole",0.64,0.39,-1,181,0.15],["wood_pole2",-1.36,0.41,1,91,0.2],["wood_pole2",0.64,0.39,1,181,0.2]]},{"id":"ME-0172","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"stone_wall_2x1","wt":"stone"},"src":"main-tower-of-the-castle-5","p":[["woodiron_pole",-1,-1,-2,90,0.15],["wood_beam_45",1,-1,-2,0,0.2],["wood_pole2",-1,-1,-1,90,0.2],["wood_beam_1",-1,-0.5,0,90]]},{"id":"MW-0275","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam4x4",0.5,0.5,-1.25,0,0.2],["darkwood_beam",1.5,0.5,-0.25,180,0.2],["crystal_wall_1x1",1.06,0.18,-0.01,360],["crystal_wall_1x1",1.06,0.18,0.99,360],["wood_beam_1",-1.5,0,1,270,0.2],["wood_beam",-0.5,0.5,1,180,0.2],["darkwood_pole",0.5,0.5,1,180,0.2]]},{"id":"MW-0276","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",-1.5,0.5,-0.25,180,0.2],["darkwood_arch",-2.5,0.5,0,180,0.2],["darkwood_arch",-0.5,0.5,0,360,0.2],["wood_beam",0.5,0.5,1,0,0.2],["wood_beam_1",1.5,0,1,90,0.2]]},{"id":"MW-0277","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",-1.5,0.5,-0.25,180,0.2],["darkwood_arch",-2.5,0.5,0,0,0.2],["darkwood_arch",-0.5,0.5,0,180,0.2],["wood_beam",0.5,0.5,1,360,0.2],["wood_beam_1",1.5,0,1,90,0.2]]},{"id":"MW-0278","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam4x4",-1.5,0.5,-0.25,0,0.2],["darkwood_beam",-1.5,0.5,0.75,180,0.2],["crystal_wall_1x1",-0.94,0.15,1.03,180],["darkwood_pole",-0.5,0.5,2,180,0.2]]},{"id":"MW-0279","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_arch",-2.5,0.5,0,180,0.2],["darkwood_arch",-0.5,0.5,0,360,0.2],["darkwood_pole",-0.5,0.5,0,90,0.2],["wood_beam_1",0,0.5,1,360,0.2]]},{"id":"MW-0280","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam4x4",-1.5,0.5,-1.25,0,0.2],["darkwood_beam",-1.5,0.5,-0.25,180,0.2],["crystal_wall_1x1",-0.91,0.18,-0.01,360],["crystal_wall_1x1",-0.91,0.18,0.99,360],["darkwood_pole",-0.5,0.5,1,180,0.2],["wood_beam_1",0,0.5,1,180,0.2]]},{"id":"MW-0283","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["wood_pole",-1.5,0.5,-0.5,270,0.2],["darkwood_beam4x4",1.5,0.5,-0.25,360,0.2],["wood_pole",-1.5,0.5,0.5,270,0.2],["darkwood_beam_45",-0.5,0.5,1,180,0.2]]},{"id":"MW-0284","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",1.5,0.5,-1.25,180,0.2],["crystal_wall_1x1",1,0.15,-0.89,360],["wood_beam",-0.5,0.5,0,180,0.2],["darkwood_pole",0.5,0.5,0,180,0.2],["crystal_wall_1x1",1,0.15,0.11,360],["darkwood_beam_45",-0.5,0.5,1,0,0.2],["crystal_wall_1x1",1,0.15,1.11,360]]},{"id":"MW-0285","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",-1.5,0.5,-1.25,0,0.2],["darkwood_arch",-2.5,0.5,-1,360,0.23],["darkwood_arch",-0.5,0.5,-1,180,0.23],["wood_beam",0.5,0.5,0,180,0.2],["darkwood_beam_45",0.5,0.5,1,0,0.3],["wood_pole",-0.5,0.5,1.5,270,0.2]]},{"id":"MW-0286","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",-1.5,0.5,-1.25,360,0.2],["darkwood_arch",-2.5,0.5,-1,180,0.23],["darkwood_arch",-0.5,0.5,-1,0,0.23],["wood_beam_1",0,0.5,0,180,0.2],["wood_pole",-0.5,0.5,1.5,90,0.2]]},{"id":"MW-0287","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_arch",-2.5,0.5,-1,180,0.2],["darkwood_arch",-0.5,0.5,-1,360,0.2],["crystal_wall_1x1",-0.98,0.15,-0.89,360],["wood_beam",0.5,0.5,0,180,0.2],["crystal_wall_1x1",-0.98,0.15,0.11,360],["darkwood_beam_45",0.5,0.5,1,360,0.2],["wood_pole",-0.5,0.5,1.5,90,0.2]]},{"id":"MW-0288","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",-1.5,0.5,-1.25,0,0.2],["darkwood_arch",-2.5,0.5,-1,0,0.2],["darkwood_arch",-0.5,0.5,-1,180,0.2],["wood_beam",0.5,0.5,0,360,0.2]]},{"id":"MW-0289","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam4x4",1.5,0.5,-1.25,0,0.2],["wood_beam_1",-0.5,0,1,270,0.2],["wood_beam",0.5,0.5,1,180,0.2],["darkwood_pole",1.5,0.5,1,180,0.2]]},{"id":"MG-0303","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"stone"},"src":"ompact-4-storey-house","p":[["darkwood_beam4x4",-1,0,-1.25,180,0.2],["darkwood_beam4x4",1,0,-1.25,180,0.2],["wood_beam_45",-1,0,0,0,0.3],["wood_beam_45",1,0,0,180,0.3]]},{"id":"ME-0174","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_half","wt":"half-timber"},"src":"the-pier","p":[["wood_pole_log",0,0,-1,360]]},{"id":"MW-0299","kind":"window","fit":{"w":2,"h":1,"wt":"plank","wall":"wood_wall_half"},"src":"open-longboat-dock","p":[["wood_beam_45",-0.87,-0.06,1.99,0,0.3],["wood_beam_45",1.13,-0.06,1.99,180,0.3]]},{"id":"ME-0176","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":null,"wt":"half-timber"},"src":"zertek-boat-dock","p":[["darkwood_beam",-1,-1,-0.25,360],["darkwood_beam",1,-1,-0.25,360]]},{"id":"ME-0181","kind":"eave","fit":{"slope":45,"overhang":1,"wall":"iron_wall_1x1","wt":"stone-base"},"src":"medieval-style-mansion","p":[["wood_beam_1",-0.36,-0.36,-2,135],["wood_beam",0,-1,-2,270],["wood_beam_26",0,0,-1,180],["wood_pole2",0,0,-1,0],["wood_beam_1",-0.54,0.19,0,158],["wood_beam",0.92,0.38,0,180],["wood_beam",1,0,0,180]]},{"id":"MW-0304","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"woodwall"},"src":"community-longhouse","p":[["wood_beam",-1.91,-0.11,0,0],["wood_pole2",-0.91,-0.11,1,0],["wood_beam",-1.91,-0.11,2,0],["wood_beam",0.09,-0.11,2,0,0.2]]},{"id":"MG-0068","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"stone-base"},"src":"medieval-style-mansion","p":[["wood_beam_45",-4,0,-3,360,0.21],["woodiron_beam_45",-4,0,-3,360],["wood_pole2",-3,0,-3,360],["wood_pole2",3,0,-3,360],["woodiron_beam_45",4,0,-3,180],["wood_beam_45",4,0,-3,180,0.21],["woodiron_beam_45",-2,0,-1,360],["wood_beam_45",-2,0,-1,360,0.21],["woodiron_beam_45",2,0,-1,180],["wood_beam_45",2,0,-1,180,0.21],["wood_beam_45",-1,0,0,360,0.3],["wood_beam",0,0,0,0],["wood_beam_45",1,0,0,180,0.3],["wood_beam_1",-0.03,-0.08,0.4,0]]},{"id":"MG-0069","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"stone-base"},"src":"medieval-style-mansion","p":[["piece_groundtorch",-2.96,-0.39,-4.25,270],["woodiron_beam_45",-4,0,-3,360],["wood_beam_45",-4,0,-3,0,0.21],["wood_pole2",-3,0,-3,180],["wood_pole2",3,0,-3,180],["woodiron_beam_45",4,0,-3,180],["wood_beam_45",4,0,-3,180,0.21],["woodiron_beam_45",-2,0,-1,360],["wood_beam_45",-2,0,-1,0,0.21],["woodiron_beam_45",2,0,-1,180],["wood_beam_45",2,0,-1,180,0.21],["wood_beam_45",-1,0,0,360,0.3],["wood_beam",0,0,0,180],["wood_beam_45",1,0,0,180,0.3],["wood_beam_1",-0.05,-0.03,0.4,180]]},{"id":"MD-0027","kind":"door","fit":{"w":2,"h":3,"rise":0.25,"wt":"other","wall":"woodwall"},"src":"fully-equipped-warehouse-workshop","p":[["wood_pole2",-1,0,1,180,0.2],["wood_pole2",-1,0,3,180,0.2]]},{"id":"MW-0328","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["woodiron_pole",-0.5,0.5,-1,90,0.15],["stone_pillar",-1,0,1,180],["woodiron_pole",-0.5,0.5,1,90,0.15]]},{"id":"MW-0329","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["wood_pole2",0.5,0.5,0,360,0.2],["wood_beam",-0.5,0.5,1,360,0.2],["wood_beam",1.5,0.5,1,360,0.2]]},{"id":"MA-0502","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"scale_wall_2x2"},"src":"tavern-in-the-meadows-contest","p":[["piece_walltorch",-1.06,0.41,2.48,270]]},{"id":"MW-0333","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"multiplayer-base","p":[["wood_beam",-1.5,0.5,0,360,0.2],["wood_pole2",-0.5,0.5,1,360,0.2],["wood_pole2",1.5,0.5,1,360,0.2]]},{"id":"MC-0185","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_quarter"},"src":"houses-homes-and-tinies","p":[["wood_pole2",0,0,1,304,0.38],["wood_pole",0,0,2.5,315,0.39]]},{"id":"MG-0072","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"crystal_wall_1x1","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole_log_4",-3,0,-4,90,0.2],["wood_pole_log_4",3,0,-4,90,0.21]]},{"id":"ME-0195","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_quarter","wt":"plank"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1,0,-1,180,0.2],["wood_beam",0,-1,-1,180,0.2]]},{"id":"MW-0336","kind":"window","fit":{"w":1,"h":1,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["crystal_wall_1x1",-1.13,-0.09,0,360],["crystal_wall_1x1",-0.13,-0.08,0,360]]},{"id":"ME-0202","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"stone_wall_2x1","wt":"stone"},"src":"kai-s-tavern","p":[["wood_pole2",0,-1,-2,0,0.2],["wood_beam",-1,-1,-1,0,0.2],["wood_beam",-1,0,0,360],["wood_beam_1",0,-0.5,0,270],["wood_beam",1,0,0,360]]},{"id":"ME-0203","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"iron_wall_1x1","wt":"half-timber"},"src":"deep-north-1-0-ready-base","p":[["darkwood_beam",-1,0,-0.25,0],["wood_beam_1",-1,-0.5,0,90,0.2],["wood_beam_1",0,-0.5,0,90,0.2],["wood_beam_1",1,-0.5,0,90,0.15]]},{"id":"ME-0204","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"deep-north-1-0-ready-base","p":[["Piece_grausten_pillarbase_small",0,1,-2.5,90,0.23],["Piece_grausten_pillar_arch_small",0,1,-1.5,270],["Piece_grausten_pillarbeam_small",0,-0.5,-0.5,270],["wood_beam_1",-1,-0.5,0,90],["wood_beam_1",0,-0.5,0,90,0.15],["wood_beam_1",1,-0.5,0,90,0.15]]},{"id":"ME-0205","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"iron_wall_1x1","wt":"half-timber"},"src":"deep-north-1-0-ready-base","p":[["wood_pole_log",1,0,-1,270],["darkwood_beam",-1,0,-0.25,0],["wood_beam_1",-1,-0.5,0,270,0.2],["wood_beam_1",0,-0.5,0,270,0.2],["wood_beam_1",1,-0.5,0,270,0.15]]},{"id":"ME-0207","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"stone_wall_2x1","wt":"stone"},"src":"kai-s-tavern","p":[["wood_pole2",-1,-1,-2,0,0.2],["wood_beam",-1,0,0,180],["wood_beam_1",0,-0.5,0,90],["wood_beam",1,0,0,360]]},{"id":"ME-0208","kind":"eave","fit":{"slope":45,"overhang":1,"wall":"stone_wall_2x1","wt":"stone"},"src":"kai-s-tavern","p":[["wood_pole2",-1,-1,-2,180,0.2],["wood_pole2",1,-1,-2,180,0.2],["wood_pole",-1,0,-1.5,180],["wood_pole",1,0,-1.5,180],["wood_beam_1",-1,-0.5,-1,270],["wood_beam_1",1,-0.5,-1,270],["wood_beam",-1,0,0,360],["wood_beam",1,0,0,360]]},{"id":"ME-0209","kind":"eave","fit":{"slope":45,"overhang":1,"wall":"stone_wall_2x1","wt":"stone"},"src":"kai-s-tavern","p":[["wood_pole2",-1,-1,-2,180,0.2],["wood_pole2",1,-1,-2,180,0.2],["wood_pole",-1,0,-1.5,180],["wood_pole",1,0,-1.5,180],["wood_beam_1",-1,-0.5,-1,270],["wood_beam",0,0,-1,180],["wood_beam",0,-1,-1,180,0.2],["wood_beam_1",1,-0.5,-1,270],["wood_beam",-0.08,-0.6,-0.83,180],["wood_beam",-1,0,0,360],["wood_beam",1,0,0,360]]},{"id":"MA-0015","kind":"wallface","fit":{"h":2,"wt":"half-timber","wall":"woodwall"},"src":"deep-north-1-0-ready-base","p":[["wood_pole2",-0.15,0.23,0.92,23,0.28],["wood_pole2",0.15,0.23,0.92,338,0.28],["wood_beam_1",-1,0.5,1.92,270,0.15],["wood_beam_1",1,0.5,1.92,270],["piece_dvergr_lantern",-0.01,-0.04,2.1,270]]},{"id":"MA-0016","kind":"wallface","fit":{"h":2,"wt":"half-timber","wall":"woodwall"},"src":"deep-north-1-0-ready-base","p":[["wood_pole2",-0.15,0.23,0.92,23,0.28],["wood_pole2",0.15,0.23,0.92,338,0.28],["wood_beam_1",-1,0.5,1.92,90],["wood_beam_1",1,0.5,1.92,270],["piece_dvergr_lantern",-0.01,-0.04,2.1,270]]},{"id":"ME-0210","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"iron_wall_1x1","wt":"half-timber"},"src":"deep-north-1-0-ready-base","p":[["wood_beam_1",-1,-0.5,0,90],["wood_beam",-1,-1,0,180],["wood_beam_1",0,-0.5,0,90],["wood_beam_1",1,-0.5,0,90],["wood_beam",1,-1,0,180]]},{"id":"ME-0211","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":null,"wt":"half-timber"},"src":"deep-north-1-0-ready-base","p":[["wood_pole2",-1,-1,-1,180],["wood_beam_1",-1,-0.5,0,270],["wood_beam",-1,-1,0,180],["wood_beam_1",0,-0.5,0,270],["wood_beam_1",1,-0.5,0,270],["wood_beam",1,-1,0,180]]},{"id":"ME-0212","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"ashwood_wall_2x2","wt":"half-timber"},"src":"deep-north-1-0-ready-base","p":[["Piece_grausten_pillarbase_small",0,1,-2.5,90,0.23],["Piece_grausten_pillar_arch_small",0,1,-1.5,270],["Piece_grausten_pillarbeam_small",0,-0.5,-0.5,270,0.25],["darkwood_beam",-1,0,-0.25,180],["wood_beam_1",-1,-0.5,0,90,0.2],["wood_beam_1",0,-0.5,0,90,0.2],["wood_beam_1",1,-0.5,0,90]]},{"id":"ME-0213","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"ashwood_wall_2x2","wt":"half-timber"},"src":"deep-north-1-0-ready-base","p":[["Piece_grausten_pillarbase_small",0,1,-2.5,90,0.23],["Piece_grausten_pillar_arch_small",0,1,-1.5,270],["Piece_grausten_pillarbeam_small",0,-0.5,-0.5,270,0.25],["darkwood_beam",1,0,-0.25,180],["wood_beam_1",-1,-0.5,0,90],["wood_beam_1",0,-0.5,0,90,0.2],["wood_beam_1",1,-0.5,0,90,0.2]]},{"id":"MG-0074","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"blackmarble_2x1x1","wt":"stone-base"},"src":"deep-north-1-0-ready-base","p":[["wood_beam_45",-4,0.01,-1.5,90,0.3],["wood_beam_45",-2,0.01,-1.5,90,0.4],["wood_beam_1",-1.6,0.8,-1.5,90],["wood_beam_1",1.64,0.83,-1.5,270],["wood_beam_45",2,0.01,-1.5,90,0.4],["wood_beam_45",4,0.01,-1.5,90,0.21],["wood_beam_1",-2.49,0,-0.5,180,0.29],["wood_beam_1",-1.6,0.8,-0.5,90],["wood_beam",-1,-0.2,-0.5,360,0.2],["wood_beam",1,-0.2,-0.5,360,0.2],["wood_beam_1",1.64,0.83,-0.5,270],["wood_beam_1",2.51,0,-0.5,180,0.29]]},{"id":"MW-0347","kind":"window","fit":{"w":2,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"cute-little-blacksmith-vbuild","p":[["woodiron_beam",-2.02,0.53,-1,0,0.15],["wood_pole",-1.02,0.53,-0.5,0,0.2],["wood_pole",1.98,0.53,-0.5,270],["wood_floor_1x1",-1.52,0.03,0,270],["wood_pole2",-1.02,0.53,1,0,0.2],["wood_beam_1",-1.02,0.03,1,90,0.2]]},{"id":"MW-0348","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"cute-little-blacksmith-vbuild","p":[["wood_beam_1",-1.22,0.48,0,360],["wood_floor_1x1",-1.22,-0.02,0,270],["wood_beam_1",-0.72,-0.02,0,90,0.2],["itemstand",-1.27,0.43,1.02,180]]},{"id":"MW-0350","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"cute-little-blacksmith-vbuild","p":[["wood_beam",-1.4,0.5,0.02,0,0.2],["wood_beam_1",0.1,0.5,0.02,0,0.2],["wood_beam",-1.4,0.5,1.02,0,0.2],["wood_beam_1",0.1,0.5,1.02,0,0.2]]},{"id":"MG-0075","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"cute-little-blacksmith-vbuild","p":[["wood_beam",-3,1,-4,270],["wood_beam",-2,0,-4,180],["wood_beam",0,0,-4,180,0.2],["wood_beam",2,0,-4,180,0.2],["wood_beam",4,0,-4,180],["wood_beam",-1,1,-2,270],["wood_beam",3,1,-2,270],["wood_pole2",-1,0,-1,90],["wood_beam",1,1,0,270]]},{"id":"MG-0076","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"cute-little-blacksmith-vbuild","p":[["piece_brazierceiling01",0.83,0.06,-5.12,180],["wood_beam",-4,1,-3,270],["wood_beam",-3,0,-3,180],["wood_beam",-1,0,-3,180,0.2],["wood_beam",1,0,-3,180,0.2],["wood_beam",3,0,-3,180],["wood_beam",-2,1,-1,270],["wood_beam",2,1,-1,270]]},{"id":"MG-0077","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"cute-little-blacksmith-vbuild","p":[["wood_beam",-2,0,-4,180],["wood_beam",0,0,-4,180,0.2],["wood_beam",2,0,-4,180,0.2],["wood_beam",4,0,-4,180],["wood_beam",-1,1,-2,90],["wood_beam",3,1,-2,90],["wood_pole2",-1,0,-1,90],["wood_beam",1,1,0,90]]},{"id":"MG-0078","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"cute-little-blacksmith-vbuild","p":[["wood_beam_1",-0.5,0,-4,360],["wood_beam",1,0,-4,360,0.2],["wood_beam_1",2.5,0,-4,360],["wood_beam",0.98,-0.3,-3.95,180,0.2],["wood_pole2",-1,0,-3,270],["wood_pole2",0,0,-3,360],["wood_pole2",2,0,-3,360],["wood_pole2",3,0,-3,270],["wood_pole2",-0.51,-0.06,-2.8,360],["wood_pole2",0.35,-0.06,-2.8,360],["wood_pole2",1.62,-0.04,-2.8,360],["wood_pole2",2.48,-0.05,-2.8,360],["wood_beam",0,0,-2,180],["wood_beam",2,0,-2,180],["wood_pole2",-1,0,-1,270]]},{"id":"MG-0079","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"cute-little-blacksmith-vbuild","p":[["wood_beam",-3,1,-4,270],["wood_beam",-1,1,-2,270],["wood_beam",3,1,-2,270],["wood_pole2",-1,0,-1,270],["wood_beam",1,1,0,270]]},{"id":"MG-0080","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"iron_wall_1x1","wt":"half-timber"},"src":"small-blacksmith-s-house-and-dock-w-download","p":[["wood_pole2",-2,0,-4,270],["wood_beam",2,0,-4,0,0.2],["wood_beam_1",3.5,0,-4,0],["wood_pole2",-1,0,-3.5,180,0.2],["wood_pole2",1,0,-3,270,0.2],["wood_pole",-2,0,-2.5,270],["wood_beam_1",-1.5,0,-2.5,360],["wood_pole",-1,0,-2.5,270,0.2],["wood_beam_1",-1.5,0,-2,180],["wood_pole2",-1,0,-1,90,0.2],["wood_pole2",1,0,-1,90,0.2],["wood_beam",0,0,0,180,0.2],["wood_pole",0,0,0.5,270]]},{"id":"MG-0081","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_2x1","wt":"half-timber"},"src":"small-blacksmith-s-house-and-dock-w-download","p":[["wood_beam",-4,0,-4,360,0.2],["wood_beam",-2,0,-4,360,0.2],["wood_pole2",-1,1,-4,270,0.2],["wood_beam",4,1,-4,90],["wood_pole",1,1,-3.5,180,0.2],["wood_pole2",-1,0,-3,180,0.2],["wood_pole2",2,0,-3,180,0.2],["wood_beam_45",3,0,-3,180,0.21],["wood_pole",-1,1,-2.5,270,0.2],["wood_pole",1,1,-2.5,90,0.2],["wood_beam_1",-1,0.5,-2,90,0.2],["wood_beam",0,1,-2,360,0.2],["wood_beam_1",1,0.5,-2,90,0.2],["wood_beam",2,1,-2,90],["wood_pole2",-1,0,-1,180],["wood_pole2",1,0,-1,180],["wood_beam",0,0,0,180],["wood_pole",0.03,0.06,0.5,90]]},{"id":"MG-0082","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"simple-wood-beam-bridge","p":[["wood_pole",-0.6,-0.01,-1.53,45,0.28],["wood_pole",0.91,0,-1.48,45,0.28],["wood_pole",-0.6,-0.01,-0.53,45,0.28],["wood_pole",0.91,0,-0.48,45],["wood_beam",0,0.01,0,0,0.17]]},{"id":"MG-0083","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"iron_wall_1x1","wt":"log"},"src":"beautiful-cozy-cabin-valheim-vanilla-build","p":[["piece_walltorch",-1.31,0.59,-2.21,360],["wood_beam_26",-1.01,0.96,-1.88,90],["wood_pole",-1,0,-1,180],["itemstand",-0.63,-0.25,-0.53,180],["sign",-0.03,-0.25,-0.53,180],["itemstand",0.6,-0.24,-0.53,180],["wood_beam",0,0,-0.5,360],["wood_pole",1,0,0,360],["wood_pole",-1.06,-0.04,0.13,360]]},{"id":"MG-0084","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"iron_wall_1x1","wt":"log"},"src":"beautiful-cozy-cabin-valheim-vanilla-build","p":[["wood_beam_26",-3.01,-0.03,-2.5,90],["darkwood_beam_26",-2.75,-0.05,-2.26,90],["wood_pole",-3.45,0.48,-1.76,90],["darkwood_beam_26",-3.38,0.78,-1.69,90],["wood_beam_26",-3.8,1.03,-1.54,90],["wood_beam_26",-3.4,1.02,-1.54,90],["wood_beam_26",-3,1,-1.5,90],["wood_pole",-3.46,-0.12,-1.41,90],["wood_pole",-3.44,0.76,-1.2,90],["itemstand",-0.67,-0.24,-0.59,180],["sign",-0.01,-0.25,-0.59,180],["itemstand",0.72,-0.25,-0.58,180],["wood_beam",0,0,-0.5,0],["wood_pole",1,0,0,0],["wood_pole",-0.89,-0.01,0.13,0]]},{"id":"ME-0231","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"iron_wall_1x1","wt":"stone-base"},"src":"compact-house-for-survival","p":[["wood_pole2",0,0,-2,270],["wood_pole",-0.33,-0.01,-1.5,180],["wood_beam",-1,1,-1,90],["wood_beam_26",-1,1,-1,90],["wood_beam",-1,-1,-1,90],["wood_beam_1",-0.5,0,-1,180],["wood_beam",-0.33,0.99,-1,270],["wood_beam",-0.33,-1.01,-1,270],["wood_beam",0,1,-1,90],["wood_beam",0,-1,-1,90],["wood_beam",0.4,0.98,-0.97,90],["wood_beam",0.4,-1.02,-0.97,90],["wood_beam_1",-0.3,-0.52,-0.6,90],["wood_pole",0.71,-1,-0.5,270]]},{"id":"ME-0232","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"iron_wall_1x1","wt":"stone-base"},"src":"compact-house-for-survival","p":[["wood_pole2",0,0,-2,270],["wood_pole",-0.33,0.01,-1.5,360],["wood_beam",-1,-1,-1,90],["wood_beam",-1,1,-1,90],["wood_beam_26",-1,1,-1,90],["wood_beam_1",-0.5,0,-1,0],["wood_beam",-0.33,-0.99,-1,270],["wood_beam",-0.33,1.01,-1,270],["wood_beam",0,1,-1,90],["wood_beam",0.4,-0.98,-0.97,90],["wood_beam",0.4,1.02,-0.97,90],["wood_beam_1",-0.33,-0.49,-0.5,90],["wood_pole",0.71,-1,-0.5,270]]},{"id":"ME-0234","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"compact-house-for-survival","p":[["piece_brazierceiling01",1.01,0.39,-2.12,270],["wood_pole2",-0.27,-0.76,-2,135],["wood_pole2",1.02,-0.6,-1.98,180],["wood_pole2",-0.03,-0.68,-1,180],["wood_pole",-0.27,-0.76,-0.5,135],["wood_beam_1",-1,-0.5,0,270],["wood_beam_1",-0.5,0,0,360],["wood_beam_1",0,-0.5,0,270,0.2],["wood_beam",0.97,-0.68,0,180],["wood_beam_1",1,0.5,0,270],["wood_beam",1,0,0,180]]},{"id":"ME-0235","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"compact-house-for-survival","p":[["wood_beam",0,0,-1.5,90,0.2],["wood_beam",-1.03,-0.68,0,180],["wood_beam_1",-1,0.5,0,270],["wood_beam",-1,0,0,180],["wood_beam",0.97,-0.68,0,180],["wood_beam_1",1,0.5,0,270],["wood_beam",1,0,0,180]]},{"id":"ME-0236","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"compact-house-for-survival","p":[["piece_brazierceiling01",0.98,0.31,-2.12,90],["wood_pole2",-0.18,-0.75,-2,225],["wood_pole2",0.98,-0.6,-1.98,180],["wood_pole2",0.03,-0.68,-1,270],["wood_pole",-0.18,-0.75,-0.5,225],["wood_beam_1",-1,-0.5,0,90],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,270,0.2],["wood_beam_1",1,0.5,0,90],["wood_beam",1,0,0,0],["wood_beam",1.03,-0.68,0,180]]},{"id":"ME-0237","kind":"eave","fit":{"slope":45,"overhang":0.5,"wall":"wood_wall_log","wt":"stone-base"},"src":"compact-house-for-survival","p":[["wood_beam",-1,0,0,180],["wood_beam_1",-1,0.5,0,270],["wood_beam",1,0,0,180],["wood_beam_1",1,0.5,0,270]]},{"id":"ME-0238","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"compact-house-for-survival","p":[["wood_beam",-0.29,1.29,-2,180],["wood_pole2",-0.21,-0.81,-2,315],["wood_pole",0.83,-0.01,-1.1,0,0.18],["wood_beam_26",0,0,-1,90,0.2],["wood_pole2",0,-0.71,-1,270,0.16],["wood_pole",-0.21,-0.81,-0.5,315],["wood_beam_1",-1,-0.5,0,90],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,270,0.2],["wood_beam",1,0,0,180,0.2],["wood_beam_1",1,0.5,0,270],["wood_beam",1,-0.71,0,360,0.2]]},{"id":"ME-0239","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"stone-base"},"src":"compact-house-for-survival","p":[["piece_brazierceiling01",0.98,0.38,-2.12,270],["wood_pole2",-0.28,-0.8,-2,45],["wood_pole2",0,-0.71,-1,0,0.16],["wood_pole",-0.28,-0.8,-0.5,45],["wood_beam_1",-1,-0.5,0,90],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,90,0.2],["wood_beam",1,-0.71,0,0,0.16],["wood_beam",1,0,0,180],["wood_beam_1",1,0.5,0,90]]},{"id":"MW-0384","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"large-manor-house","p":[["woodiron_pole",-0.47,0.57,0.02,270,0.15],["woodiron_pole",-0.53,0.57,1.02,270],["itemstand",0.72,0.62,1.18,0],["itemstand",0.98,0.62,1.92,360]]},{"id":"MW-0391","kind":"window","fit":{"w":1,"h":1,"wt":"plank","wall":"wood_wall_quarter"},"src":"large-manor-house","p":[["darkwood_arch",-1.68,-0.97,-0.98,90,0.2],["wood_pole2",-0.68,0.03,-0.98,90,0.2],["darkwood_beam",-0.68,0.03,0.77,360],["darkwood_beam",1.32,0.03,0.77,360],["crystal_wall_1x1",-1.18,0.03,1.02,180],["wood_floor_1x1",-0.97,0.03,1.02,315],["crystal_wall_1x1",-0.18,0.03,1.02,180],["crystal_wall_1x1",0.82,0.03,1.02,180]]},{"id":"MW-0395","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"large-manor-house","p":[["woodiron_pole",0.68,0.47,-0.98,270,0.15],["darkwood_pole",-0.32,0.47,0.02,270,0.2],["woodiron_pole",0.68,0.47,1.02,270,0.15],["wood_beam_1",-0.88,-0.32,1.06,203]]},{"id":"MD-0028","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"large-manor-house","p":[["stone_stair",0,2,-1,0],["wood_pole2",-1,1,1,0,0.2],["wood_pole2",1,1,1,0,0.2],["wood_pole2",-1,1,2,0,0.2],["wood_pole2",1,1,2,0,0.2],["wood_beam",0,1,3,0,0.2]]},{"id":"MG-0086","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_1x1","wt":"stone"},"src":"large-manor-house","p":[["wood_pole2",-3.4,0.01,-4.02,90],["wood_pole2",-2.94,-0.4,-4.02,90],["wood_pole2",-3,0,-4,90,0.2],["wood_pole2",3,0,-4,90,0.2],["wood_pole2",3.4,0.04,-3.99,90],["wood_pole2",-3,0,-3,90,0.2],["wood_pole2",-2.94,-0.4,-2.02,90],["wood_pole2",-3,0,-2,90,0.2],["wood_pole2",3,0,-2,90,0.2]]},{"id":"ME-0240","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"stone_wall_2x1","wt":"stone"},"src":"large-manor-house","p":[["wood_pole2",-1.01,0.4,-2.02,180],["wood_pole2",-0.6,-0.06,-2.02,180],["wood_pole2",-1,0,-2,180,0.2],["wood_pole2",-1,0,-1,180,0.2],["wood_pole2",-1.01,0.4,-0.02,180],["wood_pole2",-0.6,-0.06,-0.02,180],["wood_pole2",-1,0,0,180,0.2]]},{"id":"MG-0088","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"iron_wall_1x1","wt":"stone-base"},"src":"small-house-for-the-endgame","p":[["wood_beam",-2,0,-4,90],["wood_beam_45",-4,1,-3,90],["wood_beam_45",-3,1,-3,90],["wood_beam_45",-2,0,-3,90],["wood_beam_45",-2.4,0.29,-2.95,90],["wood_beam_45",-3,0,-2,90],["wood_beam",0,0,-2,360],["wood_pole",-1,0,-1.5,360],["wood_pole",1,0,-1.5,360],["wood_pole",-1,0,-0.5,270],["wood_pole",1,0,-0.5,270],["wood_beam_45",-1,0,0,0],["wood_beam_45",-0.92,0.62,0,338],["wood_beam_45",0.92,0.62,0,203],["wood_beam_45",1,0,0,180]]},{"id":"MG-0089","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"iron_wall_1x1","wt":"stone-base"},"src":"small-house-for-the-endgame","p":[["wood_beam",-2,0,-4,90],["wood_beam_45",-4,1,-3,90],["wood_beam_45",-3,1,-3,90],["wood_beam_45",-2,0,-3,90],["wood_beam_45",-2.4,0.31,-2.91,90],["wood_beam_45",-3,0,-2,90],["wood_beam",0,0,-2,180],["wood_pole",-1,0,-1.5,180],["wood_pole",1,0,-1.5,180],["wood_pole",-1,0,-0.5,270],["wood_pole",1,0,-0.5,270],["wood_beam_45",-1,0,0,360],["wood_beam_45",-0.92,0.62,0,338],["wood_beam_45",0.92,0.62,0,203],["wood_beam_45",1,0,0,180]]},{"id":"MW-0407","kind":"window","fit":{"w":1,"h":2,"wt":"stone","wall":"stone_wall_2x1"},"src":"kai-s-tavern","p":[["wood_beam",-1.32,0,-0.01,0,0.2],["crystal_wall_1x1",-1.74,0.13,0.17,0],["crystal_wall_1x1",-0.74,0.13,0.17,0],["crystal_wall_1x1",-0.82,0,0.99,0],["wood_pole2",-0.32,0,0.99,0,0.2],["crystal_wall_1x1",-1.74,0.13,1.17,0,0.2],["wood_beam",-1.32,0,1.99,0,0.2]]},{"id":"MW-0408","kind":"window","fit":{"w":1,"h":2,"wt":"stone","wall":"stone_wall_2x1"},"src":"kai-s-tavern","p":[["wood_beam",-1.68,0,-0.01,360,0.2],["crystal_wall_1x1",-1.23,0.14,0.17,360],["wood_pole2",-0.68,0,0.99,360,0.2],["crystal_wall_1x1",-1.23,0.14,1.17,360,0.2],["wood_beam",-1.68,0,1.99,360,0.2]]},{"id":"ME-0241","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"stone_wall_2x1","wt":"stone"},"src":"kai-s-tavern","p":[["wood_pole2",-1,-1,-2,0,0.2],["wood_pole2",1,-1,-2,0,0.2],["wood_beam",0,-1,-1,0,0.2],["wood_beam",-1,0,0,180],["wood_beam_1",0,-0.5,0,270],["wood_beam",1,0,0,180]]},{"id":"ME-0242","kind":"eave","fit":{"slope":45,"overhang":1,"wall":"stone_wall_2x1","wt":"stone"},"src":"kai-s-tavern","p":[["wood_pole2",0,-1,-2,180,0.2],["wood_pole",0,0,-1.5,90],["wood_beam",-1,0,-1,180],["wood_beam",-1,-1,-1,180,0.2],["wood_beam_1",0,-0.5,-1,270],["wood_beam",-1.02,-0.6,-0.83,180],["wood_beam",0,0,0,360]]},{"id":"ME-0243","kind":"eave","fit":{"slope":45,"overhang":1,"wall":"stone_wall_1x1","wt":"stone"},"src":"kai-s-tavern","p":[["wood_pole2",1,-1,-2,180,0.2],["wood_pole",1,0,-1.5,180],["wood_beam_1",1,-0.5,-1,270],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,90],["wood_beam",1,0,0,360]]},{"id":"MG-0090","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"darkwood_decowall","wt":"half-timber"},"src":"-1838","p":[["wood_pole",-3,0,-1.5,180,0.2],["wood_pole",3,0,-1.5,180],["wood_beam_26",-2,0,-1,0],["wood_beam_26",2,0,-1,180],["piece_dvergr_lantern",0,0,-0.81,270]]},{"id":"MW-0412","kind":"window","fit":{"w":2,"h":1,"wt":"plank","wall":"wood_wall_half"},"src":"-1838","p":[["woodiron_pole",1,0,-1,360,0.15],["sign",-1.52,-0.19,-0.87,180],["wood_beam",-2,0,0,360,0.2],["wood_beam",0,0,0,360,0.2],["wood_pole2",1,0,1,360,0.2],["sign",-1.53,-0.19,1.31,180],["sign",-0.55,-0.19,1.31,180]]},{"id":"MG-0091","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"darkwood_decowall","wt":"half-timber"},"src":"-1838","p":[["darkwood_beam",-3,1,-2.25,90],["sign",-0.01,0.19,-1.75,360],["wood_pole",-3,0,-1.5,360],["wood_pole",-1,0,-1.5,360,0.2],["wood_pole",1,0,-1.5,360,0.2],["wood_pole",3,0,-1.5,90],["wood_beam_26",-2,0,-1,360],["wood_beam_26",2,0,-1,180],["piece_dvergr_lantern",0,0,-0.81,90,0.15]]},{"id":"MG-0092","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"darkwood_decowall","wt":"half-timber"},"src":"-1838","p":[["darkwood_beam",-3,1,-2.25,90],["sign",-0.01,0.19,-1.73,360],["wood_pole",-3,0,-1.5,90],["wood_pole",-1,0,-1.5,360,0.2],["wood_pole",1,0,-1.5,360,0.2],["wood_pole",3,0,-1.5,270],["wood_beam_26",-2,0,-1,360],["wood_beam_26",2,0,-1,180],["piece_dvergr_lantern",0,0,-0.81,270,0.15]]},{"id":"MG-0093","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"-1838","p":[["wood_pole2",-3,1,-2,270],["wood_pole",-3,0,-1.5,180,0.2],["wood_beam",-3,1,-1,270],["wood_pole2",3,0,-1,180,0.2]]},{"id":"MG-0095","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"half-timber"},"src":"-1838","p":[["itemstand",-3.29,-0.23,-1.3,270],["wood_log_26",-2,0,-1,360,0.22],["wood_log_26",2,0,-1,180,0.22],["wood_log_26",-1,0,-0.5,360],["wood_pole_log",0,0,-0.5,180,0.4],["wood_log_26",1,0,-0.5,180]]},{"id":"MG-0096","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"half-timber"},"src":"-1838","p":[["itemstand",-3.29,-0.11,-1.34,270],["wood_log_26",-2,0,-1,0,0.22],["wood_log_26",2,0,-1,180,0.22],["wood_log_26",-1,0,-0.5,0],["wood_pole_log",0,0,-0.5,0,0.4],["wood_log_26",1,0,-0.5,180]]},{"id":"MG-0097","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"-1838","p":[["wood_beam_26",-1,0,-2.5,0,0.3],["wood_beam_26",1,0,-2.5,180,0.3],["woodiron_beam",-4,0,-2,180],["wood_beam_1",-3.35,0.35,-2,45,0.2],["woodiron_beam",-2,0,-2,180],["woodiron_beam",0,0,-2,180],["woodiron_beam",2,0,-2,180],["wood_beam_1",3.35,0.35,-2,135,0.2],["woodiron_beam",4,0,-2,180],["wood_pole",-3,0,-1.5,90,0.21],["wood_beam_45",-2.71,0.71,-1,0],["wood_beam_45",2.71,0.71,-1,180],["wood_beam_1",-1.35,0.35,0,45],["wood_beam_1",-0.5,0,0,0,0.21],["wood_beam_1",0.5,0,0,0,0.21],["wood_beam_1",1.35,0.35,0,135,0.15],["wood_beam_1",-0.02,-0.02,0.4,0]]},{"id":"MG-0098","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"-1838","p":[["wood_pole2",-2,0,-2,360,0.2],["wood_pole2",2,0,-2,360,0.2],["sign",-2.52,-0.19,-1.93,180],["wood_beam",-3,1,-1,270,0.17],["wood_beam",3,1,-1,90]]},{"id":"MG-0099","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"-1838","p":[["wood_beam_45",4,0,-2,180,0.21],["sign",-2.81,0.99,-1.75,90],["sign",2,0.19,-1.72,360],["sign",0.01,0.19,-1.71,360],["darkwood_beam",-2,0,-1.25,180],["darkwood_beam4x4",1,0,-1.25,180,0.2],["wood_beam_26",-2,0,-1,0],["wood_beam_26",2,0,-1,180,0.27],["wood_beam_26",-0.38,0.92,-0.5,68],["wood_beam_26",0.38,0.92,-0.5,113]]},{"id":"MG-0100","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"-1838","p":[["wood_beam_26",-4,0,-2,0],["wood_pole2",-2,0,-2,180,0.2],["wood_pole2",2,0,-2,180,0.2],["wood_beam_26",4,0,-2,180],["wood_beam",-3,1,-1,90,0.17],["wood_beam",3,1,-1,90,0.17]]},{"id":"ME-0248","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"hunter-cabin","p":[["wood_beam",0,-1,-2,360,0.2],["wood_beam",-1,-1,0,180,0.2],["wood_beam",1,-1,0,180,0.2]]},{"id":"ME-0251","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"hunter-cabin","p":[["wood_beam_1",-0.5,-1,-2,0,0.2],["wood_pole2",-1,-1,-1,270,0.2],["wood_beam",-1,-1,0,180,0.2]]},{"id":"ME-0252","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"ashwood_quarterwall_1x1","wt":"half-timber"},"src":"treehouse","p":[["wood_log_45",-1,-1,0,90,0.3]]},{"id":"MW-0414","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"tiny-castle","p":[["woodiron_pole",-0.52,0.53,-1,180,0.16],["woodiron_pole",-0.52,0.53,0,180,0.16]]},{"id":"MW-0415","kind":"window","fit":{"w":1,"h":2,"wt":"log","wall":"stone_wall_2x1"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["woodiron_pole",-1.31,0.01,-1,90,0.15],["woodiron_pole",-1.31,0.01,1,90,0.3]]},{"id":"ME-0253","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"stone_wall_2x1","wt":"half-timber"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["wood_pole2",-1,-1,-0.5,0,0.2],["wood_pole2",-1,-0.74,-0.5,270]]},{"id":"ME-0256","kind":"eave","fit":{"slope":45,"overhang":1,"wall":"iron_wall_1x1","wt":"stone"},"src":"plains-triple-round-house","p":[["stone_pillar",-1.03,-1.1,-0.85,270],["wood_beam_1",-1,-0.5,0,270],["wood_beam_1",-0.5,0,0,180],["wood_beam",0,-1,0,180],["wood_beam_1",0.5,0,0,180],["wood_beam_1",1,-0.5,0,270]]},{"id":"ME-0257","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",-0.19,-0.78,-2,315],["wood_pole2",1.02,-0.6,-1.98,180],["wood_pole2",0.02,-0.73,-1,0,0.18],["wood_pole",-0.19,-0.78,-0.5,315],["wood_beam_1",-1,-0.5,0,270],["wood_beam_1",-0.5,0,0,360],["wood_beam_1",0,-0.5,0,270,0.2],["wood_beam",1,0,0,180],["wood_beam",1.02,-0.73,0,0,0.18]]},{"id":"ME-0258","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",-0.23,-0.79,-2,225],["wood_pole2",0,-0.73,-0.99,360,0.18],["wood_pole",-0.23,-0.79,-0.5,225],["wood_beam_1",-1,-0.5,0,90],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,270,0.2],["wood_beam",1,0,0,0],["wood_beam",1,-0.73,0.01,360,0.18]]},{"id":"ME-0259","kind":"eave","fit":{"slope":45,"overhang":1,"wall":null,"wt":"stone"},"src":"plains-triple-round-house","p":[["wood_beam_1",-1,-0.5,0,270],["wood_beam_1",-0.5,0,0,0],["wood_beam",0,-1,0,180],["wood_beam_1",0.5,0,0,0],["wood_beam_1",1,-0.5,0,270]]},{"id":"ME-0261","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",-0.98,-0.6,-1.98,180],["wood_pole2",1.02,-0.6,-1.98,180],["wood_beam",-1,0,0,180],["wood_beam",-0.98,-0.73,0,0,0.18],["wood_beam",1,0,0,180],["wood_beam",1.02,-0.73,0,0,0.18]]},{"id":"ME-0312","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",0.09,-0.68,-2,180],["wood_pole2",-0.16,-0.77,-1,225],["wood_pole",0.09,-0.68,-0.5,180],["wood_beam_1",-1,-0.5,0,90],["wood_beam_1",-0.5,0,0,360],["wood_beam_1",0,-0.5,0,270,0.2],["wood_beam",1,0,0,180],["wood_beam_1",1,0.5,0,270]]},{"id":"ME-0262","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",0.02,-0.6,-1.98,180],["wood_beam",-1,0,0,270,0.2],["wood_beam_1",-0.5,0,0,0],["wood_beam",1,0,0,0],["wood_beam",-1,-0.73,0.01,0,0.18],["wood_beam",1,-0.73,0.01,0,0.18],["wood_beam",0.99,0.35,0.14,0],["wood_beam_1",0.98,-0.54,0.4,270,0.19]]},{"id":"ME-0263","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_beam_1",-1,0.5,0,270],["wood_beam_1",-0.5,0,0,0],["wood_beam",1,0,0,0],["wood_beam",-1,-0.73,0.01,360,0.18],["wood_beam",1,-0.73,0.01,360,0.18]]},{"id":"ME-0264","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"stone_wall_1x1","wt":"stone"},"src":"plains-triple-round-house","p":[["wood_beam_1",-1,-0.5,-1,270],["wood_beam",0,-1,-1,180],["wood_pole",-1,0,-0.5,0],["wood_beam",0,0,0,0]]},{"id":"MW-0421","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"ultimate-outpost","p":[["darkwood_beam",-2,0,-0.24,0,0.2],["darkwood_beam4x4",1,0,-0.24,0,0.2],["darkwood_decowall",-0.5,0,0.01,180],["darkwood_decowall",0.5,0,0.01,0],["darkwood_pole",-1,0,1.01,360,0.2],["darkwood_pole",1,0,1.01,360,0.2],["darkwood_beam",-2,0,1.76,0,0.2],["darkwood_beam4x4",1,0,1.76,0,0.2]]},{"id":"MW-0429","kind":"window","fit":{"w":1,"h":2,"wt":"stone","wall":"stone_wall_2x1"},"src":"mountain-stronghold-1690","p":[["wood_beam_1",-0.09,0.38,-0.02,360,0.2],["wood_pole2",-0.59,0.38,0.98,360,0.2],["wood_pole2",0.41,0.38,0.98,360,0.2],["wood_beam_1",-0.09,0.38,1.98,360,0.2],["wood_beam_1",-1.09,0.38,2.98,360,0.2]]},{"id":"MW-0432","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"mountain-stronghold-1690","p":[["wood_pole2",0.63,0.41,-0.02,270,0.2],["wood_pole2",1.63,0.41,-0.02,270,0.2],["wood_beam_1",1.13,0.41,0.98,180,0.2],["wood_beam_1",-0.87,0.41,1.98,0,0.2]]},{"id":"ME-0265","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",0.66,-0.62,-2,180],["wood_pole2",-0.98,-0.6,-1.98,180],["wood_pole2",1,1,-1,270,0.2],["wood_pole2",0.73,1,-0.99,270,0.18],["wood_pole",0.66,-0.62,-0.5,180],["wood_beam_1",-1,-0.5,0,270,0.2],["wood_beam_1",-0.5,0,0,0],["wood_beam_1",0,0.5,0,90],["wood_beam_1",0,-0.5,0,90,0.2],["wood_beam_1",0.5,1,0,180,0.2],["wood_beam",1,0,0,90,0.2],["wood_beam",-0.35,0.99,0.14,270],["wood_beam_1",0.49,0.99,0.4,0]]},{"id":"ME-0266","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",0.02,-0.6,-1.98,180],["wood_beam_1",-1,0.5,0,90],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,270,0.2],["wood_beam",1,0,0,180],["wood_beam",0.99,0.35,0.14,0],["wood_beam_1",0.98,-0.51,0.4,270,0.16]]},{"id":"ME-0313","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",0.67,-0.62,-2,180],["wood_pole2",0.7,0.99,-2,0,0.15],["wood_pole2",1.02,1.32,-2,0],["wood_pole2",-0.98,-0.6,-1.98,180],["wood_pole2",0.8,1.21,-1,135],["wood_pole2",1,1,-1,180,0.2],["wood_pole2",1,-0.73,-0.99,0,0.4],["wood_pole",0.67,-0.62,-0.5,180],["wood_pole",0.7,0.99,-0.5,0,0.15],["wood_pole",1.02,1.32,-0.5,0],["wood_beam_1",-0.5,0,0,0],["wood_beam",0,0,0,270,0.2],["wood_beam_1",0.5,1,0,180,0.2],["wood_beam",1,0,0,270,0.2],["wood_beam",0,-0.73,0.01,0,0.19],["wood_pole",1,0.8,0.05,0,0.39]]},{"id":"ME-0267","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",0.72,-0.7,-2,180,0.17],["wood_pole2",-0.98,-0.59,-1.97,180],["wood_pole",0.72,-0.7,-0.5,180,0.17],["wood_beam_1",-1,-0.5,0,270,0.2],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,0.5,0,270],["wood_beam",1,0,0,270,0.21],["wood_beam",0.73,0.03,0.01,270,0.2]]},{"id":"ME-0268","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",0.68,-0.65,-2,180],["wood_pole2",-1.02,-0.6,-1.98,180],["wood_pole2",0.73,0.98,-1,270,0.18],["wood_pole2",1,1,-1,90,0.2],["wood_pole",0.68,-0.65,-0.5,180],["wood_beam_1",-1,-0.5,0,90,0.2],["wood_beam_1",-0.5,0,0,0],["wood_beam_1",0,0.5,0,270],["wood_beam_1",0.5,1,0,0,0.2],["wood_beam",1,0,0,270,0.2],["wood_beam",-0.35,1.01,0.14,270],["wood_beam_1",0.47,1.01,0.4,180]]},{"id":"ME-0314","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",0.71,1.03,-2,270,0.16],["wood_pole2",0.79,1.25,-2,315],["wood_pole2",-0.98,-0.6,-1.98,180],["wood_pole2",0.98,0.73,-1,180,0.4],["wood_pole2",1,1,-1,180,0.2],["wood_pole2",1,-0.73,-0.99,0,0.4],["wood_pole2",1,1.27,-0.99,0,0.18],["wood_pole",0.71,1.03,-0.5,270,0.16],["wood_pole",0.79,1.25,-0.5,315],["wood_beam_1",-0.5,0,0,0],["wood_beam",0,0,0,270,0.2],["wood_beam_1",0.5,1,0,0,0.2],["wood_beam",1,0,0,270,0.2],["wood_beam",0,-0.73,0.01,0,0.19],["wood_pole",1,0.8,0.05,0,0.39]]},{"id":"ME-0315","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"wood_wall_log","wt":"log"},"src":"core-wood-mansion","p":[["wood_pole2",-0.25,-0.79,-2,315],["wood_pole2",-0.03,-0.71,-2,0,0.16],["wood_pole",-0.25,-0.79,-0.5,315],["wood_pole",-0.03,-0.71,-0.5,0,0.16],["wood_beam_1",-1,-0.5,0,270],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0,-0.5,0,270,0.2],["wood_beam_1",1,0.5,0,270],["wood_beam",1,0,0,0]]},{"id":"MG-0306","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_2x1","wt":"stone"},"src":"plains-triple-round-house","p":[["wood_beam",-3.96,0.33,-4,203],["wood_beam_1",-2.54,-0.05,-4,180],["stone_pillar",-1.54,0.5,-4,270],["darkwood_pole",-1.04,0,-4,270],["darkwood_pole",0.96,-0.05,-4,270],["stone_pillar",1.23,0.6,-4,248],["stone_pillar",-1.54,0.5,-2,270,0.2],["stone_pillar",1.23,0.6,-2,248,0.25],["wood_beam",-2.04,0,-1,360,0.19],["wood_beam",1.89,0.38,-1,338,0.29],["wood_beam_45",-1.04,0,0,270,0.4]]},{"id":"ME-0269","kind":"eave","fit":{"slope":45,"overhang":1,"wall":"stone_wall_1x1","wt":"stone"},"src":"plains-triple-round-house","p":[["wood_beam_1",-1,0.55,0,90],["wood_beam_1",-1,-0.5,0,90],["wood_beam",-0.03,0.03,0,0],["wood_beam",0,-1,0,180],["wood_beam_1",0.97,-0.47,0,90]]},{"id":"ME-0270","kind":"eave","fit":{"slope":45,"overhang":1,"wall":null,"wt":"stone"},"src":"plains-triple-round-house","p":[["wood_beam_1",-1,-0.5,0,90],["wood_beam",0,-1,0,180],["wood_beam",0,0,0,180],["wood_beam_1",1,-0.5,0,90]]},{"id":"ME-0271","kind":"eave","fit":{"slope":26,"overhang":1,"wall":"piece_dvergr_metal_wall_2x2","wt":"stone"},"src":"plains-triple-round-house","p":[["wood_beam_1",-1,-0.5,0,270],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",0.5,0,0,180],["wood_beam_1",1,-0.5,0,270]]},{"id":"MW-0727","kind":"window","fit":{"w":2,"h":0.5,"wt":"plank","wall":"woodwall"},"src":"glass-portal-hub","p":[["woodiron_pole",-1.21,-0.1,-1,338,0.2],["woodiron_pole",0.91,-0.24,-1,0],["darkwood_beam",-0.13,0.25,-0.28,180],["darkwood_beam",2.1,-0.35,-0.28,203],["wood_beam",-0.21,-0.1,0,0,0.2],["wood_beam",-0.09,-0.24,0,0,0.2],["wood_wall_quarter",1.56,-0.33,0.43,203],["wood_wall_quarter",-1.93,0.08,0.45,158],["wood_beam",-0.05,0.06,0.48,180,0.2],["woodiron_pole",-1.21,-0.1,1,338],["woodiron_pole",0.91,-0.24,1,0],["wood_beam",-0.05,0.06,1.48,180,0.2]]},{"id":"MW-0450","kind":"window","fit":{"w":1.5,"h":0.5,"wt":"plank","wall":"wood_wall_quarter"},"src":"glass-portal-hub","p":[["woodiron_pole",-1.16,-0.24,-1,0],["crystal_wall_1x1",-0.66,-0.24,-1,0,0.16],["crystal_wall_1x1",0.34,-0.24,-1,0,0.16],["woodiron_pole",0.96,-0.1,-1,23,0.2],["crystal_wall_1x1",1.42,-0.29,-1,23],["darkwood_beam",-0.14,0.3,-0.21,180],["wood_beam",-0.04,-0.1,0,360,0.2],["crystal_wall_1x1",0.34,-0.24,0,0],["crystal_wall_1x1",1.42,-0.29,0,23],["wood_wall_quarter",1.56,-0.02,0.42,203],["wood_beam",2.02,-0.21,0.42,23],["wood_wall_quarter",-1.75,-0.31,0.43,158],["wood_beam",-0.17,0.06,0.46,180,0.2],["woodiron_pole",-1.16,-0.24,1,0],["woodiron_pole",0.96,-0.1,1,23],["wood_beam",2.02,-0.21,1.42,203],["wood_beam",-0.17,0.06,1.46,180,0.2]]},{"id":"MW-0451","kind":"window","fit":{"w":2,"h":0.5,"wt":"plank","wall":"woodwall"},"src":"glass-portal-hub","p":[["crystal_wall_1x1",-1.67,-0.29,-1,158],["woodiron_pole",-1.21,-0.1,-1,338,0.2],["crystal_wall_1x1",-0.59,-0.24,-1,180,0.16],["crystal_wall_1x1",0.41,-0.24,-1,180,0.16],["woodiron_pole",0.91,-0.24,-1,360],["darkwood_beam",-2.21,0.02,-0.28,158],["darkwood_beam",0,0.25,-0.27,180],["darkwood_beam",2.2,-0.34,-0.25,203],["crystal_wall_1x1",-0.59,-0.24,0,180,0.3],["wood_beam",-0.21,-0.1,0,0,0.2],["wood_beam",-2.27,-0.21,0.43,158],["wood_wall_quarter",-1.8,-0.02,0.43,158],["wood_beam",-0.06,0.06,0.45,180,0.2],["wood_wall_quarter",1.58,-0.34,0.45,203],["woodiron_pole",-1.21,-0.1,1,338],["woodiron_pole",0.91,-0.24,1,360,0.15],["wood_beam",-2.27,-0.21,1.43,158],["wood_beam",-0.06,0.06,1.45,180,0.2]]},{"id":"MW-0452","kind":"window","fit":{"w":1.5,"h":0.5,"wt":"plank","wall":"woodwall"},"src":"glass-portal-hub","p":[["woodiron_pole",-1.16,-0.24,-1,360],["crystal_wall_1x1",-0.66,-0.24,-1,360,0.16],["crystal_wall_1x1",0.34,-0.24,-1,180,0.16],["woodiron_pole",0.96,-0.1,-1,23,0.2],["crystal_wall_1x1",1.42,-0.29,-1,23],["darkwood_beam",-0.21,0.25,-0.28,180],["wood_beam",-0.04,-0.1,0,360,0.2],["crystal_wall_1x1",0.34,-0.24,0,180,0.3],["wood_wall_quarter",-1.8,-0.33,0.44,158],["wood_beam",-0.18,0.06,0.44,180,0.2],["wood_wall_quarter",1.54,-0.01,0.44,203],["wood_beam",2,-0.2,0.44,203],["woodiron_pole",-1.16,-0.24,1,360],["woodiron_pole",0.96,-0.1,1,23],["wood_beam",-0.18,0.06,1.44,180,0.2],["wood_beam",2,-0.2,1.44,203]]},{"id":"MW-0456","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"the-tradesman-barndominium","p":[["ashwood_pole_2m",0.65,0.4,0,270,0.2],["ashwood_beam_2m",-0.35,0.4,1,180,0.19]]},{"id":"MW-0461","kind":"window","fit":{"w":1.5,"h":2,"wt":"stone","wall":"stone_wall_2x1"},"src":"mistvale-keep","p":[["wood_beam_1",-0.54,-0.26,0.2,360],["wood_pole2",-0.02,-0.28,0.6,360,0.4],["wood_pole2",-0.84,-0.29,0.8,360,0.2],["wood_beam_1",-0.34,-0.29,1.8,360]]},{"id":"MW-0462","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"vanilla-black-forest-outpost-wood-only-beginner-build-pre-iron-stone-tower","p":[["stone_arch",-1.5,0,1.52,180],["stone_arch",-1.5,0,1.52,0]]},{"id":"MG-0103","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"log"},"src":"house-black-forest-base","p":[["wood_pole_log",-3,0,-2,90,0.2],["wood_pole_log",3,0,-2,90,0.2]]},{"id":"MF-0215","kind":"base","fit":{"w":2,"wt":"half-timber","wall":null},"src":"hs_blackforest_mister_basestart_simple","p":[["wood_floor_1x1",-0.5,0.5,0,180],["wood_floor_1x1",0.5,0.5,0,180]]},{"id":"MG-0104","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"ashwood_wall_arch","wt":"plank"},"src":"hs_ashlands_bakedgoodsstall","p":[["ashwood_pole_2m",-2,0,-1.5,270,0.17],["ashwood_pole_2m",0,0,-0.5,270,0.17]]},{"id":"ME-0279","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"wood_wall_log","wt":"stone"},"src":"house-realm-of-rhovanion-hymir","p":[["wood_beam",0,-1,-2,180],["darkwood_beam",-1,0,-0.25,180]]},{"id":"MW-0469","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"blackmarble_1x1"},"src":"upper-class-medieval-house-w-download","p":[["wood_pole2",-0.64,0.46,-0.01,180,0.2],["stone_arch",-1.64,-0.04,1.49,180],["stone_arch",-1.64,-0.04,1.49,0],["wood_beam",-1.64,0.46,1.99,360,0.2],["wood_pole2",-0.64,0.46,1.99,180,0.2],["wood_beam",0.36,0.46,1.99,360,0.2]]},{"id":"MG-0106","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"darkwood_arch","wt":"half-timber"},"src":"upper-class-medieval-house-w-download","p":[["wood_beam_1",-3.55,-0.18,-3,203],["wood_beam",0,1,-3,0],["wood_beam",2,1,-3,0],["wood_beam",4,1,-3,0],["wood_pole2",-4,0.04,-2.97,135],["wood_beam_1",-0.5,0,0.5,0],["wood_beam_1",0.5,0,0.5,0]]},{"id":"MG-0108","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"upper-class-medieval-house-w-download","p":[["wood_pole",-1,0,-2.5,45,0.28],["wood_pole",1,0,-2.5,45,0.28],["wood_beam_45",3,0,-2,180,0.3],["wood_pole2",0,0,-1.5,315],["wood_beam_45",-2,0,-1,360,0.3],["wood_pole2",-1,0,-1,135],["wood_pole2",1,0,-1,135],["wood_beam_45",-1,0,0,360],["wood_beam_1",-0.5,0,0,180],["wood_pole",0,0,0,315],["wood_beam_1",0.5,0,0,180],["wood_beam_45",1,0,0,180]]},{"id":"MG-0110","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"upper-class-medieval-house-w-download","p":[["wood_beam_1",-3.55,-0.22,-4,23,0.17],["wood_pole2",-4,0,-3.97,45,0.3],["wood_beam_1",-2.35,0.35,-2.97,225],["wood_beam",-3.55,1.06,-2.96,23],["wood_beam_1",-0.5,-0.04,-2.5,360],["wood_beam_1",0.5,-0.04,-2.5,360],["wood_pole",-1,0,-2.47,315,0.28],["wood_pole",1,0,-2.47,315,0.28],["wood_pole2",0,-0.04,-1.5,135],["wood_pole2",-1,-0.04,-1,225],["wood_pole2",1,-0.04,-1,225],["wood_beam_45",-1,-0.04,0,0],["wood_beam_1",-0.5,-0.04,0,0],["wood_pole",0,-0.04,0,135],["wood_beam_1",0.5,-0.04,0,0],["wood_beam_45",1,-0.04,0,180]]},{"id":"ME-0282","kind":"eave","fit":{"slope":26,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"upper-class-medieval-house-w-download","p":[["wood_beam_45",-1,-1,-1,360,0.3],["darkwood_beam",0,-1,-0.25,270,0.2],["darkwood_pole",-1,-1,0,225,0.28],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",-0.5,-1,0,360,0.2],["wood_beam_1",0.5,0,0,360]]},{"id":"ME-0283","kind":"eave","fit":{"slope":45,"overhang":0.75,"wall":"woodwall","wt":"half-timber"},"src":"upper-class-medieval-house-w-download","p":[["wood_beam_45",-1,-1,-1,0,0.3],["darkwood_beam",0,-1,-0.25,270,0.2],["darkwood_pole",-1,-1,0,225,0.28],["wood_beam_1",-0.5,0,0,180],["wood_beam_1",-0.5,-1,0,0,0.2],["wood_beam_1",0.5,0,0,0]]},{"id":"ME-0285","kind":"eave","fit":{"slope":45,"overhang":0.5,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"upper-class-medieval-house-w-download","p":[["wood_pole2",-0.62,-0.08,-2,113],["wood_pole2",0.92,-0.64,-2,135,0.28],["wood_beam_1",-1.08,0.12,-1,23],["wood_pole",-0.62,-0.08,-0.5,113],["wood_pole",0.92,-0.62,-0.5,135]]},{"id":"MG-0111","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"hetjurheim-community-house","p":[["wood_beam_26",-2,0,-1,360],["wood_beam_26",2,0,-1,180]]},{"id":"MW-0475","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.9,-0.01,-0.21,1,0.3],["woodiron_pole",-0.9,-0.01,1.79,1,0.3]]},{"id":"MW-0476","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam4x4",-1.5,0.5,-1.25,360,0.2]]},{"id":"MG-0113","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"apudma-s-mage-house","p":[["wood_pole2",-4.03,0.97,-4,45,0.3],["wood_beam",-3,0,-4,270],["wood_beam",-2,1,-4,360],["wood_pole2",-0.77,-0.15,-4,360],["darkwood_pole",1,0.75,-4,270],["wood_pole2",1.25,1,-4,180],["wood_pole",1,1,-3.5,270],["wood_beam_1",-0.75,0.25,-3,90],["wood_beam_1",1.5,0.75,-3,180,0.2],["wood_beam_26",2.25,1,-3,0],["wood_beam_1",2.5,0.75,-3,360],["wood_beam",4,0,-3,180,0.2],["wood_beam",-1.24,1.02,-2.08,270],["wood_pole2",2,0.75,-2,0,0.2],["wood_beam_1",2.25,0.5,-2,90,0.2],["itemstand",1.81,-0.08,-1.8,270],["wood_beam",-1,1,-1,90],["darkwood_pole4",1,0.75,-1,270,0.2],["itemstand",1.5,0.94,-0.98,360],["wood_pole",0.01,0.28,0.47,45],["wood_beam",-0.03,-0.03,0.5,180]]},{"id":"MW-0497","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"mountain-stronghold-1690","p":[["wood_pole2",-1.63,0.41,-0.02,180,0.2]]},{"id":"MW-0499","kind":"window","fit":{"w":3,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"zertek-boat-dock","p":[["darkwood_beam",-2.44,-0.13,-0.25,180,0.2],["darkwood_beam",-0.44,-0.11,-0.25,180,0.2],["darkwood_beam",0.56,-0.1,-0.25,180,0.2],["darkwood_decowall",-1.94,-0.12,0,360],["darkwood_decowall",-0.94,-0.11,0,360],["darkwood_decowall",0.06,-0.11,0,360],["darkwood_decowall",1.06,-0.1,0,360]]},{"id":"MW-0502","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"zertek-boat-dock","p":[["darkwood_beam",-2.06,0.14,-0.25,181,0.2],["darkwood_beam",-0.06,0.12,-0.25,181,0.2],["darkwood_decowall",-1.56,0.14,0,1],["darkwood_decowall",-0.56,0.13,0,1],["darkwood_decowall",0.44,0.12,0,1],["darkwood_pole4",0.94,0.11,1,91,0.2]]},{"id":"MW-0506","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gigantic-medieval-watchtower-3","p":[["wood_pole2",-0.43,0.39,0,91,0.21],["stone_wall_1x1",-1.44,-0.31,0.5,226],["stone_pillar",1.56,-0.13,1,91]]},{"id":"MW-0508","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gigantic-medieval-watchtower-3","p":[["wood_pole2",-0.44,0.47,0,270,0.21],["stone_wall_1x1",-1.43,-0.24,0.5,45],["stone_pillar",1.55,0,1,270]]},{"id":"MW-0509","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["woodiron_pole",0.36,0.44,0,180,0.15],["wood_beam_45",-0.64,0.43,1,180,0.22],["wood_pole2",0.36,0.44,1,180,0.2]]},{"id":"MG-0118","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stave_wall_2x2","wt":"plank"},"src":"housedungeon-deepnorth","p":[["stave_beam_2m",-2,0,-4,360,0.3],["stave_beam_2m",0,0,-4,360,0.3],["stave_beam_2m",2,0,-4,360,0.3],["stave_pole_2m",-3,0,-3,180,0.32],["stave_pole_2m",3,0,-3,180,0.37],["stave_beam_45",-2,0,-1,360,0.43],["stave_beam_45",2,0,-1,180,0.43]]},{"id":"MW-0511","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_pole",-1.5,0.5,0,180,0.2],["wood_beam",-0.5,0.5,0,180,0.2],["darkwood_beam_45",-0.5,0.5,1,180,0.2]]},{"id":"MW-0512","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["wood_beam",-0.5,0.5,0,180,0.2],["darkwood_beam_45",-0.5,0.5,1,360,0.2],["wood_pole",-1.5,0.5,1.5,90,0.2]]},{"id":"MW-0515","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"hub-incredible-tavern-valheim-build","p":[["wood_pole2",-1.3,0.51,0,180],["wood_pole2",-1.3,0.51,2,180]]},{"id":"MW-0519","kind":"window","fit":{"w":2,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"medieval-church","p":[["wood_beam",-2.02,-0.29,0.01,360],["wood_floor_1x1",-1.52,0.22,0.01,90],["wood_floor_1x1",1.37,0.04,0.02,270]]},{"id":"MW-0523","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["woodiron_pole",0.36,0.44,0,180,0.15],["wood_pole",-1.64,0.43,0.5,180,0.2],["wood_pole2",0.36,0.44,1,180,0.2]]},{"id":"MW-0524","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["woodiron_pole",0.36,0.44,0,180,0.15],["wood_beam_45",-1.02,0.43,0.92,360,0.22],["wood_pole2",0.36,0.44,1,180,0.2]]},{"id":"MW-0525","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"main-tower-of-the-castle-5","p":[["woodiron_pole",0.64,0.39,-1,181,0.15],["wood_beam_45",-0.36,0.4,1,181,0.23],["wood_pole2",0.64,0.39,1,181,0.2]]},{"id":"MW-0532","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"woodwall"},"src":"medieval-fort-and-gatehouse","p":[["darkwood_beam4x4",-1.03,0.01,-1.25,1,0.2],["darkwood_beam4x4",0.97,-0.01,-1.25,1,0.2],["darkwood_beam",-2.03,0.02,-0.25,1,0.2],["darkwood_beam4x4",0.97,-0.01,-0.25,1,0.2],["crystal_wall_1x1",-0.53,0,0,181],["crystal_wall_1x1",0.47,-0.01,0,181],["darkwood_pole",-1.03,0.01,1,181,0.2],["crystal_wall_1x1",-0.53,0,1,181],["crystal_wall_1x1",0.47,-0.01,1,181],["darkwood_pole",0.97,-0.01,1,181,0.2],["darkwood_beam",-2.03,0.02,1.75,1,0.2],["darkwood_beam",-0.03,0,1.75,181,0.2],["darkwood_beam",1.97,-0.02,1.75,1,0.2]]},{"id":"MG-0119","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"medieval-fort-and-gatehouse","p":[["wood_pole",-3,0,-1.5,90],["wood_pole",-1,0,-1.5,90,0.2],["wood_beam",-2,0,-1,360],["wood_beam",0,0,-1,360,0.2],["wood_beam",2,0,-1,360,0.2],["wood_beam_26",-1.34,0,-0.68,360,0.3],["wood_beam_26",1.34,-0.02,-0.66,180,0.3],["wood_pole",-1,0,-0.5,360,0.2],["wood_pole",1,0,-0.5,360,0.2],["wood_pole",0,0,0.5,360]]},{"id":"MG-0120","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"medieval-fort-and-gatehouse","p":[["wood_beam_1",-1.35,-0.35,-2,135,0.2],["wood_beam",-2,0,-1,0,0.2],["wood_beam",0,0,-1,0,0.2],["wood_beam",2,0,-1,0,0.2],["wood_beam_26",1.34,0,-0.68,180,0.3],["wood_beam_26",-1.34,-0.02,-0.65,0,0.3],["wood_pole",0,0,-0.5,180,0.3],["wood_pole",0,0,0.5,0]]},{"id":"MG-0121","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_1x1","wt":"plank"},"src":"medieval-fort-and-gatehouse","p":[["woodiron_pole",2,0,-4,270,0.15],["darkwood_pole4",2.94,0.23,-4,90],["woodiron_pole",-2,0,-3,360],["woodiron_pole",-2,0,-2,360],["woodiron_pole",2,0,-2,270,0.15],["wood_beam",-2,1,-1,360,0.2],["woodiron_pole",2,0,-1,270,0.15]]},{"id":"MG-0122","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_2x1","wt":"plank"},"src":"medieval-fort-and-gatehouse","p":[["darkwood_pole4",-3,1,-4,270,0.2],["woodiron_pole",-2,0,-4,270,0.15],["woodiron_pole",2,0,-4,270,0.15],["darkwood_pole4",3,1,-4,90,0.2],["woodiron_pole",-2,0,-2,270],["woodiron_pole",2,0,-2,270,0.15]]},{"id":"MG-0123","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_2x1","wt":"plank"},"src":"medieval-fort-and-gatehouse","p":[["darkwood_pole4",-3,0,-4,270,0.2],["woodiron_pole",-2,1,-4,90,0.15],["woodiron_pole",2,1,-4,90],["darkwood_pole4",3,0,-4,90,0.2],["woodiron_pole",-2,1,-2,90,0.15],["woodiron_pole",2,1,-2,90]]},{"id":"MG-0124","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_1x1","wt":"plank"},"src":"medieval-fort-and-gatehouse","p":[["darkwood_beam4x4",-3,1,-4.25,270,0.2],["darkwood_pole4",-3,0,-4,270,0.2],["woodiron_pole",2,1,-4,90],["darkwood_pole4",3,0,-4,90,0.2],["woodiron_pole",-2,1,-3,0,0.15],["woodiron_pole",2,1,-2,90],["wood_pole2",3,0,-2,90,0.2],["woodiron_pole",-2,1,-1,0]]},{"id":"MG-0125","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"medieval-fort-and-gatehouse","p":[["darkwood_beam",-2,0,-4.25,0,0.2],["darkwood_beam4x4",1,0,-4.25,0,0.2],["darkwood_pole4",-3,0,-4,90,0.2],["darkwood_pole4",3,0,-4,90,0.2],["darkwood_pole",-1,0,-3,180,0.21],["darkwood_pole",1,0,-3,180,0.2],["darkwood_beam",-2,0,-2.25,0,0.2],["darkwood_beam",0,0,-2.25,180,0.21],["darkwood_beam",2,0,-2.25,0,0.2],["piece_walltorch",0.06,-0.36,-1.28,90]]},{"id":"MG-0126","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stave_wall_2x2","wt":"plank"},"src":"housedungeon-deepnorth","p":[["stave_pole_4m",-3,0,-5,180,0.36],["stave_pole_4m",3,0,-5,180,0.33],["piece_walltorch",1.3,-0.34,-4.17,270,0.18],["piece_walltorch",-1.34,-0.34,-4.15,270,0.18],["stave_beam_45",-2,0,-1,0,0.43],["stave_beam_45",2,0,-1,180,0.43]]},{"id":"MG-0127","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stave_wall_2x2","wt":"plank"},"src":"housedungeon-deepnorth","p":[["stave_pole_4m",-3,0,-5,0,0.35],["stave_pole_4m",3,0,-5,0,0.34],["piece_walltorch",-0.95,-0.34,-4.32,270,0.18],["piece_walltorch",0.99,-0.31,-4.31,270,0.17],["stave_beam_45",-2,0,-1,0,0.43],["stave_beam_45",2,0,-1,180,0.43]]},{"id":"MG-0128","kind":"gable","fit":{"slope":45,"overhang":-0.25,"wall":"stave_wall_2x2","wt":"plank"},"src":"housedungeon-deepnorth","p":[["itemstand",-1.36,-0.1,-3.7,360,0.09],["wood_window",-3,0.7,-3.5,360],["wood_window",-2,0.72,-3.5,360],["wood_window",-2,-0.28,-3.5,90,0.36],["itemstand",-0.02,0.08,-1.93,360],["piece_banner01",-1.94,0.2,-0.13,270],["piece_banner01",1.97,0.18,-0.13,270]]},{"id":"MW-0731","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"ompact-4-storey-house","p":[["darkwood_beam",-1.5,0.5,-0.25,180,0.2],["darkwood_beam",-0.5,0.5,-0.25,180,0.2],["darkwood_pole",-1.5,0.5,2,180,0.2]]},{"id":"MW-0540","kind":"window","fit":{"w":1.5,"h":1,"wt":"stone","wall":"blackmarble_2x1x1"},"src":"the-grand-forge","p":[["Piece_grausten_pillarbase_medium",-1.98,-0.08,-1,360,0.5],["Piece_grausten_pillarbase_medium",-1.98,-0.08,0,360,0.5],["Piece_grausten_pillarbase_medium",-1.98,-0.08,1,360,0.5]]},{"id":"MW-0542","kind":"window","fit":{"w":3,"h":1,"wt":"plank","wall":"wood_wall_quarter"},"src":"automated-pig-farm","p":[["wood_beam",-0.55,0.02,-0.87,360,0.32],["wood_pole2",-1.57,0.01,0,270,0.2],["wood_beam",-0.57,0.02,0,360,0.2],["wood_beam",0.43,0.03,0,360,0.2],["wood_pole2",1.43,0.04,0,270,0.2],["wood_pole2",-1.57,0.01,2,270,0.2],["wood_pole2",1.43,0.04,2,270,0.2]]},{"id":"MW-0544","kind":"window","fit":{"w":2,"h":1,"wt":"plank","wall":"wood_wall_half"},"src":"automated-pig-farm","p":[["wood_beam",-2.02,-0.05,-0.87,180],["wood_beam",-0.02,-0.03,-0.87,180,0.32],["wood_beam",1.98,-0.01,-0.87,180,0.32],["wood_window",-1.02,-0.04,-0.37,180]]},{"id":"MW-0545","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_quarter"},"src":"automated-pig-farm","p":[["wood_pole2",1.96,-0.04,1,271,0.2],["wood_beam",-2.03,0,2,181,0.2],["wood_wall_quarter",-0.25,-0.34,2,271,0.31],["wood_beam",-2.03,0,3,181,0.2],["wood_pole2",-1.03,-0.01,3,271,0.2],["wood_pole2",1.96,-0.04,3,1,0.2]]},{"id":"MG-0130","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"log"},"src":"simple-forest-cabin","p":[["wood_beam",-4,1,-2,90],["wood_wall_log_4x0.5",-3,0,-1.25,0,0.3],["wood_wall_log_4x0.5",3,0,-1.25,0,0.3],["wood_pole_log_4",-1,0,0,0,0.2],["wood_pole_log_4",1,0,0,0,0.2]]},{"id":"MG-0131","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"log"},"src":"simple-forest-cabin","p":[["wood_log_45",-3.99,-0.05,-1.99,360,0.18],["wood_pole_log",-2.99,-0.05,-1.99,180,0.2],["wood_pole_log_4",-0.99,-0.05,-1.99,180,0.21],["wood_pole_log_4",1.01,-0.05,-1.99,360,0.2],["wood_pole_log",3.01,-0.05,-1.99,180,0.2],["wood_log_45",4.01,-0.05,-1.99,180,0.18],["wood_log_26",-1.99,-0.05,-0.99,0,0.22],["wood_log_26",2.01,-0.05,-0.99,180,0.22],["wood_log_26",0,0,0,180,0.23],["wood_log_26",0.01,-0.05,0.01,0,0.22]]},{"id":"MD-0033","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"woodwall"},"src":"starter-community-home-2","p":[["wood_stair",0,1,-1,360,0.17],["wood_beam_45",-2,0,1,180,0.3],["wood_beam_45",2,0,1,360,0.3],["wood_beam_45",-2,0,3,360,0.3],["wood_beam_45",2,0,3,180,0.3]]},{"id":"MG-0132","kind":"gable","fit":{"slope":45,"overhang":0,"wall":null,"wt":"half-timber"},"src":"mini-smelter-base-vbuild-perfect-for-survival-game","p":[["sign",-2.81,-0.06,-3.95,90],["wood_beam",-3,1,-2,90],["wood_beam",3,1,-2,90],["wood_beam_45",-2,0,-1,360],["wood_beam_45",2,0,-1,180]]},{"id":"MG-0133","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"mini-smelter-base-vbuild-perfect-for-survival-game","p":[["wood_pole_log_4",-3,0,-4,360,0.2],["wood_pole2",-1,0,-3,90,0.2],["wood_beam_45",-1,1,-3,270,0.2],["wood_beam",-3,1,-2,90,0.17],["wood_beam",3,1,-2,90],["wood_beam_45",-2,0,-1,0,0.21],["wood_pole2",-1,0,-1,0],["wood_beam_45",2,0,-1,180],["wood_beam",-1,1,0,270],["wood_beam",1,1,0,270]]},{"id":"MG-0134","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"mini-smelter-base-vbuild-perfect-for-survival-game","p":[["wood_pole2",1,0,-4,270,0.2],["wood_beam",-3,1,-3,270],["wood_beam",3,1,-3,270,0.17],["wood_beam_45",-2,0,-2,0],["wood_pole2",1,0,-2,360],["wood_pole",-1,0,-0.5,90],["wood_pole",1,0,-0.5,180],["wood_beam",0,0,0,180]]},{"id":"MG-0135","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"mini-smelter-base-vbuild-perfect-for-survival-game","p":[["wood_beam_1",-3,0.5,-4,270],["wood_pole_log_4",3,0,-4,180,0.2],["wood_beam_45",1,1,-3,270,0.2],["wood_pole2",1,0,-3,270,0.2],["wood_beam",-3,1,-2,270],["wood_beam",3,1,-2,270],["wood_beam_45",-2,0,-1,360],["wood_pole2",1,0,-1,180],["wood_beam",-1,1,0,90],["wood_beam",1,1,0,90]]},{"id":"MG-0136","kind":"gable","fit":{"slope":45,"overhang":0,"wall":null,"wt":"half-timber"},"src":"mini-smelter-base-vbuild-perfect-for-survival-game","p":[["wood_beam",-3,1,-2,90],["wood_beam",3,1,-2,90],["wood_beam_45",-2,0,-1,0],["wood_beam_45",2,0,-1,180]]},{"id":"MG-0137","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_2x1","wt":"stone"},"src":"tavern-in-the-meadows-contest","p":[["wood_pole2",0.02,-0.16,-1,90],["wood_pole",0.02,-0.16,0.5,0]]},{"id":"MG-0138","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_2x1","wt":"stone"},"src":"tavern-in-the-meadows-contest","p":[["wood_pole2",0,0.03,-1,270],["wood_pole",0,0.03,0.5,180]]},{"id":"MW-0557","kind":"window","fit":{"w":2,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"gate-to-the-castle-4","p":[["wood_pole2",-2,0.5,0,90,0.2],["wood_pole2",2,0.5,0,90,0.2]]},{"id":"MW-0558","kind":"window","fit":{"w":1,"h":1,"wt":"half-timber","wall":"iron_wall_2x2"},"src":"medieval-tavern","p":[["piece_walltorch",-1.14,-0.27,-0.46,90],["piece_walltorch",1.53,-0.32,-0.43,90],["wood_beam_1",-1,0.49,-0.03,360],["wood_beam_26",0.5,0.49,-0.03,360],["wood_pole2",-0.5,0.08,0,0,0.2],["wood_pole2",1.5,0.08,0,0],["wood_pole2",-1.5,0.49,0.97,360],["wood_beam",-0.5,0.08,1,180,0.2],["wood_beam",1.5,0.08,1,180,0.2],["wood_pole",1.5,0.49,1.47,360],["wood_beam",-1.5,0.08,2,360,0.2],["wood_beam",0.5,0.08,2,360,0.2]]},{"id":"MW-0559","kind":"window","fit":{"w":1,"h":1,"wt":"half-timber","wall":"wood_wall_quarter"},"src":"medieval-tavern","p":[["wood_pole2",-1.49,0.48,-0.99,0],["piece_walltorch",1.47,-0.32,-0.43,270],["wood_beam_26",0.5,0.49,-0.03,0],["wood_pole2",-1.76,0.38,0,135],["wood_pole2",-1.5,0.08,0,90,0.2],["wood_pole2",-0.5,0.08,0,90,0.2],["wood_pole2",1.5,0.08,0,360],["wood_beam_1",-0.99,0.48,0.01,180],["wood_beam",-0.5,0.08,1,180,0.2],["wood_beam",1.5,0.08,1,180,0.2],["wood_pole2",-1.49,0.48,1.01,0],["wood_pole",1.5,0.49,1.47,0],["wood_pole2",-1.76,0.38,2,135],["wood_pole2",-1.5,0.08,2,180,0.2],["wood_beam_1",-1,0.08,2,0,0.2],["wood_pole2",-0.5,0.08,2,0,0.3],["wood_beam",0.5,0.08,2,0,0.2]]},{"id":"MW-0560","kind":"window","fit":{"w":1,"h":1,"wt":"half-timber","wall":"wood_wall_half"},"src":"medieval-tavern","p":[["wood_pole2",0.32,0.41,-0.99,360],["wood_log_45",1.32,0.41,-0.99,180],["wood_beam_45",1.32,0.41,-0.99,180],["wood_pole2",-1.67,0,0,360],["wood_pole2",0.33,0,0,360,0.2],["wood_beam_26",-0.68,0.41,0.01,180],["wood_log_26",-0.68,0.41,0.01,180],["wood_beam",-1.67,0,1,0,0.2],["wood_beam",0.33,0,1,0,0.2],["wood_beam",-0.68,0.41,1.01,180],["wood_beam",1.32,0.41,1.01,180],["wood_beam",-0.67,0,2,180,0.2],["wood_beam",1.33,0,2,180,0.2]]},{"id":"MG-0141","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"fully-equipped-warehouse-workshop","p":[["piece_brazierceiling01",1.09,0.71,-4.42,270],["wood_pole_log_4",-1,0,-4,180,0.2],["wood_pole_log_4",3,0,-4,180,0.2],["wood_beam",-1,1,-3.5,270,0.16],["wood_beam",0,0,-3.5,180,0.2],["wood_beam",2,0,-3.5,180,0.2],["wood_beam",3,1,-3.5,90],["wood_pole_log_4",-1,0,0,180,0.2]]},{"id":"MW-0566","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"woodwall"},"src":"community-longhouse","p":[["wood_pole2",1.09,-0.11,1,0],["wood_beam",-1.91,-0.11,2,0,0.2],["wood_beam",0.09,-0.11,2,0,0.2]]},{"id":"MW-0567","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"community-longhouse","p":[["wood_pole2",-0.91,0.11,1,0],["wood_beam",-1.91,0.11,2,0],["wood_beam",0.09,0.11,2,0,0.2]]},{"id":"MG-0142","kind":"gable","fit":{"slope":45,"overhang":0.25,"wall":"wood_wall_log","wt":"half-timber"},"src":"blacksmith-with-store-and-living-area","p":[["wood_pole_log_4",-1.42,0,-3.98,270],["wood_pole_log_4",1.58,0,-3.98,270],["wood_beam_26",-1.42,1,-2.48,270],["wood_beam_26",1.58,1,-2.48,270],["wood_beam_26",-0.42,0,-1.98,360],["wood_beam_26",0.58,0,-1.98,180],["wood_beam_26",-1.42,1,-1.48,90,0.2],["wood_beam_26",-0.42,0,-1.48,180,0.27],["wood_beam_26",0.58,0,-1.48,360,0.27],["wood_beam_26",1.58,1,-1.48,90,0.2],["wood_pole_log",-1.42,0,-0.98,360,0.2],["wood_pole_log",1.58,0,-0.98,360,0.2]]},{"id":"MW-0569","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"stone-chateau","p":[["stone_arch",-1.75,0,-0.51,180]]},{"id":"MW-0572","kind":"window","fit":{"w":1.5,"h":1,"wt":"plank","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_beam_1",-1.48,0.12,0,1,0.2],["wood_beam_1",-0.48,0.11,0,1,0.2],["wood_beam_1",0.52,0.1,0,1,0.2],["wood_beam_1",1.52,0.09,0,1,0.2],["wood_pole",-1.98,0.12,0.5,1],["wood_pole",-0.98,0.11,0.5,1],["wood_pole",0.02,0.11,0.5,1],["wood_pole",1.02,0.1,0.5,1],["wood_pole",2.02,0.09,0.5,1],["wood_beam_1",-1.48,0.12,1,1],["wood_beam_1",-0.48,0.11,1,1,0.2],["wood_beam_1",0.52,0.1,1,1,0.2],["wood_beam_1",1.52,0.09,1,1,0.2]]},{"id":"MD-0034","kind":"door","fit":{"w":2,"h":3,"rise":1.5,"wt":"other","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_stair",0,1,-1,0,0.17]]},{"id":"MI-0025","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["darkwood_pole4",0,0,3,135,0.39]]},{"id":"MI-0026","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_pole2",0,0,1,135,0.39]]},{"id":"MW-0573","kind":"window","fit":{"w":2,"h":1,"wt":"plank","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-0.79,0.09,-1,1,0.2],["piece_walltorch",0.23,-0.27,-0.64,271],["wood_beam_1",-0.29,0.09,0,1,0.2],["wood_beam_1",0.71,0.08,0,1,0.2],["wood_pole",0.21,0.08,0.5,1],["wood_pole",1.21,0.07,0.5,1],["wood_beam_45",-1.79,0.1,1,1,0.22],["wood_pole2",-0.79,0.09,1,1,0.2],["wood_beam_1",-0.29,0.09,1,1,0.2],["wood_beam_1",0.71,0.08,1,1,0.2]]},{"id":"MW-0574","kind":"window","fit":{"w":2,"h":1,"wt":"plank","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_pole2",1.21,0.02,-1,1,0.2],["piece_walltorch",0.2,-0.33,-0.63,271],["wood_beam_1",-0.29,0.03,0,1,0.2],["wood_beam_1",0.71,0.03,0,1,0.2],["wood_pole",-0.79,0.04,0.5,1],["wood_pole",0.21,0.03,0.5,1],["wood_beam_1",-0.29,0.03,1,1,0.2],["wood_beam_1",0.71,0.03,1,1,0.2],["wood_pole2",1.21,0.02,1,1,0.2],["wood_beam_45",2.21,0.01,1,181,0.22]]},{"id":"MG-0143","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole_log_4",-2,0,-4,90,0.2],["wood_pole_log_4",2,0,-4,90,0.2],["wood_beam_45",-4,0,-3,0],["wood_beam",-3,0,-3,360],["wood_beam",-1,0,-3,360,0.2],["wood_beam",1,0,-3,180,0.2],["itemstand",-0.05,0.25,-2.12,360],["wood_beam_45",-3,0,-2,0,0.21],["wood_beam_45",3,0,-2,180,0.21],["wood_log_45",3,0,-2,180,0.18],["wood_beam",3,1,-2,270],["wood_log_45",-2,1,-1,270,0.25],["wood_pole_log",-2,0,-1,180,0.2],["wood_log_45",-1,0,-1,0,0.3],["wood_log_45",1,0,-1,180,0.3],["wood_pole_log",2,0,-1,90,0.2],["wood_log_45",2,1,-1,270,0.25],["piece_walltorch",0,-0.36,-0.83,270],["wood_beam_45",-1,0,0,0,0.21],["wood_beam_45",1,0,0,180,0.21]]},{"id":"MG-0144","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["itemstand",-0.02,-0.19,-3.9,180],["wood_beam_45",-2,0,-3,0,0.3],["sign",-0.01,-0.19,-2.77,180],["piece_banner01",-1.53,-0.35,-2.75,270],["piece_banner01",1.67,-0.35,-2.75,270],["wood_beam_45",-2,0,-1,0,0.21],["wood_beam_45",2,0,-1,180,0.21]]},{"id":"MW-0575","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_beam",-0.06,0.06,-1,180,0.2],["crystal_wall_1x1",-1.68,0.05,0,360],["crystal_wall_1x1",-0.68,0.05,0,360],["wood_beam",-0.18,0.06,0,360,0.2],["crystal_wall_1x1",0.32,0.06,0,360],["wood_pole2",0.76,0.1,0.2,270,0.26],["crystal_wall_1x1",-1.68,0.04,1,360],["crystal_wall_1x1",-0.68,0.05,1,360],["crystal_wall_1x1",0.32,0.06,1,360],["wood_beam",-0.18,0.06,2,360,0.2],["wood_pole2",0.76,0.1,2.2,270,0.26]]},{"id":"MW-0576","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_beam",-0.18,0.04,-1,180,0.2],["wood_beam",1.94,0.06,-1,180,0.2],["crystal_wall_1x1",-1.68,0.03,0,360],["crystal_wall_1x1",-0.68,0.04,0,360],["wood_beam",-0.06,0.04,0,360,0.2],["crystal_wall_1x1",0.32,0.05,0,360],["crystal_wall_1x1",1.32,0.05,0,360],["wood_beam",1.82,0.06,0,360,0.2],["crystal_wall_1x1",-1.68,0.03,1,360],["crystal_wall_1x1",-0.68,0.04,1,360],["crystal_wall_1x1",0.32,0.04,1,360],["crystal_wall_1x1",1.32,0.05,1,360],["wood_beam",-0.18,0.04,2,360,0.2],["wood_beam",1.82,0.06,2,360,0.2]]},{"id":"MW-0577","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_beam",-0.18,0.02,-1,180,0.2],["wood_beam",1.82,0.04,-1,180,0.2],["crystal_wall_1x1",-0.56,0.02,0,360],["wood_beam",-0.06,0.02,0,360,0.2],["crystal_wall_1x1",0.32,0.03,0,360],["crystal_wall_1x1",1.32,0.04,0,360],["wood_beam",1.94,0.04,0,360,0.2],["wood_pole2",-1.24,0.05,0.2,270],["crystal_wall_1x1",-0.56,0.02,1,360],["crystal_wall_1x1",0.32,0.03,1,360],["crystal_wall_1x1",1.32,0.04,1,360],["wood_beam",-0.06,0.02,2,360,0.2],["wood_beam",1.82,0.04,2,360,0.2],["wood_pole2",-1.24,0.05,2.2,270]]},{"id":"MW-0733","kind":"window","fit":{"w":2,"h":1,"wt":"plank","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1.24,-0.11,-1,1],["wood_pole2",0.85,-0.05,-1,1,0.2],["wood_pole2",-1.27,-0.06,-0.8,1],["crystal_wall_1x1",-0.65,-0.03,0,1],["wood_beam",-0.15,-0.04,0,181,0.2],["crystal_wall_1x1",0.35,-0.04,0,1],["wood_pole2",-1.24,-0.11,1,1],["wood_beam",-0.15,-0.04,1,181,0.2],["wood_pole2",0.85,-0.05,1,1,0.2],["crystal_wall_1x1",1.35,-0.05,1,1],["wood_beam",1.85,-0.05,1,1],["wood_pole2",-1.27,-0.06,1.2,1]]},{"id":"MW-0580","kind":"window","fit":{"w":2,"h":1,"wt":"plank","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1.03,-0.06,-1,1,0.32],["wood_pole2",0.85,-0.08,-1,1,0.2],["wood_pole2",1.04,-0.13,-0.8,1],["crystal_wall_1x1",-0.65,-0.07,0,1],["wood_beam",-0.15,-0.07,0,181,0.2],["crystal_wall_1x1",0.35,-0.07,0,1],["wood_pole2",1.04,-0.13,0.2,226],["wood_beam",-2.15,-0.05,1,1],["crystal_wall_1x1",-1.65,-0.06,1,1],["wood_pole2",-1.03,-0.06,1,1,0.32],["wood_beam",-0.15,-0.07,1,181,0.2],["wood_pole2",0.85,-0.08,1,1,0.2],["wood_pole2",1.04,-0.13,1.2,1]]},{"id":"MW-0581","kind":"window","fit":{"w":1,"h":1,"wt":"plank","wall":"wood_wall_quarter"},"src":"houses-homes-and-tinies","p":[["itemstand",-1.71,-0.13,-0.25,181],["crystal_wall_1x1",-0.11,0.05,0,1],["piece_walltorch",-1,-0.29,0.01,271],["itemstand",-1.71,-0.11,0.15,181]]},{"id":"MW-0582","kind":"window","fit":{"w":1,"h":1,"wt":"plank","wall":"wood_wall_quarter"},"src":"houses-homes-and-tinies","p":[["itemstand",-1.79,-0.13,-0.25,180],["crystal_wall_1x1",-0.08,0.1,0,360],["piece_walltorch",-0.93,-0.26,0.03,90],["itemstand",-1.79,-0.11,0.15,180]]},{"id":"MD-0036","kind":"door","fit":{"w":2,"h":3,"rise":0.5,"wt":"log","wall":"wood_wall_log"},"src":"houses-homes-and-tinies","p":[["wood_beam",-2,0,0,0,0.2],["wood_beam",0,0,0,0,0.2],["wood_beam",2,0,0,0,0.2],["wood_pole2",-1.12,0,1,0,0.3],["wood_pole2",1,0,1,0,0.2],["wood_beam",-2,0,2,180,0.2],["wood_beam",2,0,2,180,0.2],["wood_beam",-2,0,3,180,0.2],["wood_pole2",-1.12,0,3,0,0.3],["wood_beam",0,0,3,0],["wood_pole2",1,0,3,0,0.2],["wood_beam",2,0,3,180,0.2],["wood_beam",-0.12,0,4,180]]},{"id":"MW-0583","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1.17,0.05,0,91,0.2],["wood_beam",-0.17,0.04,0,1,0.2],["wood_beam",1.83,0.02,0,1,0.2],["wood_beam",-0.17,0.04,1,1],["wood_pole2",0.83,0.03,1,181,0.2],["wood_beam",1.83,0.02,1,1,0.2],["wood_pole2",-1.17,0.05,2,1,0.2],["wood_beam",-0.17,0.04,2,1,0.2],["wood_beam",1.83,0.02,2,1,0.2]]},{"id":"MW-0585","kind":"window","fit":{"w":2,"h":1,"wt":"plank","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_beam_1",-1.51,-0.11,0,360,0.2],["wood_beam_1",-0.51,-0.1,0,360,0.2],["wood_beam_1",0.49,-0.09,0,360,0.2],["wood_beam_1",1.49,-0.08,0,360,0.2],["wood_pole",-2.01,-0.11,0.5,360],["wood_pole",-1.01,-0.1,0.5,360],["wood_pole",-0.01,-0.09,0.5,360],["wood_pole",0.99,-0.08,0.5,360],["wood_pole",1.99,-0.08,0.5,360],["wood_beam_1",-1.51,-0.11,1,360],["wood_beam_1",-0.51,-0.1,1,360,0.2],["wood_beam_1",0.49,-0.09,1,360,0.2],["wood_beam_1",1.49,-0.08,1,360]]},{"id":"MW-0586","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_beam_1",-0.33,0.09,0,181,0.2],["wood_beam_1",0.67,0.08,0,181,0.2],["wood_pole",-0.83,0.09,0.5,181,0.2],["wood_pole",1.17,0.08,0.5,181,0.2],["wood_pole2",0.17,0.09,1,181],["wood_beam",0.17,0.09,1,181],["wood_pole",-0.83,0.09,1.5,181,0.2],["wood_pole",1.17,0.08,1.5,181,0.2],["wood_beam_1",-0.33,0.09,2,181,0.2],["wood_beam_1",0.67,0.08,2,181,0.2]]},{"id":"MD-0037","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"woodwall"},"src":"houses-homes-and-tinies","p":[["wood_stair",0,1,-1,360,0.17],["wood_wall_roof_top",0,0,3,180,0.27],["wood_pole2",-1,0,4,180,0.2],["wood_pole2",1,0,4,180,0.2]]},{"id":"MG-0145","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-1,0,-2,90,0.2],["wood_beam",0,0,-2,180,0.2],["wood_pole2",1,0,-2,90,0.2],["wood_pole",-1,0,-0.5,180],["wood_pole",1,0,-0.5,180]]},{"id":"MG-0146","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-3,0,-2,90,0.2],["wood_pole2",-1,0,-2,0,0.2],["wood_pole2",1,0,-2,0,0.2],["wood_pole2",3,0,-2,90,0.2],["piece_walltorch",-1.84,0.36,-1.46,270],["piece_walltorch",1.94,0.35,-1.42,270],["wood_beam",0,0,-1,0,0.2]]},{"id":"MG-0147","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-3,0,-4,90,0.2],["wood_beam",-1,1,-4,90],["wood_pole2",-1,0,-4,180,0.2],["wood_beam",1,1,-4,90],["wood_pole2",1,0,-4,180,0.2],["wood_pole2",3,0,-4,90,0.2],["piece_walltorch",-1.84,-0.36,-3.46,270],["piece_walltorch",1.94,-0.35,-3.42,270],["wood_beam_45",-4,0,-3,0,0.21],["wood_beam",0,0,-3,180,0.2],["wood_beam_45",4,0,-3,180,0.21],["wood_pole",-3,0,-2.5,90,0.2],["wood_pole",3,0,-2.5,90,0.2],["wood_beam",-1,1,-2,90],["wood_beam",1,1,-2,90]]},{"id":"MD-0038","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"wood_wall_half"},"src":"houses-homes-and-tinies","p":[["wood_stair",0,1,-1,0,0.17],["wood_beam",-2,0,3,0,0.2],["wood_beam",0,0,3,0],["wood_beam",2,0,3,0,0.2]]},{"id":"MG-0148","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-3,0,-3,360,0.2],["wood_beam_45",-2,0,-3,360,0.3],["wood_beam_45",2,0,-3,180,0.3],["wood_pole2",3,0,-3,360,0.2],["wood_beam_45",-2,0,-2,360,0.21],["wood_beam_45",2,0,-2,180,0.21],["wood_beam_45",-2,0,-1,360],["wood_beam_45",2,0,-1,180],["wood_beam_45",-0.01,0,-0.01,360],["wood_beam_45",0,0.03,0.01,180],["piece_banner01",0.12,-0.35,0.07,270]]},{"id":"MG-0149","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"houses-homes-and-tinies","p":[["wood_pole2",-3,0,-3,360],["wood_beam_1",-2.5,0,-3,180],["wood_pole2",-2,0,-3,360,0.2],["wood_beam",-1,0,-3,180,0.2],["wood_beam",1,0,-3,180,0.2],["wood_pole2",2,0,-3,360,0.2],["wood_beam_1",2.5,0,-3,180],["wood_pole2",3,0,-3,360],["wood_pole2",-2,0,-2,360],["wood_pole2",2,0,-2,360],["wood_beam_45",-2,0,-1,360],["wood_beam",-1,0,-1,360],["wood_beam",1,0,-1,360],["wood_beam_45",2,0,-1,180]]},{"id":"MW-0735","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_quarter"},"src":"wizz-tower","p":[["darkwood_beam4x4",0.11,-0.11,-1.23,360,0.2],["darkwood_pole4",2.11,-0.1,-0.98,180,0.2],["woodiron_pole",-1.89,-0.12,0.02,270,0.15],["darkwood_decowall",-0.39,-0.12,0.02,360],["darkwood_decowall",0.61,-0.11,0.02,180],["darkwood_pole4",-1.89,-0.12,2.02,135,0.28],["woodiron_pole",2.11,-0.1,2.02,90,0.15]]},{"id":"MW-0736","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_quarter"},"src":"wizz-tower","p":[["darkwood_beam4x4",-0.35,0.02,-1.23,0,0.2],["darkwood_decowall",-0.85,0.02,0.02,180],["darkwood_decowall",0.15,0.02,0.02,0],["woodiron_pole",1.65,0.01,0.02,270,0.15],["darkwood_pole4",1.65,0.01,2.02,0,0.2]]},{"id":"MW-0737","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"wood_wall_quarter"},"src":"wizz-tower","p":[["darkwood_beam4x4",-0.21,-0.05,-1.23,360,0.2],["darkwood_pole4",1.79,-0.04,-0.98,270,0.2],["woodiron_pole",-2.21,-0.06,0.02,360],["darkwood_decowall",-0.71,-0.05,0.02,360],["darkwood_decowall",0.29,-0.05,0.02,180],["darkwood_pole4",-2.21,-0.06,2.02,270,0.2],["woodiron_pole",1.79,-0.04,2.02,180,0.15]]},{"id":"MG-0150","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"-1838","p":[["wood_pole",-3,0,-1.5,270,0.2],["wood_beam",-3,1,-1,270],["wood_pole2",3,0,-1,270,0.2]]},{"id":"MC-0221","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"viking-house-2718","p":[["wood_pole2",-0.19,0.19,1,135,0.2],["wood_pole2",-0.19,-0.19,1,135,0.5],["woodiron_pole",0,0,1,315,0.32],["wood_pole2",0.19,0.19,1,135,0.2],["wood_pole2",0.19,-0.19,1,135,0.5],["wood_pole2",-0.19,0.19,3,135,0.2],["wood_pole2",-0.19,-0.19,3,135,0.5],["woodiron_pole",0,0,3,315,0.32],["wood_pole2",0.19,0.19,3,135,0.2],["wood_pole2",0.19,-0.19,3,135,0.5]]},{"id":"MG-0152","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"viking-house-2718","p":[["wood_beam",-4,0,-4,90,0.2],["wood_beam",-3,1,-4,180],["wood_beam",-2,0,-4,270],["wood_beam",2,0,-4,270],["wood_beam",4,0,-4,90]]},{"id":"MG-0153","kind":"gable","fit":{"slope":45,"overhang":0,"wall":null,"wt":"half-timber"},"src":"viking-house-2718","p":[["wood_beam",-3,1,-4,270],["wood_beam",3,1,-4,270],["woodiron_beam_45",-4,0,-3,0],["wood_beam_45",-4,1,-3,0],["wood_beam_45",4,1,-3,180],["wood_beam_1",-3,0.5,-2,270],["wood_beam",-1,1,-2,90],["wood_beam",1,1,-2,270],["wood_beam_1",3,0.5,-2,270],["woodiron_beam_45",-2,0,-1,0],["wood_beam_45",-2,1,-1,0],["wood_beam_45",2,1,-1,180],["wood_beam_1",-1,0.5,0,270],["wood_beam_1",1,0.5,0,270]]},{"id":"MW-0605","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"iron_wall_1x1"},"src":"viking-house-2718","p":[["wood_pole",0.99,-0.1,-0.48,90,0.2],["wood_pole2",-1.27,-0.1,0.02,90],["wood_pole2",-1.01,0.17,0.02,90],["woodiron_pole",-1.01,-0.1,0.02,270],["wood_pole2",-0.74,-0.1,0.02,90,0.3],["wood_beam",-0.01,-0.1,0.02,180,0.2],["wood_pole2",0.99,-0.1,1.02,270],["wood_beam_26",-2.01,-0.1,2.02,360],["wood_pole2",-1.27,-0.1,2.02,90],["wood_pole2",-1.01,0.17,2.02,90],["woodiron_pole",-1.01,-0.1,2.02,270,0.15],["wood_pole2",-0.74,-0.1,2.02,90,0.3],["wood_beam",-0.01,0.43,2.02,180],["wood_beam",-0.01,-0.1,2.02,360,0.2],["wood_beam",1.99,0.43,2.02,180],["wood_beam",1.99,-0.1,2.02,360,0.2],["wood_pole",0.99,0.43,2.52,225],["sign",2,0.1,2.71,360]]},{"id":"MW-0606","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"iron_wall_1x1"},"src":"viking-house-2718","p":[["wood_pole2",0.91,0.01,-0.98,180,0.2],["wood_pole",-1.09,0.01,-0.48,270,0.2],["wood_beam",-2.09,0.01,0.02,360],["wood_beam",-0.09,0.01,0.02,180,0.2],["sign",-2.02,-0.24,0.1,180],["wood_pole2",0.91,0.01,1.02,180],["wood_beam_1",-1.59,0.01,2.02,360],["wood_beam_1",-0.59,0.01,2.02,360],["wood_beam_1",0.41,0.01,2.02,360],["wood_pole",-2.09,0.01,2.52,225],["wood_pole",-1.09,0.01,2.52,270],["wood_pole",-0.09,0.01,2.52,225],["wood_pole",0.91,0.01,2.52,270]]},{"id":"MW-0607","kind":"window","fit":{"w":2,"h":2,"wt":"plank","wall":"iron_wall_1x1"},"src":"viking-house-2718","p":[["wood_pole",-0.9,-0.01,-0.48,180,0.2],["wood_pole",1.1,-0.01,-0.48,180,0.2],["wood_beam",0.1,-0.01,0.02,0,0.2],["wood_pole2",-0.9,-0.01,1.02,0],["wood_pole2",1.1,-0.01,1.02,0],["wood_beam_1",-1.4,-0.01,2.02,180],["wood_beam_1",-0.4,-0.01,2.02,180],["wood_beam_1",0.6,-0.01,2.02,180],["wood_pole",-1.9,-0.01,2.52,225],["wood_pole",-0.9,-0.01,2.52,225],["wood_pole",0.1,-0.01,2.52,225],["wood_pole",1.1,-0.01,2.52,180]]},{"id":"MC-0238","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"viking-house-2718","p":[["wood_pole2",-0.37,-0.19,1,315,0.5],["wood_pole2",-0.37,0.19,1,315,0.39],["woodiron_pole",-0.19,0,1,135,0.42],["wood_pole2",0,-0.19,1,315,0.39],["wood_pole2",0,0.19,1,315,0.39],["wood_pole2",-0.37,-0.19,3,315,0.5],["wood_pole2",-0.37,0.19,3,315,0.2],["wood_pole2",-0.19,0,3,315,0.39],["wood_pole2",0,-0.19,3,315,0.5],["wood_pole2",0,0.19,3,315,0.2]]},{"id":"MG-0154","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"viking-house-2718","p":[["wood_beam_1",-3.5,1,-4,360],["wood_pole2",-3,0,-4,270],["wood_beam_1",-2.5,1,-4,360],["wood_beam_1",2.5,1,-4,360],["wood_pole2",3,0,-4,270],["wood_pole2",3,1,-4,315],["wood_beam_1",3.5,1,-4,360],["wood_pole",-4,1,-3.5,360],["wood_pole",-3,1,-3.5,315],["wood_pole",-2,1,-3.5,360],["wood_pole",2,1,-3.5,360],["wood_pole",4,1,-3.5,360],["wood_beam",-4.12,0.16,-3.4,180],["wood_beam",-4,0,-3,180,0.2],["wood_beam",-3,1,-3,360],["wood_beam",-2,0,-3,270],["wood_beam",2,0,-3,270],["wood_beam",3,1,-3,180],["wood_beam",4,0,-3,360,0.2],["wood_pole",-3,0,-2.5,180,0.2],["wood_pole",3,0,-2.5,180,0.2]]},{"id":"MG-0155","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"viking-house-2718","p":[["wood_beam_1",-3.5,1,-4,0],["wood_pole2",-3,1,-4,315],["wood_pole2",-3,0,-4,90],["wood_beam_1",-2.5,1,-4,0],["wood_beam_1",-2,0.5,-4,90],["wood_pole2",-2,0,-4,135],["wood_beam_1",2,0.5,-4,270],["wood_pole2",2,0,-4,225],["wood_beam_1",2.5,1,-4,180],["wood_pole2",3,1,-4,113],["wood_pole2",3,0,-4,90],["wood_pole",-4,1,-3.5,0],["wood_pole",-2,1,-3.5,90],["wood_pole",2,1,-3.5,90],["wood_pole",4,1,-3.5,90],["wood_beam",-3,1,-3,0],["wood_beam",-2,0,-3,90],["wood_beam",2,0,-3,90],["wood_beam",3,1,-3,0],["wood_beam",4,0,-3,180,0.2],["wood_pole",-3,0,-2.5,0,0.2],["wood_pole",3,0,-2.5,0,0.2]]},{"id":"MG-0156","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"viking-house-2718","p":[["wood_beam",-4,0,-4,0,0.2],["wood_beam",-3,1,-4,270,0.16],["wood_beam",-2,1,-4,180],["wood_beam",0,1,-4,180],["wood_beam",2,1,-4,180],["wood_beam",3,1,-4,90],["wood_beam",4,0,-4,0,0.2],["wood_beam_45",-4,1,-3,360],["wood_beam_45",4,1,-3,180],["wood_beam",-1,1,-2,90],["wood_beam",1,1,-2,90],["wood_beam_45",3,1,-2,180],["itemstand",-0.02,-0.25,-1.06,180],["wood_beam_45",-2,1,-1,360],["wood_beam_45",-1,1,0,360],["wood_beam_45",0,1,0,270],["wood_beam_45",1,1,0,180]]},{"id":"MG-0157","kind":"gable","fit":{"slope":45,"overhang":0,"wall":null,"wt":"half-timber"},"src":"viking-house-2718","p":[["wood_beam",-3,1,-4,270],["wood_beam",3,1,-4,270],["wood_beam_45",-4,1,-3,360],["woodiron_beam_45",-4,0,-3,360],["wood_beam_45",4,1,-3,180],["woodiron_beam_45",4,0,-3,180],["wood_beam_1",-3,0.5,-2,90],["wood_beam",-1,1,-2,90],["wood_beam",1,1,-2,90],["wood_beam_1",3,0.5,-2,90],["wood_beam_45",-2,1,-1,360],["wood_beam_45",2,1,-1,180],["woodiron_beam_45",2,0,-1,180],["woodiron_beam_45",-1,0,0,360],["wood_beam_1",-1,0.5,0,90],["wood_beam_1",1,0.5,0,90]]},{"id":"MG-0158","kind":"gable","fit":{"slope":45,"overhang":0,"wall":null,"wt":"half-timber"},"src":"viking-house-2718","p":[["wood_beam",-3,1,-4,270],["wood_beam",3,1,-4,270],["wood_beam_45",4,1,-3,180],["woodiron_beam_45",4,0,-3,180],["wood_beam_45",-4.01,1.04,-2.99,360],["woodiron_beam_45",-4.01,0.04,-2.99,360],["wood_beam",-1,1,-2,90],["wood_beam",1,1,-2,90],["wood_beam_1",-3.01,0.54,-1.99,90],["wood_beam_45",2,1,-1,180],["woodiron_beam_45",2,0,-1,180],["wood_beam_45",-2.01,1.04,-0.99,360],["woodiron_beam_45",-2.01,0.04,-0.99,360],["wood_beam_1",-1.01,0.54,0.01,90]]},{"id":"MG-0159","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"complex-tower","p":[["wood_beam",-3.7,0.71,-4,45,0.15],["wood_beam_1",-2.71,0.42,-4,124,0.26],["wood_beam_1",-2.5,0.92,-4,101],["piece_dvergr_lantern",3.01,0,-3.31,203,0.14],["darkwood_pole",-2.99,0,-3,45,0.28],["darkwood_pole",-2.56,0.65,-3,23],["wood_pole2",-0.99,0,-3,180,0.2],["wood_pole2",1.01,0,-3,180,0.21],["wood_beam_1",-2.72,0.42,-2,124,0.2],["wood_beam_1",-2.5,0.92,-2,101],["wood_pole2",-0.99,0,-1,180],["wood_pole2",1.01,0,-1,180]]},{"id":"MG-0160","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"complex-tower","p":[["wood_beam",-2,0,-4,180,0.2],["wood_pole",-1,0,-3.5,180,0.2],["wood_pole",1,0,-3.5,90,0.2],["wood_beam_1",-2.49,1,-3,360],["wood_beam",-0.99,1,-3,360],["wood_beam",1.01,1,-3,360],["wood_pole",-3,1,-2.5,270],["wood_pole",2.01,1,-2.5,270],["wood_pole",3.01,1,-2.5,270],["darkwood_pole4",-2.99,0,-2,34,0.28],["wood_beam_1",-2.49,1,-2,360],["wood_beam",-0.99,1,-2,360],["wood_beam",1.01,1,-2,360],["wood_pole",2.01,1,-1.5,360],["wood_beam",-0.99,1,-1,360],["wood_beam",1,1,-1,360],["wood_pole",-1,0,-0.5,180,0.2],["wood_pole",1.01,0,-0.5,180,0.2]]},{"id":"MG-0161","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"complex-tower","p":[["wood_pole",-3,0,-3.5,360],["wood_pole",-1,0,-3.5,360,0.2],["wood_pole",1,0,-3.5,360,0.2],["wood_beam",-1,1,-3,180],["wood_beam",1,1,-3,180],["wood_pole",-3,1,-2.5,270],["wood_pole",2,1,-2.5,270],["wood_pole",3,1,-2.5,270],["darkwood_pole",-3.01,0,-2,90,0.2],["wood_beam_1",-2.5,1,-2,180],["wood_beam",-1,1,-2,180],["wood_beam",1,1,-2,180],["wood_pole",2,1,-1.5,180],["wood_beam",-1,1,-1,180],["wood_beam",0.99,1,-1,180],["wood_pole",-1,0,-0.5,270,0.2],["wood_pole",1,0,-0.5,270,0.2]]},{"id":"MG-0162","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"complex-tower","p":[["wood_beam",-4.12,0.12,-4,45],["wood_beam",0,0,-2,180,0.2],["wood_pole2",-1,0,-1,270,0.2],["wood_beam",0,0,-1,0,0.2],["wood_pole2",1,0,-1,270,0.2]]},{"id":"MG-0163","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"complex-tower","p":[["darkwood_pole4",-2,0,-4,45,0.29],["darkwood_pole4",2,0,-4,79,0.23],["darkwood_pole4",2.01,0,-2,79,0.23],["darkwood_pole",-2,0,-1,315,0.28],["wood_pole2",-1,0,-1,270,0.2],["wood_pole2",1,0,-1,270,0.2]]},{"id":"MC-0001","kind":"corner","fit":{"angle":90,"wt":"stone","wall":"stone_wall_2x1"},"src":"medieval-tavern","p":[["wood_pole2",0,0,1.01,225,0.46]]},{"id":"MW-0611","kind":"window","fit":{"w":2,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.64,0.04,0.79,180,0.3]]},{"id":"MW-0614","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"middle-house-for-endgame","p":[["wood_pole2",0.43,0.4,0,360,0.2],["wood_pole2",0.15,0.4,1,270,0.2],["wood_beam",-0.85,0.4,2,0,0.2],["wood_pole2",0.43,0.4,2,360,0.2]]},{"id":"MD-0039","kind":"door","fit":{"w":2,"h":3,"rise":0,"wt":"other","wall":"woodwall"},"src":"the-boar-breeder-s-tower-safe-simple-amp-vanilla-friendly","p":[["wood_beam",-2,-0.01,0.2,180],["wood_pole2",-1,0,1,270],["wood_pole2",1,0,1,270],["wood_pole2",-1,0,3,270],["wood_pole2",1,0,3,270],["wood_beam",0,0,4,180,0.2]]},{"id":"MG-0166","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"the-boar-breeder-s-tower-safe-simple-amp-vanilla-friendly","p":[["wood_pole2",-2.01,0.97,-1,90],["stone_pillar",-1.5,0.48,-1,270],["wood_pole2",-1,-0.02,-1,90],["wood_pole2",1,-0.01,-1,90],["wood_beam",0,-0.02,0,360,0.2]]},{"id":"MA-0302","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"woodwall"},"src":"food-stall","p":[["piece_banner01",-0.03,0.3,1.66,270]]},{"id":"MW-0617","kind":"window","fit":{"w":1.5,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"fancy-mountain-house-with-underground-workshop-vbuild","p":[["stone_arch",-1.94,0.01,0.5,360]]},{"id":"MG-0167","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"stone"},"src":"pillar-house","p":[["wood_beam_26",-4,0.03,-2,0],["wood_beam_26",4.06,0.03,-2,180],["wood_beam_26",-2.85,-0.12,-1,45],["wood_beam_26",-2,0.03,-1,0,0.3],["wood_beam_26",2.06,0.03,-1,180],["wood_beam_26",-0.51,0.46,0,135,0.27],["wood_beam_26",0,0.03,0,0,0.27],["wood_pole_log_4",0.03,0,0,270,0.2],["wood_beam_26",0.06,0.03,0,180,0.27],["wood_beam_26",0.68,0.59,0,45,0.27]]},{"id":"MW-0621","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"weird-medieval-towers","p":[["wood_beam",-1.57,0.47,0,181,0.2],["wood_beam",-0.57,0.46,0,181,0.2],["wood_pole2",0.45,0.44,0,1,0.2],["wood_pole2",0.45,0.44,1,91,0.2]]},{"id":"MG-0170","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"weird-medieval-towers","p":[["darkwood_beam4x4",2,0,-4.25,270],["wood_pole2",-1,0,-3,0],["wood_pole2",1,0,-3,270],["wood_beam",-1,1,-2,90],["wood_beam",0,0,-2,180,0.2],["wood_pole",1,0,-1.5,270,0.2],["wood_pole2",-1,0,-1,0,0.2],["wood_pole",1,0,-0.5,90],["wood_beam",-1,1,0,90]]},{"id":"MG-0171","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"weird-medieval-towers","p":[["wood_beam_1",-2.28,1.09,-4,180],["wood_pole2",-1,0,-3,180,0.2],["wood_beam_1",-0.5,0,-2,360,0.2],["wood_beam",1,0,-2,360,0.2],["darkwood_pole4",2,0,-2,180,0.2],["wood_pole2",-1,0,-1,180,0.2],["wood_pole",1,0,-0.5,90,0.3],["wood_beam",1,0,0,0,0.2]]},{"id":"MG-0172","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_log","wt":"half-timber"},"src":"weird-medieval-towers","p":[["darkwood_pole4",-3,0,-4,360,0.2],["wood_pole2",-0.99,-0.01,-4,180,0.2],["wood_pole2",0.01,-0.01,-4,135],["wood_pole2",1,0,-4,180,0.2],["darkwood_pole4",3.01,-0.01,-4,360,0.19],["wood_pole2",-0.95,0.39,-3.98,180],["wood_pole2",1.05,0.39,-3.98,180],["wood_beam",0.01,-0.01,-3,180,0.2],["wood_beam",0.05,0.39,-2.98,180],["wood_beam_26",-0.95,0.4,-2.64,360],["wood_beam_26",1.05,0.4,-2.64,180],["wood_pole",0,0,-2.5,180,0.3],["wood_beam_1",-3,0.5,-2,90,0.15],["wood_beam_1",3,0.5,-2,90],["wood_beam_45",-2,1,-1,360],["wood_beam_45",2,1,-1,180],["wood_beam_45",-1,1,0,360],["wood_beam_1",-1,0.5,0,90,0.15],["wood_beam_45",-1,0,0,0,0.3],["wood_beam_45",1,1,0,180],["wood_beam_1",1,0.5,0,90],["wood_beam_45",1,0,0,180,0.3]]},{"id":"MG-0173","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_log","wt":"half-timber"},"src":"weird-medieval-towers","p":[["wood_pole2",-0.97,0.45,-4.13,180],["wood_pole2",1.03,0.45,-4.13,270],["darkwood_pole4",-3,0,-4,90,0.2],["wood_pole2",-1,0,-4,180,0.2],["wood_pole2",0,0,-4,135],["wood_pole2",1,0,-4,180,0.2],["darkwood_pole4",3,0,-4,90,0.2],["wood_beam",0.03,0.45,-3.13,180],["wood_beam",0,0,-3,180,0.2],["wood_beam_26",-0.94,0.35,-2.76,0],["wood_beam_26",1.06,0.35,-2.76,180],["wood_beam_1",-3,0.5,-2,270],["wood_beam_1",3,0.5,-2,90],["wood_beam_45",-2,1,-1,0],["wood_beam_45",2,1,-1,180],["wood_beam_1",-1,0.5,0,90,0.15],["wood_beam_45",-1,1,0,0],["wood_beam_45",-1,0,0,360,0.3],["wood_beam_1",-0.5,0,0,0,0.2],["wood_beam_1",0.5,0,0,0,0.2],["wood_beam_1",1,0.5,0,90],["wood_beam_45",1,1,0,180],["wood_beam_45",1,0,0,180,0.3]]},{"id":"MW-0634","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"core-wood-mansion","p":[["wood_pole2",0.36,0.4,-0.98,180,0.2],["wood_beam_45",-0.64,0.4,1.02,360,0.22],["wood_pole2",0.36,0.4,1.02,180,0.2]]},{"id":"MW-0635","kind":"window","fit":{"w":1,"h":1,"wt":"stone-base","wall":"stone_wall_2x1"},"src":"vanilla-black-forest-outpost-wood-only-beginner-build-pre-iron-stone-tower","p":[["wood_pole2",-0.7,-0.01,0,270],["wood_wall_quarter",-0.5,0,0.02,270,0.15],["stone_arch",-1.5,0,1.52,180],["stone_arch",-1.5,0,1.52,360]]},{"id":"MG-0174","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"stone"},"src":"vanilla-black-forest-outpost-wood-only-beginner-build-pre-iron-stone-tower","p":[["wood_beam_1",0,0.5,-4,270],["wood_pole_log_4",-1.07,0.03,-3.56,270],["wood_pole",0,1,-3.5,360],["wood_beam_1",0,0.5,-3,90],["wood_pole",-1,0,-1.5,270,0.2],["wood_pole",1,0,-1.5,270,0.2],["wood_beam",0,0,-1,180,0.2],["wood_pole",-1,0,-0.5,270],["wood_pole",1,0,-0.5,270]]},{"id":"MG-0175","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"stone"},"src":"vanilla-black-forest-outpost-wood-only-beginner-build-pre-iron-stone-tower","p":[["wood_beam_1",0.01,0.52,-4,270],["wood_pole_log_4",-1.24,0.18,-3.59,270],["wood_pole",0.01,1.02,-3.5,180],["wood_beam_1",0.01,0.52,-3,90],["wood_pole",-1,0,-1.5,270,0.2],["wood_pole",1,0,-1.5,270,0.2],["wood_beam",0,0,-1,0,0.2],["wood_pole",-1,0,-0.5,270],["wood_pole",1,0,-0.5,270]]},{"id":"MD-0111","kind":"door","fit":{"w":2,"h":3,"rise":1.25,"wt":"other","wall":"iron_wall_1x1"},"src":"tiny-home-challenge-part-5-before-yagluth","p":[["wood_floor",0,1,-1,180,0.1],["wood_floor",2,1,-1,180,0.1],["stone_floor_2x2",0,1,-0.5,270],["stone_floor_2x2",2,1,-0.5,0],["itemstand",-2.54,-0.24,0.37,180],["wood_beam_1",-2,0.5,1,90],["wood_pole2",1,0,1,90],["wood_pole",-2,0,1.5,360],["wood_beam_45",-2,0,2,90],["wood_wall_half",1,1,2.5,90],["wood_pole",1,0,2.5,90],["darkwood_beam",-2,2,2.75,90],["darkwood_beam",-2,0,2.75,90],["wood_beam",-1,0,3,180],["wood_beam",1,0,3,180],["wood_beam",2,2,3,90],["wood_beam_1",2,0.5,3,90],["wood_wall_quarter",2,0.5,3,90],["wood_wall_half",2,2,3.5,90],["wood_pole",2,0,3.5,180],["wood_beam",-1,0,4,180],["wood_beam",1,0,4,180],["wood_beam",2,2,4,90],["wood_beam_1",2,0.5,4,90]]},{"id":"MD-0040","kind":"door","fit":{"w":2,"h":3,"rise":1.25,"wt":"stone","wall":"stone_wall_2x1"},"src":"tiny-home-challenge-part-5-before-yagluth","p":[["stone_stair",0,2,-1,360],["wood_beam_26",-1,2,0,90],["wood_beam_26",1,2,0,90],["darkwood_beam",-1,1,2.75,0,0.2],["darkwood_beam",-1,2,2.75,90],["darkwood_beam",1,1,2.75,0,0.2],["darkwood_beam",1,2,2.75,90],["darkwood_roof",-1,2,3,270],["wood_beam",0,0,3,270],["darkwood_roof",1,2,3,90],["wood_wall_half",0,0,3.5,270],["darkwood_beam",0,2,3.75,90],["darkwood_pole",-2,1.4,3.99,180],["darkwood_pole",2,1.4,3.99,360],["wood_pole2",-2,1,4,360],["wood_beam",0,0,4,270],["wood_pole2",2,1,4,360]]},{"id":"MW-0640","kind":"window","fit":{"w":1,"h":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"broken-bridge-1-short","p":[["woodiron_pole",-0.38,-0.22,-0.29,90,0.3]]},{"id":"MW-0641","kind":"window","fit":{"w":2,"h":0.5,"wt":"log","wall":"wood_wall_log"},"src":"nicer-core-wood-bridge","p":[["wood_log_26",-1.84,-0.06,-0.51,360],["wood_pole",1.16,-0.06,-0.51,180,0.2],["wood_log_26",2.16,-0.06,-0.51,180],["wood_pole",-0.84,-0.06,-0.01,180,0.2],["wood_pole",-0.84,-0.06,0.49,180,0.2],["wood_pole",1.16,-0.06,0.49,180,0.2]]},{"id":"MW-0642","kind":"window","fit":{"w":2,"h":2,"wt":"log","wall":"wood_wall_log"},"src":"nicer-core-wood-bridge","p":[["wood_pole_log_4",-0.84,-0.06,0.49,180,0.2],["wood_pole_log_4",1.16,-0.06,0.49,180,0.2],["wood_log_26",-1.84,-0.06,1.49,0],["wood_log_26",2.16,-0.06,1.49,180]]},{"id":"MW-0643","kind":"window","fit":{"w":2,"h":0.5,"wt":"log","wall":"wood_wall_log"},"src":"nicer-core-wood-bridge","p":[["wood_log_26",-1.84,0.06,-0.51,0],["wood_pole",-0.84,0.06,-0.51,360,0.2],["wood_log_26",2.16,0.06,-0.51,180],["wood_pole",1.16,0.06,-0.01,360,0.2],["wood_pole",-0.84,0.06,0.49,360,0.2],["wood_pole",1.16,0.06,0.49,360,0.2]]},{"id":"MW-0644","kind":"window","fit":{"w":2,"h":0.5,"wt":"log","wall":"wood_wall_log"},"src":"nicer-core-wood-bridge","p":[["wood_log_26",2.16,0.06,-1.01,360],["wood_log_26",-1.84,0.06,-0.51,0],["wood_pole",-0.84,0.06,-0.51,360,0.2],["wood_pole",1.16,0.06,-0.51,360,0.2],["wood_log_26",2.16,0.06,-0.51,360],["wood_pole",-0.84,0.06,0.49,360,0.2],["wood_pole",1.16,0.06,0.49,360,0.2],["wood_log_26",2.16,0.06,0.49,0]]},{"id":"MW-0645","kind":"window","fit":{"w":2,"h":0.5,"wt":"log","wall":"wood_wall_log"},"src":"nicer-core-wood-bridge","p":[["wood_log_26",-1.84,0.06,-1.01,180],["wood_log_26",-1.84,0.06,-0.51,180],["wood_log_26",2.16,0.06,-0.51,180],["wood_pole",-0.84,0.06,-0.01,360,0.2],["wood_pole",1.16,0.06,-0.01,360,0.2],["wood_log_26",-1.84,0.06,0.49,180],["wood_pole",-0.84,0.06,0.49,360,0.2],["wood_pole",1.16,0.06,0.49,360,0.2]]},{"id":"MW-0646","kind":"window","fit":{"w":2,"h":0.5,"wt":"log","wall":"wood_wall_log"},"src":"nicer-core-wood-bridge","p":[["wood_log_26",2.16,-0.06,-1.01,0],["wood_log_26",-1.84,-0.06,-0.51,360],["wood_log_26",2.16,-0.06,-0.51,0],["wood_pole",-0.84,-0.06,-0.01,180,0.2],["wood_pole",1.16,-0.06,-0.01,180,0.2],["wood_pole",-0.84,-0.06,0.49,180,0.2],["wood_pole",1.16,-0.06,0.49,180,0.2],["wood_log_26",2.16,-0.06,0.49,360]]},{"id":"MW-0647","kind":"window","fit":{"w":2,"h":0.5,"wt":"log","wall":"wood_wall_log"},"src":"nicer-core-wood-bridge","p":[["wood_log_26",-1.84,-0.06,-1.01,180],["wood_log_26",-1.84,-0.06,-0.51,180],["wood_pole",1.16,-0.06,-0.51,180,0.2],["wood_log_26",2.16,-0.06,-0.51,180],["wood_pole",-0.84,-0.06,-0.01,180,0.2],["wood_log_26",-1.84,-0.06,0.49,180],["wood_pole",-0.84,-0.06,0.49,180,0.2],["wood_pole",1.16,-0.06,0.49,180,0.2]]},{"id":"MG-0176","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"nicer-core-wood-bridge","p":[["wood_log_45",-4,0,-2,0],["wood_pole_log",-3,0,-2,0],["wood_log_26",-2,0,-2,180],["wood_log_26",2,0,-2,0],["wood_pole_log",3,0,-2,0],["wood_log_45",4,0,-2,180],["wood_log_26",-2,0,-1,0],["wood_pole_log",-1,0,-1,180,0.2],["wood_pole_log",1,0,-1,180,0.2],["wood_log_26",2,0,-1,180]]},{"id":"MG-0177","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"nicer-core-wood-bridge","p":[["wood_log_45",-4,0,-2,0],["wood_pole_log",-3,0,-2,180],["wood_log_26",-2,0,-2,180],["wood_log_26",2,0,-2,0],["wood_pole_log",3,0,-2,180],["wood_log_45",4,0,-2,180],["wood_pole_log",-1,0,-1.5,113,0.26],["wood_log_26",-2,0,-1,0],["wood_log_26",2,0,-1,180]]},{"id":"MG-0178","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"black-forest-base-3835","p":[["wood_pole2",-3,0,-4,180,0.2],["wood_pole2",3,0,-4,180,0.2],["piece_walltorch",2.54,0.03,-3.68,180],["piece_walltorch",-2.6,0.01,-3.65,0],["wood_pole",-3,0,-2.5,180,0.2],["wood_pole",3,0,-2.5,180,0.2],["wood_beam_45",-2,0,-1,0,0.21],["wood_beam_45",2,0,-1,180,0.21],["wood_beam_45",-1,0,0,0],["wood_beam_45",1,0,0,180]]},{"id":"MG-0179","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"black-forest-base-3835","p":[["wood_beam_45",-2,0,-2,0,0.21],["wood_beam_45",2,0,-2,180,0.21],["wood_pole",-3,0,-1.5,180],["wood_pole",3,0,-1.5,180],["wood_beam_1",-3.5,0,-1,0],["wood_beam_1",-3,0.5,-1,90],["wood_beam_26",-2,0,-1,0],["wood_beam_45",-1,0,-1,0],["wood_beam_45",1,0,-1,180],["wood_beam_26",2,0,-1,180],["wood_beam_1",3,0.5,-1,90],["wood_beam_1",3.5,0,-1,0]]},{"id":"MG-0180","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"black-forest-base-3835","p":[["itemstand",0.02,-0.19,-1.56,180],["wood_pole",-3,0,-1.5,270],["wood_pole",3,0,-1.5,90],["wood_beam_1",-3.5,0,-1,360],["wood_beam_1",-3,0.5,-1,270],["wood_beam_26",-2,0,-1,360],["wood_pole2",-2,1,-1,0],["wood_pole2",-1,0,-1,90,0.2],["wood_pole2",-1,1,-1,270,0.2],["wood_pole2",1,0,-1,270,0.2],["wood_pole2",1,1,-1,270,0.2],["wood_beam_26",2,0,-1,180],["wood_beam_1",3,0.5,-1,270],["wood_beam_1",3.5,0,-1,180]]},{"id":"MW-0649","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam4x4",-0.91,0.08,-0.25,180,0.2],["darkwood_pole4",-0.91,0.08,0,270,0.2],["darkwood_pole4",1.09,0.08,0,270,0.2],["darkwood_beam4x4",-0.91,0.08,0.75,180,0.2],["darkwood_beam",-1.91,0.08,1.75,180,0.2],["darkwood_beam",0.09,0.08,1.75,180,0.2]]},{"id":"MW-0650","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam4x4",1.09,0.08,-0.25,360,0.2],["woodiron_beam",-1.91,0.08,0,180],["darkwood_pole4",-0.91,0.08,0,270,0.2],["darkwood_pole4",1.09,0.08,0,270,0.2],["darkwood_beam4x4",-0.91,0.08,0.75,0,0.2],["darkwood_beam",-1.91,0.08,1.75,180,0.2],["darkwood_beam",0.09,0.08,1.75,180,0.2]]},{"id":"MW-0651","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam4x4",-0.91,0.08,-0.25,360,0.2],["darkwood_pole4",-0.91,0.08,0,270,0.2],["darkwood_pole4",1.09,0.08,0,270,0.2],["darkwood_beam4x4",1.09,0.08,0.75,0,0.2],["darkwood_beam",-1.91,0.08,1.75,180,0.2],["darkwood_beam",0.09,0.08,1.75,180,0.2]]},{"id":"MW-0652","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam4x4",-1.09,0.08,-0.25,0,0.2],["darkwood_pole4",-1.09,0.08,0,90,0.2],["darkwood_pole4",0.91,0.08,0,90,0.2],["darkwood_beam",-0.09,0.08,0.75,180,0.2],["darkwood_beam",-0.09,0.08,1.75,180,0.2]]},{"id":"MW-0653","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam4x4",-0.91,0.08,-0.25,360,0.2],["darkwood_pole4",-0.91,0.08,0,270,0.2],["darkwood_pole4",1.09,0.08,0,270,0.2],["darkwood_beam",-1.91,0.08,0.75,180,0.2],["darkwood_beam4x4",1.09,0.08,0.75,0,0.2],["darkwood_beam",-1.91,0.08,1.75,180,0.2],["darkwood_beam",0.09,0.08,1.75,180,0.2]]},{"id":"MW-0654","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam",0.09,0.08,-0.25,360,0.2],["woodiron_beam",-1.91,0.08,0,180],["darkwood_pole4",-0.91,0.08,0,270,0.2],["darkwood_pole4",1.09,0.08,0,270,0.2],["darkwood_beam4x4",-0.91,0.08,0.75,0,0.2],["darkwood_beam",-1.91,0.08,1.75,180,0.2],["darkwood_beam",0.09,0.08,1.75,180,0.2]]},{"id":"MW-0655","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam4x4",-1.09,0.08,-0.25,180,0.2],["darkwood_pole4",-1.09,0.08,0,90,0.2],["darkwood_pole4",0.91,0.08,0,90,0.2],["darkwood_beam4x4",-1.09,0.08,0.75,180,0.2],["darkwood_beam",-0.09,0.08,1.75,180,0.2]]},{"id":"MW-0656","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam4x4",1.09,0.08,-0.25,180,0.2],["woodiron_beam",-1.91,0.08,0,0],["darkwood_pole4",-0.91,0.08,0,270,0.2],["darkwood_pole4",1.09,0.08,0,270,0.2],["darkwood_beam4x4",1.09,0.08,0.75,180,0.2],["darkwood_beam",-1.91,0.08,1.75,180,0.2],["darkwood_beam",0.09,0.08,1.75,180,0.2]]},{"id":"MW-0657","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam",-1.91,0.08,-0.25,360,0.2],["darkwood_beam4x4",1.09,0.08,-0.25,180,0.2],["darkwood_pole4",-0.91,0.08,0,270,0.2],["darkwood_pole4",1.09,0.08,0,270,0.2],["darkwood_beam",-1.91,0.08,0.75,180,0.2],["darkwood_beam4x4",1.09,0.08,0.75,0,0.2],["darkwood_beam",-1.91,0.08,1.75,180,0.2],["darkwood_beam",0.09,0.08,1.75,180,0.2]]},{"id":"MW-0658","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam4x4",1.09,0.08,-0.25,180,0.2],["woodiron_beam",-1.91,0.08,0,0],["darkwood_pole4",-0.91,0.08,0,270,0.2],["darkwood_pole4",1.09,0.08,0,270,0.2],["darkwood_beam4x4",1.09,0.08,0.75,0,0.2],["darkwood_beam",-1.91,0.08,1.75,180,0.2],["darkwood_beam",0.09,0.08,1.75,180,0.2],["darkwood_pole",1.09,0.08,3,90,0.2]]},{"id":"MW-0659","kind":"window","fit":{"w":1.5,"h":2,"wt":"plank","wall":"blackmarble_2x1x1"},"src":"dragonhaus","p":[["darkwood_beam4x4",-0.91,0.08,-0.25,180,0.2],["darkwood_pole4",-0.91,0.08,0,270,0.2],["darkwood_pole4",1.09,0.08,0,270,0.2],["darkwood_beam4x4",-0.91,0.08,0.75,0,0.2],["darkwood_beam",-1.91,0.08,1.75,180,0.2],["darkwood_beam",0.09,0.08,1.75,180,0.2],["darkwood_pole",-0.91,0.08,3,90,0.2]]},{"id":"MG-0181","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"dragonhaus","p":[["darkwood_beam_26",-4,0,-1.75,360],["darkwood_beam_26",4,0,-1.75,180],["woodiron_beam_26",-4,0,-1.5,360],["woodiron_beam_26",4,0,-1.5,180],["darkwood_beam_26",-2,0,-0.75,360],["darkwood_beam_26",2,0,-0.75,180],["woodiron_beam_26",-2,0,-0.5,360],["woodiron_beam_26",2,0,-0.5,180]]},{"id":"MG-0182","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"dragonhaus","p":[["darkwood_pole4",-1,0,-2,180,0.2],["darkwood_pole4",1,0,-2,180,0.2],["darkwood_beam_26",-4,0,-1.75,0,0.22],["darkwood_beam_26",4,0,-1.75,180,0.22],["woodiron_beam_26",-4,0,-1.5,0],["woodiron_beam_26",4,0,-1.5,180],["darkwood_beam",-2,0,-1.25,180,0.2],["darkwood_beam",0,0,-1.25,180,0.2],["darkwood_beam",2,0,-1.25,180,0.2],["darkwood_beam_26",-2,0,-0.75,0,0.22],["darkwood_beam_26",2,0,-0.75,180,0.22],["woodiron_beam_26",-2,0,-0.5,0],["woodiron_beam_26",2,0,-0.5,180],["woodiron_beam_26",0,0,0.5,0],["woodiron_beam_26",0,0,0.5,180],["woodiron_beam",0,1,0.5,270]]},{"id":"MD-0041","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":null},"src":"tiny-home-challenge-part-4-before-moder","p":[["stone_stair",0,1,-1,0],["piece_groundtorch",1.05,0.33,-0.51,0],["piece_groundtorch",-1.17,0.54,-0.45,0],["wood_pole2",-1,0,0,180],["wood_pole2",1,0,0,180],["wood_pole2",-1,0,2,180],["wood_pole2",1,0,2,180],["wood_beam_1",-1.5,0,3,180],["wood_beam",0,0,3,0],["wood_pole2",-2,0,4,180],["wood_pole2",-1,0,4,180],["wood_pole2",1,0,4,180]]},{"id":"MC-0265","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"house-octagon-starter-base","p":[["wood_pole",0,0,0.5,45,0.39]]},{"id":"MC-0266","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"woodwall"},"src":"Báz_meadowshouse1_1","p":[["wood_pole2",0,0,1,315,0.39]]},{"id":"MG-0183","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"stone_wall_2x1","wt":"stone"},"src":"house-realm-of-rhovanion-hymir","p":[["wood_pole2",-1,0.5,-0.33,90,0.2]]},{"id":"MG-0184","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-the-canary-house-minor-decor-room-for-8","p":[["wood_beam",0,0,0,180,0.2]]},{"id":"MA-0050","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"woodwall"},"src":"pillar-house","p":[["piece_walltorch",-0.98,0.41,2.17,270]]},{"id":"MG-0185","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_2x1","wt":"plank"},"src":"3","p":[["wood_beam",-2,0,-4,0,0.2],["wood_beam",0,0,-4,0,0.2],["wood_beam",2,0,-4,0,0.2],["wood_pole",-3,0,-3.5,270,0.2],["wood_pole",-2,0,-3.5,270,0.2],["wood_pole",-1,0,-3.5,270,0.2],["wood_pole",0,0,-3.5,270,0.2],["wood_pole",1,0,-3.5,270,0.2],["wood_pole",2,0,-3.5,270,0.2],["wood_pole",3,0,-3.5,270,0.2],["wood_beam",-2,0,-3,180,0.2],["wood_beam",0,0,-3,180,0.2],["wood_beam",2,0,-3,180,0.2],["wood_beam_45",-1,0,0,0,0.3],["wood_beam_45",1,0,0,180,0.3]]},{"id":"MG-0186","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"decorative-starter-building-for-small-community","p":[["wood_beam_45",2,-0.01,-1,180],["wood_beam_45",-1.95,0,-0.92,0]]},{"id":"MD-0044","kind":"door","fit":{"w":2,"h":3,"rise":0.5,"wt":"stone","wall":"stone_wall_1x1"},"src":"henry-s-forge-kcd2-vanilla","p":[["Piece_grausten_pillarbase_medium",-2.5,0,0,0],["Piece_grausten_pillarbase_medium",-1.5,0,0,0],["Piece_grausten_pillarbase_medium",1.5,0,0,90],["Piece_grausten_pillarbase_medium",-2.5,0,1,0],["Piece_grausten_pillarbase_medium",-1.5,0,1,0,0.5],["Piece_grausten_pillarbase_medium",1.5,0,1,90]]},{"id":"MD-0045","kind":"door","fit":{"w":2,"h":3,"rise":0.5,"wt":"other","wall":"stone_wall_2x1"},"src":"henry-s-forge-kcd2-vanilla","p":[["wood_beam_1",-2.53,0.54,0,180,0.2],["wood_beam_1",-2.53,0.54,1,180,0.2],["wood_pole2",-1.03,0.54,1,180,0.2],["wood_pole2",0.97,0.54,1,180,0.2],["wood_beam_1",-2.53,0.54,2,180,0.2],["wood_pole",-1.03,0.54,2.5,180,0.2],["wood_pole",0.97,0.54,2.5,180,0.2],["wood_beam_1",-2.53,0.54,3,180,0.2],["wood_beam",-0.03,0.54,3,180,0.2],["wood_beam_1",-2.53,0.54,4,180,0.2]]},{"id":"MG-0189","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stave_wall_2x2","wt":"plank"},"src":"housedungeon-deepnorth","p":[["itemstand",0.01,0.36,-1.95,360],["piece_banner01",-2.01,0.4,-0.13,270],["piece_banner01",1.95,0.44,-0.13,270]]},{"id":"MA-0091","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"woodwall"},"src":"lighthouse-1568","p":[["piece_dvergr_lantern",-0.8,0.1,2.49,90]]},{"id":"MG-0190","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"stone"},"src":"ompact-4-storey-house","p":[["wood_beam_45",-1,0,0,360,0.3],["wood_beam_45",1,0,0,180,0.3]]},{"id":"MD-0046","kind":"door","fit":{"w":2,"h":2,"rise":1,"wt":"stone","wall":"blackmarble_1x1"},"src":"small-black-marble-base-house","p":[["blackmarble_stair",-2,1,-1,360],["blackmarble_stair",0,1,-1,360],["blackmarble_stair",2,1,-1,360]]},{"id":"MG-0192","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"simple-forest-cabin","p":[["wood_log_45",-2,0,-3,180,0.18],["wood_pole_log_4",-1,0,-2,270,0.2],["wood_pole_log_4",1,0,-2,270,0.2]]},{"id":"MG-0195","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"blackmarble_2x1x1","wt":"half-timber"},"src":"cosy-little-kitchen","p":[["ashwood_pole_2m",-3,0,-2,360],["ashwood_wall_beam_26",-1,1,-2,360],["wood_pole2",0,0,-2,270,0.2],["ashwood_wall_beam_26",1,1,-2,180],["ashwood_pole_2m",3,0,-2,360],["ashwood_wall_beam_26",-2,0,-1,360,0.34],["ashwood_beam_1m",0,0.5,-1,270],["ashwood_wall_beam_26",2,0,-1,180,0.33],["ashwood_beam_2m",-2,0,0,360,0.19],["ashwood_beam_2m",0,0,0,360,0.19],["ashwood_beam_2m",2,0,0,360,0.19]]},{"id":"MG-0196","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"blackmarble_2x1x1","wt":"half-timber"},"src":"cosy-little-kitchen","p":[["ashwood_pole_2m",-3,0,-2,180,0.2],["ashwood_pole_2m",3,0,-2,180,0.2],["ashwood_wall_beam_26",-2,0,-1,360,0.33],["ashwood_wall_beam_26",2,0,-1,180,0.34],["ashwood_beam_2m",-2,0,0,180,0.19],["ashwood_beam_2m",0,0,0,180,0.19],["ashwood_beam_2m",2,0,0,180,0.19]]},{"id":"MD-0048","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"wood_wall_half"},"src":"simple-storage-shack","p":[["stone_stair",0,2,-1,0],["stone_floor_2x2",0,0,-0.5,180],["wood_pole2",-1,0,1,0,0.2],["wood_pole2",1,0,1,0,0.2],["wood_beam",-2,0,3,0,0.2],["wood_pole2",-1,0,3,360,0.2],["wood_pole2",1,0,3,360,0.2],["wood_beam",2,0,3,0,0.2],["wood_beam",-2.02,0.2,3.19,180,0.2],["wood_beam",-0.02,0.2,3.19,180,0.2],["wood_beam",1.98,0.2,3.19,180,0.2]]},{"id":"MD-0050","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"woodwall"},"src":"hetjurheim-community-house","p":[["wood_floor_1x1",-2.5,2.5,0,90],["wood_floor",-2,1,0,90],["wood_floor_1x1",-1.5,2.5,0,90],["wood_floor_1x1",-0.5,2.5,0,90],["wood_floor",0,1,0,90],["wood_floor_1x1",0.5,2.5,0,90],["wood_floor_1x1",1.5,2.5,0,90],["wood_floor",2,1,0,90],["wood_floor_1x1",2.5,2.5,0,90],["piece_banner01",2.03,-0.3,3.52,270],["piece_banner04",-2.09,-0.3,3.53,270],["piece_banner01",2,0.3,3.68,270]]},{"id":"MD-0051","kind":"door","fit":{"w":2,"h":2,"rise":0.25,"wt":"other","wall":"wood_wall_half"},"src":"mini-smelter-base-vbuild-perfect-for-survival-game","p":[["wood_stair",0,1.26,-1,0],["wood_beam",-2,0,0,180,0.2],["wood_beam",2,0,0,180,0.2]]},{"id":"MC-0285","kind":"corner","fit":{"angle":135,"wt":"stone","wall":"stone_wall_1x1"},"src":"workmans-pub-vanilla-friendly","p":[["darkwood_beam",-0.92,0.08,-0.12,158,0.25],["ashwood_pole_2m",0,0.46,1.13,248,0.26],["ashwood_pole_2m",0,0.46,3.13,248,0.26],["piece_banner11",-0.84,0.22,3.62,248,0.2]]},{"id":"MG-0198","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"ashwood_wall_2x2","wt":"half-timber"},"src":"workmans-pub-vanilla-friendly","p":[["ashwood_wall_beam_45",-1,0,-5,180,0.3],["ashwood_wall_beam_45",1,0,-5,0,0.3],["ashwood_pole_1m",-4,0,-3,270,0.18],["wood_beam_45",-4,0,-3,0,0.28],["ashwood_pole_2m",-3,0,-3,270,0.2],["ashwood_pole_2m",-2,0,-3,270,0.3],["ashwood_wall_beam_45",-1,0,-3,0,0.3],["ashwood_wall_beam_45",1,0,-3,180,0.3],["ashwood_pole_2m",2,-0.01,-3,270,0.3],["ashwood_pole_2m",3,-0.01,-3,270,0.2],["wood_beam_45",4,-0.01,-3,180,0.28],["ashwood_pole_1m",4,-0.01,-3,270,0.2],["wood_beam_45",-4.03,0.4,-2.99,0],["wood_beam_45",3,-0.01,-2,180,0.3],["wood_beam_45",-2,0,-1,0,0.28],["ashwood_pole_1m",-2,0,-1,270,0.18],["ashwood_pole_2m",-1,0,-1,270,0.2],["ashwood_pole_2m",1,0,-1,270,0.2],["ashwood_pole_1m",2,-0.01,-1,270,0.2],["wood_beam_45",-2.03,0.4,-0.99,0],["wood_beam_45",-1,0,0,0,0.3],["ashwood_pole_2m",0,0,0,270,0.3],["wood_beam_45",1,0,0,180,0.3],["wood_beam_45",-0.97,0.4,0.07,0]]},{"id":"MC-0288","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"epic-skybound-temple-valheim-build","p":[["wood_pole2",-0.02,-0.02,0,315,0.39],["wood_pole2",0.27,0.26,0.98,315],["wood_pole2",-0.32,0.25,0.99,315],["wood_pole2",-0.02,-0.02,1,315,0.39],["wood_pole2",0.27,0.26,2.98,315],["wood_pole2",-0.32,0.25,2.99,315],["wood_pole2",-0.02,-0.02,3,315,0.39]]},{"id":"MC-0289","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"wood_wall_half"},"src":"epic-skybound-temple-valheim-build","p":[["wood_pole2",-0.32,0.25,0.99,315],["wood_pole2",-0.02,-0.02,1,315,0.39],["wood_pole2",0.27,0.26,1,315],["wood_pole2",-0.32,0.25,2.99,315],["wood_pole2",-0.02,-0.02,3,315,0.39],["wood_pole2",0.27,0.26,3,315]]},{"id":"MG-0199","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"ashwood_decowall_2x2","wt":"half-timber"},"src":"epic-skybound-temple-valheim-build","p":[["wood_beam",-3,1,-4,270],["wood_beam",3,1,-4,90],["piece_groundtorch",1.58,-0.22,-3.18,270],["wood_beam",-3,1,-3,270],["wood_pole2",-3,0,-3,180,0.2],["wood_pole2",-1,0,-3,180,0.2],["wood_pole2",1,0,-3,180,0.2],["wood_beam",3,1,-3,270],["wood_pole2",3,0,-3,180,0.2],["wood_beam_45",-2,0,-2,360,0.2],["wood_beam_45",2,0,-2,180,0.2],["wood_pole",-1,0,-1.5,180],["wood_pole",1,0,-1.5,180],["wood_beam_45",-2,0,-1,360,0.2],["wood_beam_45",-1,0,-1,360,0.2],["wood_beam_45",1,0,-1,180,0.2],["wood_beam_45",2,0,-1,180,0.2],["wood_beam_45",-1.19,-0.4,-0.96,360],["wood_beam_45",-1,0,0,360],["wood_beam_45",1,0,0,180]]},{"id":"MG-0200","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"ashwood_decowall_2x2","wt":"half-timber"},"src":"epic-skybound-temple-valheim-build","p":[["wood_beam",-3,1,-3,270],["wood_beam",3,1,-3,90],["piece_groundtorch",-1.58,0.22,-2.18,90],["wood_pole2",-3,0,-2,360,0.2],["wood_pole2",-1,0,-2,360,0.2],["wood_pole2",1,0,-2,360,0.2],["wood_pole2",3,0,-2,360,0.2],["ashwood_beam_2m",-3,1,-1,270],["wood_beam_45",-2,0,-1,360,0.2],["wood_beam_45",2,0,-1,180,0.2],["ashwood_beam_2m",3,1,-1,90],["wood_pole",-1,0,-0.5,360],["wood_pole",1,0,-0.5,360],["wood_beam_45",-1,0,0,360,0.2],["wood_beam_45",1,0,0,180,0.2]]},{"id":"MI-0070","kind":"icorner","fit":{"angle":270,"wt":"stone","wall":"wood_wall_half"},"src":"hub-inn-with-tunnelvision","p":[["stone_pillar",-0.25,0.46,2.08,315,0.38]]},{"id":"MG-0202","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"ashwood_wall_2x2","wt":"half-timber"},"src":"the-tradesman-barndominium","p":[["ashwood_pole_2m",-1,0,-2,270,0.2],["ashwood_beam_2m",-2,0,-1,360,0.17],["ashwood_beam_2m",3,0,-1,360,0.17],["ashwood_pole_2m",-1,0,0,270,0.2]]},{"id":"MG-0207","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"viking-longhouse-ac-valhalla-inspired","p":[["wood_beam_1",-3.49,0.99,-1.02,360],["wood_beam_26",-1.99,-0.01,-1.02,360],["wood_pole_log_4",-0.99,-0.01,-1.02,360],["wood_pole_log_4",1.01,-0.01,-1.02,360],["wood_beam_1",-3.5,0,-1,360],["wood_beam_26",2,0,-1,180],["wood_beam_1",3.5,0,-1,360],["wood_beam_1",3.5,1,-1,360],["wood_beam",0,0,0,180]]},{"id":"MC-0293","kind":"corner","fit":{"angle":135,"wt":"stone","wall":"stone_wall_2x1"},"src":"wellhalla","p":[["wood_beam",-0.92,0.08,1.08,158,0.2],["wood_beam",0.92,0.08,1.08,203,0.2],["wood_pole",0,0.46,1.58,180,0.2],["wood_beam",-0.92,0.08,2.08,158,0.2],["wood_beam",0.92,0.08,2.08,203,0.2]]},{"id":"MC-0294","kind":"corner","fit":{"angle":135,"wt":"stone","wall":"stone_wall_2x1"},"src":"wellhalla","p":[["wood_beam",-0.92,0.08,1.08,158,0.2],["wood_beam",0.92,0.08,1.08,203,0.2],["wood_pole",0,0.46,1.58,180,0.2],["wood_beam",-0.92,0.08,2.08,158,0.2],["wood_beam",0.92,0.08,2.08,203,0.2]]},{"id":"MC-0295","kind":"corner","fit":{"angle":135,"wt":"stone","wall":"stone_wall_2x1"},"src":"wellhalla","p":[["wood_beam",-0.92,0.08,1.08,158,0.2],["wood_beam",0.92,0.08,1.08,203,0.2],["wood_pole",0,0.46,1.58,180,0.2],["wood_beam",-0.92,0.08,2.08,158,0.2],["wood_beam",0.92,0.08,2.08,203,0.2]]},{"id":"MC-0296","kind":"corner","fit":{"angle":135,"wt":"stone","wall":"stone_wall_2x1"},"src":"black-marble-portal-hub-small","p":[["stone_wall_1x1",0,0.25,0.58,315],["blackmarble_1x1",0,0.25,1.58,45],["blackmarble_1x1",0,0.25,2.58,45]]},{"id":"MG-0212","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"viking-longhouse-ac-valhalla-inspired","p":[["wood_pole_log",2.99,-0.01,-2.02,113,0.26],["wood_pole_log",-3,0,-2,113,0.28],["wood_beam_1",2.99,0.49,-1.02,90,0.15],["wood_beam_1",-3.5,0,-1,0],["wood_beam_1",-3,0.5,-1,90],["wood_beam_26",-2,1,-1,0],["wood_beam_26",2,1,-1,180],["wood_beam_1",3.5,0,-1,0],["wood_beam_1",-1,0.5,0,90],["wood_beam_1",1,0.5,0,90]]},{"id":"MC-0297","kind":"corner","fit":{"angle":135,"wt":"stone","wall":"stone_wall_2x1"},"src":"wellhalla","p":[["wood_beam",-0.92,0.08,1.08,158,0.2],["wood_beam",0.92,0.08,1.08,203,0.2],["wood_pole",0,0.46,1.58,180,0.2],["wood_beam",-0.92,0.08,2.08,158,0.2],["wood_beam",0.92,0.08,2.08,203,0.2],["wood_pole2",0,0.46,3.08,281]]},{"id":"MC-0298","kind":"corner","fit":{"angle":135,"wt":"stone","wall":"stone_wall_2x1"},"src":"wellhalla","p":[["wood_beam",-0.92,0.08,1.08,158,0.2],["wood_beam",0.92,0.08,1.08,203,0.2],["wood_pole",0,0.46,1.58,180,0.2],["wood_beam",-0.92,0.08,2.08,158,0.2],["wood_beam",0.92,0.08,2.08,203,0.2],["wood_pole2",0,0.46,3.08,270]]},{"id":"MD-0054","kind":"door","fit":{"w":2,"h":2,"rise":1,"wt":"other","wall":"woodwall"},"src":"wooden-dual-tower-base-home-pre-mistlands","p":[["stone_floor_2x2",-1.81,1.19,-0.5,90],["stone_floor_2x2",0.19,1.19,-0.5,90],["stone_floor_2x2",2.19,1.19,-0.5,90],["piece_banner02",-2.51,2.22,2.88,0]]},{"id":"MG-0215","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"wooden-dual-tower-base-home-pre-mistlands","p":[["darkwood_beam",-4,0,-4.25,360,0.2],["darkwood_beam",-2,0,-4.25,360,0.2],["darkwood_beam",0,0,-4.25,360,0.2],["darkwood_beam",2,0,-4.25,360,0.2],["darkwood_wolf",-0.29,0.56,-4.22,270],["darkwood_pole4",3,0,-4,0,0.2],["woodiron_beam_45",-4,0,-3,360],["woodiron_beam_45",-2,0,-1,360]]},{"id":"MG-0218","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"lighthouse-1568","p":[["wood_beam",-1,1,-2,90,0.17],["wood_beam",1,1,-2,90,0.17],["wood_pole2",-1,0,-1,180],["wood_pole2",1,0,-1,180]]},{"id":"MC-0300","kind":"corner","fit":{"angle":135,"wt":"plank","wall":"wood_wall_log"},"src":"houses-homes-and-tinies","p":[["wood_pole2",0.08,-0.03,1.51,23,0.32],["wood_pole2",-0.12,0,1.71,23,0.32],["wood_pole2",-0.12,0,2.71,158]]},{"id":"MG-0219","kind":"gable","fit":{"slope":26,"overhang":-0.25,"wall":"ashwood_decowall_tree","wt":"half-timber"},"src":"a-multi-storey-cozy-house","p":[["darkwood_pole4",-1,-0.14,-2,180,0.2],["darkwood_pole4",1,-0.14,-2,180,0.2],["darkwood_beam_26",0,-0.14,-0.75,0,0.2],["darkwood_beam_26",0,-0.14,-0.75,180,0.2],["darkwood_beam_26",-1,-0.14,-0.25,0,0.2],["darkwood_beam_26",1,-0.14,-0.25,180,0.2]]},{"id":"MD-0055","kind":"door","fit":{"w":2,"h":2,"rise":1.25,"wt":"plank","wall":"wood_wall_half"},"src":"simple-hen-house","p":[["wood_beam",-2,0,-1,360,0.2],["wood_beam",0,0,-1,360,0.2],["wood_stair",0,1.26,-1,360],["wood_beam",2,0,-1,360,0.2],["itemstand",1.7,0.19,0.4,360],["sign",1.7,0.19,1.09,360],["sign",-1.57,-0.19,1.18,180],["wood_wall_roof_45",-2,0,2,360,0.21],["wood_wall_roof_45",2,0,2,180,0.21],["wood_pole2",-1,0,3,180,0.2],["wood_pole2",1,0,3,180,0.2]]},{"id":"MG-0220","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"ocean-base","p":[["piece_banner11",-0.12,-0.25,-1.34,270],["darkwood_beam",-1,0,-1.25,360,0.2],["darkwood_beam",1,0,-1.25,360,0.2],["darkwood_beam_26",-1,0,-0.25,0,0.3],["darkwood_beam_26",1,0,-0.25,180,0.3]]},{"id":"MG-0221","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-detailed-mountain-tower","p":[["wood_beam_1",-0.53,0.4,-4.02,360],["wood_pole",-1.03,0.4,-3.52,360],["wood_pole",1.49,0,-3.51,270],["wood_pole",-1,0,-3.5,360,0.2],["wood_pole",1,0,-3.5,90,0.2],["wood_beam_1",-0.53,0.4,-3.02,360],["wood_pole",-0.03,0.4,-2.52,360],["wood_beam_1",-0.53,0.4,-2.02,360],["wood_pole",-1.03,0.4,-1.52,360],["wood_pole",1.49,0,-1.51,270],["wood_pole",-1,0,-1.5,360,0.2],["wood_pole",1,0,-1.5,90,0.2],["wood_beam_1",-0.53,0.4,-1.02,360],["wood_pole",-0.03,0.4,-0.52,360],["darkwood_beam",0,0,-0.25,0,0.2]]},{"id":"MG-0223","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-bronze-age-starter-house-1","p":[["wood_pole_log_4",-1,0,-3,180,0.2],["wood_pole_log_4",3,0,-3,180,0.2],["wood_pole",-1,0,-0.5,90],["wood_pole",1,0,-0.5,90]]},{"id":"MG-0224","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-bronze-age-starter-house-2","p":[["itemstand",1.02,0.19,-3.84,0],["wood_pole_log_4",-1,0,-3,180,0.2],["wood_pole_log_4",3,0,-3,180,0.2],["wood_pole",-1,0,-0.5,90],["wood_pole",1,0,-0.5,90]]},{"id":"MG-0225","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-detailed-mountain-tower","p":[["wood_pole",-3,-0.01,-3.5,270,0.29],["darkwood_beam",3.91,0,-3.25,180,0.2],["darkwood_pole",3,-0.01,-3,180,0.29],["wood_pole",-3.49,1.04,-2.49,270],["woodiron_beam",-1,0.99,0,90],["woodiron_beam",-0.09,0,0,360]]},{"id":"MG-0226","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-detailed-mountain-tower","p":[["darkwood_beam",0,0,-3.25,180,0.2],["darkwood_pole",-1.04,0.01,-3,180,0.16],["darkwood_pole",0.91,-0.01,-3,180,0.29],["piece_walltorch",-0.01,-0.35,-2.44,270],["darkwood_pole",-1,0,-1,180,0.29],["darkwood_pole",0.91,-0.01,-1,180,0.2],["darkwood_beam",0,0,-0.25,360,0.2]]},{"id":"MG-0227","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"house-starter-house-pre-bronze-age","p":[["wood_pole2",-3,0,-3,180,0.2],["wood_pole2",1,0,-3,180,0.2],["wood_pole2",1,0,-1,180,0.2],["wood_pole",-1,0,-0.5,0],["wood_pole2",0,0,-0.5,0,0.3]]},{"id":"MD-0056","kind":"door","fit":{"w":2,"h":2,"rise":0.25,"wt":"stone","wall":"stone_wall_1x1"},"src":"farm-quaint-little-farm","p":[["wood_pole",-2.5,0.5,0.5,270,0.2],["wood_pole",-2.5,1.5,0.5,90],["wood_pole",-2.5,2.5,0.5,270],["wood_beam",-2.5,1.5,1,270],["wood_wall_roof_45",1.5,0,2,180,0.21],["wood_beam",-1,-0.16,2.2,180,0.19],["wood_beam",-1,0.16,2.2,180,0.19],["wood_beam",1,-0.16,2.2,180,0.19],["wood_beam",1,0.16,2.2,180,0.19],["wood_beam_45",1.82,0.39,2.7,180,0.31]]},{"id":"MG-0229","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"house-4-part-rebuild-set-duo-black-forest-home","p":[["wood_pole2",1,0,-3,180,0.2],["wood_beam_45",2,0,-3,180,0.3],["wood_beam_45",4,0,-3,0,0.3],["wood_beam",-2,0,-2,0,0.2],["wood_beam",0,0,-2,0,0.2],["wood_beam_45",0,0,-1,180,0.3],["wood_pole2",1,0,-1,180,0.2]]},{"id":"MG-0230","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"house-black-forest-base","p":[["wood_beam_1",-3.5,1,-1,180],["wood_beam_1",-3.5,0,-1,180],["wood_beam_1",-3,0.5,-1,270,0.2],["wood_beam_1",-1,0.5,-1,270,0.2],["wood_beam_1",1,0.5,-1,90,0.2],["wood_beam_1",3,0.5,-1,90,0.2]]},{"id":"MG-0231","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"house-black-forest-base","p":[["wood_beam_1",-1.5,0,0,360],["wood_beam_1",-1,0.5,0,90],["wood_beam_1",1,0.5,0,90],["wood_beam_1",1.5,0,0,360]]},{"id":"MG-0232","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"house-epic-lake-house","p":[["wood_beam",0,0,-4,360,0.2],["wood_pole2",-1,0,-3,270,0.2],["wood_pole2",1,0,-3,270,0.2],["wood_beam",0,0,-2,360,0.2],["wood_pole2",-1,0,-1,270],["wood_pole2",1,0,-1,270]]},{"id":"MG-0307","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"ashwood_wall_cross_45","wt":"half-timber"},"src":"house-medieval-bay","p":[["piece_dvergr_lantern",-3,0,-2.31,270,0.28],["piece_dvergr_lantern",3,0,-2.31,270,0.28],["wood_beam_1",-3,0.5,-2,270],["ashwood_wall_beam_45",-2,0,-2,360,0.4],["ashwood_wall_beam_45",2,0,-2,180,0.4],["wood_beam_1",3,0.5,-2,270],["wood_beam_26",0,1,0,270,0.34]]},{"id":"MG-0235","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"ashwood_wall_cross_45","wt":"half-timber"},"src":"house-medieval-bay","p":[["ashwood_wall_beam_45",-4,0,-4,0],["ashwood_wall_beam_45",4,0,-4,180],["ashwood_wall_beam_45",-2,0,-2,0,0.4],["ashwood_wall_beam_45",2,0,-2,180,0.4],["wood_beam_26",0,1,0,270,0.34]]},{"id":"MG-0236","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"house-quirky-log-cabin","p":[["wood_pole_log",-1,0,-2,360,0.2],["wood_pole_log",1.79,-0.03,-1.98,360,0.2],["wood_pole_log",-1,0,-1,180,0.2],["wood_pole_log",1.79,-0.03,-0.98,180,0.2]]},{"id":"MG-0238","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-simple-barracks","p":[["wood_pole2",-0.99,0,-2.53,90,0.2],["wood_beam",0.01,0,-1.53,180,0.2],["wood_pole",-0.99,0,-1.03,90],["wood_pole",1.01,0,-1.03,90],["wood_pole",-1,0.01,-0.5,90],["wood_pole",1,0.01,-0.5,90]]},{"id":"MG-0239","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"house-starter-house-pre-bronze-age","p":[["wood_pole",-1,0,-1.5,90,0.2],["wood_pole",1,0,-1.5,90,0.2],["wood_pole",-1,0,-0.5,90],["wood_pole",1,0,-0.5,90]]},{"id":"MC-0307","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"ashwood_wall_2x2"},"src":"house-stave-church-home","p":[["Piece_grausten_pillarbase_medium",0,0.04,0,135],["Piece_grausten_pillarbase_medium",0,0.04,1,135],["ashwood_pole_2m",0,0.04,2,135,0.35],["piece_groundtorch",-0.25,0.25,2.65,315]]},{"id":"MC-0308","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"ashwood_wall_2x2"},"src":"house-stave-church-home","p":[["Piece_grausten_pillarbase_medium",0,0.04,0,225],["Piece_grausten_pillarbase_medium",0,0.04,1,225],["ashwood_pole_2m",0,0.04,2,225,0.36],["piece_groundtorch",-0.26,0.34,2.65,45]]},{"id":"MG-0240","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"house-the-awesome-box","p":[["wood_beam",0,0,-2,0,0.2],["wood_pole2",-1,0,-1,0,0.2],["wood_pole2",1,0,-1,0,0.2],["wood_beam_1",0.01,-0.12,-0.07,180]]},{"id":"MG-0308","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-the-canary-house-minor-decor-room-for-8","p":[["wood_beam",-2.02,0,-1.63,180,0.2],["wood_beam",-0.02,0,-1.63,180,0.2],["wood_beam",-2,-0.02,-1,180,0.2],["wood_beam",0,-0.02,-1,180,0.2],["wood_pole_log",-3.02,0,-0.63,90,0.18],["wood_pole_log",-1.02,0,-0.63,90,0.2],["wood_pole_log",0.98,0,-0.63,90,0.2],["wood_beam",0,-0.02,0,360,0.2],["wood_pole",-1.18,0.2,0.27,90],["wood_pole",-0.83,0.2,0.32,90],["wood_pole",1.17,0.2,0.32,90],["ashwood_beam_1m",-0.52,0,0.37,360],["ashwood_beam_1m",0.48,0,0.37,360],["wood_pole",-0.75,0.26,0.55,90],["wood_beam",-0.02,0.13,0.67,180]]},{"id":"MG-0241","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"house-the-stakewall-shack","p":[["wood_pole2",-1,0,-2,90],["wood_pole2",2.17,0,-2,90],["wood_beam_26",-2,0,-1,360],["wood_pole",-1,0,-0.5,90],["wood_pole",2.17,0,-0.5,90],["wood_beam",0,0,0,180],["wood_beam",1.17,0,0,180]]},{"id":"MG-0242","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-the-stakewall-shack","p":[["wood_pole2",1,0,-2,45,0.28],["wood_beam",0,0,-1,0,0.2],["wood_pole",-1,0,-0.5,0],["wood_pole",1,0,-0.5,45]]},{"id":"MG-0243","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"house-the-storm-cellar-cabin","p":[["wood_log_26",-2,0,-2,0],["wood_beam_26",-2,0,-2,360],["wood_pole_log_4",-1,0,-2,360,0.2],["wood_pole_log_4",3,0,-2,180,0.2],["wood_log_26",4,0,-2,180],["wood_beam_26",4,0,-2,180],["wood_log_26",-2,0,-1.5,0],["wood_beam_26",-2,0,-1,0],["wood_log_26",-2,0,-1,0],["wood_log_26",0,0,-1,0],["wood_log_26",2,0,-1,180],["wood_log_26",0,0,-0.5,0],["wood_log_26",0,0,0,0]]},{"id":"MG-0246","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-viking-dock-house","p":[["darkwood_beam",-3,1,-4.25,90,0.15],["darkwood_beam",-2,0,-4.25,360,0.2],["darkwood_beam",0,0,-4.25,360,0.2],["darkwood_beam",2,0,-4.25,360,0.2],["darkwood_beam",3,1,-4.25,270],["wood_beam",-4,0,-4,180,0.2],["wood_beam",4,0,-4,180,0.2],["woodiron_beam_45",-4,0,-3,360,0.3],["woodiron_beam_45",4,0,-3,180,0.3],["darkwood_beam",0,0,-2.25,360,0.2],["darkwood_pole",-1,0,-1,360,0.2],["darkwood_pole",1,0,-1,360,0.2],["darkwood_beam",0,0,-0.25,360,0.2]]},{"id":"MG-0255","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"darkwood_decowall","wt":"half-timber"},"src":"hub-small-kitchen-work-table-pequena-cozinha-mesa-de-trabalho","p":[["wood_beam_26",-1.12,1,-2,270,0.2],["wood_beam_26",0.88,1,-2,270,0.2],["wood_beam_26",2.88,1,-2,270,0.2],["wood_beam_1",-1.62,0,0,180]]},{"id":"MG-0259","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_2x1","wt":"half-timber"},"src":"workshop-might-forge","p":[["wood_beam",-4,0,-3,180,0.2],["wood_beam",-2,0,-3,180,0.2],["wood_beam",0,0,-3,180,0.2],["wood_beam",2,0,-3,180,0.2],["wood_beam",4,0,-3,180,0.2],["wood_pole",-1,0,-2.5,0,0.2],["wood_pole",1,0,-2.5,0,0.2],["wood_beam",0,0,-2,180,0.2],["wood_pole2",-1,0,-1,0,0.2],["wood_pole2",1,0,-1,0,0.2],["wood_beam_26",-1,0,-0.5,0,0.2],["wood_beam_26",1,0,-0.5,180,0.2],["wood_beam_1",-0.03,0.7,0.78,270]]},{"id":"MG-0260","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"workshop-might-forge","p":[["wood_beam",-4,-0.01,-4,360,0.2],["wood_beam",-2,-0.01,-4,360,0.2],["wood_beam",0,-0.01,-4,360,0.2],["wood_beam",2,-0.01,-4,360,0.2],["wood_beam",4,-0.01,-4,360,0.2],["wood_pole2",-3,-0.01,-3,360,0.2],["wood_pole2",3,-0.01,-3,360,0.2],["wood_beam",-2,-0.01,-2,360,0.2],["wood_beam",0,-0.01,-2,360,0.2],["wood_beam",2,-0.01,-2,360,0.2],["wood_beam_45",-1,-0.01,0,360,0.3],["wood_beam",0,-0.01,0,180,0.3],["wood_beam_45",1,-0.01,0,180,0.3]]},{"id":"MC-0311","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"ashwood_halfwall_1x2"},"src":"hs_ashlands_bakedgoodsstall","p":[["ashwood_beam_1m",0.09,-0.14,0.8,45,0.4],["ashwood_beam_1m",0.2,-0.24,0.81,45,0.39],["piece_banner06",-0.58,-0.24,0.83,225,0.2],["ashwood_pole_1m",0,-0.02,1,45,0.36]]},{"id":"MC-0312","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"ashwood_quarterwall_1x1"},"src":"hs_ashlands_bakedgoodsstall","p":[["ashwood_beam_1m",0.1,-0.14,0.8,225,0.4],["ashwood_beam_1m",0.2,-0.24,0.8,225,0.4],["piece_banner06",-0.59,-0.25,0.83,45,0.2],["ashwood_pole_1m",0,-0.02,1,225,0.35]]},{"id":"MC-0313","kind":"corner","fit":{"angle":90,"wt":"plank","wall":"ashwood_halfwall_1x2"},"src":"hs_ashlands_bullseyestall","p":[["ashwood_beam_1m",0,0.05,0.87,45,0.33],["ashwood_beam_1m",0.25,-0.2,0.88,45,0.32],["piece_banner07",-0.56,-0.22,0.91,225,0.19],["ashwood_pole_1m",0,-0.02,1,315,0.35]]},{"id":"MG-0261","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"ashwood_halfwall_1x2","wt":"plank"},"src":"hs_ashlands_bullseyestall","p":[["sign",0.24,-0.04,-2.12,90],["sign",0.24,-0.04,-1.61,90],["ashwood_pole_2m",-2,0,-1.5,360],["ashwood_pole_2m",-1,0,-1.5,360],["ashwood_pole_2m",0,0,-0.5,180]]},{"id":"MG-0262","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"ashwood_quarterwall_1x1","wt":"plank"},"src":"hs_ashlands_sweettoothstall","p":[["ashwood_pole_2m",-2,0,-1.5,360],["ashwood_pole_2m",-1,0,-1.5,360],["ashwood_pole_2m",0,0,-0.5,360],["ashwood_beam_2m",-1,0,0.5,360]]},{"id":"MD-0058","kind":"door","fit":{"w":2,"h":2,"rise":0.25,"wt":"other","wall":"woodwall"},"src":"Báz_meadowshouse1_1","p":[["wood_beam",-2,2,0,180],["wood_beam",0,2,0,180],["wood_beam",2,2,0,180],["wood_pole",-1,2,0.5,180],["wood_pole",1,2,0.5,180],["wood_beam",-2,2,1,180],["wood_pole2",-2,0,1,180,0.3],["wood_beam",0,2,1,180],["wood_beam",2,2,1,180]]},{"id":"MG-0263","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"iron_wall_1x1","wt":"half-timber"},"src":"farm-greydwarf-farm-wolf-breeder-together-at-last","p":[["wood_log_26",-3,0,-2,180],["wood_beam_26",-2,0,-2,180],["Piece_flametal_beam",-1.66,-0.2,-2,338],["Piece_flametal_beam",0,0,-2,180],["Piece_flametal_beam",1.66,-0.2,-2,203],["wood_beam_26",2,0,-2,360],["wood_beam_26",-2,0,-1,0],["wood_pole2",-1,0,-1,270],["wood_pole2",1,0,-1,90],["wood_beam_26",2,0,-1,180]]},{"id":"MG-0264","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"farm-house-with-barn-animal-shelter","p":[["wood_pole2",-3,0,-2,180,0.2],["wood_pole2",-1,0,-2,180,0.2],["wood_pole2",1,0,-2,180,0.2],["wood_pole2",3,0,-2,191,0.24],["wood_beam",-2,0,-1,0,0.2],["wood_beam",2,0,-1,0,0.2],["wood_pole",-1,0,-0.5,180],["wood_pole",1,0,-0.5,180]]},{"id":"MG-0265","kind":"gable","fit":{"slope":45,"overhang":0,"wall":null,"wt":"plank"},"src":"farm-house-with-barn-animal-shelter","p":[["wood_beam",0.02,0.2,-4,11],["wood_window",3,0.74,-3.5,360],["wood_pole2",-1,0,-3,270],["wood_pole2",1,0,-3,180],["wood_beam",0,0,-2,180],["wood_pole2",-1,0,-1,270],["wood_pole2",1,0,-1,270]]},{"id":"MG-0268","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"ashwood_decowall_2x2","wt":"half-timber"},"src":"farm-quaint-little-farm","p":[["wood_beam_1",-2.5,0.48,-4,90,0.2],["wood_beam",2.5,0.98,-4,90],["wood_beam_1",-2.5,0.48,-2,270,0.2],["wood_beam_1",2.5,0.48,-2,270],["wood_beam_45",-2,-0.02,-1,360,0.21],["wood_beam_45",2,-0.02,-1,180,0.2]]},{"id":"MG-0269","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"stone_wall_1x1","wt":"half-timber"},"src":"farm-quaint-little-farm","p":[["wood_beam",-2.93,-0.16,-2.08,270,0.27],["wood_beam",3.07,-0.16,-2.08,270],["wood_beam_45",-1.93,0.84,-1.08,360],["wood_beam_45",2.07,0.84,-1.08,180],["wood_beam_45",-2,0,-1,0,0.3],["wood_beam_45",2,0,-1,180,0.3],["wood_beam_45",-0.93,0.84,-0.08,360],["wood_beam_45",1.07,0.84,-0.08,180]]},{"id":"MD-0060","kind":"door","fit":{"w":2,"h":3,"rise":0.25,"wt":"other","wall":"woodwall"},"src":"house-a-compact-ergonomic-base-for-3-4-players","p":[["wood_floor",-2,1,0,270],["wood_floor",0,1,0,270],["wood_floor",2,1,0,270],["wood_pole2",-1,2,1,90],["wood_beam_45",-1,1,3,90,0.2],["wood_roof",0,1,3,0,0.21],["wood_roof",2,1,3,0,0.21]]},{"id":"MC-0321","kind":"corner","fit":{"angle":135,"wt":"plank","wall":"piece_dvergr_metal_wall_2x2"},"src":"house-armory-build","p":[["wood_beam_1",-0.46,-0.19,0,158,0.2],["darkwood_decowall",-0.46,-0.19,0,338,0.48],["wood_beam_1",0.46,-0.19,0,203,0.2],["darkwood_decowall",0.46,-0.19,0,203,0.48],["wood_beam_1",-0.46,-0.19,1,158,0.2],["wood_pole2",0,0,1,225,0.34],["wood_beam_1",-0.46,-0.19,2,158,0.4],["wood_beam_1",0.46,-0.19,2,203,0.2],["wood_pole2",0,0,3,225,0.3]]},{"id":"MC-0322","kind":"corner","fit":{"angle":135,"wt":"plank","wall":"piece_dvergr_metal_wall_2x2"},"src":"house-armory-build","p":[["darkwood_decowall",-0.46,-0.19,0,158,0.48],["wood_beam_1",-0.46,-0.19,0,158,0.2],["wood_beam_1",0.46,-0.19,0,203,0.2],["darkwood_decowall",0.46,-0.19,0,23,0.48],["wood_pole2",0,0,1,225,0.34],["wood_beam_1",0.46,-0.19,1,203,0.2],["wood_beam_1",-0.46,-0.19,2,158,0.2],["wood_beam_1",0.46,-0.19,2,203,0.4],["wood_pole2",0,0,3,225,0.3]]},{"id":"MA-0061","kind":"wallface","fit":{"h":2,"wt":"stone-base","wall":"stone_wall_2x1"},"src":"house-armory-build","p":[["wood_beam",0,0.5,1.08,0,0.2],["wood_pole",-1,0.5,1.58,135,0.28],["sign",0.03,0.54,1.58,360],["wood_beam_1",-0.5,0.5,2.08,180],["wood_beam_1",0.5,0.5,2.08,180],["wood_pole2",1,0.5,2.08,135]]},{"id":"MA-0062","kind":"wallface","fit":{"h":2,"wt":"stone-base","wall":"stone_wall_2x1"},"src":"house-armory-build","p":[["sign",0.03,0.54,1.45,360],["wood_pole",-1,0.5,1.58,225,0.28],["wood_pole",1,0.5,1.58,225,0.28],["wood_beam",0,0.5,2.08,180]]},{"id":"MG-0270","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"house-average-pretty-medium-sized-house-for-an-light-start","p":[["wood_beam",-2.4,1.07,-4.17,270],["wood_beam",-2,1,-4,90],["wood_beam",-1,0,-4,360,0.2],["wood_beam",1,0,-4,360,0.2],["wood_beam",3,0,-4,360],["wood_pole2",-2.48,-0.03,-3.8,90],["wood_pole2",-2,-0.4,-3.61,360],["wood_pole2",2,-0.4,-3.61,180],["wood_pole2",4,-0.4,-3.61,180],["wood_beam",-1.01,-0.35,-3.33,180],["wood_beam",0.99,-0.35,-3.33,180],["wood_beam",-2.48,0.97,-2.8,270],["wood_beam",-1,-0.4,-2.61,180],["wood_beam",1,-0.4,-2.61,180],["wood_pole2",-2.48,-0.03,-1.8,90],["wood_pole2",-2,-0.4,-1.61,360],["wood_pole2",2,-0.4,-1.61,180],["piece_walltorch",0.03,0.4,-1.6,90],["wood_beam_1",-1.17,0.74,-1,113],["darkwood_pole",-1,0,-1,360,0.2],["darkwood_pole",0,0,-1,360],["darkwood_pole",1,0,-1,360,0.2]]},{"id":"MG-0271","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"house-average-pretty-medium-sized-house-for-an-light-start","p":[["wood_beam",-2,1,-4,90,0.17],["wood_beam",-1,0,-4,0,0.2],["wood_beam",1,0,-4,0,0.2],["wood_beam",3,0,-4,0],["wood_beam",-3.33,0.8,-3.98,270],["wood_beam_1",-2.83,-0.2,-3.98,0],["wood_beam",-2.33,0.8,-3.98,90],["wood_pole2",-2,-0.4,-3.61,0],["wood_pole2",2,-0.4,-3.61,180],["wood_beam",-0.99,-0.35,-3.33,180],["wood_beam",1.01,-0.35,-3.33,180],["wood_pole2",-2.33,-0.2,-2.98,0],["wood_beam",-2.38,1,-2.61,90],["wood_beam",-1,-0.4,-2.61,180],["wood_beam",1,-0.4,-2.61,180],["piece_walltorch",0.01,0.4,-1.66,270],["wood_pole2",-2,-0.4,-1.61,0],["wood_pole2",2,-0.4,-1.61,180],["itemstand",-1.81,0.94,-1.06,90],["darkwood_pole",-1,0,-1,0,0.2],["darkwood_pole",0,0,-1,0],["darkwood_pole",1,0,-1,0,0.2]]},{"id":"MG-0272","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_half","wt":"half-timber"},"src":"house-bakery-and-loft","p":[["wood_beam",-3,1,-2,180],["wood_beam",-3,0,-2,360],["wood_beam",-1,0,-2,360],["darkwood_pole",-1,0,-2,270],["wood_beam",1,0,-2,360],["darkwood_pole",1,0,-2,90],["wood_beam",3,0,-2,360],["darkwood_pole",-1,0,-1,270],["darkwood_pole",1,0,-1,180],["darkwood_beam4x4",0,0,-0.25,0],["darkwood_beam4x4",-0.23,-0.4,-0.23,360]]},{"id":"MG-0274","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"stone_wall_2x1","wt":"half-timber"},"src":"house-bakery-and-loft","p":[["wood_beam_45",-4,0,-2,0,0.2],["wood_beam_45",-4,1,-2,0,0.2],["wood_beam_45",4,0,-2,180,0.2],["wood_beam_45",4,1,-2,180,0.2],["wood_beam",-2,0.07,-1.07,180],["wood_beam_1",-3,0.5,-1,270],["wood_beam_26",-2,0,-1,360],["wood_beam_26",-2,1,-1,0],["wood_beam",0,0,-1,180,0.2],["wood_beam_26",2,0,-1,180],["wood_beam_26",2,1,-1,180],["wood_beam_1",3,0.5,-1,270],["wood_beam",2,0.12,-0.97,180],["wood_beam_1",-1,0.5,0,270],["wood_beam_1",1,0.5,0,270,0.15]]},{"id":"MG-0275","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_quarter","wt":"half-timber"},"src":"house-bakery-and-loft","p":[["darkwood_pole4",-1.95,0.49,-3.9,90],["darkwood_pole4",2.05,0.49,-3.9,360],["wood_beam_1",-3.5,0,-3,180],["wood_beam_1",3.5,0,-3,180],["darkwood_beam4x4",0.05,0.49,-2.15,360],["wood_beam_1",-3,0.5,-2,270,0.15],["wood_beam_1",3,0.5,-2,270],["wood_beam_45",-2,1,-1,360],["wood_beam_45",-2,0,-1,360,0.4],["darkwood_pole",-1,0,-1,90,0.23],["darkwood_pole",1,0,-1,90,0.23],["wood_beam_45",2,1,-1,180],["wood_beam_45",2,0,-1,180,0.4],["darkwood_beam",0,0,-0.25,180],["wood_beam_1",-1,0.5,0,270],["wood_beam_1",1,0.5,0,270]]},{"id":"MG-0276","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"darkwood_arch","wt":"half-timber"},"src":"house-bakery-and-loft","p":[["darkwood_beam4x4",-3,0,-3.25,0,0.4],["darkwood_beam",0,0,-3.25,180,0.21],["darkwood_beam4x4",3,0,-3.25,360,0.4],["wood_beam_1",-3,0.5,-2,90],["darkwood_pole",-1,0,-2,270,0.4],["darkwood_pole",1,0,-2,270,0.4],["wood_beam_1",3,0.5,-2,90,0.15],["wood_beam_45",-2,1,-1,360],["wood_beam_45",2,1,-1,180],["wood_beam_1",-1,0.5,0,90,0.2],["wood_beam_1",1,0.5,0,90,0.2]]},{"id":"MG-0277","kind":"gable","fit":{"slope":26,"overhang":-0.25,"wall":"stone_wall_2x1","wt":"half-timber"},"src":"house-bakery-and-loft","p":[["wood_beam_1",-1.46,-0.32,-2,158],["wood_beam",0,-0.13,-2,180,0.2],["wood_beam_1",1.46,-0.32,-2,203],["wood_pole2",-1,-0.13,-1,360],["wood_pole2",1,-0.13,-1,360]]},{"id":"MG-0278","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"stone_wall_2x1","wt":"half-timber"},"src":"house-bakery-and-loft","p":[["wood_pole2",-2.85,0.19,-2,270],["wood_beam_1",-2.28,-0.24,-2,135],["wood_beam_1",-1.46,0.31,-2,158],["wood_beam",0,0.5,-2,180,0.2],["wood_beam_1",1.46,0.31,-2,203],["wood_beam_1",2.12,-0.34,-2,248],["wood_pole2",2.42,0.16,-2,270],["wood_pole2",-1,0.5,-1,90],["wood_pole2",1,0.5,-1,90],["wood_beam_1",-1,0,0,90],["wood_beam_1",1,0.39,0,90]]},{"id":"MG-0279","kind":"gable","fit":{"slope":26,"overhang":0.25,"wall":"stone_wall_2x1","wt":"half-timber"},"src":"house-bakery-and-loft","p":[["wood_beam",0,-0.25,-2,180,0.2],["wood_pole2",-1,-0.25,-1,270],["wood_pole2",1,-0.25,-1,270],["wood_beam_1",-1,-0.37,0,270]]},{"id":"MG-0280","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"house-basic-starter-home","p":[["wood_pole2",1,0,-3,0],["wood_beam",-1,1,-2,90,0.16],["wood_beam",0,0,-2,0,0.2],["wood_pole",-1,0,-1.5,0,0.2]]},{"id":"MG-0281","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"house-basic-starter-home","p":[["wood_pole2",-1,0,-3,360],["wood_pole2",1,0,-3,180],["wood_beam",-3,1,-2,90],["wood_beam",-2,0,-2,360,0.2],["wood_beam",0,0,-2,180]]},{"id":"MG-0282","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"house-basic-starter-home","p":[["wood_pole2",-1,0,-3,0],["wood_pole2",1,0,-3,90],["wood_beam",-3,1,-2,270],["wood_beam",-2,0,-2,0,0.2]]},{"id":"MG-0283","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"plank"},"src":"house-basic-starter-home","p":[["wood_beam",-4,0,-4,180],["wood_beam",-2,0,-4,0,0.2],["wood_beam",-1,1,-4,270],["wood_beam",1,1,-4,270],["wood_beam",2,0,-4,0,0.2],["piece_groundtorch_wood",-1.41,0.59,-3.25,90],["piece_groundtorch_wood",1.44,0.66,-3.25,90],["piece_walltorch",-1.23,-0.35,-1.79,90],["piece_walltorch",1.28,-0.35,-1.79,90],["sign",0.01,0.19,-0.65,0]]},{"id":"MG-0284","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"log"},"src":"house-black-forest-base","p":[["wood_beam_1",-3.5,1,-1,180],["wood_beam_1",-3.5,0,-1,360],["wood_beam_1",-3,0.5,-1,90],["wood_beam_1",-1,0.5,-1,90,0.15],["wood_beam_1",1,0.5,-1,90,0.15],["wood_beam_1",3,0.5,-1,270,0.15],["wood_beam_1",3.5,1,-1,360]]},{"id":"MG-0285","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"house-black-forest-base","p":[["wood_beam_1",-2.5,0,-1,180,0.2],["wood_beam_26",-2,1,-1,270,0.2],["wood_beam_26",0,1,-1,270],["wood_beam_1",2.5,0,-1,360]]},{"id":"MG-0286","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"house-black-forest-base","p":[["wood_beam_1",-3.5,0,-1,180],["wood_beam_1",-3.5,1,-1,180],["wood_beam_1",-3,0.5,-1,90,0.2],["wood_beam_1",-1,0.5,-1,90,0.2],["wood_beam_1",2,0.5,-1,270,0.2],["wood_beam_26",2,1,-1,270,0.27],["wood_beam_1",2.5,0,-1,360,0.2],["wood_beam_1",2.5,1,-1,180],["wood_beam",3,1,-1,270,0.2]]},{"id":"MG-0287","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"wood_wall_log","wt":"log"},"src":"house-black-forest-base","p":[["wood_beam_1",-3.5,0,-1,180],["wood_beam_1",-3.5,1,-1,360],["wood_beam_1",-3,0.5,-1,90,0.2],["wood_beam_1",-1,0.5,-1,270,0.2],["wood_beam_1",1,0.5,-1,270,0.2],["wood_beam_1",3,0.5,-1,270,0.2],["wood_beam_1",3.5,0,-1,180],["wood_beam_1",3.5,1,-1,180]]},{"id":"MG-0288","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-black-forest-outpost-18-terrain-markers-for-rivlet-early-gam","p":[["wood_pole_log_4",-3.61,0.92,-2,23],["wood_beam",0,0,-2,180,0.2],["wood_pole_log_4",1,0,-2,90,0.2],["wood_beam",2,0,-2,180,0.2],["wood_pole_log_4",3,0,-2,180,0.2],["piece_walltorch",-0.03,-0.35,-1.67,270],["piece_groundtorch_wood",-1.35,0.27,-1.25,293],["piece_groundtorch_wood",2.68,0.39,-1.25,293],["wood_pole2",-1.77,0.15,-1,203],["wood_pole_log_4",-1.55,-0.1,-1,248],["wood_pole_log_4",-1.3,-0.15,-1,248],["wood_pole2",-1,0,-1,180,0.2],["wood_beam_1",-0.73,0.16,-0.24,338,0.3],["wood_beam",0.74,0.35,-0.24,0],["wood_beam_1",1.74,0.35,-0.23,0],["wood_beam",0,0,0,0,0.2]]},{"id":"MG-0289","kind":"gable","fit":{"slope":26,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-blackmisth-house","p":[["wood_beam_26",-4,0,-2,360,0.27],["wood_beam",-2,0,-2,0,0.2],["wood_beam",0,0,-2,0,0.2],["wood_beam",2,0,-2,0,0.2],["wood_beam_26",4,0,-2,180,0.27],["wood_beam_26",-2,0,-1,360,0.27],["wood_pole2",-1,0,-1,180,0.2],["wood_beam_26",2,0,-1,180,0.27]]},{"id":"MG-0290","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"woodwall","wt":"half-timber"},"src":"house-detailed-mountain-tower","p":[["wood_pole",-3,-0.03,-3.5,90,0.17],["darkwood_pole",3.05,0,-3,180,0.16],["wood_pole",-3.4,0.95,-2.5,270],["woodiron_beam",-0.97,1,0,90],["woodiron_beam",0.03,0,0,0]]},{"id":"MD-0112","kind":"door","fit":{"w":2,"h":3,"rise":1.25,"wt":"other","wall":"wood_wall_half"},"src":"house-early-game-a-frame","p":[["wood_beam",-2,0,0,0,0.2],["wood_floor",-2,1,0,0,0.13],["wood_floor",-1.59,2,0,225],["wood_floor",-0.59,2.41,0,270,0.13],["wood_beam",0,0,0,0],["wood_floor",0,1,0,0],["wood_floor",0.59,2.41,0,270,0.13],["wood_floor",1.59,2,0,315],["wood_beam",2,0,0,0,0.2],["wood_floor",2,1,0,0,0.13],["wood_pole",-1,0,0.5,270,0.2],["wood_pole",1,0,0.5,270,0.2],["wood_pole2",-1,0,2,0],["wood_pole2",1,0,2,0],["wood_beam",0,0,3,0],["wood_roof_top_45",0,1,3,270],["wood_beam_1",0.01,-0.02,3.32,0]]},{"id":"MG-0291","kind":"gable","fit":{"slope":45,"overhang":0,"wall":"wood_wall_half","wt":"plank"},"src":"house-early-game-a-frame","p":[["wood_beam_45",-4,0,-3,0,0.21],["wood_beam",-4,0,-3,360],["wood_beam",-2,0,-3,180,0.2],["wood_beam",0,0,-3,180,0.2],["wood_beam",2,0,-3,180,0.2],["wood_beam_45",4,0,-3,180,0.21],["wood_pole",-3,0,-2.5,0,0.2],["wood_pole",3,0,-2.5,180,0.2]]},{"id":"MD-0065","kind":"door","fit":{"w":2,"h":3,"rise":0.25,"wt":"other","wall":"woodwall"},"src":"house-geletopp-cabin-early-game-ready-3-5-vikings-2","p":[["stone_fence",-1.43,0.3,0.89,180],["wood_pole_log",-1.26,-0.22,0.97,180],["stone_fence",-1.43,0.3,1.89,360],["wood_beam",-2.26,-0.22,1.97,180,0.2],["wood_pole_log_4",-1.26,-0.22,3.97,180,0.2]]},{"id":"MD-0066","kind":"door","fit":{"w":2,"h":3,"rise":1.25,"wt":"log","wall":"wood_wall_log"},"src":"house-houses-homes-and-tinies-30","p":[["wood_stair",0,1,-1,0,0.27],["wood_wall_roof_45",-2,0,3,0,0.4],["wood_wall_roof_45",2,0,3,180,0.4],["wood_pole_log",-1,0,4,270,0.2],["wood_pole_log",1,0,4,270,0.2]]},{"id":"MD-0113","kind":"door","fit":{"w":2,"h":2,"rise":0.25,"wt":"other","wall":null},"src":"house-just-a-little-almost-ordinary-home-with-vinyl-audio-system","p":[["wood_fence",-2.31,0.26,-0.01,191,0.31],["wood_fence",2.06,0.57,-0.01,338],["wood_pole",-1.17,-0.03,0.02,360],["wood_pole2",-1.17,-0.03,1.52,360],["wood_beam_26",-2.17,-0.03,2.52,180]]},{"id":"MD-0067","kind":"door","fit":{"w":2,"h":3,"rise":0.75,"wt":"log","wall":"wood_wall_log"},"src":"house-just-a-little-almost-ordinary-home-with-vinyl-audio-system","p":[["wood_stair",0,1,-1,0,0.28],["wood_fence",-1.96,0.87,-0.52,208],["wood_beam",-2,0,0,180,0.2],["wood_beam",2,0,0,180,0.2],["wood_pole",-1,0,0.5,270,0.2],["wood_wall_roof_top_45",-2,0,1,180,0.21],["wood_beam",-2,0,1,0,0.2],["wood_wall_roof_top_45",2,0,1,180,0.21],["wood_beam",2,0,1,0,0.2],["wood_pole2",-1,0,2,270],["piece_banner03",1.73,0.3,2.97,270],["piece_banner03",-1.77,0.3,2.98,270],["wood_beam",-2,0,3,180],["wood_wall_roof_top",0,2,3,0],["wood_roof_top",0,1,3,90],["wood_beam",0,0,3,180],["wood_beam",2,0,3,180],["sign",0,2.25,3.29,0]]},{"id":"MD-0068","kind":"door","fit":{"w":2,"h":2,"rise":1.25,"wt":"plank","wall":"wood_wall_half"},"src":"house-ragnor-day-1-hovel","p":[["wood_pole",-1,-0.26,0.5,90,0.24],["wood_pole",1,-0.26,0.5,90,0.16],["wood_beam",-1.96,-0.26,1,180,0.2],["wood_beam",2,-0.26,1,180,0.2],["wood_pole",-1,-0.26,1.5,90],["wood_pole",1,-0.26,1.5,90]]},{"id":"MD-0069","kind":"door","fit":{"w":2,"h":3,"rise":1.25,"wt":"other","wall":"wood_wall_half"},"src":"house-simple-barracks","p":[["wood_beam_26",-1,1,-1,90,0.2],["wood_stair",0,1,-1,0],["wood_beam_26",1,1,-1,90,0.2],["wood_beam",-1.93,-0.21,-0.17,180],["wood_beam",2.07,-0.21,-0.17,180],["wood_pole",-1,0,0.5,0,0.2],["wood_beam",-2,0,1,0,0.2],["wood_pole2",1,0,1,0,0.2],["wood_beam",2,0,1,0,0.2],["wood_pole2",-1,0,2,0],["wood_pole2",1,0,2,0],["wood_beam",-2,0,3,0,0.2],["wood_beam",2,0,3,0,0.2],["wood_pole",-1,0,3.5,0,0.2],["wood_pole",1,0,3.5,0,0.2],["wood_beam",-2,0,4,0,0.2],["wood_beam",0,0,4,0,0.2],["wood_beam",2,0,4,0,0.2]]},{"id":"MD-0114","kind":"door","fit":{"w":2,"h":2,"rise":0.25,"wt":"other","wall":null},"src":"house-standing-stone-sanctuary","p":[["wood_fence",2.24,-0.01,-0.16,360],["wood_fence",-2.25,-0.05,-0.04,180,0.29],["wood_wall_roof_top",-2.32,1.55,0.17,293],["wood_pole2",-1,0,1,180],["wood_pole2",1,0,1,180],["wood_pole2",-1.93,2.47,1.17,203],["wood_beam",-2.32,1.55,2.17,113]]},{"id":"MD-0070","kind":"door","fit":{"w":2,"h":2,"rise":1,"wt":"other","wall":"woodwall"},"src":"house-starter-house-pre-bronze-age","p":[["wood_floor",-2,1,0,0],["wood_beam",-2,2,0,0],["wood_beam",-2,0,0,0,0.2],["wood_floor",0,1,0,0],["wood_beam",0,2,0,0],["wood_floor",2,1,0,0],["wood_beam",2,2,0,0],["piece_groundtorch_wood",-0.8,0.57,0.75,0],["piece_groundtorch_wood",0.9,0.62,0.75,0]]},{"id":"MA-0079","kind":"wallface","fit":{"h":2,"wt":"half-timber","wall":"woodwall"},"src":"hub-meadows-townhall-nakd-n-afraid-season-2","p":[["wood_beam",0,0.26,-0.08,0],["wood_pole2",-1.03,0.4,0.92,45],["wood_beam_45",1.19,0.4,2.11,180],["piece_banner03",-0.17,0.25,2.97,90]]},{"id":"MA-0085","kind":"wallface","fit":{"h":3,"wt":"stone-base","wall":"stone_wall_2x1"},"src":"hub-viking-style-longhouse","p":[["wood_pole2",-1.25,0.23,1.2,45,0.5],["wood_pole2",-0.73,0.23,1.2,45,0.5],["wood_pole2",-0.99,0.36,2.2,360],["piece_walltorch",-0.98,0.76,2.81,90],["wood_pole2",-1.25,0.23,3.2,135],["wood_pole2",-0.73,0.23,3.2,135]]},{"id":"MA-0089","kind":"wallface","fit":{"h":4,"wt":"plank","wall":"woodwall"},"src":"small-blacksmith-s-house-and-dock-w-download","p":[["darkwood_wolf",0.03,0.56,2.51,90],["itemstand",-0.51,0.19,2.6,360]]},{"id":"MD-0076","kind":"door","fit":{"w":2,"h":2,"rise":1.25,"wt":"plank","wall":"wood_wall_half"},"src":"several-longhouses","p":[["wood_stair",0,1,-1,0],["wood_beam",-2,0,0,180,0.2],["wood_beam_45",-1,1,0,90,0.2],["wood_beam_45",1,1,0,90,0.2],["wood_beam",2,0,0,180,0.2],["wood_pole2",-1,0,1,0,0.2],["wood_pole2",1,0,1,0,0.2],["piece_walltorch",-0.96,0.45,1.61,90],["piece_walltorch",0.89,0.45,1.63,90],["wood_pole",-1,0,2.5,180,0.2],["wood_pole",1,0,2.5,180,0.2]]},{"id":"MD-0077","kind":"door","fit":{"w":2,"h":2,"rise":1.25,"wt":"plank","wall":"wood_wall_half"},"src":"several-longhouses","p":[["wood_stair",0,1,-1,0],["wood_beam",-2,0,0,180,0.2],["wood_beam_45",-1,1,0,90,0.2],["wood_beam_45",1,1,0,90,0.2],["wood_beam",2,0,0,180,0.2],["wood_pole2",-1,0,1,270,0.2],["wood_pole2",1,0,1,270,0.2],["piece_walltorch",0.9,0.45,1.49,270],["piece_walltorch",-0.93,0.45,1.5,270],["wood_pole",-1,0,2.5,360,0.2],["wood_pole",1,0,2.5,360,0.2]]},{"id":"MD-0078","kind":"door","fit":{"w":2,"h":2,"rise":1.25,"wt":"plank","wall":"woodwall"},"src":"several-longhouses","p":[["wood_floor",-2,1,0,270],["wood_beam",-2,2,0,360],["wood_beam",-1,1,0,270],["wood_floor",0,1,0,90],["wood_floor",2,1,0,90],["wood_wall_half",-2,2,0.5,360],["wood_pole2",-1,2,1,180],["wood_pole2",-1,0,1,360],["wood_pole2",1,0,1,360,0.2],["wood_pole",-1,2,2.5,360],["wood_wall_half",-1,1,2.5,90],["wood_pole2",-1,0,3,360,0.2],["wood_pole2",1,0,3,360,0.2]]},{"id":"MA-0394","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"stone_wall_2x1"},"src":"tiny-home-challenge-part-3-before-bonemass","p":[["wood_pole2",1,0.41,0.94,180],["wood_pole",1,0.41,2.44,180],["piece_banner04",-0.02,0.35,2.98,270]]},{"id":"MD-0079","kind":"door","fit":{"w":2,"h":2,"rise":1,"wt":"plank","wall":"woodwall"},"src":"long-house-inn","p":[["wood_floor",-2,1,0,0],["wood_floor",0,1,0,0],["wood_floor",2,1,0,0],["wood_pole2",-1,0,1,0],["wood_beam",-2,0,3,180,0.2],["wood_pole2",-1,0,3,0,0.2]]},{"id":"MD-0080","kind":"door","fit":{"w":2,"h":2,"rise":1,"wt":"plank","wall":"woodwall"},"src":"long-house-inn","p":[["wood_floor",-2,1,0,0],["wood_floor",0,1,0,0],["wood_floor",2,1,0,0],["wood_pole2",-1,0,1,0],["piece_walltorch",1.98,0.35,2.87,270],["wood_beam",-2,0,3,180,0.2],["wood_pole2",-1,0,3,0,0.2]]},{"id":"MD-0081","kind":"door","fit":{"w":2,"h":2,"rise":1,"wt":"plank","wall":"woodwall"},"src":"long-house-inn","p":[["wood_floor",-2,1,0,0],["wood_floor",0,1,0,0],["wood_floor",2,1,0,0],["wood_pole2",-1,0,1,0],["piece_walltorch",1.95,0.35,2.94,90],["wood_beam",-2,0,3,180,0.2],["wood_pole2",-1,0,3,0,0.2]]},{"id":"MD-0082","kind":"door","fit":{"w":2,"h":2,"rise":1,"wt":"plank","wall":"woodwall"},"src":"basic-plains-outpost-redux","p":[["stone_floor_2x2",-2,1,-0.5,360],["stone_floor_2x2",0,1,-0.5,360],["stone_floor_2x2",2,1,-0.5,360],["wood_beam",-1,1,1,90],["wood_wall_half",-1,1,1.5,90],["wood_pole_log_4",-1,2,2,90],["wood_beam",-1,1,2,90,0.17],["wood_pole2",-1,0,2,270,0.2],["wood_pole2",-1,0,3,270,0.2],["wood_pole2",1,0,3,293,0.26]]},{"id":"MD-0084","kind":"door","fit":{"w":2,"h":2,"rise":1,"wt":"stone","wall":"stone_wall_2x1"},"src":"mountain-stronghold-1690","p":[["stone_stair",0,1.74,-1,360],["wood_beam_1",-1.5,0.74,3,360,0.2]]},{"id":"MA-0100","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"warehouse","p":[["piece_banner07",-0.23,0.3,1.87,90]]},{"id":"MD-0086","kind":"door","fit":{"w":2,"h":3,"rise":0.25,"wt":"plank","wall":"wood_wall_half"},"src":"deep-forest-luxury","p":[["wood_floor",-2,2,0,270],["wood_floor",-2,0,0,270],["wood_wall_quarter",-1,2.5,0,270],["wood_wall_quarter",-0.5,2,0,180],["wood_floor_1x1",-0.5,1.5,0,90],["wood_floor_1x1",-0.5,2.5,0,90],["wood_floor",0,0,0,270],["wood_wall_quarter",0,2.5,0,90],["wood_floor",1,2,0,180],["wood_floor",1,0,0,180],["wood_pole",0,2,0.5,180],["wood_window",1,0,0.5,180],["wood_window",3,0,0.5,0],["wood_wall_quarter",-1,2.5,1,270],["wood_beam_1",-0.5,2,1,180],["wood_beam_1",0,2.5,1,270],["wood_wall_quarter",-1,2.5,2,270],["darkwood_roof",-2,2,3,360],["darkwood_roof",-2,0,3,180],["wood_window",-1,0,3.5,180],["wood_window",1,0,3.5,180],["wood_window",1,0,3.5,0],["wood_window",3,0,3.5,0]]},{"id":"MD-0087","kind":"door","fit":{"w":2,"h":3,"rise":0.25,"wt":"plank","wall":"wood_wall_quarter"},"src":"deep-forest-luxury","p":[["wood_beam",-2,1,0,90],["wood_floor",-1,1,0,360],["wood_floor",1,1,0,360],["wood_beam",2,1,0,90],["wood_pole2",-2,2,1,90],["wood_pole2",2,2,1,90],["wood_pole",-2,2,2.5,90],["wood_pole",2,2,2.5,90],["piece_dvergr_lantern",-2,0,2.69,270,0.15],["wood_beam",-2,1,3,90],["darkwood_roof",-1,1,3,270,0.15],["wood_wall_roof",-1,2,3,360],["darkwood_roof",1,1,3,90,0.15],["wood_wall_roof",1,2,3,180],["wood_beam",2,1,3,90]]},{"id":"MD-0089","kind":"door","fit":{"w":2,"h":3,"rise":1.25,"wt":"plank","wall":"wood_wall_quarter"},"src":"deep-forest-luxury","p":[["wood_pole2",-1,0,-1,0,0.2],["wood_floor",-2,1,0,90],["wood_beam_1",-1.5,0,0,0,0.2],["wood_floor",0,1,0,90],["wood_beam_1",1.5,0,0,0,0.2],["wood_floor",2,1,0,90],["wood_pole2",-2,0,1,0,0.2],["wood_pole2",-1,0,1,0],["wood_pole2",1,0,1,0],["wood_pole2",2,0,1,0,0.2],["wood_pole2",-2,0,2,0,0.2],["wood_pole2",1,0,2,0],["wood_pole2",2,0,2,0,0.2],["piece_dvergr_lantern",-2,0,2.69,270,0.15],["wood_beam_1",-1.5,0,3,0,0.2],["wood_pole2",-1,0,3,0,0.2],["wood_beam_1",1.5,0,3,0,0.2]]},{"id":"MD-0091","kind":"door","fit":{"w":2,"h":2,"rise":0,"wt":"other","wall":null},"src":"mistlands-themed-house","p":[["darkwood_pole",-2.01,0.67,0.25,180],["darkwood_pole",1.99,0.67,0.25,180],["ashwood_beam_2m",-2.01,-0.33,2.25,270],["darkwood_pole",-2.01,-0.33,2.25,90],["ashwood_beam_2m",1.99,-0.33,2.25,270],["darkwood_pole",1.99,-0.33,2.25,90]]},{"id":"MI-0096","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"wood_wall_half"},"src":"rau-ursvartur","p":[["wood_beam",-0.71,0.71,1,225,0.2],["wood_beam",0.71,0.71,1,135,0.2],["wood_pole",0,0,1.5,225],["wood_pole",0,0,2.5,225]]},{"id":"MI-0100","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"woodwall"},"src":"simple-forest-cabin","p":[["wood_beam",-0.69,0.55,0.15,45,0.34],["itemstand",-0.6,0.19,2.44,225,0.42]]},{"id":"MD-0095","kind":"door","fit":{"w":2,"h":2,"rise":1,"wt":"other","wall":"wood_wall_half"},"src":"vanilla-small-village-1","p":[["wood_beam",-2,0,2,180,0.2],["wood_beam",2,0,2,180,0.2],["wood_beam_1",-1.5,0,3,360],["wood_beam",0,0,3,360],["wood_beam",2,0,3,360]]},{"id":"MI-0102","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"woodwall"},"src":"fully-equipped-warehouse-workshop","p":[["wood_pole2",0,0,1,214,0.38],["wood_pole2",0,0,3,214,0.38]]},{"id":"MD-0099","kind":"door","fit":{"w":2,"h":2,"rise":1.25,"wt":"other","wall":"woodwall"},"src":"bakery-with-small-store-and-living-area","p":[["wood_beam",-2,2,-1,0],["wood_beam",-2,0,-1,0],["wood_beam",-1,1,-1,270],["wood_beam",0,2.26,-1,0],["stone_stair",0,1.26,-1,0],["wood_beam",1,1.26,-1,270],["wood_beam",2,2.26,-1,0],["piece_walltorch",-2.08,0.38,0.98,281],["wood_wall_roof_45",2,0,2,180,0.21]]},{"id":"MD-0100","kind":"door","fit":{"w":2,"h":3,"rise":0.5,"wt":"plank","wall":"goblin_woodwall_1m"},"src":"rampart-3d-heroes-3-valhem-edition","p":[["wood_stair",0,1,-1,0],["wood_beam_1",-1.5,0,0,0,0.2],["wood_beam_1",1.5,0,0,0,0.2],["wood_pole2",-2,0,1,270,0.2],["wood_pole2",-1,0,1,0,0.2],["wood_pole2",1,0,1,270,0.2],["wood_pole2",2,0,1,270,0.2],["wood_pole2",-2,0,3,270,0.2],["wood_pole2",-1,0,3,0,0.2],["wood_beam",0,0,3,0],["wood_pole2",1,0,3,0,0.2],["wood_pole2",2,0,3,270,0.2],["wood_beam_1",-1.5,0,4,0,0.3],["wood_beam",0,0,4,0],["wood_beam_1",1.5,0,4,0,0.3]]},{"id":"MI-0107","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"wood_wall_quarter"},"src":"house-viking-s-little-house","p":[["wood_pole2",0.02,-0.11,0.98,315,0.37],["wood_pole2",-0.28,0.19,1.2,315,0.46],["wood_pole2",0,-0.09,3,225,0.39]]},{"id":"MA-0219","kind":"wallface","fit":{"h":1.25,"wt":"stone-base","wall":"iron_wall_1x1"},"src":"house-armory-build","p":[["wood_beam",0,0.5,1.08,0,0.2],["wood_pole",-1,0.5,1.58,135,0.28],["sign",0.03,0.54,1.58,360]]},{"id":"MA-0220","kind":"wallface","fit":{"h":1.25,"wt":"stone-base","wall":"stone_wall_2x1"},"src":"house-armory-build","p":[["sign",0.02,0.54,1.47,360],["wood_pole",-1,0.5,1.58,225,0.28],["wood_pole",1,0.5,1.58,225,0.28]]},{"id":"MD-0101","kind":"door","fit":{"w":2,"h":3,"rise":0.75,"wt":"other","wall":"wood_wall_half"},"src":"house-simple-barracks","p":[["wood_stair",-0.17,1.2,-0.85,0],["wood_beam",-0.03,-0.03,0,0],["sign",-0.05,0.19,3.36,0]]},{"id":"MA-0122","kind":"wallface","fit":{"h":3,"wt":"half-timber","wall":"piece_dvergr_metal_wall_2x2"},"src":"house-swampguard-at-iduna-s-nebula-lagoon","p":[["darkwood_beam_26",-0.02,0.4,2.15,360],["piece_dvergr_lantern",-1,0,2.61,270,0.15],["darkwood_beam_26",-0.02,0.4,3.15,180]]},{"id":"MA-0123","kind":"wallface","fit":{"h":3,"wt":"half-timber","wall":"piece_dvergr_metal_wall_2x2"},"src":"house-swampguard-at-iduna-s-nebula-lagoon","p":[["darkwood_beam_26",0.02,0.4,2.15,0],["piece_dvergr_lantern",-1,0,2.61,90,0.15],["darkwood_beam_26",0.02,0.4,3.15,180]]},{"id":"MI-0109","kind":"icorner","fit":{"angle":270,"wt":"stone","wall":"stone_wall_1x1"},"src":"hub-the-chared-dawn-hill-retreat","p":[["wood_beam_1",-0.13,0.79,1.08,225,0.4],["wood_beam_1",0.75,0.41,3.06,68],["stone_wall_1x1",0.01,-0.3,3.08,248]]},{"id":"MA-0133","kind":"wallface","fit":{"h":3,"wt":"plank","wall":null},"src":"large-manor-house","p":[["sign",0.02,0.19,2.48,0]]},{"id":"MD-0102","kind":"door","fit":{"w":2,"h":3,"rise":1,"wt":"other","wall":"wood_wall_half"},"src":"several-longhouses","p":[["wood_floor",-2,1,0,360],["wood_floor",0,1,0,360],["wood_floor",2,1,0,360]]},{"id":"MD-0104","kind":"door","fit":{"w":2,"h":3,"rise":0.5,"wt":"other","wall":"woodwall"},"src":"henry-s-forge-kcd2-vanilla","p":[["darkwood_roof_45",-1,0,4,360,0.3],["darkwood_roof_45",1,0,4,360,0.3]]},{"id":"MI-0114","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"stave_wall_2x2"},"src":"housedungeon-deepnorth","p":[["stave_pole_4m",-0.01,0,1.02,135]]},{"id":"MA-0262","kind":"wallface","fit":{"h":2,"wt":"half-timber","wall":"stave_wall_2x2"},"src":"housedungeon-deepnorth","p":[["piece_hoodedlantern",-0.81,0.47,1.02,0]]},{"id":"MI-0115","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"wood_wall_log"},"src":"simple-forest-cabin","p":[["wood_beam",-0.52,0.22,0.17,45,0.37]]},{"id":"MI-0116","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"wood_wall_half"},"src":"hetjurheim-community-house","p":[["wood_beam",-0.71,0.71,1,225,0.2],["wood_beam",0.71,0.71,1,135,0.2]]},{"id":"MI-0117","kind":"icorner","fit":{"angle":270,"wt":"plank","wall":"iron_wall_2x2"},"src":"basic-plains-outpost","p":[["wood_beam",-0.71,0.71,0.09,45,0.2],["wood_log_45",-0.71,0.71,1.09,45,0.41],["wood_log_45",-0.71,0.71,3.09,225,0.41]]},{"id":"MI-0118","kind":"icorner","fit":{"angle":270,"wt":"half-timber","wall":"iron_wall_2x2"},"src":"basic-plains-outpost","p":[["wood_beam",-0.71,0.71,0.09,225,0.2],["wood_log_45",-0.71,0.71,1.09,45,0.41],["wood_log_45",-0.71,0.71,3.09,225,0.41]]},{"id":"MA-0154","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"house-swampguard-at-iduna-s-nebula-lagoon","p":[["darkwood_beam",0.02,0.4,1.65,0],["piece_dvergr_lantern",-1,0,2.61,90,0.15]]},{"id":"MA-0156","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"piece_dvergr_metal_wall_2x2"},"src":"house-swampguard-at-iduna-s-nebula-lagoon","p":[["darkwood_beam",-0.02,0.4,1.65,360],["piece_dvergr_lantern",-1,0,2.61,270,0.15]]},{"id":"MA-0158","kind":"wallface","fit":{"h":2.5,"wt":"plank","wall":"woodwall"},"src":"house-watch-tower","p":[["piece_banner04",-0.56,0.3,2.37,270],["piece_banner01",0.63,0.3,2.37,270]]},{"id":"MD-0106","kind":"door","fit":{"w":2,"h":2,"rise":0,"wt":"stone","wall":"stone_wall_2x1"},"src":"house-1597","p":[["wood_pole2",-1,0.26,1,360],["wood_pole2",-1,0.26,3,360,0.2]]},{"id":"MD-0107","kind":"door","fit":{"w":2,"h":2,"rise":0.5,"wt":"other","wall":"iron_wall_2x2"},"src":"house-1597","p":[["darkwood_arch",-1.58,-0.61,1.55,270],["darkwood_arch",1.42,-0.61,1.55,270]]},{"id":"MD-0108","kind":"door","fit":{"w":2,"h":3,"rise":0.25,"wt":"other","wall":"woodwall"},"src":"house-4-part-rebuild-set-duo-black-forest-home","p":[["piece_walltorch",-1.43,0.35,2,270],["piece_walltorch",1.54,0.35,2.03,270]]},{"id":"MA-0166","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"woodwall"},"src":"house-geletopp-cabin-early-game-ready-3-5-vikings-1","p":[["stone_fence",-0.15,0.65,0.12,0],["piece_walltorch",-0.49,0.26,1.46,271,0.09]]},{"id":"MA-0183","kind":"wallface","fit":{"h":2.5,"wt":"plank","wall":"woodwall"},"src":"house-watch-tower","p":[["piece_banner04",0.6,0.3,2.08,270],["piece_banner01",-0.61,0.3,2.1,270]]},{"id":"MA-0190","kind":"wallface","fit":{"h":1,"wt":"half-timber","wall":"wood_wall_half"},"src":"hub-black-briar-meadary","p":[["wood_dragon1",-0.99,-1.25,-0.18,360],["wood_beam_26",-0.99,0.75,0.82,270]]},{"id":"MA-0198","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"woodwall"},"src":"complex-tower","p":[["piece_dvergr_lantern",-1,0.01,1.61,270,0.14]]},{"id":"MA-0463","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"woodwall"},"src":"the-cabin-in-the-woods-fully-decorated-amp-room-for-2","p":[["wood_pole2",0.02,0.53,0.99,45,0.28],["piece_walltorch",-1,0.35,1.19,270]]},{"id":"MA-0225","kind":"wallface","fit":{"h":2.25,"wt":"plank","wall":"wood_wall_quarter"},"src":"ship","p":[["piece_dvergr_lantern",-0.9,0,1.94,87,0.17]]},{"id":"MA-0472","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"woodwall"},"src":"lighthouse-1568","p":[["piece_dvergr_lantern",-0.24,0.15,2.47,90]]},{"id":"MA-0473","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"woodwall"},"src":"lighthouse-1568","p":[["piece_dvergr_lantern",-1.21,0.15,2.49,270]]},{"id":"MA-0247","kind":"wallface","fit":{"h":3,"wt":"stone","wall":"stone_wall_2x1"},"src":"house-cooking-house-2","p":[["piece_walltorch",-1.2,0.02,2.2,180]]},{"id":"MA-0480","kind":"wallface","fit":{"h":1,"wt":"plank","wall":"wood_wall_half"},"src":"house-epic-lake-house","p":[["sign",-1.03,0.52,0.94,270]]},{"id":"MA-0481","kind":"wallface","fit":{"h":1,"wt":"plank","wall":"wood_wall_half"},"src":"house-epic-lake-house","p":[["sign",-1.24,0.53,0.97,293]]},{"id":"MA-0253","kind":"wallface","fit":{"h":4,"wt":"plank","wall":"woodwall"},"src":"house-geletopp-cabin-early-game-ready-3-5-vikings-2","p":[["piece_walltorch",-0.04,0.35,2.61,270]]},{"id":"MA-0256","kind":"wallface","fit":{"h":3,"wt":"half-timber","wall":"ashwood_wall_2x2"},"src":"house-medieval-bay","p":[["piece_dvergr_lantern",-1,0,2.61,270,0.16]]},{"id":"MA-0257","kind":"wallface","fit":{"h":3,"wt":"plank","wall":"ashwood_halfwall_1x2"},"src":"house-medieval-bay","p":[["piece_walltorch",-1.11,0.41,2.83,270]]},{"id":"MA-0485","kind":"wallface","fit":{"h":1.75,"wt":"plank","wall":"woodwall"},"src":"house-realm-of-rhovanion-autumnwatch-3296-1","p":[["piece_Lavalantern",0.12,0.04,1.91,270]]},{"id":"MA-0272","kind":"wallface","fit":{"h":2.5,"wt":"plank","wall":"ashwood_quarterwall_1x1"},"src":"house-realm-of-rhovanion-autumnwatch-3296-2","p":[["darkwood_wolf",-1,0,2.5,90,0.18]]},{"id":"MA-0281","kind":"wallface","fit":{"h":1,"wt":"plank","wall":"woodwall"},"src":"house-the-weavers-wardrobe","p":[["piece_dvergr_lantern",-1,0.1,1.71,90]]},{"id":"MA-0527","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"piece_dvergr_wood_wall"},"src":"compact-endgame-ready-base","p":[["piece_Lavalantern",-0.61,0.01,1.87,180]]},{"id":"MA-0528","kind":"wallface","fit":{"h":2,"wt":"plank","wall":"wood_wall_half"},"src":"several-longhouses","p":[["sign",0.06,0.19,1.3,0]]}]};
 window.VH_MOTIF_WEIGHTS = {"MC-0008":1.03,"MW-0001":1.6,"MW-0002":1.46,"MW-0003":1.47,"MW-0005":1.33,"ME-0015":1.7,"MW-0006":1.41,"MW-0007":1.34,"MW-0008":1.34,"MW-0009":1.34,"MW-0010":1.34,"MC-0029":1.02,"MW-0011":1.36,"MW-0012":1.34,"ME-0021":1.36,"MW-0013":1.18,"MW-0014":1.47,"MW-0015":1.18,"MW-0016":1.47,"MW-0017":1.47,"MW-0018":1.18,"MW-0019":1.47,"ME-0024":1.35,"MW-0020":1.34,"MW-0021":1.34,"MW-0022":1.34,"MW-0023":1.34,"MW-0024":1.34,"MW-0025":1.34,"MW-0026":1.34,"MW-0027":1.31,"MG-0001":1.54,"MW-0028":1.29,"MW-0029":1.18,"MW-0030":1.18,"MW-0031":1.18,"MG-0002":1.37,"MG-0003":1.37,"MG-0005":1.37,"ME-0028":1.37,"MW-0033":1.24,"ME-0032":1.23,"ME-0033":1.29,"ME-0034":1.29,"MW-0035":1.29,"MW-0036":1.08,"MW-0038":1.18,"MC-0127":0.64,"ME-0037":1.37,"MG-0006":1.14,"ME-0038":1.17,"MG-0007":1.22,"MD-0001":1.41,"MG-0008":1.33,"MG-0009":1.33,"ME-0041":1.23,"ME-0044":1.45,"MW-0046":1.33,"MW-0047":1.45,"MW-0050":1.22,"MW-0051":1.22,"MW-0052":1.41,"MW-0053":1.07,"MW-0058":0.72,"MG-0010":0.71,"MG-0011":0.71,"MG-0012":0.73,"MG-0013":0.91,"MG-0014":0.91,"ME-0067":1.32,"ME-0068":1.29,"ME-0069":1.03,"MG-0015":1.29,"MD-0004":1.03,"MG-0016":1.29,"MG-0017":1.03,"MD-0005":1.29,"MG-0018":1.29,"MG-0019":1.29,"MG-0020":0.9,"MG-0021":1.29,"MG-0022":1.29,"MD-0006":1.29,"MG-0023":0.9,"MG-0024":1.29,"MD-0007":1.29,"MG-0025":1.29,"MG-0026":1.29,"MG-0027":1.29,"MG-0028":0.9,"MG-0029":1.29,"MD-0009":0.9,"MG-0030":0.9,"MG-0031":0.9,"MD-0010":1.29,"MG-0032":0.9,"MG-0033":1.29,"MG-0034":0.9,"MG-0035":0.9,"MW-0059":1.29,"MW-0062":1.29,"MW-0064":1.29,"ME-0077":1.42,"MW-0074":0.71,"MG-0036":0.49,"MG-0037":0.71,"MG-0039":0.57,"MG-0040":0.71,"ME-0084":1.13,"MG-0041":1.28,"MG-0042":1.28,"MG-0043":1.28,"MW-0080":1.43,"MW-0081":1.43,"MW-0082":0.71,"MW-0083":0.71,"MW-0084":0.71,"MW-0087":1.18,"MW-0088":0.71,"MW-0089":0.49,"MW-0090":0.71,"MW-0091":0.71,"MG-0044":1.03,"MG-0045":1.28,"MG-0046":1.28,"MG-0049":0.89,"MG-0050":1.28,"ME-0094":1.28,"ME-0095":1.28,"ME-0096":1.28,"ME-0097":1.28,"ME-0098":1.28,"MG-0051":1.28,"MG-0052":1.28,"MG-0053":1.28,"MG-0054":1.02,"MW-0094":1.28,"ME-0103":1.3,"MW-0098":1.43,"ME-0109":1.3,"ME-0110":1.3,"MG-0056":0.7,"MD-0019":0.49,"MW-0116":0.56,"MW-0123":1.16,"MW-0127":0.7,"MD-0020":0.49,"MD-0021":0.7,"MW-0128":1.05,"ME-0123":1.29,"MW-0129":1.29,"MG-0058":1.29,"MG-0059":1.29,"MD-0022":1.29,"ME-0132":1.13,"MW-0130":1.26,"MW-0131":1.01,"ME-0135":1.16,"ME-0143":0.69,"ME-0145":1.13,"MW-0133":1.07,"MG-0060":0.71,"MG-0061":0.69,"MG-0062":0.48,"MW-0139":1.07,"ME-0151":1.28,"MW-0143":1.14,"ME-0156":0.69,"ME-0157":0.55,"MW-0144":0.69,"MW-0146":1.14,"MW-0147":0.69,"MW-0148":0.69,"MW-0149":0.8,"MW-0150":0.8,"MW-0153":0.69,"MW-0154":0.48,"MW-0155":0.69,"MW-0157":0.48,"MW-0158":0.69,"MW-0159":0.69,"MW-0160":0.69,"MW-0161":0.69,"MG-0063":0.69,"MW-0162":1.33,"MD-0023":1.27,"ME-0159":1.14,"ME-0160":1.14,"ME-0161":1.14,"ME-0162":1.14,"MW-0176":1.14,"MW-0178":1.14,"ME-0165":0.48,"ME-0166":0.8,"ME-0167":0.48,"ME-0170":0.68,"ME-0171":0.68,"MW-0202":0.68,"MW-0203":0.68,"MW-0235":0.68,"MW-0236":0.68,"MW-0246":1.14,"MW-0247":0.68,"MW-0248":0.68,"MW-0249":0.68,"ME-0172":0.68,"MW-0275":0.68,"MW-0276":0.68,"MW-0277":0.68,"MW-0278":0.68,"MW-0279":0.68,"MW-0280":0.68,"MW-0283":0.68,"MW-0284":0.68,"MW-0285":0.68,"MW-0286":0.68,"MW-0287":0.68,"MW-0288":0.68,"MW-0289":0.68,"ME-0174":1.06,"MW-0299":0.57,"ME-0176":1.04,"ME-0181":1.14,"MW-0304":0.68,"MG-0068":0.8,"MG-0069":0.48,"MD-0027":1.03,"MW-0328":1.16,"MW-0329":1.16,"MW-0333":0.7,"MG-0072":1.03,"ME-0195":1.29,"MW-0336":1.29,"ME-0202":1.13,"ME-0203":1.13,"ME-0204":1.13,"ME-0205":1.13,"ME-0207":1.13,"ME-0208":1.13,"ME-0209":0.79,"ME-0210":0.68,"ME-0211":0.68,"ME-0212":0.68,"ME-0213":0.68,"MG-0074":0.48,"MW-0347":0.68,"MW-0348":0.68,"MW-0350":0.68,"MG-0075":0.68,"MG-0076":0.68,"MG-0077":0.68,"MG-0078":0.79,"MG-0079":0.68,"MG-0080":0.48,"MG-0081":0.48,"MG-0082":0.68,"MG-0083":0.68,"MG-0084":0.48,"ME-0231":0.48,"ME-0232":0.48,"ME-0234":0.48,"ME-0235":0.68,"ME-0236":0.48,"ME-0237":0.68,"ME-0238":0.48,"ME-0239":0.68,"MW-0384":0.68,"MW-0391":0.68,"MW-0395":0.68,"MD-0028":0.68,"MG-0086":0.54,"ME-0240":0.54,"MG-0088":0.48,"MG-0089":0.48,"MW-0407":0.68,"MW-0408":0.68,"ME-0241":0.68,"ME-0242":0.68,"ME-0243":0.68,"MG-0090":1.13,"MW-0412":0.68,"MG-0091":0.68,"MG-0092":0.68,"MG-0093":0.68,"MG-0095":0.68,"MG-0096":0.68,"MG-0097":0.48,"MG-0098":0.68,"MG-0099":0.68,"MG-0100":0.68,"ME-0248":0.93,"ME-0251":0.69,"ME-0252":1.05,"MW-0414":1.03,"MW-0415":0.94,"ME-0253":0.94,"ME-0256":1.13,"ME-0257":1.13,"ME-0258":1.13,"ME-0259":1.13,"ME-0261":1.13,"ME-0262":1.13,"ME-0263":1.13,"ME-0264":1.13,"MW-0421":0.68,"MW-0429":1.13,"MW-0432":0.68,"ME-0265":0.47,"ME-0266":0.68,"ME-0267":0.68,"ME-0268":0.47,"ME-0269":0.68,"ME-0270":0.68,"ME-0271":0.54,"MW-0450":0.47,"MW-0451":0.47,"MW-0452":0.47,"MW-0456":1.28,"MW-0461":0.67,"MW-0462":1.28,"MG-0103":1.02,"MG-0104":1.02,"ME-0279":1.02,"MW-0469":0.67,"MG-0106":0.67,"MG-0108":0.47,"MG-0110":0.47,"ME-0282":0.67,"ME-0283":0.67,"ME-0285":0.67,"MG-0111":1.02,"MW-0475":1.02,"MW-0476":1.04,"MG-0113":0.47,"MW-0497":1.04,"MW-0499":0.67,"MW-0502":0.67,"MW-0506":1.14,"MW-0508":1.14,"MW-0509":1.14,"MG-0118":1.12,"MW-0511":1.14,"MW-0512":1.14,"MW-0515":1.02,"MW-0519":0.68,"MW-0523":0.68,"MW-0524":0.68,"MW-0525":0.68,"MW-0532":0.47,"MG-0119":0.67,"MG-0120":0.67,"MG-0121":0.67,"MG-0122":0.67,"MG-0123":0.67,"MG-0124":0.67,"MG-0125":0.67,"MG-0126":0.67,"MG-0127":0.67,"MG-0128":0.67,"MW-0540":0.91,"MW-0542":0.67,"MW-0544":0.67,"MW-0545":0.67,"MG-0130":0.67,"MG-0131":1.12,"MD-0033":0.67,"MG-0132":0.67,"MG-0133":0.67,"MG-0134":0.67,"MG-0135":0.67,"MG-0136":0.67,"MG-0137":0.7,"MG-0138":0.7,"MW-0557":0.56,"MW-0558":0.47,"MW-0559":0.47,"MW-0560":0.78,"MG-0141":0.67,"MW-0566":1.14,"MW-0567":0.68,"MG-0142":0.78,"MW-0569":1.29,"MW-0572":0.78,"MD-0034":1.03,"MW-0573":0.67,"MW-0574":0.67,"MG-0143":0.47,"MG-0144":0.67,"MW-0575":0.47,"MW-0576":0.47,"MW-0577":0.47,"MW-0580":0.47,"MW-0581":0.67,"MW-0582":0.67,"MD-0036":0.47,"MW-0583":0.67,"MW-0585":0.47,"MW-0586":1.11,"MD-0037":0.67,"MG-0145":0.67,"MG-0146":0.67,"MG-0147":0.47,"MD-0038":0.67,"MG-0148":0.47,"MG-0149":0.47,"MG-0150":0.68,"MG-0152":0.89,"MG-0153":0.77,"MW-0605":0.46,"MW-0606":0.46,"MW-0607":0.46,"MG-0154":0.46,"MG-0155":0.46,"MG-0156":0.77,"MG-0157":0.46,"MG-0158":0.46,"MG-0159":0.46,"MG-0160":0.46,"MG-0161":0.46,"MG-0162":0.66,"MG-0163":0.66,"MC-0001":1.22,"MW-0611":1.03,"MW-0614":0.66,"MD-0039":0.66,"MG-0166":0.66,"MW-0617":0.71,"MG-0167":0.66,"MW-0621":0.66,"MG-0170":0.66,"MG-0171":0.66,"MG-0172":0.46,"MG-0173":0.46,"MW-0634":1.13,"MW-0635":0.66,"MG-0174":0.66,"MG-0175":0.66,"MD-0040":0.46,"MW-0640":1.03,"MW-0641":0.66,"MW-0642":0.66,"MW-0643":0.66,"MW-0644":0.66,"MW-0645":0.66,"MW-0646":0.66,"MW-0647":0.66,"MG-0176":0.66,"MG-0177":0.66,"MG-0178":0.66,"MG-0179":0.46,"MG-0180":0.46,"MW-0649":1.1,"MW-0650":1.1,"MW-0651":1.1,"MW-0652":0.66,"MW-0653":0.66,"MW-0654":0.66,"MW-0655":1.1,"MW-0656":0.66,"MW-0657":0.66,"MW-0658":0.66,"MW-0659":0.66,"MG-0181":0.53,"MG-0182":0.46,"MD-0041":0.46,"MG-0183":1.02,"MG-0184":1.02,"MG-0185":0.46,"MG-0186":0.55,"MD-0044":0.52,"MD-0045":0.66,"MG-0189":0.67,"MG-0190":0.55,"MD-0046":0.54,"MG-0192":1.12,"MG-0195":0.46,"MG-0196":0.65,"MD-0048":0.46,"MD-0050":0.46,"MD-0051":0.67,"MG-0198":0.46,"MG-0199":0.46,"MG-0200":0.46,"MG-0202":0.65,"MG-0207":1.09,"MG-0212":0.65,"MD-0054":0.65,"MG-0215":0.65,"MG-0218":0.65,"MG-0219":0.65,"MD-0055":0.46,"MG-0220":1.08,"MG-0221":0.76,"MG-0223":1.08,"MG-0224":1.08,"MG-0225":1.08,"MG-0226":1.08,"MG-0227":1.08,"MD-0056":1.08,"MG-0229":1.08,"MG-0230":0.87,"MG-0231":0.87,"MG-0232":1.08,"MG-0235":1.08,"MG-0236":0.87,"MG-0238":1.08,"MG-0239":0.87,"MG-0240":1.08,"MG-0241":1.08,"MG-0242":1.08,"MG-0243":0.76,"MG-0246":0.76,"MG-0255":1.08,"MG-0259":0.76,"MG-0260":0.76,"MG-0261":0.65,"MG-0262":0.65,"MD-0058":0.65,"MG-0263":0.65,"MG-0264":0.65,"MG-0265":0.65,"MG-0268":0.65,"MG-0269":0.65,"MD-0060":0.65,"MG-0270":0.45,"MG-0271":0.45,"MG-0272":0.45,"MG-0274":0.45,"MG-0275":0.45,"MG-0276":0.45,"MG-0277":0.65,"MG-0278":0.45,"MG-0279":0.65,"MG-0280":0.65,"MG-0281":0.65,"MG-0282":0.65,"MG-0283":0.65,"MG-0284":0.52,"MG-0285":0.65,"MG-0286":0.65,"MG-0287":0.52,"MG-0288":0.45,"MG-0289":0.65,"MG-0290":0.65,"MG-0291":0.65,"MD-0065":0.65,"MD-0066":0.65,"MD-0067":0.45,"MD-0068":0.65,"MD-0069":0.45,"MD-0070":0.65,"MD-0076":0.45,"MD-0077":0.45,"MD-0078":0.45,"MD-0079":1.08,"MD-0080":0.65,"MD-0081":0.65,"MD-0082":0.65,"MD-0084":0.68,"MD-0086":0.45,"MD-0087":0.45,"MD-0089":0.45,"MD-0091":0.64,"MD-0095":0.64,"MD-0099":0.64,"MD-0100":0.45,"MD-0101":0.65,"MD-0102":0.65,"MD-0104":0.52,"MD-0106":0.52,"MD-0107":0.65,"MD-0108":0.87};
+window.VH_ARCH = {
+ "meta": {
+  "made": "2026-11-12",
+  "source": "docs/ARCHITECTURE_STUDY.md; numbers from data/architecture/corpus-*.json (lab/arch_facades.js, lab/arch_grammar.js, lab/arch_rooms.js)",
+  "note": "Read by lib/program.js. Shares are corpus shares unless a field says it is a program choice; D-136: the corpus numbers win over outside sources, D-165 caps planters, D-167 asks for one program per facade, storey and run."
+ },
+ "windows": {
+  "adopt": {
+   "note": "share of a culture group's windows with each feature (featureByCulture windowShare): the chance a building puts the feature on its front run; runs hold it whole (fullRun 43 to 68 % against 10 to 29 % for a shuffle)",
+   "byGroup": {
+    "unsorted": {
+     "builds": 599,
+     "windowShare": {
+      "fill:open": 0.856,
+      "posts": 0.312,
+      "sill": 0.142,
+      "brace": 0.123,
+      "hood": 0.09,
+      "fill:bars": 0.086,
+      "head": 0.078,
+      "arch": 0.057,
+      "light": 0.049,
+      "fill:glass": 0.046,
+      "hung": 0.043,
+      "vine": 0.018,
+      "fill:mesh": 0.009,
+      "shutter": 0.006,
+      "fill:closed": 0.003,
+      "planter": 0.001
+     }
+    },
+    "all": {
+     "builds": 878,
+     "windowShare": {
+      "fill:open": 0.849,
+      "posts": 0.33,
+      "sill": 0.16,
+      "brace": 0.127,
+      "fill:bars": 0.095,
+      "hood": 0.086,
+      "head": 0.085,
+      "arch": 0.06,
+      "light": 0.049,
+      "hung": 0.045,
+      "fill:glass": 0.045,
+      "vine": 0.017,
+      "fill:mesh": 0.008,
+      "shutter": 0.007,
+      "fill:closed": 0.003,
+      "planter": 0.001
+     }
+    },
+    "norse-highland": {
+     "builds": 8,
+     "windowShare": {
+      "fill:open": 0.932,
+      "posts": 0.339,
+      "sill": 0.22,
+      "brace": 0.178,
+      "head": 0.136,
+      "hood": 0.068,
+      "fill:glass": 0.042,
+      "light": 0.034,
+      "fill:bars": 0.025,
+      "arch": 0.017
+     }
+    },
+    "norse": {
+     "builds": 71,
+     "windowShare": {
+      "fill:open": 0.81,
+      "posts": 0.431,
+      "brace": 0.2,
+      "sill": 0.193,
+      "fill:bars": 0.121,
+      "head": 0.109,
+      "hood": 0.107,
+      "hung": 0.057,
+      "fill:glass": 0.049,
+      "light": 0.048,
+      "arch": 0.039,
+      "fill:mesh": 0.017,
+      "shutter": 0.006,
+      "vine": 0.004,
+      "fill:closed": 0.002,
+      "planter": 0.001
+     }
+    },
+    "castle": {
+     "builds": 46,
+     "windowShare": {
+      "fill:open": 0.848,
+      "posts": 0.294,
+      "fill:bars": 0.131,
+      "sill": 0.082,
+      "head": 0.082,
+      "arch": 0.058,
+      "brace": 0.054,
+      "light": 0.033,
+      "vine": 0.029,
+      "hood": 0.025,
+      "hung": 0.02,
+      "fill:glass": 0.018,
+      "fill:mesh": 0.002,
+      "shutter": 0.002
+     }
+    },
+    "fantasy": {
+     "builds": 14,
+     "windowShare": {
+      "fill:open": 0.76,
+      "posts": 0.518,
+      "arch": 0.244,
+      "sill": 0.234,
+      "fill:bars": 0.214,
+      "brace": 0.186,
+      "hung": 0.124,
+      "head": 0.116,
+      "light": 0.1,
+      "hood": 0.05,
+      "fill:glass": 0.017,
+      "planter": 0.009,
+      "fill:mesh": 0.009,
+      "vine": 0.009,
+      "shutter": 0.002
+     }
+    },
+    "east-asian": {
+     "builds": 12,
+     "windowShare": {
+      "fill:open": 0.798,
+      "posts": 0.429,
+      "sill": 0.377,
+      "head": 0.216,
+      "hood": 0.205,
+      "fill:bars": 0.197,
+      "brace": 0.063,
+      "hung": 0.03,
+      "light": 0.022,
+      "arch": 0.022,
+      "fill:mesh": 0.005
+     }
+    },
+    "medieval-timber": {
+     "builds": 20,
+     "windowShare": {
+      "fill:open": 0.824,
+      "posts": 0.444,
+      "sill": 0.268,
+      "brace": 0.225,
+      "hood": 0.109,
+      "fill:bars": 0.096,
+      "arch": 0.079,
+      "shutter": 0.067,
+      "head": 0.067,
+      "light": 0.067,
+      "fill:glass": 0.049,
+      "hung": 0.032,
+      "fill:closed": 0.032,
+      "vine": 0.002
+     }
+    },
+    "ashlands": {
+     "builds": 48,
+     "windowShare": {
+      "fill:open": 0.913,
+      "sill": 0.295,
+      "posts": 0.172,
+      "brace": 0.1,
+      "arch": 0.091,
+      "head": 0.075,
+      "hung": 0.073,
+      "fill:glass": 0.07,
+      "light": 0.066,
+      "hood": 0.054,
+      "fill:bars": 0.016,
+      "vine": 0.002,
+      "planter": 0.002,
+      "fill:mesh": 0.001
+     }
+    },
+    "norse-forest": {
+     "builds": 32,
+     "windowShare": {
+      "fill:open": 0.945,
+      "posts": 0.47,
+      "brace": 0.234,
+      "sill": 0.224,
+      "hood": 0.16,
+      "head": 0.103,
+      "hung": 0.044,
+      "light": 0.034,
+      "arch": 0.032,
+      "shutter": 0.027,
+      "fill:glass": 0.027,
+      "fill:bars": 0.019,
+      "vine": 0.015,
+      "fill:closed": 0.004,
+      "planter": 0.004,
+      "fill:mesh": 0.004
+     }
+    }
+   }
+  },
+  "sides": {
+   "sameAsFront": 0.47,
+   "frontRicher": 0.369,
+   "note": "the other sides take the front family whole at this share, else its built frame only (posts, braces, arches, fill, shutters), decor features (sill, head, hood, planters, lights, hung) dropped"
+  },
+  "upper": {
+   "sameAsBelow": 0.524,
+   "alignedShare": 0.298,
+   "note": "an upper storey keeps the family below at this share, else the built frame only"
+  },
+  "onePiece": {
+   "posts": {
+    "runs": 1174,
+    "onePiece": 0.954
+   },
+   "hood": {
+    "runs": 277,
+    "onePiece": 0.989
+   },
+   "shutter": {
+    "runs": 18,
+    "onePiece": 1
+   },
+   "vine": {
+    "runs": 39,
+    "onePiece": 1
+   },
+   "brace": {
+    "runs": 476,
+    "onePiece": 0.987
+   },
+   "arch": {
+    "runs": 168,
+    "onePiece": 0.976
+   },
+   "sill": {
+    "runs": 491,
+    "onePiece": 0.951
+   },
+   "head": {
+    "runs": 252,
+    "onePiece": 0.956
+   },
+   "planter": {
+    "runs": 3,
+    "onePiece": 0.667
+   }
+  },
+  "structural": [
+   "posts",
+   "brace",
+   "arch",
+   "shutter"
+  ],
+  "decorative": [
+   "sill",
+   "head",
+   "hood",
+   "planter",
+   "vine",
+   "light",
+   "hung"
+  ],
+  "planterCap": 0.1,
+  "planterNote": "D-165: at most about 10 % of a village's windows; a household trait (persona hobby.plants, likes.sill); corpus 0.1 % planters and 1.7 % vines"
+ },
+ "exceptions": {
+  "note": "a window that differs from its run needs a room behind it that gives the reason (D-167). Corpus: windows that differ from the run sit behind kitchens 1.45 times their share, storage 1.38, halls 1.24; lone features behind kitchens 1.64, halls 2.2, bedrooms 1.24 (corpus-facades.json odd, lone)",
+  "oddBehind": {
+   "plain": {
+    "n": 104,
+    "share": 0.294,
+    "base": 0.355
+   },
+   "kitchen": {
+    "n": 82,
+    "share": 0.232,
+    "base": 0.16
+   },
+   "workshop": {
+    "n": 43,
+    "share": 0.121,
+    "base": 0.165
+   },
+   "storage": {
+    "n": 39,
+    "share": 0.11,
+    "base": 0.08
+   },
+   "bedroom": {
+    "n": 33,
+    "share": 0.093,
+    "base": 0.093
+   },
+   "small": {
+    "n": 23,
+    "share": 0.065,
+    "base": 0.072
+   },
+   "living": {
+    "n": 15,
+    "share": 0.042,
+    "base": 0.042
+   },
+   "hall": {
+    "n": 15,
+    "share": 0.042,
+    "base": 0.034
+   }
+  },
+  "loneBehind": {
+   "plain": {
+    "n": 98,
+    "share": 0.268,
+    "base": 0.355
+   },
+   "kitchen": {
+    "n": 96,
+    "share": 0.262,
+    "base": 0.16
+   },
+   "workshop": {
+    "n": 50,
+    "share": 0.137,
+    "base": 0.165
+   },
+   "bedroom": {
+    "n": 42,
+    "share": 0.115,
+    "base": 0.093
+   },
+   "hall": {
+    "n": 27,
+    "share": 0.074,
+    "base": 0.034
+   },
+   "small": {
+    "n": 26,
+    "share": 0.071,
+    "base": 0.072
+   },
+   "storage": {
+    "n": 19,
+    "share": 0.052,
+    "base": 0.08
+   },
+   "living": {
+    "n": 8,
+    "share": 0.022,
+    "base": 0.042
+   }
+  },
+  "oddShare": 0.109,
+  "rules": [
+   {
+    "room": "kitchen",
+    "feature": "planter",
+    "plants": [
+     "Pickable_Dandelion",
+     "Pickable_Thistle",
+     "Pickable_Fiddlehead",
+     "Pickable_Onion",
+     "Pickable_Carrot"
+    ],
+    "needs": "household hobby.food or hobby.plants 1.2 or more",
+    "reason": "herbs grown by the kitchen window",
+    "max": 1
+   },
+   {
+    "room": "kitchen",
+    "feature": "hood",
+    "needs": "roof26 in the kit",
+    "reason": "a small roof over the window by the cooking, against rain and smoke",
+    "max": 1
+   },
+   {
+    "room": "hall",
+    "feature": "light",
+    "needs": "decor d2 or more",
+    "reason": "a lamp at the hall window, the room used at night",
+    "max": 2
+   },
+   {
+    "room": "hall",
+    "feature": "hung",
+    "needs": "decor d3, banners in the household",
+    "reason": "the household banner by the hall window",
+    "max": 1
+   },
+   {
+    "room": "storage",
+    "feature": "fill:closed",
+    "needs": "shutters in the kit",
+    "reason": "a store kept dark and shut",
+    "max": "run"
+   },
+   {
+    "room": "storage",
+    "feature": "fill:bars",
+    "needs": "iron in reach",
+    "reason": "a store barred against thieves of the wild",
+    "max": "run"
+   },
+   {
+    "room": "bedroom",
+    "feature": "shutter",
+    "needs": "shutters in the kit",
+    "reason": "shutters on the sleeping room",
+    "max": "run"
+   },
+   {
+    "room": "workshop",
+    "feature": "fill:open",
+    "reason": "a workshop light left open for air and smoke",
+    "max": "run"
+   },
+   {
+    "at": "door",
+    "feature": "light",
+    "reason": "the lamp by the door lights the window beside it",
+    "max": 1
+   },
+   {
+    "at": "gable",
+    "feature": "own",
+    "reason": "a loft or gable window is its own run with its own frame"
+   },
+   {
+    "at": "tower top",
+    "feature": "own",
+    "reason": "a lookout storey is its own run"
+   }
+  ]
+ },
+ "doors": {
+  "oneMain": 0.368,
+  "allEqual": 0.264,
+  "mainOnLongSide": 0.543,
+  "note": "program: one main door carries the richest dressing (frame plus one of hood, lamps, banners); other doors the frame only"
+ },
+ "materials": {
+  "heavyUnder": 0.784,
+  "heavyOver": 0.149,
+  "changeAt": {
+   "floor line": 154,
+   "elsewhere": 126,
+   "plinth (1.5 m or less)": 36
+  },
+  "plinthAllSides": 0.88,
+  "mainFamilies": {
+   "1": 492,
+   "2": 440,
+   "3": 178,
+   "4+": 36
+  },
+  "note": "heavy walls below light ones; the change at a floor line or a plinth course, the same height on every side"
+ },
+ "roofs": {
+  "oneMaterial": 0.882,
+  "oneSlope": 0.474,
+  "twoSlopes": 0.453,
+  "minorLower": 0.49
+ },
+ "trim": {
+  "corners": {
+   "all": 0.284,
+   "none": 0.232,
+   "mixed": 0.484,
+   "onePiece": 0.563
+  },
+  "bands": {
+   "none": 0.707,
+   "some": 0.289,
+   "all": 0.004,
+   "sideShare": 0.051
+  },
+  "note": "program: corner posts on every outside corner, on none, or on the corners of the entry side (mixed builds); wall bands on no side or on the entry side; one post piece per building"
+ },
+ "ornament": {
+  "twinned": 0.857,
+  "nearRoof": 0.888,
+  "perBuild": {
+   "1": 63,
+   "2": 64,
+   "3": 20,
+   "4": 45,
+   "5": 9,
+   "6+": 121
+  },
+  "note": "carved heads come in mirrored pairs on the ridge ends, one kind per building"
+ },
+ "symmetry": {
+  "formal": 0.374,
+  "score": {
+   "n": 1146,
+   "p10": 0.04,
+   "p25": 0.13,
+   "p50": 0.64,
+   "p75": 0.89,
+   "p90": 0.98
+  },
+  "doorOnAxis": 0.792,
+  "byKind": {
+   "other": 0.366,
+   "home": 0.374,
+   "castle": 0.385,
+   "longhouse": 0.506,
+   "temple": 0.351,
+   "tavern": 0.3,
+   "farm": 0.182,
+   "tower": 0.38
+  }
+ },
+ "spacing": {
+  "runs": 961,
+  "evenGaps": 0.254,
+  "sameWidth": 0.465,
+  "evenGap": {
+   "0": 9,
+   "1": 12,
+   "2": 81,
+   "3": 31,
+   "4": 35,
+   "5": 26,
+   "6": 11,
+   "7": 2,
+   "8": 17,
+   "9": 5,
+   "10": 5,
+   "12": 4,
+   "13": 1,
+   "14": 3,
+   "15": 1,
+   "19": 1
+  }
+ },
+ "village": {
+  "builds": 43,
+  "buildings": 205,
+  "wallLead": {
+   "n": 43,
+   "p10": 0.61,
+   "p25": 0.67,
+   "p50": 0.8,
+   "p75": 1,
+   "p90": 1
+  },
+  "roofLead": {
+   "n": 43,
+   "p10": 0.67,
+   "p25": 0.87,
+   "p50": 1,
+   "p75": 1,
+   "p90": 1
+  },
+  "slopeLead": {
+   "n": 43,
+   "p10": 0.67,
+   "p25": 0.67,
+   "p50": 0.88,
+   "p75": 1,
+   "p90": 1
+  },
+  "allThree": {
+   "n": 43,
+   "p10": 0.25,
+   "p25": 0.53,
+   "p50": 0.67,
+   "p75": 0.8,
+   "p90": 0.97
+  }
+ },
+ "rooms": {
+  "note": "one program per room and one per household: rooms take the build's lead kind far above chance",
+  "channels": {
+   "light": {
+    "oneKindInRoom": 0.617,
+    "roomTakesBuildLead": 0.688,
+    "ifShuffled": 0.337
+   },
+   "banner": {
+    "oneKindInRoom": 0.689,
+    "roomTakesBuildLead": 0.742,
+    "ifShuffled": 0.318
+   },
+   "rug": {
+    "oneKindInRoom": 0.46,
+    "roomTakesBuildLead": 0.612,
+    "ifShuffled": 0.356
+   },
+   "drape": {
+    "oneKindInRoom": 0.794,
+    "roomTakesBuildLead": 0.753,
+    "ifShuffled": 0.547
+   },
+   "wood": {
+    "oneKindInRoom": 0.44,
+    "roomTakesBuildLead": 0.658,
+    "ifShuffled": 0.447
+   }
+  }
+ }
+};
 VHDecorate.setRules(VH_RULES);
 // ---- entry point for the game: one request, best of 'tries' seeds
 function vhMake(type, biome, culture, stage, words, seed, tries) {

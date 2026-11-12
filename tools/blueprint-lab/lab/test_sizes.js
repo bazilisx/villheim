@@ -14,6 +14,8 @@ for (const [name, f] of Object.entries(D.FURNITURE)) {
   const hung = ['deco', 'light'].includes(f.cat) || ['rug', 'mount', 'hang'].includes(f.at);
   const m = (!hung && md.solid && md.solid.every(v => v > 0.01) ? md.solid : md.show).slice();
   m[1] = md.show[1];
+  // (a bed is as long as it shows: lib/decorate.js modelSizes)
+  if (f.cat === 'bed' && md.show[2] > m[2]) m[2] = md.show[2];
   if (Math.abs(f.rel || 0) % 180 === 90) [m[0], m[2]] = [m[2], m[0]];
   if (off(f.s, m) > 0.1) bad.push(`decorator ${name}: ${f.s.join(' x ')} against the model's ${m.join(' x ')}`);
   if (f.pad) pads.push(`${name}: body ${f.s.join(' x ')}, keeps ${f.pad.join(' and ')} m more clear`);

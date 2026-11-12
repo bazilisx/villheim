@@ -1732,10 +1732,15 @@ function liveIn(b, ctx, zones) {
   const bears = p => { const o = Ck.aabb(p); return b.pieces.some(q => q !== p && q.decor && q.x > o.x0 && q.x < o.x1 && q.z > o.z0 && q.z < o.z1 && q.y > p.y + 0.15 && q.y < o.y1 + 0.3); };
   const amp = 0.12 + 0.88 * P.clutter;
   let moved = 0;
-  moved += turnLikeCorpus(b, ctx, idx, problems, bears);
+  // with room intent (lib/rooms_intent.js) sets stay square (docs/INTERIOR_DESIGN.md "Imperfect placement": loose things
+  // and chairs turned a little, sets kept square): tables, benches, beds, chests and stations keep their turn; chairs,
+  // stools and small things move as before
+  const intent = !!b.intentPlan;
+  const squareSet = p => intent && (!['seat', 'deco', 'light'].includes((F[p.name] || {}).cat) || (F[p.name] || {}).long);
+  moved += turnLikeCorpus(b, ctx, idx, problems, bears, intent);
   for (const p of b.pieces.slice()) {
     // a piece standing as its source build stood it, marked for the pool audit (D-098), stays put
-    if (!p.decor || p.trim || p.yard || p.outside || (p.rest && ['wall', 'hang'].includes(p.rest)) || p.fclip || p.wclip) continue;
+    if (!p.decor || p.trim || p.yard || p.outside || (p.rest && ['wall', 'hang'].includes(p.rest)) || p.fclip || p.wclip || squareSet(p)) continue;
     const sp = jitterSpec(p);
     if (!sp) continue;
     const R = rngB((P.salt ^ Math.imul(Math.round(p.x * 20) + 8192, 73856093) ^ Math.imul(Math.round(p.y * 20) + 8192, 19349663) ^ Math.imul(Math.round(p.z * 20) + 8192, 83492791) ^ personaB().hash(p.name)) >>> 0);
@@ -1788,13 +1793,14 @@ function liveIn(b, ctx, zones) {
 // makes a problem the pieces did not have is taken back, and two more angles are tried. Library pieces count as the
 // decorator's do (most tables and seats come from the library); hung pieces and pieces marked as clips stay as they are.
 const TURN = { table: ['to', 12, 30], seat: ['so', 12, 40], rug: ['ro', 12, 45] };
-function turnLikeCorpus(b, ctx, idx, problems, bears) {
+function turnLikeCorpus(b, ctx, idx, problems, bears, intent) {
   const Ck = checksB(), P = ctx.persona, D = decorB(), I = D._int, F = D.FURNITURE, culture = ctx.culture || ctx.cultureKey, corpusRate = D.corpusRate;
   const R = rngB(((P.salt || 0) ^ 0x7e11) >>> 0);
   // (a round table looks the same turned; turning its square box swung its corners into the chairs drawn up to it,
   // the Plains pool's furnClip of 2026-11-11)
   // (the catalog's role where the decorator's furniture list has no entry: the Dvergr chair a hand-made kit draws)
-  const kindOf = p => { const c = (F[p.name] || {}).cat || PB.piece(p.name).role; return c === 'table' && p.name !== 'piece_table_round' ? 'table' : c === 'seat' ? 'seat' : c === 'rug' ? 'rug' : null; };
+  // (with room intent a table set stays square, and so do benches and rugs under a set: only loose chairs turn)
+  const kindOf = p => { const c = (F[p.name] || {}).cat || PB.piece(p.name).role; if (intent && (c !== 'seat' || (F[p.name] || {}).long)) return null; return c === 'table' && p.name !== 'piece_table_round' ? 'table' : c === 'seat' ? 'seat' : c === 'rug' ? 'rug' : null; };
   const free = p => p.decor && !p.trim && !p.yard && !p.outside && !(p.rest && ['wall', 'hang'].includes(p.rest)) && !p.fclip && !p.wclip && !p.stacked;
   // a flat stand the stand pass sank into a top or heaped (lib/stands.js, a clip into what it lies on) turns with what
   // it lies on: with the stand pass in, dressed tables stayed square and tables turned fell from 23 to 14 %
@@ -1863,25 +1869,29 @@ function turnLikeCorpus(b, ctx, idx, problems, bears) {
 }
 
 function apply(b, ctx, zones) {
-  if (ctx.decor === 'd3' && !['barn', 'storage', 'dock', 'farm'].includes(ctx.type)) vignettes(b, ctx, zones || []);
+  // with room intent (lib/rooms_intent.js) the rooms already hold their sets, vignettes and wall bays: the library's
+  // corner and wall sets, its vignettes, its canopy bed and its chest stacks stay out, so nothing is thrown in round
+  // them (Tyler, showcase review: "It feels like just throwing things down hodgepodge")
+  const intent = !!b.intentPlan;
+  if (ctx.decor === 'd3' && !intent && !['barn', 'storage', 'dock', 'farm'].includes(ctx.type)) vignettes(b, ctx, zones || []);
   if (ctx.decor !== 'd1' && ['longhouse', 'temple'].includes(ctx.type)) dais(b, ctx, zones || []);
   if (ctx.type === 'barn' && ctx.decor !== 'd1') stalls(b, ctx, zones || []);
   if (ctx.type === 'tavern' && ctx.decor !== 'd1') barCounter(b, ctx, zones || []);
   const X = ctx.profile || {};
-  if (X.canopyBed != null ? X.canopyBed : (ctx.decor === 'd3' && ['home', 'longhouse'].includes(ctx.type) && ctx.R() < (ctx.persona ? 0.15 + 0.7 * ctx.persona.wealth : 0.5))) canopyBed(b, ctx);
+  if (X.canopyBed != null ? X.canopyBed : (ctx.decor === 'd3' && !intent && ['home', 'longhouse'].includes(ctx.type) && ctx.R() < (ctx.persona ? 0.15 + 0.7 * ctx.persona.wealth : 0.5))) canopyBed(b, ctx);
   // the interior library last, from its own stream (drawn after everything above, so the rest comes out as before)
   if (X.interiorKit !== false) {
     const R2 = rngB(Math.floor(ctx.R() * 4294967296) ^ 0x6b62);
     // the rooms are read from the structure alone, so one reading serves both passes
     const rooms = roomsB(b, ctx);
-    if (ctx.decor !== 'd1') { spreadTables(b, ctx, rooms); spaceBeds(b, ctx); seatRugs(b); groupStorage(b); }
-    const n = furnishRooms(b, { ...ctx, _R2: R2 }, zones || [], R2, BUILT_KITS, rooms);
+    if (ctx.decor !== 'd1' && !intent) { spreadTables(b, ctx, rooms); spaceBeds(b, ctx); seatRugs(b); groupStorage(b); }
+    const n = intent ? 0 : furnishRooms(b, { ...ctx, _R2: R2 }, zones || [], R2, BUILT_KITS, rooms);
     if (n) b.notes.push(`${n} furnished corners and walls from the interior library.`);
     // the walking lanes last: what still stands in the way from a door to the fire, a stair or a bed goes (lib/layout.js)
     const Lay = NODE_B ? require('./layout.js') : window.VHLayout;
     if (Lay) Lay.clearLanes(b, ctx, rooms);
   }
-  if (X.interiorKit !== false && ctx.decor !== 'd1') {
+  if (X.interiorKit !== false && ctx.decor !== 'd1' && !intent) {
     const st = stackChests(b, ctx);
     if (st) b.notes.push(`${st} chests stacked on chests.`);
   }
@@ -1891,6 +1901,8 @@ function apply(b, ctx, zones) {
   // every room's lights to its budget (lib/decorate.js lightBudget)
   if (X.lightBudget !== false) { const t = trimLights(b); if (t) b.notes.push(`${t} lights over the rooms' budgets left out.`); }
   if (X.rugBudget !== false) { const t = trimRugs(b); if (t) b.notes.push(`${t} rugs over the rooms' budgets left out.`); }
+  // every piece to its corpus count for the building, the lights to the building's kinds (lib/rooms_intent.js)
+  if (intent) { const RI = NODE_B ? require('./rooms_intent.js') : window.VHIntent; if (RI) RI.capBuilding(b, b.intentPlan, { floor: floorArea(b) }); }
   // lived in: movable things a little off square, by the household (lib/persona.js)
   if (X.lived !== false && ctx.decor !== 'd1') {
     const m = liveIn(b, ctx, zones || []);
@@ -1900,6 +1912,9 @@ function apply(b, ctx, zones) {
   // or moves furniture, by moving pieces before leaving any out (lib/layout.js openWays, from lib/generate.js finish)
   dropFalling(b);
 }
+
+// The building's floor under a roof, m2, from its rooms (generate.js b.rooms rects)
+function floorArea(b) { return (b.rooms || []).reduce((a, r) => a + Math.max(0, (r.x1 - r.x0) * (r.z1 - r.z0)), 0); }
 
 // Both budgets for a building with no interior library pass (round houses, the Svan tower: lib/generate.js), so their
 // rooms keep to the same light and rug budgets as the rest (integration round 4: a yurt held 7 lights, as many as the
@@ -2208,8 +2223,9 @@ const BUILT_KITS = [
   // a chest of drawers: two chests stacked against the wall with a plank top, a candle and a jar of jam on it
   kit('BK-drawers', 'wall', ['home', 'kitchen', 'tavern', 'storage', 'sleeping'], [
     kp('piece_chest_wood', 0, 0, 0.42, 0, 'floor', null, { key: true }), kp('piece_chest_wood', 0, 0.75, 0.42, 0, 'on', 0, { key: true }),
-    kp('wood_ledge', -0.5, 1.5, 0.36, 0, 'on', 1), kp('wood_ledge', 0.5, 1.5, 0.36, 0, 'on', 1),
-    kp('QueensJam', -0.45, 1.55, 0.4, 0, 'on', 2), kp('Candle_resin', 0.5, 1.55, 0.4, 0, 'on', 3)]),
+    // (the ledges lie on the upper chest's lid at 1.28 m; at 1.5 m they stood 22 cm over it, track F's measure)
+    kp('wood_ledge', -0.5, 1.28, 0.36, 0, 'on', 1), kp('wood_ledge', 0.5, 1.28, 0.36, 0, 'on', 1),
+    kp('QueensJam', -0.45, 1.33, 0.4, 0, 'on', 2), kp('Candle_resin', 0.5, 1.33, 0.4, 0, 'on', 3)]),
   // a bedside table: a barrel by the head of the bed with a candle and a mead on it
   kit('BK-bedside', 'bed', ['home', 'sleeping'], [
     kp('piece_chest_barrel', 1.3, 0, -0.95, 0, 'floor'), kp('Candle_resin', 1.2, 0.9, -1.05, 0, 'on', 0), kp('MeadTasty', 1.45, 0.9, -0.85, 40, 'on', 0)],

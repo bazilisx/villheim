@@ -424,8 +424,18 @@ function roomsOf(b, ctx) {
 // (walkMap, spotsFor below); false when it fits nowhere or holds a piece that never moves.
 // wc (clearLanes): the walk map of the last call that moved nothing, kept while b.pieces is the same list (a call that
 // moves nothing puts every piece back, so the map is the same; the game's engine ran walkMap once per call)
+// With room intent (lib/rooms_intent.js) every piece stands where its zone put it: a group moves only when it holds a
+// bed, a table or a station (and moves whole, with its set); a loose seat, chest, barrel or stand that blocks a way is
+// left out instead of being carried to a spot with no purpose (D-148: "any furniture or decor that disrupts that
+// expectation should not be placed"; the showcase review: chests carried to the middle of a room by this pass)
+function moveOk(b, grp) {
+  if (!b.intentPlan) return true;
+  const F = decorL().FURNITURE;
+  return grp.some(p => ['bed', 'table', 'craft'].includes((F[p.name] || {}).cat));
+}
 function moveAside(b, list, path, wc) {
   if (!b.rooms || !b.rooms.length) return false;
+  if (!moveOk(b, list)) return false;
   const F = decorL().FURNITURE, Ck = checksL();
   if (list.some(p => !p.decor || p.wclip || p.fclip || p.trim || p.outside || p.yard || PL.piece(p.name).role === 'door' || PL.piece(p.name).role === 'fire' || (p.rest && ['wall', 'hang'].includes(p.rest)) || ['mount', 'hang'].includes((F[p.name] || {}).at))) return false;
   // the biggest piece on the floor leads
@@ -1224,7 +1234,7 @@ function openWays(b, ctx) {
   const given = new Set();
   let W = walkMap(b);
   const tryMove = (grp, keep, accept) => {
-    if (grp.some(fixed)) return false;
+    if (grp.some(fixed) || !moveOk(b, grp)) return false;
     const S = spotsFor(b, W, grp, keep, seedN++);
     for (const s of S.slice(0, 10)) {
       const undo = placeGroup(grp, S.cx, S.cz, s);
@@ -1328,7 +1338,7 @@ function openWays(b, ctx) {
         for (const q of [...blockers]) {
           if (!b.pieces.includes(q) || seenG.has(q)) continue;
           let grp = groupOf(b, q);
-          let S = grp.some(fixed) ? [] : spotsFor(b, W, grp, keep, seedN++);
+          let S = grp.some(fixed) || !moveOk(b, grp) ? [] : spotsFor(b, W, grp, keep, seedN++);
           // a set that finds no spot whole moves piece by piece (each with what stands on it, a table with its seats)
           if (!S.length && q.kb) { const gp = groupOf(b, q, true), S2 = gp.some(fixed) ? [] : spotsFor(b, W, gp, keep, seedN++); if (S2.length) { grp = gp; S = S2; } }
           for (const r of grp) seenG.add(r);

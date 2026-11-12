@@ -1244,6 +1244,9 @@ function roomSpots(room, ok) {
   return out.sort((a, c) => a.a - c.a);
 }
 
+// The hall floor's top for furniture standing on it: corpus builders stand furniture 0.097 to 0.10 m over the floor
+// piece's pivot; at 0.125 m the hub's benches, tables and chests hovered 3 to 4 cm (track F's measure, showcase review)
+const HUB_FY = 0.1;
 function furnish(b, K, C, T, o, F) {
   const { stage, line, place, has, skipDecor, V } = o;
   const k = +stage[1];
@@ -1361,19 +1364,19 @@ function furnish(b, K, C, T, o, F) {
     const ring = f.x === 0 && f.z === 0 ? [0, 90, 270, 180].slice(0, k <= 3 ? 3 : 2) : [90, 270];
     for (const a of ring) {
       const x = f.x + Math.sin(rad(a)) * 3.2, z = f.z + Math.cos(rad(a)) * 3.2;
-      if (place.put('piece_bench01', x, 0.125, z, a + 180, ds(f === fires[0] ? 1 : 2))) benches.push({ x, z, yaw: normH(a + 180), a, main: f === fires[0] });
+      if (place.put('piece_bench01', x, HUB_FY, z, a + 180, ds(f === fires[0] ? 1 : 2))) benches.push({ x, z, yaw: normH(a + 180), a, main: f === fires[0] });
     }
     for (const a of [45, 225]) putRug(V.rug, f.x + Math.sin(rad(a)) * 2.6, 0.14, f.z + Math.cos(rad(a)) * 2.6, a, ds(2));
   }
   if (!leader) {
     const bn = benches.find(bb => bb.main && bb.a === 0) || benches[0];
-    leader = bn ? { x: bn.x, y: 0.125, z: bn.z, yaw: bn.yaw } : { x: 0, y: 0.125, z: 3, yaw: 180 };
+    leader = bn ? { x: bn.x, y: HUB_FY, z: bn.z, yaw: bn.yaw } : { x: 0, y: 0.125, z: 3, yaw: 180 };
   }
   // feast tables with benches: along the arms of a cross, in a ring in a round hall (under the gallery from s4)
   const tryTable = (x, z, yaw, d) => {
-    if (!place.put('piece_table', x, 0.125, z, yaw, ds(d))) return;
+    if (!place.put('piece_table', x, HUB_FY, z, yaw, ds(d))) return;
     const nx = Math.sin(rad(yaw)), nz = Math.cos(rad(yaw));
-    for (const s of [-1, 1]) place.put('piece_bench01', x + nx * s * 0.95, 0.125, z + nz * s * 0.95, yaw + (s > 0 ? 180 : 0), ds(d));
+    for (const s of [-1, 1]) place.put('piece_bench01', x + nx * s * 0.95, HUB_FY, z + nz * s * 0.95, yaw + (s > 0 ? 180 : 0), ds(d));
   };
   // a long table: tables end to end along (ux, uz) from (x0, z0) over len metres, a row of benches down each side
   const longRow = (x0, z0, ux, uz, len, d) => {
@@ -1381,9 +1384,9 @@ function furnish(b, K, C, T, o, F) {
     let put = 0;
     for (let i = 0; i < n; i++) {
       const x = x0 + ux * (1.225 + 2.45 * i), z = z0 + uz * (1.225 + 2.45 * i);
-      if (!place.put('piece_table', x, 0.125, z, yaw, ds(i < 2 ? d : 2))) continue;
+      if (!place.put('piece_table', x, HUB_FY, z, yaw, ds(i < 2 ? d : 2))) continue;
       put++;
-      for (const sg of [-1, 1]) place.put('piece_bench01', x - uz * sg * 0.95, 0.125, z + ux * sg * 0.95, yaw + (sg > 0 ? 0 : 180), ds(i < 2 ? d : 2));
+      for (const sg of [-1, 1]) place.put('piece_bench01', x - uz * sg * 0.95, HUB_FY, z + ux * sg * 0.95, yaw + (sg > 0 ? 0 : 180), ds(i < 2 ? d : 2));
     }
     return put;
   };
@@ -1399,10 +1402,10 @@ function furnish(b, K, C, T, o, F) {
   const noGo = (x, z) => (F.inSide && F.inSide(x, 1.6)) || (F.zc != null && z < F.zc + 1.6);
   // a loose group: a table with chairs at its heads and sides (D-152), turned a little toward the fire
   const group = (x, z, yaw, d) => {
-    if (!place.put('piece_table', x, 0.125, z, yaw, ds(d))) return false;
+    if (!place.put('piece_table', x, HUB_FY, z, yaw, ds(d))) return false;
     const a = rad(yaw), ex = Math.cos(a), ez = -Math.sin(a), nx = Math.sin(a), nz = Math.cos(a);
     for (const [px, pz, py] of [[ex * 1.6, ez * 1.6, yaw + 90], [-ex * 1.6, -ez * 1.6, yaw - 90], [nx * 0.95 + ex * 0.6, nz * 0.95 + ez * 0.6, yaw + 180], [-nx * 0.95 - ex * 0.6, -nz * 0.95 - ez * 0.6, yaw]])
-      place.put(V.chair || 'piece_chair', x + px, 0.125, z + pz, py, ds(d));
+      place.put(V.chair || 'piece_chair', x + px, HUB_FY, z + pz, py, ds(d));
     nGroups++;
     return true;
   };
@@ -1449,7 +1452,7 @@ function furnish(b, K, C, T, o, F) {
     for (let i = 0; i < n; i++) {
       const a = (i + 0.5) * 360 / n, x = Math.sin(rad(a)) * rr, z = Math.cos(rad(a)) * rr;
       // (the ring leaves gaps toward the door and the high seat, and a way through between every two benches)
-      if (seating === 'ring') { if (Math.abs(normH(a - 180 + 180) - 180) < 35 || Math.abs(normH(a - (F.seatA || 0) + 180) - 180) < 35) continue; place.put('piece_logbench01', x, 0.125, z, a + 180, ds(i % 2 ? 2 : 1)); }
+      if (seating === 'ring') { if (Math.abs(normH(a - 180 + 180) - 180) < 35 || Math.abs(normH(a - (F.seatA || 0) + 180) - 180) < 35) continue; place.put('piece_logbench01', x, HUB_FY, z, a + 180, ds(i % 2 ? 2 : 1)); }
       else putRug(i % 2 ? V.rug : 'jute_carpet', x, 0.14, z, a, ds(i % 2 ? 2 : 1));
     }
     if (line !== 'cross') {
@@ -1524,7 +1527,7 @@ function furnish(b, K, C, T, o, F) {
     let i = 0;
     for (const sp of spots) {
       if (i >= items.length) break;
-      if (place.put(items[i], sp.x, 0.125, sp.z, sp.yaw, { ds: i < 3 ? 1 : 2, chest: /chest/.test(items[i]) })) i++;
+      if (place.put(items[i], sp.x, HUB_FY, sp.z, sp.yaw, { ds: i < 3 ? 1 : 2, chest: /chest/.test(items[i]) })) i++;
     }
   }
   // mementos (D-134): more empty item stands along the walls

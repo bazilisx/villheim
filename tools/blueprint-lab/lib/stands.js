@@ -46,6 +46,7 @@ const set = (id, anchor, pieces, o) => Object.assign({ id, anchor, rooms: [], pi
 // set onto its top by the fitter). Turns of flat stands follow the corpus (every way, most often square or at 45).
 // lean: the household traits a set suits (lib/persona.js kitWeight reads the same form); n: the least number of
 // people at home it suits; stage: 3 for sets that only come at the third stage.
+const NO_ARMS_ON_TOPS = new Set(['KS-t-arms', 'KS-ch-shield']);
 const SETS = [
   // on a table (the corpus's piece_table: settings along the length, 0.4 to 0.5 m apart, a seat's width from the edge)
   set('KS-t-meal2', 'table', [H(-0.55, 0.3, 45, { want: 'drink', at: 'table' }), H(-0.15, 0.32, 0, { want: 'food', at: 'table' }),
@@ -419,7 +420,9 @@ function dressTops(b, ctx, zones, rooms) {
     const wallAnchors = kitAnchors.filter(an => an.anchor === 'wall');
     // a feast at most once in a room, never where one is laid out already
     const feasted = b.pieces.some(p => /^Feast[A-Z]/.test(p.name) && inR(p));
-    const sets = SETS.filter(s => (!s.n || size >= s.n) && (!s.feast || (ctx.decor === 'd3' && !feasted)) && (!s.heap || heaper));
+    // (arms and a shield laid on a dining table or a chest lid read as a heap with no use: track G's audit, edge and
+    // mixed fails; weapons and shields hang on the wall or stand on the armor stand, lib/standitems.js)
+    const sets = SETS.filter(s => (!s.n || size >= s.n) && (!s.feast || (ctx.decor === 'd3' && !feasted)) && (!s.heap || heaper) && !NO_ARMS_ON_TOPS.has(s.id));
     for (const p of furn) {
       const yaw = normS(p.yaw || 0);
       if (TABLES.test(p.name)) {

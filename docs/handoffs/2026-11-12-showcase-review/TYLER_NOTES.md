@@ -142,3 +142,11 @@ I have a link to my own Valheim folder of designs I like. Some may not fit here,
 
 Re: your question about wood_fence, dont use it indoors, even though the corpus finds this one true. There must be some outlier, becuase wood_fence (screenshot attached) is ill-fitting indoors. "Roundpole fence (wood_fence) is a buildable structure.
 While players can easily jump over the fence, most creatures are unable to jump and therefore will not be able to quickly follow the player. However, the Roundpole fence has low durability, making it unsuitable for substantial base defense." and Im also gong to paste a few other exmaples (including one real world example) of the fence itself so you uindertand why its not suited for indoors.
+
+---
+
+Tyler, 2026-11-12, on consistency in architectural features (word for word):
+
+And re: window sills (truly any sort of architectural feature, so this is broad) — there's a level of consistency here, right? If an architect designs a house, it would be weird to have one feature on only one window and then none others and then suddenly another random one on an upstairs window or window aroundthe corner with pattern or purpose. It's more likely that windows in a row would all have the same feature (eg shutters, a window sill planter, whatever it may be). This applies to all architectural decisions, no? There's purpose and intent. Could there be a single planter outside a kitchen window? Sure, someone's growing herbs. But that's how the justification for these choices could come from: intent. Consistency. Thematic ties. Not random thrown at the wall arbitrary decisions. 
+
+Have any of these helpers scoured literature or best practices for architectural design? Have they done so for interior design? Have they done so for digital game interior design?

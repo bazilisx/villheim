@@ -177,6 +177,10 @@ function kitFor(plan, base, role) {
 // track B did not count. D-166: a piece hidden from the build menu has no corpus cap, only a use.
 function capOf(plan, id) {
   const D = data(), c = D.caps[id], p = pc(id);
+  // wall ledges: hidden from the build menu (D-166), so their corpus share is no cap; each needs a use, and the room
+  // study counts 2 per house that has any (caps.json shelves p50 2): the shelf sets over a store, a cooking corner or
+  // a bench, two per building
+  if (id === 'wood_ledge') return 2;
   if (p && p.menu === false) return 8;
   if (c) {
     const byArea = c[3] && plan.floor ? Math.round(c[3] * plan.floor / 100) : 0;
@@ -231,10 +235,29 @@ function intentOf(room, role, c) {
 // planPaths, placeBeds, placeTable, placeRug, placeStorageRow, placeStation, placeLights, placeMounts, placeAgainst,
 // placeOnTable, dressTable, cookCorner, kitchenExtras, storeLabels, storeStacks, lightCount, obox, overlap, ptDist,
 // yawOfDir, norm, stretch, roomU.
+// The narrow parts of a room are passages: a cell whose free run across is under 3 m where the run along is 4 m or
+// more (a wing or a hall one or one and a half floor pieces wide) is kept clear of furniture, so nothing stands where
+// people walk through (Tyler: passages at least two wood_floor pieces wide; D-148, D-152; the showcase review's
+// chests and seats in the wings of 05, 10 and 16). Runs of such cells along a row become one keep-clear box.
+function passageZones(room, H) {
+  const set = room.set, G = 0.5, out = [];
+  const run = (c, di, dj) => { let n = 1; for (const sg of [1, -1]) { let i = c.i + di * sg, j = c.j + dj * sg; while (set.get(i * 65536 + j)) { n++; i += di * sg; j += dj * sg; } } return n * G; };
+  const narrow = new Set();
+  for (const c of room.cells) {
+    const rx = run(c, 1, 0), rz = run(c, 0, 1);
+    if (Math.min(rx, rz) < 3 && Math.max(rx, rz) >= 4) narrow.add(c);
+  }
+  if (!narrow.size || narrow.size > room.cells.length * 0.8) return 0;
+  for (const c of narrow) out.push(H.obox(c.x, c.z, G, G, 0));
+  for (const b of out) room.zones.push({ b, why: 'passage' });
+  return out.length;
+}
+
 function furnishRoom(room, role, c, H) {
   const plan = c.intentPlan;
   const I = intentOf(room, role, c);
   room.intent = I;
+  if (room.set) I.passage = passageZones(room, H);
   const d = c.decor === 'd1' ? 1 : c.decor === 'd2' ? 2 : 3;
   const k = c.kit;
   const P = plan.persona;
@@ -292,7 +315,9 @@ function furnishRoom(room, role, c, H) {
     H.planPaths(room);
     // the table set: one table, one seat prefab (Tyler 05: "Why ... would this family need one table ... and 5 feet
     // away ... another"); a second table only in a big open room, as a side table (corpus home p90 2)
-    const t = d >= 2 || !bs.length ? tableSet({}) : null;
+    // (sure: where the suite's table finds no floor, the smaller tables of the village are tried, lib/decorate.js
+    // tableSure; corpus: a table in 74 % of home rooms)
+    const t = d >= 2 || !bs.length ? tableSet({ sure: true }) : null;
     if (t) zone('eating', t);
     if (room.potLater) { H.kitchenExtras(room, room.potLater); room.potLater = null; }
     if (d >= 2) { const m = mark(); H.cookCorner(room, role, c); tally(m); }
@@ -319,9 +344,19 @@ function furnishRoom(room, role, c, H) {
   if (I.kind === 'bedroom' || I.kind === 'dormitory') {
     // one bed per sleeper on this floor (D-077); a bedroom has one (p90 two), a dormitory four (p90 seven)
     const per = I.kind === 'dormitory' ? countFor('dormitory', 'bed', room) : Math.max(1, Math.round(room.area / 18));
-    const bs = beds(Math.min(per, Math.max(1, c.bedsWanted - c.counts.bed + (role === 'guest' ? per : 0))), role === 'guest' ? 1.5 : 0.4);
+    const bs = beds(Math.min(per, Math.max(1, c.bedsWanted - c.counts.bed + (role === 'guest' || role === 'guard' ? per : 0))), role === 'guest' ? 1.5 : 0.4);
     zone('sleeping', bs);
     H.planPaths(room);
+    // a guard's room where no bed fits is a watch room: a small table with two seats and the guards' gear
+    if (!bs.length && role === 'guard' && d >= 2) {
+      I.kind = 'watch room'; I.purpose = 'the guards\' table and gear'; I.focal = 'table';
+      const t = tableSet({ seats: 2, depth: 0.5, sure: true });
+      if (t) zone('table', t);
+      const g = ZONE_FN.gear(room, plan, H, k, () => 0);
+      if (g) { zone('gear', g); tagSet(plan, g, 'gear'); }
+      lightsN(Math.max(1, lightN(0.7)));
+      return I;
+    }
     if (!bs.length) { const m = mark(); H.placeStorageRow(room, k, 1); tally(m); }
     if (d >= 2) {
       bedsides(room, bs, plan, H, d);

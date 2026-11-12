@@ -170,6 +170,10 @@ function modelSizes() {
     // or a ceiling: a bed's fur stands 0.68 m, its frame 0.4 m)
     const m = (useSolid ? md.solid : md.show).slice();
     m[1] = md.show[1];
+    // a bed's headboard and foot stand past its collider (the straw bed shows 3.13 m over a 2.8 m collider): its length
+    // is what shows, so its head meets the wall as corpus beds do (track B: head at the wall, p50 0 m) and does not go
+    // into it
+    if (f.cat === 'bed' && md.show[2] > m[2]) m[2] = md.show[2];
     if (Math.abs(f.rel || 0) % 180 === 90) [m[0], m[2]] = [m[2], m[0]];
     const old = f.s;
     const body = [0, 1, 2].map(i => (Math.abs(old[i] - m[i]) > 0.1 ? +m[i].toFixed(2) : old[i]));
@@ -1021,7 +1025,7 @@ function placeFire(room, ctx, kind) {
   const yaw = name === 'hearth' ? (long ? 0 : 90) : 0;
   let rec = null;
   for (const [dx, dz] of [[0, 0], [0, 0.5], [0, -0.5], [0.5, 0], [-0.5, 0], [0, 1], [0, -1]]) {
-    rec = room.put(name, spot.x + dx, spot.z + dz, yaw, { ignore: ['door', 'flue', 'keep'] });
+    rec = room.put(name, spot.x + dx, spot.z + dz, yaw, { ignore: ['door', 'flue', 'keep', 'passage'] });
     if (rec) break;
   }
   if (!rec) return null;
@@ -1144,7 +1148,8 @@ function placeBeds(room, k, n, d, row = 1.5) {
     const name = k.bed;
     const doorMin = Math.min(3.0, fr.D * 0.55);
     // a bed turned side to the wall (an alcove or a box bed) when the plan draws one, else head to the wall
-    const spots = room.plan && room.plan.bedSideways ? [...wallSpots(room, name, { rel: 90 }), ...wallSpots(room, name, { rel: 270 })] : wallSpots(room, name, { noWindow: false });
+    // (with room intent the head goes to a wall, as 62 to 76 % of corpus beds stand: no box bed turned side on)
+    const spots = room.plan && room.plan.bedSideways && !room.intent ? [...wallSpots(room, name, { rel: 90 }), ...wallSpots(room, name, { rel: 270 })] : wallSpots(room, name, { noWindow: false });
     const prev = out[out.length - 1];
     const rec = best(room, name, spots, s => {
       // far from the door and on the household's side; with a plan its zones decide more of it
@@ -1159,6 +1164,8 @@ function placeBeds(room, k, n, d, row = 1.5) {
       // the head to a solid wall, not under a window (feng shui command position, docs/INTERIOR_DESIGN.md; corpus
       // head against a wall 62 to 76 %): with room intent a window behind the head weighs as much as the door side
       if (s.win) v -= room.intent ? 2.5 : 0.3;
+      // nor against the side of a stair (the room reader takes a stair for a wall)
+      if (room.intent && s.face) { const bk = size(name)[2] / 2 + s.face.ht + 0.3, hx = s.x - s.face.nx * bk, hz = s.z - s.face.nz * bk; if (room.stairs.some(st => ptDist(st.b, hx, hz) < 0.5)) v -= 6; }
       return v + pb(room, 'bed', s, name);
     }, { noise: 0.25 });
     if (!rec) break;

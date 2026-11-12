@@ -362,7 +362,8 @@ function passages(pieces, opts = {}) {
   const ys0 = boxes.filter(b => b.info.structural).map(b => b.y0).sort((a, c) => a - c);
   const ground = opts.ground != null ? opts.ground : Math.max(0, ys0.length ? ys0[Math.floor(ys0.length * 0.02)] : 0);
   const floors = [];
-  pieces.forEach((p, i) => { const b = boxes[i]; if (b.info.role === 'floor' && !p.decor && !tilted(p.q)) floors.push(i); });
+  // (a dais is a platform for a seat, never a walk)
+  pieces.forEach((p, i) => { const b = boxes[i]; if (b.info.role === 'floor' && !p.decor && !p.dais && !tilted(p.q)) floors.push(i); });
   const levels = new Map();
   for (const i of floors) { const k = Math.round(boxes[i].y1 * 4) / 4; if (!levels.has(k)) levels.set(k, []); levels.get(k).push(i); }
   const out = [];
@@ -425,7 +426,7 @@ function passages(pieces, opts = {}) {
     const walled = (i, j) => {
       let n = 0;
       for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        for (let t = 1; t <= 56; t++) { const a = i + di * t, c = j + dj * t; if (a < 0 || c < 0 || a >= nx || c >= nz) break; if (wallm[a * nz + c]) { n++; break; } }
+        for (let t = 1; ; t++) { const a = i + di * t, c = j + dj * t; if (a < 0 || c < 0 || a >= nx || c >= nz) break; if (wallm[a * nz + c]) { n++; break; } }
       }
       return n >= 3;
     };

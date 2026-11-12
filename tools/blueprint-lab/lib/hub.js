@@ -713,7 +713,7 @@ function roundHall(b, K, C, T, o) {
   // edge and the wall)
   let rIn = 0;
   if (gallery && drumOnGallery) rIn = vR0 + 0.1;
-  else if (gallery) rIn = Math.min(ap - (k === 5 ? 4.5 : 3.5), 2 * Math.floor((ap - 2) / 2) - 1);
+  else if (gallery) rIn = Math.min(ap - 4.5, 2 * Math.floor((ap - 2) / 2) - 1);
   // (the gallery's opening: an even-sided polygon of 2 m sides as near the gallery ring as can be; the walkway's row
   // 8 m from the fire, or 0.7 of the opening's apothem in a wide hall, out to the first cell over the gallery floor)
   const M = gallery ? 2 * Math.max(4, Math.round(Math.PI / Math.atan(1 / rIn) / 2)) : 0, aIn = gallery ? ringPoly(M, 2) : 0;

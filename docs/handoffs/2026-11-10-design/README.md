@@ -5,7 +5,7 @@ The building generator (tools/blueprint-lab) was worked on by helper tracks in t
 state), keeps the integration records, the rules every helper follows, and the prompts to resume the work. The
 narrative is in `docs/daily-notes/2026-11/2026-11-11.md`.
 
-## State of each track (main 8e1860f)
+## State of each track (main 8e1860f; later rounds below, last merge 4226ceb)
 
 Every branch below is merged into main (checked with `git merge-base --is-ancestor`). Nothing here is tried in the
 game.
@@ -746,6 +746,15 @@ and results, open problems, next task), commit and push; then a report to the le
 would now see differently, measures before and after, checks and results, the last pushed commit, changes in other
 tracks' files, proposed Decisions rows, what is left.
 
+Private repo (D-157): bazilisx/villheim-corpus (private) holds the blueprint corpus, compact.json, the measured game
+meshes, research files, the game assemblies with a decompile script, and a copy of Inspiration.zip. Read its README.md
+and CLAUDE.md first. Use it in place of Tyler's PC when the PC is off. Nothing from it is copied into bazilisx/villheim.
+
+Build labels: main builds are labeled `<commits on main>-<short commit>` (CI counts with full history; 4226ceb is 995).
+Cloud clones are shallow, so `git rev-list --count` gives a wrong number: take the count from the dev-latest release's
+version.txt. A test branch build is labeled `<main count>+<branch slug>.<commits past main>-<commit>`; pushes to
+`look/*` and `test/*` publish a `test-<slug>` release that the updater follows when `villheim-channel.txt` names it.
+
 ## Open decisions from these tracks (Decisions tab, 2026-11-11)
 
 D-133 how often a fire moves between stages (in use: A, `HEARTH_MOVE`); D-134 the stand pass removing other passes'
@@ -753,6 +762,30 @@ stands (in use: A); D-137 to D-142 hubs; D-144 to D-147 landscaping; D-148 a tab
 no spot (in use: A, `TABLE_BED_TIGHT`); D-149 lone chairs and bare rugs; D-150 deeper eaves; D-151 glass windows.
 Answered and not built: D-128 tie beams (the size of a large enough house is open); D-130 village fires kept lit (mod
 side). Proposed in ideas.md and not yet in the tab: s3 upper storeys or lofts (against D-069), tilted trim pieces.
+D-155 hub variety: answered, built in rounds 6 and 7 (lib/hub.js, checked by lab/test_hub_variance.js). D-156 no roof
+or crown height cap: answered, built (lib/hub.js, lib/styles.js capStoreys).
+D-157 private repo: done. Open: D-158 greenery by stage (in use: s1 0.5, s2 1, s3 1.5, s4 2.0, s5 2.5); D-159 take
+Inspiration.zip out of the public repo; D-161 trophy reach (in use: any biome, big trophies hub only); D-162 runtime
+glow card vs D-013 (look/memory branch). Two CLAUDE.md lines wait for Tyler: the approved-designs line still names the
+Generated tab, which he closed on 2026-11-11, and the private repo's line on derived numbers.
+
+## Next work (after round 7c, main 4226ceb)
+
+1. Round 7c leftovers, in this order: gen-test request 2 back to 75 s or under (profile above: clearLanes, moveAside,
+   spotsFor); test_stands bands (flat bench 20.7, flat chest 4.5, wall station 29.1, wall table 14.1, flat share 83,
+   distinct q1 4; try a stand roll only in rooms whose sets went in); reach rooms 8 (Mistlands nave ends, workshop 528,
+   upper rooms); entry zones reserved before big furniture; the court first chest; woodworker s3 seed 21 workbench set.
+   Look at checks.js treating decor under 1.8 m as furniture (D-127) on renders.
+2. Hub round 8: gallery and walkway kinds measured on the corpus (even weights now), library sets capped in side rooms
+   and galleries at corpus shares (s5 halls hold 38 to 134 sets), floor gaps in 10 to 14 sided halls, cross annexes,
+   exterior trim and banners. Tyler's picks go in the Hub refs tab (gallery page "Hub reference builds", slug
+   7f6dd3eb-8819-4687-b525-b2057bbd340a; copies for the PlanBuild runestone in villheim-board/hub-refs on his PC).
+3. Windows round 2 (deeper eaves after D-150, wide doors, openings per wall run), every building to s5 (D-153, with the
+   Stages tab), memento stands (D-134), decks and tilted trim from the measures (data from 4f27706).
+
+Artifacts: lab page slug ebd4fcaa-85d1-452f-9d94-251d2687967c (version 1794444166-7987, main 4226ceb); progress
+dashboard slug 614b97c4-18f6-4b7a-9882-7055a5d9f388 (DATA block at the top of its script; check it parses before
+each publish).
 
 ## How to resume (to save usage)
 
@@ -773,6 +806,13 @@ side). Proposed in ideas.md and not yet in the tab: s3 upper storeys or lofts (a
   four views; Tyler judges the Interiors tab, so describe what changes visibly.
 
 ## Resume prompts
+
+**Design lead (next session).** "Read CLAUDE.md, then docs/handoffs/2026-11-10-design/README.md: \"Integration,
+round 7c\", \"Rules for every helper\", \"Next work\" and \"How to resume\". Read the Decisions tab. Work as a thin
+lead: write helper briefs from the rules section, one branch and worktree per helper, merge through an integration
+branch after the full check run, then republish the lab page and update the dashboard. Start with Next work item 1."
+
+The prompts below are from 2026-11-11 and most are done; read the track record before reusing one.
 
 Paste one into a new Claude Code session on bazilisx/villheim (main), after it reads CLAUDE.md. Each helper gets the
 rules above in its brief. Numbers are from ideas.md unless named.

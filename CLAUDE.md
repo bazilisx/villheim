@@ -136,8 +136,9 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   a setting and the row says which value is in use until he answers.
 - **Code that differs from a decision** gets an Open row ("Code differs from D-###") stating the decision, what the
   code does (file) and the options. The code stays as it is until Tyler answers.
-- **Tests and Features tabs.** "Result" and "What you saw" are Tyler's reports. "Built and tested" in the Features tab
-  needs a Tests row he marked Pass, or his word in chat.
+- **Tests and Features tabs.** "Result" and "What you saw" are Tyler's reports. The Tests tab holds only the tests
+  still to run, in the order to run them; resolved and obsolete tests move to the hidden Tests-All tab (Tyler,
+  2026-11-11). "Built and tested" in the Features tab needs a Tests row he marked Pass, or his word in chat.
 - **Roadmap.** `[x]` means built, with the file or commit named. Built items not yet tried in the game say "not tried
   in the game". An item that conflicts with a decision or a project rule is removed, with the decision named.
 - **Code comments** that cite a decision state only what that decision says.

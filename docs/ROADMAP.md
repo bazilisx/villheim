@@ -347,15 +347,17 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
      hub1_s2d3, hub1_s3d3, hub1_s4d3, the last two the same 1,006 pieces). No s5 save or draft was found; work on
      s2 to s5 made after the drafts were written (2026-11-07, 6:54 PM MT) may still stand on the board in the flat
      test world. Plan and data done and merged (docs/handoffs/2026-11-10-design/hubs.md, `data/hubs/`, 43bcd8e). The
-     interior tracks are merged. Next: the `hub` type, the s1 camp generator and the round line from hub1, once D-137 to
-     D-142 are answered.
+     `hub` type and generator built in the lab, s1 to s5, every village different (D-155) and no roof cap (D-156):
+     `lib/hub.js`, `lib/request.js`, rounds 1 to 7 merged to main (16767eb, 4226ceb); on the lab page; not tried in
+     the game. Next: hub round 8 (docs/handoffs/2026-11-10-design/README.md, "Next work").
   2j. [ ] **Landscaping and greenery across the village (Tyler, 2026-11-11, D-143):** trees, bushes, plants, vines
      on houses, gardens and raised beds as beautification, placed along roads, around and on houses, in courtyards and
      yards, and at road junctions. Research first from the corpus and outside sources (player builds and professionally
-     made games), then placement in the lab. Villagers never harvest village landscaping for materials (mod side).
-     Research and placement plan done and merged (docs/handoffs/2026-11-10-design/landscaping.md, `data/landscape/`,
-     b2c31a2). Not built: the lab pass (`lib/landscape.js` after the yard, a `landscape` mark and `#VillheimLandscape`
-     list); mod side, gatherers and foragers skipping village greenery. D-144 to D-147 open.
+     made games), then placement in the lab. Village greenery is never gathered for materials (D-143); plants that
+     stay when picked may be picked for food by the household they serve, or by anyone at a shared building (D-144);
+     players may pick or fell it and the village plants it back (D-147). Lab pass built: `lib/landscape.js` and `lib/blueprint.js` write a
+     `#VillheimGreen` mark per piece with its use (food or keep) and owner (rounds 1 and 2, 87fb2ad, 7b93a67; merged 16767eb); not
+     tried in the game. Mod side not built: gatherers and foragers reading the marks. D-158 (greenery by stage) open.
   2b. [ ] **Next, asked for by Tyler (2026-11-10):** one more round of tightening the piece models: rerun
      `lab/extract_models.py` on Tyler's PC (game files under Z:\SteamLibrary\steamapps\common\Valheim, UnityPy) with
      a finer proxy (more parts than the 40 or so now), `lab/build_models.js`, then every check; and in `lib/mesh.js`

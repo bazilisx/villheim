@@ -95,6 +95,9 @@ ilspycmd -t BaseAI $D > /tmp/BaseAI.cs
 ```
 
 For real method bodies, decompile `assembly_valheim.dll` from the game's `valheim_Data/Managed` folder on the PC.
+When the PC is off, the private repo bazilisx/villheim-corpus has the game assemblies and a decompile script, plus the
+blueprint corpus, compact.json, the measured piece meshes and a copy of Inspiration.zip (D-157). Read its README.md and
+CLAUDE.md first. Nothing from it goes into this repo.
 
 ## Reading Millénaire
 

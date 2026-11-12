@@ -5,16 +5,15 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-11)
 
-Design, 2026-11-11 (note, Session 1): the generator's design tracks are merged to main (1068c6d through
-`design/integration`; docs and data 43bcd8e, b2c31a2, 8e1860f; CI built 8e1860f). In the lab now: decor from any
-biome with no caps (D-065, D-126); the pool gate checks the plan's shape family between stages and only reports
-nesting and lineage (D-132); beds, tables, seats, rugs and chests drawn, turned, stacked and placed by corpus counts
-per room kind and culture group; clips at corpus depths for wall stands, torches, chest pairs and signs (D-127);
-item stands by household and place share, counters, heaps and sunk stands; home fires mostly against a wall, moving
-between stages, stone fronts from s2 and grausten in the Ashlands (D-131); the lab page with Building and Culture up
-front and stage sliders. Bundles rebuilt at 5a07fae. None of it tried in the game. The published lab page predates
-round 3 (republish). Plans only: hubs (D-137 to D-142), landscaping (D-143 to D-147), ideas study (D-150, D-151).
-Open misses, track states and resume prompts: `docs/handoffs/2026-11-10-design/README.md`.
+Design, 2026-11-11 (note, Sessions 1 and 2): integration rounds 4 to 7c are on main (last merge 4226ceb, CI build
+995-4226ceb). In the lab now, on top of Session 1: the `hub` type, s1 to s5, different in every village with no roof
+cap (D-155, D-156, `lib/hub.js`); landscaping with `#VillheimGreen` marks for use and owner (D-143, D-144, D-147,
+`lib/landscape.js`); finer piece models; window kinds and wide doors; clip limits from the 3D-shape recount; the
+decor-set library rebuilt (143 sets); a trophy size limit outside the hub. None of it tried in the game. The lab page
+is republished from 4226ceb. Builds are labeled count-hash (995-4226ceb) and the updater follows test channels and
+replaces the core only when it changes. Corpus, meshes and game assemblies are in the private repo
+bazilisx/villheim-corpus (D-157). The villager memory look is on branch `look/memory`
+(`docs/handoffs/look-memory.md` there). Open misses, rules and next work: `docs/handoffs/2026-11-10-design/README.md`.
 
 ### As of 2026-11-10
 
@@ -191,6 +190,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-11 (design rounds 4 to 7c merged, hub and landscaping, build labels, test channels)** - see docs/daily-notes/2026-11/2026-11-11.md
 - **2026-11-11 (design tracks merged: library first, essentials, hearths, stands, lab page)** - see docs/daily-notes/2026-11/2026-11-11.md
 - **2026-11-10 (design pause: four helper tracks, handoff)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (design helper: library first, richness gate)** - see docs/daily-notes/2026-11/2026-11-10.md

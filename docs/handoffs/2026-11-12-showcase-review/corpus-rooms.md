@@ -6,7 +6,7 @@ Data: `tools/blueprint-lab/data/rooms-corpus/*.json`. Criteria: `criteria/corpus
 
 ## What was done
 
-- `ad6f80a` first draft of the numbers, pushed about 1.5 hours in; the commit after it carries the refined numbers,
+- `ad6f80a` first draft of the numbers (06:54 UTC); `c526024` and after carry the refined numbers,
   the catalog families and colors, the criteria file, the audit script and this record.
 - New scripts in `tools/blueprint-lab/lab/` (no lib file changed):
   - `rooms_corpus_extract.js`: every build of `compact.json` turned square to the axes and read floor by floor with

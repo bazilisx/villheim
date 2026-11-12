@@ -640,8 +640,8 @@ Before and after (round 7a, round 7b, this round at 4300d87; full runs):
 | gen-test request 2, 3 (s) | 73 to 77, 18 to 21 | 80.3 and 77.5, 20.0 and 19.5 | 79.9, 78.7, 79.5; 20.4, 20.4, 20.0 |
 
 Other checks at 58db293 (4300d87 where marked): test_structure 36 hold; test_sizes 0 off; check_set 2: set 239 of 240,
-late 96 of 96, cultures 147 of 147, overlap 1 (as 7a); essentials ran (homes, longhouses, taverns, smithies,
-storehouses with no light 44, 31, 39, 78, 100 %, read from its rug and light table); test_variance hall s2 and s3
+late 96 of 96, cultures 147 of 147, overlap 1 (as 7a); essentials: homes, longhouses, taverns, smithies,
+storehouses with no light 33, 22, 3, 42, 50 % (7a 33, 19, 3, 42, 56 %); test_variance hall s2 and s3
 0.44, home-c s3d3 0.41 (closest 0.57); test_hub all pass; test_hub_variance every seed differs; test_landscape 3
 (4300d87): all landscaping rules hold (without the seed count it fails on 7a too: mushroom pieces 2 against 8);
 compare_page all same (4300d87); gen-test 5 of 5 byte for byte; dotnet build 0 errors, 43 warnings. A test_landscape 3

@@ -22,6 +22,8 @@ function setInterior(d) { LEARN = d; }
 if (NODE_D) { try { LEARN = require('../data/interior-lite.json'); } catch (e) { LEARN = null; } }
 // the room layout planner (lib/layout.js, D-070); read when first asked, so either file may load first
 const layoutD = () => (NODE_D ? require('./layout.js') : window.VHLayout);
+// the room intent planner (lib/rooms_intent.js, showcase review 2026-11-12): read when first asked
+const intentD = () => (NODE_D ? require('./rooms_intent.js') : window.VHIntent);
 // the plan's score for a spot (0 without a plan)
 const pb = (room, kind, s, name) => (room.plan ? room.plan.bias(kind, s, name) : 0);
 function learned() { return LEARN || (typeof window !== 'undefined' && window.VH_INTERIOR) || { items: {}, rooms: {}, doors: {} }; }
@@ -55,7 +57,8 @@ const F = {
   piece_chair02: { s: [0.7, 1.2, 0.94], c: [0.04, -0.08], at: 'floor', b: 'Black Forest', cat: 'seat' },
   piece_chair03: { s: [0.8, 1.2, 0.8], at: 'floor', b: 'Swamp', cat: 'seat' },
   piece_bench01: { s: [2.41, 0.9, 0.7], c: [0.06, -0.04], at: 'floor', b: 'Meadows', cat: 'seat', long: true },
-  piece_logbench01: { s: [2.38, 0.5, 0.6], at: 'floor', b: 'Black Forest', cat: 'seat', long: true, back: true },
+  // (no back flag: corpus builders turn the sitting log's local +z to the table, rooms-corpus sets.json turnBySeat)
+  piece_logbench01: { s: [2.38, 0.5, 0.6], at: 'floor', b: 'Black Forest', cat: 'seat', long: true },
   piece_throne01: { s: [1.4, 2.5, 1.0], at: 'wall', b: 'Swamp', cat: 'seat' },
   fire_pit: { s: [1.4, 0.4, 1.4], at: 'floor', b: 'Meadows', cat: 'fire' },
   hearth: { s: [4.0, 0.6, 3.0], at: 'floor', b: 'Swamp', cat: 'fire' },
@@ -428,6 +431,13 @@ function readLevel(pieces, levelY, rects) {
     if (sb.y1 < stand + 0.15 || sb.y0 > stand + 2.6) continue;
     if (BLOCKING.has(sb.role) || (!sb.info.structural && sb.role !== 'floor' && sb.role !== 'rug' && sb.role !== 'nature')) boxes.push(sb);
     else if (sb.role === 'beam' && sb.y0 < stand + 1.9) boxes.push(sb);
+  }
+  // a drape (piece_cloth_hanging_door) is a door where it hangs in a gap and wall decor where it hangs on a wall (track
+  // B's room study: drapes on walls were read as doors): one whose box meets a wall piece's is left out
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const sb = boxes[i];
+    if (!/^piece_cloth_hanging_door/.test(sb.p ? sb.p.name : '') ) continue;
+    if (boxes.some(o => o !== sb && o.role === 'wall' && o.y1 > sb.y0 && o.y0 < sb.y1 && overlap(o.b, sb.b, -0.02))) boxes.splice(i, 1);
   }
   const over = pieces.filter(p => !p.decor && OVERHEAD.has(P.piece(p.name).role)).map(structBox).filter(s => s.y0 > stand + 1.2 && s.y0 < stand + 12);
   // the extent: hint rectangles or the floor pieces
@@ -1146,7 +1156,9 @@ function placeBeds(room, k, n, d, row = 1.5) {
       // bedrooms only; bunk rows in halls and guest rooms stay rows)
       if (prev && apart) for (const q of out) { const dd = Math.hypot(s.x - q.x, s.z - q.z); v += (s.face === q.spot.face ? -0.6 : 0.5) - Math.max(0, size(name)[0] + 1.6 - dd) * 0.8; }
       else if (prev) { const dd = Math.hypot(s.x - prev.x, s.z - prev.z); v += (s.face === prev.spot.face ? row : 0) - Math.abs(dd - (size(name)[0] + gap)) * 0.6 * (row > 1 ? 1 : 0.3); }
-      if (s.win) v -= 0.3;
+      // the head to a solid wall, not under a window (feng shui command position, docs/INTERIOR_DESIGN.md; corpus
+      // head against a wall 62 to 76 %): with room intent a window behind the head weighs as much as the door side
+      if (s.win) v -= room.intent ? 2.5 : 0.3;
       return v + pb(room, 'bed', s, name);
     }, { noise: 0.25 });
     if (!rec) break;
@@ -1257,7 +1269,7 @@ function placeTable(room, k, o = {}) {
   // seated as often as the culture's corpus tables are (corpusRate ts: 51 % of norse tables have a seat, 44 % of all);
   // the others stand at a wall more often (corpus piece_table: 42 % against a wall) with nothing drawn up to them.
   // Taverns and halls seat theirs (corpus tavern rooms: about 7.5 seats to 2.4 tables, data/interior.json).
-  if (o.seats > 0 && o.kind == null && !['tavern', 'hall', 'temple'].includes(room.role)) {
+  if (o.seats > 0 && o.kind == null && !o.exact && !['tavern', 'hall', 'temple'].includes(room.role)) {
     const i = room.placed.filter(q => (F[q.name] || {}).cat === 'table').length;
     if (roomU(room, 'seated', i) >= corpusRate(room.culture, 'ts')) o = { ...o, seats: 0, wallBias: Math.max(o.wallBias || 0, 1.5) };
   }
@@ -1363,7 +1375,8 @@ function placeTable1(room, k, o = {}) {
   // more than two seats gets 40 to 90 % of them (corpus: a quarter of seats stand at a table, rel.seatsAtTables; the
   // rest along walls and by stations, wallSeat)
   const seat = o.seat || k.seat;
-  const seatsTake = o.seats != null && o.seats > 2 ? Math.max(2, Math.round(o.seats * (0.4 + 0.5 * room.R()))) : seatsWanted0;
+  // (the room intent planner asks for an exact number, from the corpus's seats per seated table: o.exact)
+  const seatsTake = o.exact ? seatsWanted0 : o.seats != null && o.seats > 2 ? Math.max(2, Math.round(o.seats * (0.4 + 0.5 * room.R()))) : seatsWanted0;
   const ax = Math.sin(rec.yaw * PI / 180), az = Math.cos(rec.yaw * PI / 180), bx = Math.cos(rec.yaw * PI / 180), bz = -Math.sin(rec.yaw * PI / 180);
   const sides = rec.spot && rec.spot.wallSide ? [1] : [1, -1];
   let n = 0;
@@ -1862,6 +1875,11 @@ function decorate(b, ctx) {
   // where each room's tables stand from the fire (tableFireAt), from a stream of the household's own
   const tabR = rngFrom((kitSeed ^ 0x7ab1e5) >>> 0);
   bedTaste(kit, kitR, biome, ctx.culture, HP);
+  // room intent (lib/rooms_intent.js): one furniture suite, light kinds, rugs and color for the whole building, then a
+  // purpose, focal point and zones per room; ctx.intent === false keeps the furnishing of before
+  const RI = ctx.intent !== false && intentD();
+  const intentPlan = RI ? RI.planBuilding({ type, culture: ctx.culture, biome, persona: HP }) : null;
+  if (intentPlan) { Object.assign(kit, RI.kitFor(intentPlan, kit, use)); b.intentPlan = intentPlan; (b.notes || (b.notes = [])).push(...intentPlan.why); }
   const report = [], furnished = [];
   const usedTemplates = ctx.usedTemplates || new Set();
   // the layout plans' own stream, drawn once from the design's, so the plans can change without moving the rest
@@ -1910,13 +1928,16 @@ function decorate(b, ctx) {
       // over the fire on an upper floor: the generator clears what stands over a fire it moves under the smoke hole
       if (room.upper && ctx.fireAt) room.zones.push({ b: obox(ctx.fireAt.x, ctx.fireAt.z, 4.0, 2.8, 0), why: 'flue' });
       for (const r of rects) for (const kp of r.keep || []) room.zones.push({ b: obox((kp.x0 + kp.x1) / 2, (kp.z0 + kp.z1) / 2, kp.x1 - kp.x0, kp.z1 - kp.z0, 0), why: 'keep' });
-      const rk = varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture);
-      furnish(room, role, { ...ctx, use, type, decor, biome, kit: rk, counts, mainRect: main, levels: ys.length, usedTemplates, layoutR });
-      if (decor !== 'd1') rugTopUp(room, rk, biome, ctx.culture);
-      if (decor !== 'd1') sparseTopUp(room, rk);
+      const rk = intentPlan ? kit : varyKit(kit, kitR, kitKind, kitSeen, biome, HP, ctx.culture);
+      const bedCap = BED_CAP[use] ? BED_CAP[use][decor === 'd1' ? 0 : decor === 'd2' ? 1 : 2] : CAPS[decor].bed;
+      furnish(room, role, { ...ctx, use, type, decor, biome, kit: rk, counts, mainRect: main, levels: ys.length, usedTemplates, layoutR, intentPlan,
+        bedCap, tableCap: CAPS[decor].table, bedsWanted: Math.max(1, Math.min(bedCap, HP && use === 'home' ? HP.size || 2 : 2)) });
+      if (decor !== 'd1' && !intentPlan) rugTopUp(room, rk, biome, ctx.culture);
+      if (decor !== 'd1' && !intentPlan) sparseTopUp(room, rk);
       keepLightBudget(b, room);
       if (room.plan) (b.layoutPlans || (b.layoutPlans = [])).push({ plan: room.plan, stand: room.stand, inside: room.inside });
-      report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null });
+      report.push({ level: li, role, area: room.area, items: room.count, room, template: room.template || null, scheme: room.plan ? room.plan.scheme : null, story: room.plan ? room.plan.story : null,
+        intent: room.intent ? { kind: room.intent.kind, purpose: room.intent.purpose, focal: room.intent.focal, zones: room.intent.zones, story: room.intent.story } : null });
       furnished.push({ room, role });
     }
   });
@@ -1997,6 +2018,12 @@ function furnish(room, role, c) {
   room.plan = L ? L.plan(room, role, c) : null;
   tableZone(room, c);
   if (room.plan) c = { ...c, kit: { ...c.kit, side: room.plan.side } };
+  if (c.intentPlan) {
+    intentD().furnishRoom(room, role, c, HELP);
+    if (store) storeLabels(room, c);
+    if (store) storeStacks(room, c);
+    return;
+  }
   if ((!room.plan || room.plan.templateFirst) && tplFurnish(room, role, c)) {
     if (c.templateOnly) return; // 'vh floorplan template': the room as the template lays it out, nothing added
     cookCorner(room, role, c);
@@ -3778,7 +3805,11 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
   return b.pieces;
 }
 
-const api = { lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
+// The placers the room intent planner works through (lib/rooms_intent.js furnishRoom)
+const HELP = { F, size, ok, wallSpots, best, mountSpots, putMount, placeFire, onFire, planPaths, placeBeds, placeTable, placeRug, placeStorageRow,
+  placeStation, placeLights, placeMounts, placeAgainst, placeOnTable, dressTable, cookCorner, kitchenExtras, storeLabels, storeStacks, lightCount,
+  obox, overlap, ptDist, yawOfDir, norm, stretch, roomU };
+const api = { HELP, lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   lightCls, lightBudget, rugBudget, lightRoomOf, LIGHT_D2, topWeights, mountClear,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH, middleOf } };
 if (NODE_D) module.exports = api; else window.VHDecorate = api;

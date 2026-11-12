@@ -532,13 +532,15 @@ function stageOf(b, hall) {
   for (const p of b.pieces) {
     if (p.ds != null) continue;
     if (!p.decor) continue;
-    if (ESSENTIAL_P.test(p.name) && !p.kb && (!/chest/.test(p.name) || chests++ < 2)) p.ds = 1;
+    // (a room intent set, lib/rooms_intent.js, keys RI-: a bed with its nightstand, a table with its seats; its
+    // essential goes up at d1 and the rest after, as the pieces of no set do)
+    if (ESSENTIAL_P.test(p.name) && (!p.kb || /^RI-/.test(p.kb)) && (!/chest/.test(p.name) || chests++ < 2)) p.ds = 1;
     else p.ds = 2;
   }
   // one assembly goes up at once: at the latest of its pieces' stages
   const unify = () => {
     const kb = new Map();
-    for (const p of b.pieces) if (p.kb && p.ds != null) kb.set(p.kb, Math.max(kb.get(p.kb) || 0, p.ds));
+    for (const p of b.pieces) if (p.kb && !/^RI-/.test(p.kb) && p.ds != null) kb.set(p.kb, Math.max(kb.get(p.kb) || 0, p.ds));
     for (const p of b.pieces) if (p.kb && kb.has(p.kb)) p.ds = kb.get(p.kb);
   };
   unify();

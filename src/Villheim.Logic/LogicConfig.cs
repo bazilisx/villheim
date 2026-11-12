@@ -1317,7 +1317,8 @@ namespace Villheim.Logic
                 new AcceptableValueList<string>("Auto", "Push", "Baked"));
             MemoryDebugSolo = Dial("MemoryDebugSolo", "Off",
                 "Testing: show only one part of the look, in bright magenta at full strength, to see whether it draws at " +
-                "all. Off for the normal look.", new AcceptableValueList<string>("Off", "Milk", "Glow", "Feet"));
+                "all. The villager's own colors are turned off meanwhile, so the body itself is unseen. Off for the normal look.",
+                new AcceptableValueList<string>("Off", "Milk", "Glow", "Feet"));
             MemoryFeetLight = Dial("MemoryFeetLight", 0.5f,
                 "Feet: how bright the faint light at the feet is (it lights the ground and things close by), 0 for no light.",
                 Range(0f, 3f));

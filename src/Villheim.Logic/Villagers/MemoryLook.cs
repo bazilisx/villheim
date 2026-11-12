@@ -755,6 +755,14 @@ namespace Villheim.Logic.Villagers
                 }
             }
 
+            // Fallen Warrior clips by _Cutoff against its texture alpha (Tyler's test: shells only drew in a patch
+            // at the calf with _Cutoff 0.45): nothing is clipped on the passes.
+            Set("_Cutoff", 0f);
+            if (copy.HasProperty("_SkinBumpMap"))
+            {
+                copy.SetTexture("_SkinBumpMap", Texture2D.normalTexture);
+            }
+
             // _CurlTex is a 3D texture: left as it is, with its strength at 0.
             Set("_CurlStrength", 0f);
             Set("_ScrollSpeed", 0f);
@@ -1113,6 +1121,15 @@ namespace Villheim.Logic.Villagers
                             }
 
                             values.Add(property + " " + value);
+                        }
+
+                        foreach (string texture in new[] { "_MainTex", "_ChestTex", "_LegsTex" })
+                        {
+                            if (material.HasProperty(texture))
+                            {
+                                Texture t = material.GetTexture(texture);
+                                values.Add(texture + " " + (t != null ? t.name + " " + t.width + "x" + t.height : "none"));
+                            }
                         }
 
                         log.Append($"      '{material.name}' shader '{material.shader?.name}' supported {material.shader?.isSupported} queue {material.renderQueue} " +

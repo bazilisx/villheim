@@ -70,19 +70,10 @@ folder again.
 
 ## Testing the memory look (branch `look/memory`, D-160)
 
-The memory look is on the `look/memory` branch only. CI and the updater only publish builds from `main`, so this
-branch is copied into the profile by hand.
-
-- Install: build the branch (`dotnet build Villheim.sln -c Release`) and copy `Villheim.dll`, `Villheim.pdb`,
-  `Villheim.Logic.dll` and `Villheim.Logic.pdb` into `BepInEx\plugins\bazilisx-Villheim\` with the game closed. The
-  core goes too because the installed core can be older than the one the branch logic is built against.
-- The files they replace are kept in the same folder with `.main-backup` added to their names, with
-  `villheim-build.txt.main-backup`. `villheim-build.txt` is set to `look-memory-<commit>`.
-- Keep the updater window closed while testing: on its next check it would copy the latest `main` build over the
-  branch.
-- Going back: start the updater again (the line under "Keeping the game on the latest build"). The marker no longer
-  matches `main`, so it installs the latest `main` build (the core once Valheim is closed). Or copy the
-  `.main-backup` files back over the four files and the marker.
+The memory look is on the `look/memory` branch only. A push to the branch makes CI build it with the label
+`<main build>+look-memory.<commits past main>-<commit>` and post it as the release `test-look-memory`. The updater
+follows that release while the profile's plugin folder holds `villheim-channel.txt` with `look-memory` in it; remove
+the file (or write `main` in it) to go back to main. Handoff: `docs/handoffs/look-memory.md`.
 
 In game:
 

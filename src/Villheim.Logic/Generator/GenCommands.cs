@@ -25,7 +25,7 @@ namespace Villheim.Logic.Generator
         {
             "gen <biome> <type> <stage> [culture] [\"request\"] [seed]: make a new building with the blueprint lab and build it in front of you, e.g. gen md home s1d3 \"two stories with a porch\"; saved with a short name (gen-12-norse-home) where PlanBuild finds it, on its Villheim tab ('gen help' lists the codes)",
             "gen list: the last 10 designs made with 'gen', by their short names; 'preview last' or 'place last' builds the newest again",
-            "gen showcase: build 16 picked designs at full decor (d3) in a grid in front of you, four rows going away from you; for a flat test world, it needs about 130 m by 150 m",
+            "gen showcase: build 16 picked designs at full decor (d3) in a grid in front of you, four rows going away from you; for a flat test world, it needs about 130 m by 150 m. Saved designs in inspiration/generated/ingame/showcase are built as they are; 'vh gallery clear' takes them down",
             "ask <biome> <type> <stage> [culture] \"request\": write the request to BepInEx/config/Villheim/requests/requests.jsonl for Claude to make with more care; 'asks' lists them, 'place <id>' builds the result",
             "asks: list the requests made with 'ask' and their status",
             "place <id|name> [here]: build a finished request (R-0001) or an in-game generated design in front of you; 'here' builds a request where you stood when you asked",
@@ -340,6 +340,15 @@ namespace Villheim.Logic.Generator
             VillheimPlugin.Instance.StartCoroutine(ShowcaseRun(player.transform.position, player.transform.eulerAngles.y, context));
         }
 
+        /// <summary>The showcase's saved designs, showcase-01-hub-md-norse-s5d3-2.blueprint and so on, one per entry.</summary>
+        public static string ShowcaseFolder => Path.Combine(IngameFolder, "showcase");
+
+        private static string ShowcaseName(int i)
+        {
+            var s = ShowcaseList[i];
+            return $"showcase-{i + 1:00}-{s.Type}-{s.Biome}-{s.Culture}-{s.Stage}-{s.Seed}";
+        }
+
         private static IEnumerator ShowcaseRun(Vector3 standing, float yaw, Terminal context)
         {
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
@@ -348,6 +357,30 @@ namespace Villheim.Logic.Generator
             for (int i = 0; i < ShowcaseList.Length; i++)
             {
                 var s = ShowcaseList[i];
+                // a design saved before (by an earlier showcase, or copied in made by the lab) is built as it is
+                string saved = Path.Combine(ShowcaseFolder, ShowcaseName(i) + ".blueprint");
+                if (File.Exists(saved))
+                {
+                    try
+                    {
+                        int n0 = BuildHeld(saved, standing + turn * new Vector3(s.Right, 0f, s.Forward), turn, out string problem0);
+                        if (n0 > 0)
+                        {
+                            built++;
+                        }
+
+                        Say(context, $"Villheim: {i + 1}/{ShowcaseList.Length} {ShowcaseName(i)}: {problem0?.Trim() ?? $"built {n0} pieces"}");
+                    }
+                    catch (Exception e)
+                    {
+                        VillheimPlugin.Log.LogError($"vh gen showcase {saved}: {e}");
+                        Say(context, $"Villheim: {i + 1}/{ShowcaseList.Length} {ShowcaseName(i)} failed: {e.GetBaseException().Message}");
+                    }
+
+                    yield return null;
+                    continue;
+                }
+
                 var job = new Job();
                 var thread = new Thread(() =>
                 {
@@ -379,15 +412,13 @@ namespace Villheim.Logic.Generator
                     }
 
                     LabResult r = job.Result;
-                    string folder = IngameFolder;
-                    Directory.CreateDirectory(folder);
-                    string shortName = NextShortName(folder, r.Culture, r.Type);
-                    string file = Path.Combine(folder, shortName + ".blueprint");
-                    File.WriteAllText(file, ForPlanBuild(r, shortName, "showcase"), new UTF8Encoding(false));
+                    Directory.CreateDirectory(ShowcaseFolder);
+                    string shortName = ShowcaseName(i);
+                    string file = Path.Combine(ShowcaseFolder, shortName + ".blueprint");
+                    File.WriteAllText(file, ForPlanBuild(r, shortName, ""), new UTF8Encoding(false));
                     Blueprints.Forget();
-                    TellPlanBuild(file);
                     Vector3 at = standing + turn * new Vector3(s.Right, 0f, s.Forward);
-                    int n = BuildAt(file, at, turn, out string problem);
+                    int n = BuildHeld(file, at, turn, out string problem);
                     if (n > 0)
                     {
                         built++;
@@ -403,7 +434,7 @@ namespace Villheim.Logic.Generator
             }
 
             _busy = false;
-            Say(context, $"Villheim: showcase done, {built} of {ShowcaseList.Length} designs built in {Time.realtimeSinceStartup - started:0} s. Front row (left to right): Meadows hub, Plains hub, Black Forest hub, Mistlands temple. Each is saved under its short name ('vh gen list').");
+            Say(context, $"Villheim: showcase done, {built} of {ShowcaseList.Length} designs built in {Time.realtimeSinceStartup - started:0} s. Front row (left to right): Meadows hub, Plains hub, Black Forest hub, Mistlands temple. The pieces are held like gallery pieces (they do not wear or fall); 'vh gallery clear' takes them all down.");
         }
 
         private sealed class Job
@@ -680,8 +711,12 @@ namespace Villheim.Logic.Generator
             return Spawn(blueprint, at, turn);
         }
 
-        /// <summary>Builds a saved design with its middle at a given spot (vh gen showcase).</summary>
-        private static int BuildAt(string file, Vector3 at, Quaternion turn, out string problem)
+        /// <summary>
+        /// Builds a saved design with its middle at a given spot (vh gen showcase), every piece marked as a gallery
+        /// piece so it never wears or falls (Gallery.NoWearPatch) and 'vh gallery clear' removes it. Put down in one go,
+        /// the upper floors of large designs do not all hold under the game's support check.
+        /// </summary>
+        private static int BuildHeld(string file, Vector3 at, Quaternion turn, out string problem)
         {
             problem = null;
             Blueprints.Blueprint blueprint = Blueprints.FromFile(file);
@@ -691,7 +726,52 @@ namespace Villheim.Logic.Generator
                 return 0;
             }
 
-            return Spawn(blueprint, at, turn);
+            if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(at, out float ground))
+            {
+                at.y = ground;
+            }
+
+            if (LogicConfig.GenLevelGround?.Value ?? true)
+            {
+                TerrainShaper.LevelPad(at, blueprint.Radius * 0.7f, blueprint.Radius * 0.7f + 3f);
+            }
+
+            List<DesignSpawner.PlanEntry> plan = Blueprints.Entries(blueprint);
+            try
+            {
+                DesignSpawner.GroundUnderFloors(plan, at, turn);
+            }
+            catch (Exception e)
+            {
+                VillheimPlugin.Log.LogWarning($"Ground under the floors: {e.Message}");
+            }
+
+            int count = 0;
+            DesignSpawner.GroundDone = true;
+            try
+            {
+                foreach (DesignSpawner.PlanEntry entry in plan)
+                {
+                    GameObject go = DesignSpawner.SpawnEntry(entry, at, turn, 0, false);
+                    if (go == null)
+                    {
+                        continue;
+                    }
+
+                    count++;
+                    ZNetView view = go.GetComponent<ZNetView>();
+                    if (view != null && view.IsValid())
+                    {
+                        view.GetZDO().Set(Village.Gallery.KeyGallery, 1);
+                    }
+                }
+            }
+            finally
+            {
+                DesignSpawner.GroundDone = false;
+            }
+
+            return count;
         }
 
         private static int Spawn(Blueprints.Blueprint blueprint, Vector3 at, Quaternion turn)

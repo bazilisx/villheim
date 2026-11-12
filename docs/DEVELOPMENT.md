@@ -82,7 +82,9 @@ folder again.
 - `vh blueprints`, `vh savebp <role-family-level> [radius]`: list blueprints; save the pieces around you as one.
 - `vh gen <biome> <type> <stage>` makes one design with the lab and builds it in front of you (`vh gen help`).
   `vh gen showcase` builds 16 picked designs at decor d3 in a grid in front of you (four rows, hubs first; about
-  130 m wide and 150 m deep, so use a flat test world). It takes a few minutes; each one is built as it is ready.
+  130 m wide and 150 m deep, so use a flat test world). Designs saved in `inspiration/generated/ingame/showcase` are
+  built as they are; missing ones are made first (a few minutes for all 16). Pieces are held like gallery pieces;
+  `vh gallery clear` takes them down.
 - Dialogue lines live in `src/Villheim.Logic/Dialogue/*.txt` (format at the top of `lines.txt`) and are built into the
   logic DLL.
 

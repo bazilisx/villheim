@@ -771,6 +771,10 @@ Generated tab, which he closed on 2026-11-11, and the private repo's line on der
 
 ## Next work (after round 7c, main 4226ceb)
 
+0. In the game (Tyler, 2026-11-11, `vh gen showcase` on build 999-b208784): the Meadows s5 hub (hub md norse s5d3 seed 2)
+   lost pieces at the top when put down in one go; the game's support check does not hold its upper parts. Find which
+   pieces fall (vh gravity, the support values in the game's WearNTear) and what test_structure misses for the hub.
+   The showcase now marks its pieces as gallery pieces, so they hold.
 1. Round 7c leftovers, in this order: gen-test request 2 back to 75 s or under (profile above: clearLanes, moveAside,
    spotsFor); test_stands bands (flat bench 20.7, flat chest 4.5, wall station 29.1, wall table 14.1, flat share 83,
    distinct q1 4; try a stand roll only in rooms whose sets went in); reach rooms 8 (Mistlands nave ends, workshop 528,

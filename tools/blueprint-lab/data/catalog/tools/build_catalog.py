@@ -116,7 +116,7 @@ def wq(vals, ws, f):
 
 MATW = [('copper', r'copper|brass|bronze'), ('iron', r'iron|metal|chain|grill|blackmetal'), ('marble', r'marble'),
         ('grausten', r'grausten'), ('stone', r'stone|rock|oven|hearth'), ('cloth', r'cloth|banner|jute|carpet|curtain|cushion'),
-        ('hide', r'hide|fur|rug|bed'), ('glass', r'glass|crystal'), ('straw', r'straw|thatch'), ('ceramic', r'ceramic|pot'),
+        ('hide', r'hide|(?<!ni)fur(?!n)|rug|pelt|skin'), ('glass', r'glass|crystal'), ('straw', r'straw|thatch'), ('ceramic', r'ceramic|pot'),
         ('bone', r'bone|skull'), ('candle', r'candle|wax'), ('wood', r'wood|plank|log|beam|stake|timber')]
 def mat_word(s):
     s = s.lower()
@@ -279,6 +279,7 @@ for n, s in ST.items():
     if n in GLOW_NOTES: glow = dict(glow or {}, note=GLOW_NOTES[n])
     mix = {}
     for prt in (COL.get(n, {}).get('parts') or []):
+        if prt.get('tex') == 'transparent': continue  # the armor stand's invisible body
         k = mat_word(prt['mat'] + ' ' + (prt.get('tex') or ''))
         if k: mix[k] = round(mix.get(k, 0) + prt['share'], 2)
     mats = sorted({x.get('name') for x in m.get('materials', []) if x.get('name') and not x['name'].startswith('snow')})
@@ -372,12 +373,21 @@ for n, s in ST.items():
     }
     out[n] = rec
 
+# Track B's room-level pairs (tools/blueprint-lab/data/rooms-corpus/pairs.json on design/wip-corpus-rooms), when present
+BP = os.environ.get('ROOM_PAIRS', '/home/claude/wt/corpus-rooms/tools/blueprint-lab/data/rooms-corpus/pairs.json')
+ROOMP = json.load(open(BP)).get('items', {}) if os.path.exists(BP) else {}
+for n, it in ROOMP.items():
+    if n not in out: continue
+    out[n]['room_pairs'] = {'rooms': it.get('rooms'), 'pairs_well_with': [{'id': a, 'rooms': r, 'expected': e, 'lift': l} for a, r, e, l in (it.get('pairsWellWith') or [])[:10]],
+                            'rarely_with': [{'id': a, 'rooms': r, 'expected': e, 'lift': l} for a, r, e, l in (it.get('rarelyWith') or [])[:10]],
+                            'source': 'track B rooms-corpus/pairs.json (room level)'}
+
 KINDS = {k: v['kind'] for k, v in out.items()}
 for n, rec in out.items():
-    if rec['kind'] in NOPAIR or rec['kind'] in ('plant', 'item'): continue
-    g, r = pair_lists(n, KINDS)
-    if g: rec['pairs_with'] = g
-    if r: rec['rarely_with'] = r
+    if rec['kind'] not in NOPAIR and rec['kind'] not in ('plant', 'item'):
+        g, r = pair_lists(n, KINDS)
+        if g: rec['pairs_with'] = g
+        if r: rec['rarely_with'] = r
     # a plain description of the look, from the measured colors and the family
     lk = rec['look']; F = FAMILIES[rec['family']]
     parts = []

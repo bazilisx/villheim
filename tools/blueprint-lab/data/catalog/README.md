@@ -11,7 +11,8 @@ blueprint is stored here.
 |---|---|
 | `pieces.json` | `{ about, version, corpus_builds, families, pieces: { <prefab id>: record } }` |
 | `pairs.json` | Look family co-occurrence: lift inside the same build and inside the same covered area |
-| `overuse.json` | The 16 showcase designs against the corpus, per piece |
+| `overuse.json` | The 16 showcase designs against the corpus: groups, presence across designs, variant choice per kind, stacked storage, fronts against walls |
+| `pieces.csv` | The rows of the review sheet's Pieces tab |
 | `tools/` | The scripts that make the files (see "How to rebuild") |
 
 ## Record fields
@@ -38,6 +39,9 @@ blueprint is stored here.
 | `buildable` | Has a build-menu Piece in the game's Pieces folder (world props, items and creatures are false) | game |
 | `game_tab`, `comfort`, `comfort_group` | Build menu tab number, comfort value and group | game |
 | `generator_files` | Lab files that name the prefab | `lib/*.js` |
+| `description` | How it looks in words: hand-written after looking at the icons for the pieces named in `tools/families.py` DESC, else value, hue, material and finish | |
+| `pairs_with`, `rarely_with` | Pieces standing under cover within 4 m and 1.5 m height of it: builds with both, builds where they share the area, rate | corpus |
+| `room_pairs` | Track B's room-level pairs (`data/rooms-corpus/pairs.json` on design/wip-corpus-rooms) for its 143 prefabs | track B |
 | `tags` | Flat tags for filtering: `kind:`, `family:`, `material:`, `value:`, `hue:`, `warmth:`, `saturation:`, `light:`, `glow:`, `zone:`, `mount:`, `reuse:`, `formality:`, `size:`, `finish:`, `comfort:`, `not-buildable`, `generator` | |
 
 Votes: each build counts with weight 1 + ln(1 + votes) (votes run 0 to 47, median 5). Shares and placement means use

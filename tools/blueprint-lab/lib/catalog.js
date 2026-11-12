@@ -96,6 +96,13 @@ function familyLift(a, b) {
   return p.families[k] || null;
 }
 
-const apiC = { get, name, family, familyInfo, look, material, hasTag, withTag, belongs, indoorOk, reuse, cap, facing, yawFacing, familyLift, data };
+/** What it is found with: { area: same covered area within 4 m (this catalog), room: track B's room-level lifts }. */
+function pairsWith(id) {
+  const r = get(id);
+  if (!r) return null;
+  return { area: r.pairs_with || [], areaRarely: r.rarely_with || [], room: r.room_pairs ? r.room_pairs.pairs_well_with : [], roomRarely: r.room_pairs ? r.room_pairs.rarely_with : [] };
+}
+
+const apiC = { pairsWith, get, name, family, familyInfo, look, material, hasTag, withTag, belongs, indoorOk, reuse, cap, facing, yawFacing, familyLift, data };
 if (typeof module !== 'undefined') module.exports = apiC;
 else window.VHCatalog = apiC;

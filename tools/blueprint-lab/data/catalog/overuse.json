@@ -2199,5 +2199,144 @@
     }
    ]
   }
- ]
+ ],
+ "facing_showcase": {
+  "sign": {
+   "n": 34,
+   "backToWall": 34,
+   "frontToWall": 0,
+   "side": 0,
+   "expectBack": "-z"
+  },
+  "itemstand": {
+   "n": 159,
+   "backToWall": 157,
+   "frontToWall": 1,
+   "side": 1,
+   "expectBack": "-z"
+  },
+  "piece_walltorch": {
+   "n": 76,
+   "backToWall": 58,
+   "frontToWall": 0,
+   "side": 18,
+   "expectBack": "-x"
+  },
+  "piece_chest_wood": {
+   "n": 22,
+   "backToWall": 19,
+   "frontToWall": 3,
+   "side": 0,
+   "expectBack": "-z"
+  },
+  "piece_bench01": {
+   "n": 4,
+   "backToWall": 3,
+   "frontToWall": 1,
+   "side": 0,
+   "expectBack": "-z"
+  },
+  "piece_workbench": {
+   "n": 1,
+   "backToWall": 1,
+   "frontToWall": 0,
+   "side": 0,
+   "expectBack": "-z"
+  },
+  "piece_throne01": {
+   "n": 2,
+   "backToWall": 2,
+   "frontToWall": 0,
+   "side": 0,
+   "expectBack": "-z"
+  },
+  "piece_chest": {
+   "n": 11,
+   "backToWall": 10,
+   "frontToWall": 1,
+   "side": 0,
+   "expectBack": "-z"
+  },
+  "piece_logbench01": {
+   "n": 12,
+   "backToWall": 7,
+   "frontToWall": 4,
+   "side": 1,
+   "expectBack": "+z"
+  },
+  "piece_chest_warderobe": {
+   "n": 1,
+   "backToWall": 0,
+   "frontToWall": 1,
+   "side": 0,
+   "expectBack": "+z"
+  },
+  "darkwood_wolf": {
+   "n": 1,
+   "backToWall": 0,
+   "frontToWall": 0,
+   "side": 1,
+   "expectBack": "-z"
+  },
+  "piece_dvergr_lantern": {
+   "n": 6,
+   "backToWall": 6,
+   "frontToWall": 0,
+   "side": 0,
+   "expectBack": "+x"
+  },
+  "piece_blackmarble_bench": {
+   "n": 6,
+   "backToWall": 6,
+   "frontToWall": 0,
+   "side": 0,
+   "expectBack": "-z"
+  },
+  "piece_preptable": {
+   "n": 1,
+   "backToWall": 1,
+   "frontToWall": 0,
+   "side": 0,
+   "expectBack": "-z"
+  },
+  "piece_chair03": {
+   "n": 1,
+   "backToWall": 1,
+   "frontToWall": 0,
+   "side": 0,
+   "expectBack": "-z"
+  },
+  "piece_bed02": {
+   "n": 2,
+   "backToWall": 0,
+   "frontToWall": 1,
+   "side": 1,
+   "expectBack": "-z"
+  },
+  "piece_workbench_ext2": {
+   "n": 2,
+   "backToWall": 2,
+   "frontToWall": 0,
+   "side": 0,
+   "expectBack": "-z"
+  },
+  "ashwood_bed": {
+   "n": 1,
+   "backToWall": 0,
+   "frontToWall": 0,
+   "side": 1,
+   "expectBack": "-z"
+  }
+ },
+ "facing_note": "Pieces with a known front (sure high or medium) within 0.9 m of a wall (2.5 m for beds and the wardrobe) in the 16 regenerated showcase designs: which of their sides faces the nearest wall. backToWall is right; frontToWall is turned 180 degrees; side is turned 90 degrees.",
+ "stacked_storage": {
+  "corpus_storage_pieces": 37278,
+  "corpus_stacked": 15957,
+  "corpus_builds_with_storage": 1011,
+  "corpus_builds_with_a_stack": 531,
+  "showcase_storage_pieces": 106,
+  "showcase_stacked": 13,
+  "showcase_designs_with_a_stack": 8,
+  "rule": "a storage piece whose pivot is 0.4 to 1.3 m above another storage piece within 0.5 m"
+ }
 }

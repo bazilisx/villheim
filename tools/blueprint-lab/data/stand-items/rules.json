@@ -1,0 +1,1042 @@
+{
+ "about": "Rules for what goes on item stands and armor stands (track G, showcase review 2026-11-12; docs/FURNITURE_ASSEMBLIES.md 'Stand items'). Numbers come from the corpus pass (data/stand-items/corpus.json, lab/mine_stand_items.js) unless a field says otherwise. Read by lib/standitems.js.",
+ "kindGroups": {
+  "drink": [
+   "tankard",
+   "mead"
+  ],
+  "meal": [
+   "food",
+   "tankard",
+   "mead",
+   "fish",
+   "rawmeat",
+   "knife",
+   "produce"
+  ],
+  "arms": [
+   "shield",
+   "sword",
+   "axe",
+   "blunt",
+   "polearm",
+   "bow",
+   "knife",
+   "helmet",
+   "staff"
+  ],
+  "work": [
+   "tool",
+   "axe-tool",
+   "farm",
+   "material"
+  ],
+  "show": [
+   "trophy",
+   "boss",
+   "curio",
+   "hat",
+   "valuable"
+  ],
+  "store": [
+   "produce",
+   "herbs",
+   "food",
+   "rawmeat",
+   "fish",
+   "material"
+  ]
+ },
+ "themes": {
+  "_about": "Household themes. A household has two or three, weighted (lib/standitems.js themesFrom). Each theme lists the item kinds it shows and items it prefers (picked first when the tier allows). Tyler 2026-11-12: a hunter's trophies and bows, a cook's pans and food in the kitchen, a smith's tools, a healer's potions. Traits of the household, never a trade: anyone may cook or hunt.",
+  "hunter": {
+   "kinds": {
+    "trophy": 3,
+    "bow": 2,
+    "knife": 1,
+    "rawmeat": 1,
+    "polearm": 1,
+    "fish": 0.5
+   },
+   "prefer": [
+    "TrophyDeer",
+    "TrophyBoar",
+    "TrophyNeck",
+    "TrophyWolf",
+    "TrophyLox",
+    "TrophyGreydwarfBrute",
+    "TrophyHare",
+    "TrophyMoose",
+    "Bow",
+    "BowFineWood",
+    "BowHuntsman",
+    "BowDraugrFang",
+    "KnifeFlint",
+    "KnifeCopper",
+    "SpearFlint",
+    "SpearBronze",
+    "SpearWolfFang",
+    "DeerMeat",
+    "RawMeat"
+   ]
+  },
+  "cook": {
+   "kinds": {
+    "food": 3,
+    "produce": 2,
+    "rawmeat": 1,
+    "knife": 1,
+    "tankard": 1,
+    "herbs": 0.5
+   },
+   "prefer": [
+    "Bread",
+    "CookedMeat",
+    "CookedDeerMeat",
+    "QueensJam",
+    "CarrotSoup",
+    "DeerStew",
+    "TurnipStew",
+    "OnionSoup",
+    "Sausages",
+    "MeatPlatter",
+    "LoxPie",
+    "FishWraps",
+    "Carrot",
+    "Turnip",
+    "Onion",
+    "Raspberry",
+    "Blueberries",
+    "KnifeButcher",
+    "Honey"
+   ]
+  },
+  "brewer": {
+   "kinds": {
+    "mead": 3,
+    "tankard": 2,
+    "produce": 1
+   },
+   "prefer": [
+    "MeadTasty",
+    "MeadHealthMinor",
+    "MeadStaminaMinor",
+    "MeadHealthMedium",
+    "MeadStaminaMedium",
+    "BarleyWine",
+    "Tankard",
+    "TankardAnniversary",
+    "Tankard_dvergr",
+    "Honey",
+    "Barley",
+    "Cloudberry"
+   ]
+  },
+  "healer": {
+   "kinds": {
+    "mead": 3,
+    "herbs": 2,
+    "produce": 1,
+    "curio": 0.5
+   },
+   "prefer": [
+    "MeadHealthMinor",
+    "MeadHealthMedium",
+    "MeadHealthMajor",
+    "MeadPoisonResist",
+    "MeadFrostResist",
+    "MeadStaminaLingering",
+    "MeadEitrMinor",
+    "Dandelion",
+    "Thistle",
+    "Mushroom",
+    "MushroomYellow",
+    "MushroomBlue",
+    "MushroomMagecap",
+    "AncientSeed"
+   ]
+  },
+  "smith": {
+   "kinds": {
+    "tool": 3,
+    "sword": 1,
+    "axe-tool": 1,
+    "blunt": 1,
+    "shield": 1,
+    "material": 1,
+    "helmet": 0.5
+   },
+   "prefer": [
+    "Hammer",
+    "PickaxeAntler",
+    "PickaxeBronze",
+    "PickaxeIron",
+    "PickaxeBlackMetal",
+    "AxeBronze",
+    "AxeIron",
+    "SwordBronze",
+    "SwordIron",
+    "MaceBronze",
+    "MaceIron",
+    "ShieldBronzeBuckler",
+    "ShieldBanded",
+    "Bronze",
+    "Iron",
+    "Copper",
+    "Tin",
+    "Silver"
+   ]
+  },
+  "woodworker": {
+   "kinds": {
+    "axe-tool": 2,
+    "tool": 2,
+    "material": 1
+   },
+   "prefer": [
+    "AxeStone",
+    "AxeFlint",
+    "AxeBronze",
+    "AxeIron",
+    "Hammer",
+    "Wood",
+    "FineWood",
+    "RoundLog"
+   ]
+  },
+  "farmer": {
+   "kinds": {
+    "produce": 3,
+    "farm": 2,
+    "herbs": 1,
+    "food": 1
+   },
+   "prefer": [
+    "Hoe",
+    "Cultivator",
+    "Scythe",
+    "Carrot",
+    "Turnip",
+    "Onion",
+    "Barley",
+    "Flax",
+    "Raspberry",
+    "Blueberries",
+    "Cloudberry",
+    "ChickenEgg"
+   ]
+  },
+  "fisher": {
+   "kinds": {
+    "fish": 3,
+    "tool": 1,
+    "food": 1
+   },
+   "prefer": [
+    "FishingRod",
+    "Fish1",
+    "Fish2",
+    "Fish3",
+    "Fish4_cave",
+    "Fish5",
+    "Fish6",
+    "Fish7",
+    "Fish8",
+    "FishWraps",
+    "FishAndBread",
+    "SmokedFish",
+    "FishSoup"
+   ]
+  },
+  "warrior": {
+   "kinds": {
+    "shield": 3,
+    "sword": 2,
+    "axe": 1,
+    "blunt": 1,
+    "polearm": 1,
+    "trophy": 1,
+    "helmet": 1
+   },
+   "prefer": []
+  },
+  "lore": {
+   "kinds": {
+    "curio": 3,
+    "staff": 1,
+    "hat": 1,
+    "mead": 1,
+    "boss": 0.5
+   },
+   "prefer": [
+    "SurtlingCore",
+    "AncientSeed",
+    "CryptKey",
+    "DragonEgg",
+    "DragonTear",
+    "GoblinTotem",
+    "BlackCore",
+    "DvergrKey",
+    "HelmetDverger",
+    "StaffFireball",
+    "StaffIceShards",
+    "MeadEitrMinor"
+   ]
+  },
+  "feaster": {
+   "kinds": {
+    "tankard": 3,
+    "food": 2,
+    "mead": 1
+   },
+   "prefer": [
+    "Tankard",
+    "TankardAnniversary",
+    "MeadTasty",
+    "Bread",
+    "CookedMeat",
+    "Sausages",
+    "LoxPie"
+   ]
+  }
+ },
+ "personaThemes": {
+  "_about": "lib/persona.js hobby weights to themes (0..1 each). crafts: smith, woodworker; collect: hunter, warrior, lore; plants: farmer, healer; food: cook, brewer, feaster; games: brewer, feaster; maps: lore, fisher.",
+  "crafts": {
+   "smith": 1,
+   "woodworker": 0.7
+  },
+  "collect": {
+   "hunter": 1,
+   "warrior": 0.8,
+   "lore": 0.5
+  },
+  "plants": {
+   "farmer": 1,
+   "healer": 0.8
+  },
+  "food": {
+   "cook": 1,
+   "brewer": 0.6,
+   "feaster": 0.4
+  },
+  "games": {
+   "brewer": 0.7,
+   "feaster": 0.8
+  },
+  "maps": {
+   "lore": 0.8,
+   "fisher": 0.6
+  }
+ },
+ "rooms": {
+  "_about": "Item kinds that fit each room kind. Weights start from the corpus lift of each kind beside the room's use piece (data/stand-items/corpus.json lift: tools beside a forge 5.0, beside a workbench 4.1; raw meat by the cooking 4.7; food at a table 3.2; fish at a table 3.3; herbs by a bed 3.4; staffs and bows by a mage table 6.5 and 5.0; trophies by the hearth 2.2; shields by the hearth 1.9) and Tyler's examples. A kind missing from a room is left out there.",
+  "kitchen": {
+   "food": 3,
+   "produce": 3,
+   "rawmeat": 3,
+   "knife": 2,
+   "fish": 1.5,
+   "herbs": 1,
+   "tankard": 1,
+   "mead": 0.5
+  },
+  "dining": {
+   "food": 3,
+   "tankard": 3,
+   "mead": 1,
+   "fish": 1.5,
+   "knife": 1,
+   "produce": 0.5
+  },
+  "hearth": {
+   "trophy": 2.5,
+   "shield": 2,
+   "tankard": 1.5,
+   "mead": 1,
+   "axe-tool": 1,
+   "boss": 1,
+   "sword": 0.5,
+   "polearm": 0.5,
+   "curio": 0.5
+  },
+  "bedroom": {
+   "herbs": 2,
+   "mead": 1.5,
+   "curio": 1,
+   "hat": 1,
+   "helmet": 1,
+   "trophy": 1,
+   "shield": 1,
+   "sword": 1,
+   "bow": 0.7,
+   "axe-tool": 0.5,
+   "tankard": 0.5
+  },
+  "smithy": {
+   "tool": 4,
+   "material": 2,
+   "sword": 1.5,
+   "blunt": 1.5,
+   "axe-tool": 1.5,
+   "shield": 1,
+   "helmet": 1,
+   "farm": 1,
+   "produce": 0.3
+  },
+  "workshop": {
+   "tool": 4,
+   "material": 3,
+   "axe-tool": 2,
+   "farm": 1.5,
+   "curio": 0.5
+  },
+  "brewery": {
+   "mead": 3,
+   "tankard": 2,
+   "produce": 2
+  },
+  "study": {
+   "curio": 3,
+   "staff": 2,
+   "hat": 1,
+   "mead": 1.5,
+   "herbs": 1,
+   "bow": 0.5,
+   "boss": 0.5
+  },
+  "armory": {
+   "shield": 3,
+   "sword": 2,
+   "polearm": 2,
+   "bow": 2,
+   "axe": 2,
+   "blunt": 1,
+   "helmet": 2,
+   "staff": 1,
+   "trophy": 1
+  },
+  "hall": {
+   "shield": 3,
+   "trophy": 3,
+   "boss": 1,
+   "sword": 1,
+   "polearm": 1,
+   "axe": 1,
+   "tankard": 1.5,
+   "food": 1,
+   "mead": 1
+  },
+  "tavern": {
+   "tankard": 3,
+   "mead": 3,
+   "food": 2,
+   "trophy": 1.5,
+   "shield": 1,
+   "fish": 0.5
+  },
+  "storage": {
+   "produce": 2,
+   "material": 2,
+   "food": 1,
+   "fish": 1,
+   "rawmeat": 1,
+   "tool": 1,
+   "farm": 1,
+   "herbs": 1
+  },
+  "temple": {
+   "curio": 2,
+   "boss": 1.5,
+   "mead": 1,
+   "herbs": 1,
+   "food": 1,
+   "trophy": 1
+  },
+  "entry": {
+   "shield": 2,
+   "bow": 1,
+   "axe-tool": 1,
+   "farm": 1,
+   "fish": 0.5,
+   "polearm": 1
+  },
+  "home": {
+   "food": 1.5,
+   "tankard": 1.5,
+   "mead": 1,
+   "trophy": 1.5,
+   "shield": 1,
+   "herbs": 1,
+   "produce": 1,
+   "tool": 0.5,
+   "curio": 0.5
+  }
+ },
+ "places": {
+  "_about": "Moved to data/stand-items/corpus.json placeKind: for flat stands the kinds held on each anchor (table, shelf, counter, chest, stand, seat, floor-or-shelf, station, other, none), for wall stands the kinds held by the nearest use piece (wall:kitchen, wall:smith, wall:hearth, wall:sleep, wall:dine, wall:none ...). lib/standitems.js reads it from there."
+ },
+ "groups": {
+  "_about": "Stands within 0.9 m of each other on one surface hold one theme (corpus groups.combos: table drink+food 60, drink+drink 26, shelf drink rows, ledge herbs, wall weapon+weapon, sill trophy+trophy, floor food rows). A surface never mixes groups (Tyler: a raw fish next to a raspberry and a poison pot on a chest). The theme of a group is the group of its first item.",
+  "meal": [
+   "food",
+   "tankard",
+   "mead",
+   "knife",
+   "fish"
+  ],
+  "drink": [
+   "tankard",
+   "mead"
+  ],
+  "pantry": [
+   "food",
+   "produce",
+   "rawmeat",
+   "fish",
+   "herbs"
+  ],
+  "apothecary": [
+   "mead",
+   "herbs",
+   "curio"
+  ],
+  "arms": [
+   "shield",
+   "sword",
+   "axe",
+   "blunt",
+   "polearm",
+   "bow",
+   "knife",
+   "helmet",
+   "staff"
+  ],
+  "work": [
+   "tool",
+   "axe-tool",
+   "farm",
+   "material"
+  ],
+  "trophies": [
+   "trophy",
+   "boss",
+   "shield"
+  ],
+  "curios": [
+   "curio",
+   "hat",
+   "valuable",
+   "trophy"
+  ]
+ },
+ "caps": {
+  "_about": "How often one item comes again in one building. corpus.kindMax gives, among the builds that show a kind, the largest count of one item of that kind: weapons p50 1 (sword, axe, bow, knife, staff, farm), polearm 2, shield 3, trophy 4, food 3, tankard 4, mead 4, herbs 4, produce 8. Runs (the same item on stands within 0.6 m): weapons, shields, trophies and tools stand alone 91 to 98 % of the time; drink, food and produce come in rows. perItem is for a home of up to about 100 m2; halls, taverns and hubs take perItemLarge. run is the longest row of one item side by side. spread: repeats of a show item keep at least this far apart (bay themes: one shield per post bay).",
+  "perItem": {
+   "tankard": 4,
+   "mead": 3,
+   "food": 2,
+   "produce": 4,
+   "herbs": 3,
+   "fish": 2,
+   "rawmeat": 2,
+   "trophy": 1,
+   "boss": 1,
+   "shield": 1,
+   "sword": 1,
+   "axe": 1,
+   "axe-tool": 1,
+   "blunt": 1,
+   "polearm": 1,
+   "bow": 1,
+   "knife": 2,
+   "staff": 1,
+   "tool": 1,
+   "farm": 1,
+   "hat": 1,
+   "helmet": 1,
+   "curio": 1,
+   "material": 3,
+   "valuable": 1,
+   "other": 1,
+   "feast": 1
+  },
+  "perItemLarge": {
+   "tankard": 10,
+   "mead": 8,
+   "food": 4,
+   "produce": 8,
+   "herbs": 4,
+   "fish": 3,
+   "rawmeat": 3,
+   "trophy": 2,
+   "boss": 1,
+   "shield": 3,
+   "sword": 2,
+   "axe": 1,
+   "axe-tool": 1,
+   "blunt": 2,
+   "polearm": 2,
+   "bow": 1,
+   "knife": 2,
+   "staff": 1,
+   "tool": 2,
+   "farm": 1,
+   "hat": 2,
+   "helmet": 1,
+   "curio": 1,
+   "material": 4,
+   "valuable": 1,
+   "other": 1,
+   "feast": 2
+  },
+  "run": {
+   "tankard": 6,
+   "mead": 6,
+   "food": 3,
+   "produce": 6,
+   "herbs": 3,
+   "fish": 2,
+   "rawmeat": 2,
+   "material": 3
+  },
+  "spread": 1.5,
+  "distinctShare": 0.3,
+  "distinctShareNote": "corpus perBuild distinct items per stand: p25 0.18, p50 0.43; a building with 8 or more dressed stands keeps at least 0.3 counting each row once"
+ },
+ "pose": {
+  "_about": "How items rest. data/item-models.json gives each item's box on an upright flat stand. Swords, knives and shields already lie on a flat stand (sword top 0.07 m, 1.27 m long). Axes, maces, sledges, pickaxes and farm tools stand on their head or end (axe top 0.89 m, sledge 1.38 m, battleaxe 1.68 m): Tyler, 2026-11-12, 'an axe sticking straight up on its head'. In the corpus 44 to 51 % of flat stands with swords and maces are turned on their side, shields lean (297 of 611), tools lean (187 of 260); 1,176 weapon stands upright and 475 turned with local z down. Rule: a tall weapon or tool goes on a wall stand; on a flat stand only turned on its side so it lies on the surface.",
+  "tallKinds": [
+   "axe",
+   "axe-tool",
+   "blunt",
+   "polearm",
+   "tool",
+   "farm",
+   "bow",
+   "staff",
+   "sword",
+   "shield",
+   "knife"
+  ],
+  "overhang": 0.05,
+  "overhangNote": "Tyler, 2026-11-12: 'A saddle halfway off a table.' An item's box on its stand stays inside the top it stands on, 5 cm at most over the edge."
+ },
+ "armor": {
+  "_about": "Armor stand outfits. The corpus saves the gear in the stand's info field (0:7, seven slots: chest, legs, helmet, left hand, right hand, cape, utility): 1,996 armor stands in the vanilla builds, 777 empty, 1,219 dressed. Patterns among the dressed (C chest, L legs, H helmet, S shield, W weapon, c cape): CLH+c 266, CLH 184, CLH+W+c 112, cape only 106, CLHSWc 77, H only 48, C only 46, CLH+W 37, CL 33, CLHS+c 25, CLHSW 24, C+H 24, W only 22. Per build: median 3 stands, 2 outfits; the same outfit at most 1 time in the median build (p90 5), all stands the same in 8 of 134 builds with two or more. The mod reads the text as 'Prefab:variant' items, comma separated, each into the first free slot that takes it (src/Villheim.Logic/Designs/StandItems.cs ApplyArmor). Tyler 2026-11-12: 'there is nothing currently hanging on any of the armorstands': every generated armor stand is dressed.",
+  "patterns": {
+   "CLHc": 266,
+   "CLH": 184,
+   "CLHWc": 112,
+   "c": 106,
+   "CLHSWc": 77,
+   "H": 48,
+   "C": 46,
+   "CLHW": 37,
+   "CL": 33,
+   "CLHSc": 25,
+   "CLHSW": 24,
+   "CH": 24,
+   "W": 22,
+   "CLc": 14,
+   "S": 11
+  },
+  "sets": {
+   "rags": {
+    "tier": 0,
+    "C": "ArmorRagsChest",
+    "L": "ArmorRagsLegs",
+    "look": "worker",
+    "corpus": 14
+   },
+   "leather": {
+    "tier": 0,
+    "C": "ArmorLeatherChest",
+    "L": "ArmorLeatherLegs",
+    "H": "HelmetLeather",
+    "look": "hunter",
+    "corpus": 35
+   },
+   "troll": {
+    "tier": 1,
+    "C": "ArmorTrollLeatherChest",
+    "L": "ArmorTrollLeatherLegs",
+    "H": "HelmetTrollLeather",
+    "c": "CapeTrollHide",
+    "look": "hunter",
+    "corpus": 60
+   },
+   "bronze": {
+    "tier": 1,
+    "C": "ArmorBronzeChest",
+    "L": "ArmorBronzeLegs",
+    "H": "HelmetBronze",
+    "look": "warrior",
+    "corpus": 49
+   },
+   "iron": {
+    "tier": 2,
+    "C": "ArmorIronChest",
+    "L": "ArmorIronLegs",
+    "H": "HelmetIron",
+    "look": "warrior",
+    "corpus": 87
+   },
+   "root": {
+    "tier": 2,
+    "C": "ArmorRootChest",
+    "L": "ArmorRootLegs",
+    "H": "HelmetRoot",
+    "look": "hunter",
+    "corpus": 40
+   },
+   "wolf": {
+    "tier": 3,
+    "C": "ArmorWolfChest",
+    "L": "ArmorWolfLegs",
+    "H": "HelmetDrake",
+    "c": "CapeWolf",
+    "look": "warrior",
+    "corpus": 57
+   },
+   "fenris": {
+    "tier": 3,
+    "C": "ArmorFenringChest",
+    "L": "ArmorFenringLegs",
+    "H": "HelmetFenring",
+    "look": "hunter",
+    "corpus": 103
+   },
+   "padded": {
+    "tier": 4,
+    "C": "ArmorPaddedCuirass",
+    "L": "ArmorPaddedGreaves",
+    "H": "HelmetPadded",
+    "c": "CapeLox",
+    "look": "warrior",
+    "corpus": 75
+   },
+   "carapace": {
+    "tier": 5,
+    "C": "ArmorCarapaceChest",
+    "L": "ArmorCarapaceLegs",
+    "H": "HelmetCarapace",
+    "c": "CapeFeather",
+    "look": "warrior",
+    "corpus": 56
+   },
+   "eitrweave": {
+    "tier": 5,
+    "C": "ArmorMageChest",
+    "L": "ArmorMageLegs",
+    "H": "HelmetMage",
+    "c": "CapeFeather",
+    "look": "lore",
+    "corpus": 65
+   },
+   "flametal": {
+    "tier": 6,
+    "C": "ArmorFlametalChest",
+    "L": "ArmorFlametalLegs",
+    "H": "HelmetFlametal",
+    "c": "CapeAsh",
+    "look": "warrior",
+    "corpus": 50
+   },
+   "ask": {
+    "tier": 6,
+    "C": "ArmorAshlandsMediumChest",
+    "L": "ArmorAshlandsMediumlegs",
+    "H": "HelmetAshlandsMediumHood",
+    "c": "CapeAsksvin",
+    "look": "hunter",
+    "corpus": 34
+   },
+   "embla": {
+    "tier": 6,
+    "C": "ArmorMageChest_Ashlands",
+    "L": "ArmorMageLegs_Ashlands",
+    "H": "HelmetMage_Ashlands",
+    "c": "CapeAsh",
+    "look": "lore",
+    "corpus": 21
+   },
+   "berserkir": {
+    "tier": 6,
+    "C": "ArmorBerserkerChest",
+    "L": "ArmorBerserkerLegs",
+    "H": "HelmetBerserkerHood",
+    "look": "warrior",
+    "corpus": 22
+   },
+   "tunic": {
+    "tier": 0,
+    "C": "ArmorTunic10",
+    "look": "worker",
+    "note": "Hildir's tunics and dresses (ArmorTunic1 to 10, ArmorDress1 to 10), worn with a pair of legs from another set (corpus ArmorTunic10 with ArmorWolfLegs and HelmetDrake 18 times)",
+    "corpus": 70
+   }
+  },
+  "capes": {
+   "0": [
+    "CapeDeerHide"
+   ],
+   "1": [
+    "CapeDeerHide",
+    "CapeTrollHide"
+   ],
+   "2": [
+    "CapeTrollHide"
+   ],
+   "3": [
+    "CapeWolf"
+   ],
+   "4": [
+    "CapeLox",
+    "CapeLinen"
+   ],
+   "5": [
+    "CapeFeather",
+    "CapeLinen"
+   ],
+   "6": [
+    "CapeAsh",
+    "CapeAsksvin"
+   ]
+  },
+  "hats": {
+   "_about": "Hildir's hats and the circlet stand alone on a helmet-only stand (H 48 in the corpus; HelmetDverger 42 alone)",
+   "0": [
+    "HelmetHat1",
+    "HelmetHat2",
+    "HelmetHat3",
+    "HelmetHat4",
+    "HelmetHat5",
+    "HelmetHat6",
+    "HelmetHat7",
+    "HelmetHat8",
+    "HelmetHat9",
+    "HelmetHat10",
+    "HelmetPointyHat",
+    "HelmetFishingHat"
+   ],
+   "5": [
+    "HelmetDverger"
+   ]
+  },
+  "tunics": [
+   "ArmorTunic1",
+   "ArmorTunic2",
+   "ArmorTunic3",
+   "ArmorTunic4",
+   "ArmorTunic5",
+   "ArmorTunic6",
+   "ArmorTunic7",
+   "ArmorTunic8",
+   "ArmorTunic9",
+   "ArmorTunic10",
+   "ArmorDress1",
+   "ArmorDress2",
+   "ArmorDress3",
+   "ArmorDress4",
+   "ArmorDress5",
+   "ArmorDress6",
+   "ArmorDress7",
+   "ArmorDress8",
+   "ArmorDress9",
+   "ArmorDress10"
+  ],
+  "leftHand": {
+   "0": [
+    "ShieldWood",
+    "ShieldWoodTower"
+   ],
+   "1": [
+    "ShieldBronzeBuckler",
+    "ShieldBoneTower"
+   ],
+   "2": [
+    "ShieldBanded",
+    "ShieldIronBuckler",
+    "ShieldIronTower"
+   ],
+   "3": [
+    "ShieldSilver",
+    "ShieldSerpentscale"
+   ],
+   "4": [
+    "ShieldBlackmetal",
+    "ShieldBlackmetalTower"
+   ],
+   "5": [
+    "ShieldCarapace",
+    "ShieldCarapaceBuckler",
+    "CrossbowArbalest"
+   ],
+   "6": [
+    "ShieldFlametal",
+    "ShieldFlametalTower"
+   ]
+  },
+  "rightHand": {
+   "warrior": {
+    "0": [
+     "Club",
+     "AxeFlint",
+     "SpearFlint"
+    ],
+    "1": [
+     "SwordBronze",
+     "MaceBronze",
+     "AtgeirBronze",
+     "SpearBronze"
+    ],
+    "2": [
+     "SwordIron",
+     "MaceIron",
+     "AtgeirIron",
+     "Battleaxe",
+     "SledgeIron"
+    ],
+    "3": [
+     "SwordSilver",
+     "MaceSilver",
+     "SpearWolfFang",
+     "BattleaxeCrystal"
+    ],
+    "4": [
+     "SwordBlackmetal",
+     "AtgeirBlackmetal",
+     "MaceNeedle"
+    ],
+    "5": [
+     "SwordMistwalker",
+     "AtgeirHimminAfl",
+     "THSwordKrom",
+     "SpearCarapace"
+    ],
+    "6": [
+     "THSwordSlayer",
+     "SwordDyrnwyn",
+     "AxeBerzerkr"
+    ]
+   },
+   "hunter": {
+    "0": [
+     "Bow",
+     "SpearFlint"
+    ],
+    "1": [
+     "BowFineWood",
+     "SpearBronze"
+    ],
+    "2": [
+     "BowHuntsman",
+     "SpearElderbark"
+    ],
+    "3": [
+     "BowDraugrFang",
+     "SpearWolfFang"
+    ],
+    "4": [
+     "BowDraugrFang",
+     "SpearChitin"
+    ],
+    "5": [
+     "BowSpineSnap",
+     "SpearCarapace"
+    ],
+    "6": [
+     "BowAshlands"
+    ]
+   },
+   "lore": {
+    "5": [
+     "StaffFireball",
+     "StaffIceShards",
+     "StaffShield"
+    ],
+    "6": [
+     "StaffGreenRoots",
+     "StaffClusterbomb"
+    ]
+   },
+   "worker": {
+    "0": [
+     "AxeStone",
+     "Hammer"
+    ],
+    "1": [
+     "AxeBronze",
+     "PickaxeBronze"
+    ],
+    "2": [
+     "AxeIron",
+     "PickaxeIron"
+    ],
+    "4": [
+     "AxeBlackMetal",
+     "PickaxeBlackMetal"
+    ]
+   }
+  },
+  "rooms": {
+   "_about": "Where armor stands go and what they show: an entry gets a cape or a working kit; a bedroom the sleeper's own kit; a hall, armory or barracks full kits (album 61 and 188: armor stands in full sets in alcoves and against hall walls).",
+   "entry": [
+    "c",
+    "CLc",
+    "CLHc",
+    "H"
+   ],
+   "bedroom": [
+    "CLHc",
+    "CLH",
+    "CLHWc",
+    "CL",
+    "C",
+    "H",
+    "CH"
+   ],
+   "hall": [
+    "CLHSWc",
+    "CLHWc",
+    "CLHc",
+    "CLHSc",
+    "CLHSW"
+   ],
+   "armory": [
+    "CLHSWc",
+    "CLHSW",
+    "CLHWc",
+    "CLHSc",
+    "CLH",
+    "W",
+    "S"
+   ],
+   "smithy": [
+    "CLH",
+    "CL",
+    "C",
+    "H",
+    "CH",
+    "S",
+    "W"
+   ],
+   "workshop": [
+    "CL",
+    "C",
+    "CLc",
+    "H"
+   ],
+   "home": [
+    "CLHc",
+    "CLH",
+    "c",
+    "CLHWc",
+    "H",
+    "C"
+   ]
+  },
+  "setsNote": "corpus: armor stands with that set's chest piece in the vanilla builds (berserkir counts both Berserkir sets; tunic counts Hildir's tunics and dresses)"
+ }
+}

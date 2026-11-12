@@ -887,7 +887,7 @@ function generate(req) {
     }
     const isTopLookout = lookout && s === storeys - 1;
     for (const e of (s === 0 ? gEdges : edges)) {
-      if (isTopLookout) { if (K.fence) b.put(K.fence, e.x, y0, e.z, e.yaw); else b.put(K.wallHalf, e.x, y0 + 0.5, e.z, e.yaw); continue; } // the fence's pivot is at its foot
+      if (isTopLookout) { railing(b, K, e.x, y0, e.z, e.yaw); continue; }
       if (open === 'all') continue;
       if (open === 'front' && e.out[1] < 0) continue;
       if (open === 'sides' && !(e.out[1] > 0)) continue;
@@ -2206,8 +2206,27 @@ function loftRail(b, K, lo, up, y0, cells) {
     if (lo.cells.has(k) || !cells.has(k)) continue;
     if (climb.some(c => (c[0] === nx && c[1] === nz) || (c[0] === x && c[1] === z))) continue;
     const ex = x + dx / 2, ez = z + dz / 2, yaw = dx ? 90 : 0;
-    if (K.fence) b.put(K.fence, ex, y0, ez, yaw); else b.put(K.wallHalf, ex, y0 + 0.5, ez, yaw);
+    railing(b, K, ex, y0, ez, yaw);
   }
+}
+
+// A rail along a 2 m edge of a raised floor or a stair well, its middle at (x, z) on the floor at y0, turned yaw (the
+// edge along the piece's local x): a 1 m post at each end and a beam on them at 1 m. Corpus builders rail their
+// balconies, galleries and towers with posts and beams (the pieces on open edges of floors 1.2 m or more over the
+// ground, by builds: wood_beam 747, wood_pole 593, wood_pole2 547, wood_wall_half 537, wood_beam_1 504, wood_fence in
+// none of the top 40; lab/shell_mine.js). Tyler (showcase review, 2026-11-11): wood_fence is "really only intended for
+// pastures, garden fences, maybe village perimeter fencing. Never for building fences atop towers, etc. and certainly
+// never indoors."
+function railing(b, K, x, y0, z, yaw, extra) {
+  const a = yaw * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a), post = K.pole1 || 'wood_pole', beam = K.beam || 'wood_beam';
+  // a post stands on the floor: an end past the floor's edge moves in along the rail (lofts of 1 m pieces)
+  const Ck = checksLib();
+  const onFloor = (px, pz) => b.pieces.some(p => !p.decor && P.piece(p.name).role === 'floor' && (c => px > c.x0 - 0.05 && px < c.x1 + 0.05 && pz > c.z0 - 0.05 && pz < c.z1 + 0.05 && Math.abs(c.y1 - y0) < 0.35)(Ck.catBox(p)));
+  for (const sg of [-1, 1]) {
+    const t = [1, 0.8, 0.6, 0.4].find(k => onFloor(x + ux * sg * k, z + uz * sg * k));
+    if (t != null) b.put(post, x + ux * sg * t, y0 + 0.5, z + uz * sg * t, 0, extra);
+  }
+  b.put(beam, x, y0 + 1.0, z, yaw, extra);
 }
 
 // Ladder pieces for one plan entry, from the floor at yLow up 'rise' metres. A wood_stepladder climbs 2 m over 2 m
@@ -2880,7 +2899,7 @@ function octagonDesign(b, K, C, o) {
       for (let k = 0; k < n; k++) {
         const t = -(n - 1) + 2 * k;
         if (i === 4 && Math.abs(t) < 1.5) continue;
-        b.put(K.fence, nx * Rf + tx * t, F, nz * Rf + tz * t, a);
+        railing(b, K, nx * Rf + tx * t, F, nz * Rf + tz * t, a); // a deck rail, posts and a beam (no pasture fence on a deck)
       }
     }
   }

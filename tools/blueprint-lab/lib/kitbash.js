@@ -1062,6 +1062,13 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     if (STATS_B) { const H = STATS_B.audit || (STATS_B.audit = {}); const k = decorB().oneWhy() + ' ' + p.name; H[k] = (H[k] || 0) + 1; }
     return no(13);
   };
+  // (a piece with no solids, or one laid on a top, is tested by its box against the loose decor already there: a feast
+  // platter, whose solids are a thin plate, went over the decorator's two stands on a table, showcase 11)
+  if (!flat && (bx.pass || !bx.sol || !bx.sol.length || mm.rest === 'anchor' || mm.rest === 'on')) for (const r of idx.near(bx, 0)) {
+    const q = r.p, o = r.b;
+    if (q === p || made.includes(q) || mine.includes(q) || !movable(q)) continue;
+    if (o.x0 < bx.x1 - 0.02 && o.x1 > bx.x0 + 0.02 && o.z0 < bx.z1 - 0.02 && o.z1 > bx.z0 + 0.02 && o.y0 < bx.y1 - 0.02 && o.y1 > bx.y0 - 0.1) mine.push(q); // (10 cm under: a stand is set onto its table's top later)
+  }
   if (flat || bx.pass || !bx.sol || !bx.sol.length) { if (!audited()) return false; for (const q of mine) displace.add(q); return true; }
   let deepest = 0, wallOwn = 0;
   for (const r of nearP(0.2)) {

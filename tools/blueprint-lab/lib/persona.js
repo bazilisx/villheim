@@ -531,6 +531,8 @@ function dressStands(b, ctx) {
     let best = null;
     for (const q of near) {
       if (q === p || /^itemstand/.test(q.name)) continue;
+      // (on furniture or structure, never on another prop: a stand went onto a feast platter, 13 cm over the table)
+      if (['misc', 'light', 'plant', 'rug', 'deco', 'clutter'].includes(P_.piece(q.name).role) && STAND_ON[q.name] == null && !/ledge|shelf/.test(q.name)) continue;
       const o = Ck.aabb(q), st = showTop(q), y1 = st != null ? st : o.y1;
       if (o.pass || o.x0 > p.x || o.x1 < p.x || o.z0 > p.z || o.z1 < p.z || y1 > p.y + 0.3 || y1 < p.y - 0.15) continue;
       if (!best || y1 > best.y) best = { x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1, y: +y1.toFixed(3) };
@@ -565,7 +567,11 @@ function dressStands(b, ctx) {
   if (WHs && WHs.settle) for (const p of b.pieces) {
     if (!p.decor || p.stacked || p.rest === 'wall' || p.rest === 'hang' || p.wclip || !/^(itemstandh|piece_chair|piece_chair0\d|piece_chest_barrel|piece_chest_wood|piece_chest|piece_chest_blackmetal|dvergrprops_stool)$/.test(p.name)) continue;
     const yy = WHs.settle(p, b.pieces, 0.15);
-    if (yy != null && p.y - yy > 0.02 && p.y - yy < 0.16) p.y = yy;
+    if (yy != null && p.y - yy > 0.02 && p.y - yy < 0.16) { p.y = yy; continue; }
+    // (a chair tucked under a table's edge settles onto the table from 15 cm up: measured from where it stands, it
+    // comes down onto the floor under it; showcase 03, 3 cm)
+    const m = WHs.attach ? WHs.attach(p, WHs.supportOf(b.pieces)) : null;
+    if (m && isFinite(m.below) && m.below > 0.02 && m.below < 0.16) p.y = +(p.y - m.below).toFixed(3);
   }
   // every armor stand dressed, by the household and the room
   for (const p of b.pieces.filter(q => /^ArmorStand/.test(q.name) && !q.info)) {

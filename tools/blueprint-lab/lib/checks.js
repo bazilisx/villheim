@@ -490,6 +490,7 @@ function passages(pieces, opts = {}) {
 // DOOR_STEP is the rise the generator builds treads to; the check fails a step over DOOR_STEP_MAX (a log across a
 // threshold stood 0.45 to 0.64 m over the ground outside it).
 const DOOR_STEP = 0.3, DOOR_STEP_MAX = 0.4;
+const PLANT_FALL = /^(Pickable_(Dandelion|Onion|Thistle|Carrot|Turnip|Mushroom)|Vineberry|Bush01|Bush02_en|RaspberryBush|BlueberryBush|CloudberryBush|shrub_2_heath)$/;
 function doorways(pieces, opts = {}) {
   const boxes = pieces.map(gameBox), near = index(boxes), out = [];
   // the game's ground: the mod sets a design's lowest pivot on the terrain (src/Villheim.Logic/Designs/Blueprints.cs,
@@ -934,6 +935,11 @@ function check(design, biome, opts = {}) {
     const fam = p => /^stone_(wall|arch|pillar)/.test(p.name) ? 'stone' : /^Piece_grausten_(wall|pillar)/i.test(p.name) ? 'grausten' : null;
     const fams = [...new Set(pieces.filter(p => !p.decor && !p.hearthStone && fam(p)).map(fam))];
     results.push({ check: 'masonry', ok: fams.length < 2, detail: fams.length < 2 ? 'one masonry family in the walls' : `walls of ${fams.join(' and ')}` });
+    // plants the game drops to the terrain (StaticPhysics without solids, read from the prefabs: lib/details.js
+    // PLANTS_FALL) standing over the ground: on a sill or a shelf they fall (showcase 05, the onion and the dandelion)
+    const G0 = Math.min(0, ...pieces.map(p => p.y));
+    const falls = pieces.filter(p => PLANT_FALL.test(p.name) && p.y > G0 + 0.3);
+    results.push({ check: 'plants held', ok: falls.length === 0, detail: falls.length ? `${falls.length} plants over the ground the game drops (${[...new Set(falls.map(p => p.name))].slice(0, 4).join(', ')})` : 'no plant the game drops stands over the ground' });
     const cb = crossedBoards(pieces);
     results.push({ check: 'crossed boards', ok: cb.length === 0, detail: cb.length ? `${cb.length} out of line with the bargeboards (${cb.slice(0, 2).join('; ')})` : 'crossed boards in line' });
   }

@@ -152,5 +152,7 @@ Room by room notes in `wow-housing-tour.md` in this folder (14 scenes, about 30 
 - **Enshrouded** (4Netplayers, https://www.4netplayers.com/en/blog/enshrouded/enshrouded-building-decoration-tips):
   columns to separate rooms; glowing blocks as small accents only; free rotation to break the grid; wood for warmth,
   stone for contrast.
-- **ESO**: no new source with pictures was read this round (the UESP housing basics page was refused through
-  WebFetch). The earlier forum notes stand.
+- **ESO**: the UESP copy of "Learn the Basics of Housing and Update 43's Home Tours"
+  (https://en.uesp.net/wiki/General:Learn_the_Basics_of_Housing_%26_Update_43%27s_Home_Tours, read in Tyler's Chrome)
+  only links to three video guides (Kalam0n, CozyCaster, JakeClips); the videos were not watched. No ESO pictures
+  were read this round; the earlier forum notes stand.

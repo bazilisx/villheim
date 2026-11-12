@@ -29,6 +29,9 @@
 //   - one main door, one roof material, heavy walls under light ones with the change at a plinth or floor line, corner
 //     posts all, none or the entry side's, carved heads in pairs, one light kind and one wood family per household
 const NODE_PR = typeof module !== 'undefined';
+// planter plants the game keeps up on a raised box (lib/details.js PLANTS_HOLD, read from the prefabs): the game's
+// StaticPhysics drops Pickable_Dandelion, Thistle, Onion, Carrot, Turnip, the red mushroom and the bushes to the terrain
+const PLANTER_HOLD = ['Pickable_Fiddlehead', 'Pickable_Mushroom_yellow', 'Pickable_Mushroom_blue', 'shrub_2'];
 let RULES = null;
 function rules() {
   if (RULES) return RULES;
@@ -148,7 +151,7 @@ function plan(ctx) {
   const K = prog.kit;
   prog.pieces = { sill: K.beam || 'wood_beam', head: K.beam || 'wood_beam', posts: K.pole1 || 'wood_pole', brace: (K.beam || 'wood_beam').replace(/^wood_beam$/, 'wood_beam_45'),
     hood: K.roof26 || 'wood_roof', shutter: 'wood_window', arch: /stone|marble|grausten/.test(K.wall || '') ? 'stone_arch' : 'darkwood_arch',
-    planter: ['Pickable_Dandelion', 'Pickable_Thistle', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead'][Math.floor(u(prog, 'plant') * 4)] };
+    planter: PLANTER_HOLD[Math.floor(u(prog, 'plant') * PLANTER_HOLD.length)] };
   // trim: corners all, none or the entry side's; the village's mode when there is one; bands on no side or the entry
   prog.corners = V ? V.corners : pickWPR(u(prog, 'corners'), cornerModes());
   const bands = (R.trim || {}).bands || { none: 0.71, some: 0.29 };

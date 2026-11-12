@@ -125,3 +125,20 @@ My recommendation to you:
 Tyler, later the same night, on the notice board and wall pieces (word for word):
 
 to clarify re your point: "Why the notice board looked wrong: its notices are signs, and the mod never wrote a sign's text when building a design, so the board showed bare planks. Signs now get their text in showcase and gallery builds and in buildings that villages put up. The stacked signs you saw are a design fault, and that goes to the helpers." this was only 5% of the issue. In some cases, the signs were all stacked and layered and smushed randomly together, not arranged intentionally at all. Some hovered away from the walls. Some were 3-stacks thick, randomly pushed in front of each other at odd positions. So the text on the noticeboards being missing was fundemntally not the issue. Signs and stands and sometimes lights that werent touching walls and were a foot or more away, as well as their random assorted layout and positioning was the issue.
+
+---
+
+Tyler, 2026-11-12, after testing build 1003-88e10c8 (word for word). Images he attached (a builder's collage of
+custom furniture made from pieces, a picture of wood_fence, a pen of wood_fence in the game, and a real roundpole
+fence) are in the private repo, `research/2026-11-12-tyler/`.
+
+confirmed with my test just now that there are items on stands, yes. Buyt to the greater issue we've been discussing, theyre both random and meaningless (a carrot and a fire pot and then another stand with three candles below it) and theyre also repeative and meaningless (the same serpenet shield. the same blackmetal long shield, the same dripping yellow two-headed axe, 800 lox pies for reason on every single damn shelf of the longhouse 2nd floor. A full raw fish on a chest next to a raspberry and a poison pot. The same raspberry + poison pot 5x in the same house. Literally 3 of the yellow dripping axes next to each other. Then others are bizarre: an axe sticking straight up on its head. A saddle halfway off a table.
+
+notably, there is nothing currently hanging on any of the armorstands. 
+
+ Whichever helper is focused on this interior design fix up should also research images or video stills that show how folks in the corpus or elsehwere make interior design elements like potion cabinets, kitchen tables, shelves, etc. 
+
+I have a link to my own Valheim folder of designs I like. Some may not fit here, others may be useful. Many can be observed and learned from. https://photos.app.goo.gl/1KpqdbRpphtxNGHF6
+
+Re: your question about wood_fence, dont use it indoors, even though the corpus finds this one true. There must be some outlier, becuase wood_fence (screenshot attached) is ill-fitting indoors. "Roundpole fence (wood_fence) is a buildable structure.
+While players can easily jump over the fence, most creatures are unable to jump and therefore will not be able to quickly follow the player. However, the Roundpole fence has low durability, making it unsuitable for substantial base defense." and Im also gong to paste a few other exmaples (including one real world example) of the fence itself so you uindertand why its not suited for indoors.

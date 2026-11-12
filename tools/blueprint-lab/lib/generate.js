@@ -1409,6 +1409,16 @@ function balcony(b, K, C, w, edges, o) {
   return false;
 }
 
+// A door torch against what shows of the wall at its height (lib/wallhang.js: a log wall shows 5 cm past its collider,
+// and a torch at the collider's face stood 4 cm off it, showcase 05), or none when the wall does not take it there.
+function doorTorchOnWall(b, q, e, ox, oz, half) {
+  const WH = typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang;
+  if (!WH) return q;
+  const t = (q.x - e.x) * (1 - Math.abs(ox)) + (q.z - e.z) * (1 - Math.abs(oz));
+  const r = WH.hang(q.name, { x: e.x + ox * half + (1 - Math.abs(ox)) * t, z: e.z + oz * half + (1 - Math.abs(oz)) * t, nx: ox, nz: oz, y: q.y }, WH.backingOf(b.pieces), { pieces: b.pieces });
+  return r ? { ...q, x: r.x, z: r.z, yaw: r.yaw, wclip: r.wclip } : null;
+}
+
 // Lights by the doors (coverage audit 2026-11-09: wall torches by the door on 47 % of the best-liked builds, 5 % of
 // ours). From d2 the front door gets a wall torch on each side on the outside face, from d3 the back door too; where
 // the biome has no wall torch yet (Meadows) a standing torch beside a door at ground level. A side that would touch
@@ -1455,7 +1465,8 @@ function doorLights(b, o) {
           const bx = q.x - ox * 0.35, bz = q.z - oz * 0.35; return bx > pb.x0 - 0.02 && bx < pb.x1 + 0.02 && bz > pb.z0 - 0.02 && bz < pb.z1 + 0.02 && q.y > pb.y0 && q.y < pb.y1; });
         if (!hit && back) { put = q; break; }
       }
-      if (put) { b.put(put.name, put.x, put.y, put.z, put.yaw, { decor: true, ds: op.back ? 3 : 2 }); n++; }
+      if (put && name) put = doorTorchOnWall(b, put, e, ox, oz, half);
+      if (put) { b.put(put.name, put.x, put.y, put.z, put.yaw, { decor: true, ds: op.back ? 3 : 2, ...(put.wclip ? { wclip: put.wclip } : {}) }); n++; }
     }
   }
   if (n) b.notes.push(`${n} lights by the doors.`);
@@ -1696,7 +1707,10 @@ function hangBraziers(b, ctx, fire) {
     const room = b.rooms.filter(r => br.x >= r.x0 - 0.5 && br.x <= r.x1 + 0.5 && br.z >= r.z0 - 0.5 && br.z <= r.z1 + 0.5 && br.y >= r.y - 0.2)
       .sort((a, c) => c.y - a.y)[0];
     if (!room) continue;
-    if (br.y >= room.y + 2.3 && Math.min(br.x - room.x0, room.x1 - br.x, br.z - room.z0, room.z1 - br.z) > 1.4 && !(fire && Math.hypot(fire.x - br.x, fire.z - br.z) < 1.5)) { used.push([br.x, br.z]); continue; }
+    // where it is, it hangs from what is over it (a 4 m room's brazier hung for a 3 m one stood 2.4 m under its roof)
+    const ceilAt = (x, z) => { let c = Infinity; for (const p of structure) { let u = Ck.underside(p, x, z); if (u == null) { const bx = Ck.aabb(p); if (['wall', 'beam'].includes(bx.info.role) && x > bx.x0 && x < bx.x1 && z > bx.z0 && z < bx.z1) u = bx.y0; } if (u != null && u > room.y + 0.5 && u < c) c = u; } return c; };
+    const c0 = ceilAt(br.x, br.z);
+    if (isFinite(c0) && c0 - 1.6 >= room.y + 2.3 && Math.min(br.x - room.x0, room.x1 - br.x, br.z - room.z0, room.z1 - br.z) > 1.4 && !(fire && Math.hypot(fire.x - br.x, fire.z - br.z) < 1.5)) { br.y = +(c0 - 1.6).toFixed(3); used.push([br.x, br.z]); continue; }
     const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2, longX = room.x1 - room.x0 >= room.z1 - room.z0;
     const L = longX ? room.x1 - room.x0 : room.z1 - room.z0;
     const spots = [0, -L / 4, L / 4, -L / 8, L / 8].map(t => (longX ? [cx + t, cz] : [cx, cz + t]));
@@ -1719,12 +1733,15 @@ function hangBraziers(b, ctx, fire) {
       br.x = +x.toFixed(3); br.z = +z.toFixed(3); br.y = +(ceil - 1.6).toFixed(3); br.yaw = 0; br.q = quat(0);
       used.push([x, z]); placed = true; break;
     }
-    if (!placed) { br.name = reaches(ctx.biome, 'Swamp') ? 'piece_groundtorch' : 'piece_groundtorch_wood'; br.y = room.y + 0.85; br.toWall = true; } // a floor torch's pivot is 0.75 m up
+    if (!placed) { br.name = reaches(ctx.biome, 'Swamp') ? 'piece_groundtorch' : 'piece_groundtorch_wood'; br.y = room.y + 0.85; br.toWall = true; } // a floor torch's pivot is 0.75 m up (set on the floor under it below)
   }
   // standing torches put back against the wall they were hung on, a little out from it
   for (const br of list) if (br.toWall) {
     const room = b.rooms.find(r => br.x >= r.x0 - 0.5 && br.x <= r.x1 + 0.5 && br.z >= r.z0 - 0.5 && br.z <= r.z1 + 0.5);
     if (room) { const cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2, d = Math.hypot(cx - br.x, cz - br.z) || 1; br.x = +(br.x + (cx - br.x) / d * 0.5).toFixed(3); br.z = +(br.z + (cz - br.z) / d * 0.5).toFixed(3); }
+    // on the floor under it (a thick stone floor's top is not the room's height)
+    const tops = structure.filter(p => P.piece(p.name).role === 'floor').map(p => Ck.catBox(p)).filter(a => br.x > a.x0 && br.x < a.x1 && br.z > a.z0 && br.z < a.z1 && a.y1 < br.y).map(a => a.y1);
+    if (tops.length) br.y = +(Math.max(...tops) + 0.653).toFixed(3); // (the standing torches stand 0.653 m under their pivot, data/piece-models.json)
     delete br.toWall;
   }
 }

@@ -136,7 +136,9 @@ namespace Villheim.Logic.Generator
                 return _engine;
             }
 
-            var engine = new Jint.Engine(options => options.TimeoutInterval(TimeSpan.FromMinutes(2)));
+            // The limit stops a script that never ends. Large s3 to s5 buildings take 90 to 120 s in this engine on a
+            // slow 2-core machine (gen-test longhouse bf s3d2, 2026-11-12), so 4 minutes leaves them room.
+            var engine = new Jint.Engine(options => options.TimeoutInterval(TimeSpan.FromMinutes(4)));
             engine.Execute(LabEngine.Script());
             _engine = engine;
             return engine;

@@ -1,0 +1,2729 @@
+{
+ "about": "Items on item stands and gear on armor stands in Tyler's vanilla corpus builds (lab/mine_stand_items.js over the unpacked blueprint corpus; counts only). Stands inside a building (a roof or floor over them). kind: lab/mine_stand_items.js kindOf. use: the nearest use piece within 3 m (kitchen, brew, smith, craft, magic, sleep, throne, dine, hearth, armor, none). tilt: the flat stand's up axis (upright, side, leaning, upside). runs: the same item on stands within 0.6 m of each other, by group size. perBuild: stands, distinct items and the largest count of one item per build. armor: outfits as sorted item lists, slot patterns (C chest, L legs, H helmet, S left hand, W right hand, c cape, u utility).",
+ "builds": 1900,
+ "withStands": 407,
+ "perBuild": {
+  "n": 407,
+  "stands": [
+   2,
+   5,
+   17,
+   63,
+   135
+  ],
+  "distinct": [
+   1,
+   2,
+   5,
+   16,
+   37
+  ],
+  "maxSame": [
+   1,
+   2,
+   6,
+   16,
+   40
+  ],
+  "distinctPerStand": [
+   0.09,
+   0.18,
+   0.43,
+   0.79,
+   1
+  ]
+ },
+ "kindMax": {
+  "mead": {
+   "builds": 91,
+   "p50": 4,
+   "p75": 8,
+   "p90": 14,
+   "max": 780
+  },
+  "food": {
+   "builds": 123,
+   "p50": 3,
+   "p75": 6,
+   "p90": 11,
+   "max": 31
+  },
+  "herbs": {
+   "builds": 80,
+   "p50": 4,
+   "p75": 12,
+   "p90": 33,
+   "max": 102
+  },
+  "tankard": {
+   "builds": 163,
+   "p50": 4,
+   "p75": 10,
+   "p90": 18,
+   "max": 224
+  },
+  "tool": {
+   "builds": 74,
+   "p50": 1,
+   "p75": 3,
+   "p90": 11,
+   "max": 49
+  },
+  "knife": {
+   "builds": 70,
+   "p50": 1,
+   "p75": 2,
+   "p90": 4,
+   "max": 13
+  },
+  "trophy": {
+   "builds": 218,
+   "p50": 4,
+   "p75": 14,
+   "p90": 28,
+   "max": 145
+  },
+  "boss": {
+   "builds": 125,
+   "p50": 1,
+   "p75": 2,
+   "p90": 6,
+   "max": 36
+  },
+  "axe-tool": {
+   "builds": 64,
+   "p50": 1,
+   "p75": 2,
+   "p90": 2,
+   "max": 6
+  },
+  "polearm": {
+   "builds": 72,
+   "p50": 2,
+   "p75": 2,
+   "p90": 5,
+   "max": 10
+  },
+  "farm": {
+   "builds": 32,
+   "p50": 1,
+   "p75": 1,
+   "p90": 2,
+   "max": 4
+  },
+  "sword": {
+   "builds": 99,
+   "p50": 1,
+   "p75": 2,
+   "p90": 6,
+   "max": 88
+  },
+  "shield": {
+   "builds": 204,
+   "p50": 3,
+   "p75": 8,
+   "p90": 21,
+   "max": 307
+  },
+  "blunt": {
+   "builds": 91,
+   "p50": 1,
+   "p75": 4,
+   "p90": 12,
+   "max": 122
+  },
+  "hat": {
+   "builds": 54,
+   "p50": 3,
+   "p75": 10,
+   "p90": 35,
+   "max": 167
+  },
+  "staff": {
+   "builds": 41,
+   "p50": 1,
+   "p75": 2,
+   "p90": 4,
+   "max": 11
+  },
+  "curio": {
+   "builds": 97,
+   "p50": 2,
+   "p75": 9,
+   "p90": 17,
+   "max": 63
+  },
+  "bow": {
+   "builds": 75,
+   "p50": 1,
+   "p75": 2,
+   "p90": 3,
+   "max": 16
+  },
+  "axe": {
+   "builds": 54,
+   "p50": 1,
+   "p75": 2,
+   "p90": 2,
+   "max": 30
+  },
+  "rawmeat": {
+   "builds": 22,
+   "p50": 3,
+   "p75": 4,
+   "p90": 5,
+   "max": 9
+  },
+  "other": {
+   "builds": 56,
+   "p50": 2,
+   "p75": 4,
+   "p90": 13,
+   "max": 38
+  },
+  "produce": {
+   "builds": 51,
+   "p50": 8,
+   "p75": 14,
+   "p90": 24,
+   "max": 149
+  },
+  "fish": {
+   "builds": 24,
+   "p50": 1,
+   "p75": 2,
+   "p90": 7,
+   "max": 15
+  },
+  "helmet": {
+   "builds": 25,
+   "p50": 1,
+   "p75": 2,
+   "p90": 3,
+   "max": 5
+  },
+  "feast": {
+   "builds": 8,
+   "p50": 1,
+   "p75": 1,
+   "p90": 2,
+   "max": 2
+  },
+  "material": {
+   "builds": 16,
+   "p50": 3,
+   "p75": 3,
+   "p90": 4,
+   "max": 5
+  },
+  "armor": {
+   "builds": 10,
+   "p50": 2,
+   "p75": 5,
+   "p90": 7,
+   "max": 7
+  },
+  "valuable": {
+   "builds": 2,
+   "p50": 4,
+   "p75": 4,
+   "p90": 4,
+   "max": 4
+  },
+  "torch": {
+   "builds": 1,
+   "p50": 1,
+   "p75": 1,
+   "p90": 1,
+   "max": 1
+  }
+ },
+ "placeKind": {
+  "table": {
+   "mead": 214,
+   "food": 598,
+   "herbs": 37,
+   "tankard": 618,
+   "polearm": 12,
+   "knife": 34,
+   "shield": 47,
+   "sword": 45,
+   "axe-tool": 16,
+   "trophy": 43,
+   "fish": 33,
+   "tool": 5,
+   "farm": 2,
+   "helmet": 9,
+   "feast": 5,
+   "rawmeat": 14,
+   "other": 29,
+   "produce": 62,
+   "curio": 30,
+   "blunt": 9,
+   "material": 2,
+   "hat": 2,
+   "bow": 7,
+   "staff": 3,
+   "boss": 2,
+   "axe": 1,
+   "valuable": 1,
+   "armor": 2
+  },
+  "wall:throne": {
+   "tool": 6,
+   "axe-tool": 5,
+   "polearm": 7,
+   "farm": 6,
+   "sword": 15,
+   "shield": 175,
+   "blunt": 5,
+   "boss": 18,
+   "trophy": 161,
+   "staff": 10,
+   "bow": 1,
+   "axe": 3,
+   "curio": 12,
+   "hat": 3,
+   "other": 3
+  },
+  "floor-or-shelf": {
+   "mead": 861,
+   "food": 545,
+   "tankard": 513,
+   "hat": 211,
+   "boss": 3,
+   "tool": 32,
+   "polearm": 9,
+   "axe": 40,
+   "curio": 366,
+   "trophy": 135,
+   "produce": 466,
+   "herbs": 326,
+   "rawmeat": 20,
+   "bow": 10,
+   "knife": 62,
+   "staff": 11,
+   "other": 99,
+   "fish": 75,
+   "helmet": 28,
+   "sword": 28,
+   "axe-tool": 20,
+   "material": 30,
+   "armor": 6,
+   "shield": 36,
+   "blunt": 90,
+   "feast": 2,
+   "farm": 3
+  },
+  "wall:kitchen": {
+   "knife": 14,
+   "shield": 83,
+   "trophy": 216,
+   "boss": 25,
+   "axe-tool": 1,
+   "fish": 16,
+   "sword": 5,
+   "staff": 3,
+   "curio": 11,
+   "armor": 2,
+   "hat": 3,
+   "tool": 4,
+   "bow": 1,
+   "food": 5,
+   "rawmeat": 12,
+   "feast": 1,
+   "polearm": 5,
+   "blunt": 55,
+   "farm": 2,
+   "material": 2,
+   "herbs": 3,
+   "tankard": 2,
+   "other": 2
+  },
+  "wall:none": {
+   "trophy": 1430,
+   "boss": 283,
+   "shield": 1462,
+   "knife": 24,
+   "polearm": 117,
+   "blunt": 252,
+   "bow": 97,
+   "farm": 17,
+   "tool": 48,
+   "axe-tool": 45,
+   "axe": 52,
+   "sword": 197,
+   "staff": 54,
+   "fish": 81,
+   "other": 88,
+   "curio": 170,
+   "hat": 27,
+   "helmet": 1,
+   "armor": 6,
+   "material": 9,
+   "tankard": 1,
+   "herbs": 11,
+   "produce": 3,
+   "rawmeat": 2
+  },
+  "wall:armor": {
+   "trophy": 406,
+   "polearm": 39,
+   "sword": 60,
+   "shield": 203,
+   "axe": 24,
+   "bow": 30,
+   "boss": 18,
+   "blunt": 35,
+   "axe-tool": 9,
+   "staff": 34,
+   "other": 15,
+   "knife": 11,
+   "tool": 10,
+   "curio": 16,
+   "hat": 6,
+   "farm": 6,
+   "fish": 5,
+   "helmet": 2,
+   "armor": 3
+  },
+  "wall:brew": {
+   "shield": 61,
+   "trophy": 46,
+   "boss": 19,
+   "blunt": 10,
+   "bow": 5,
+   "sword": 5,
+   "polearm": 3,
+   "axe-tool": 4,
+   "knife": 1,
+   "produce": 1,
+   "tool": 4,
+   "other": 3,
+   "material": 2,
+   "helmet": 1
+  },
+  "wall:dine": {
+   "shield": 117,
+   "sword": 24,
+   "axe": 7,
+   "blunt": 13,
+   "trophy": 136,
+   "bow": 16,
+   "farm": 4,
+   "fish": 12,
+   "polearm": 11,
+   "tool": 5,
+   "axe-tool": 1,
+   "staff": 6,
+   "curio": 17,
+   "hat": 2,
+   "boss": 6,
+   "helmet": 3,
+   "knife": 1,
+   "other": 18,
+   "produce": 3,
+   "food": 1,
+   "material": 2,
+   "rawmeat": 6
+  },
+  "none": {
+   "trophy": 282,
+   "hat": 408,
+   "boss": 25,
+   "tankard": 128,
+   "staff": 3,
+   "curio": 67,
+   "helmet": 2,
+   "mead": 155,
+   "tool": 164,
+   "herbs": 304,
+   "produce": 16,
+   "material": 8,
+   "knife": 4,
+   "armor": 1,
+   "shield": 51,
+   "valuable": 2,
+   "other": 49,
+   "sword": 92,
+   "food": 31,
+   "feast": 1,
+   "blunt": 331,
+   "bow": 16,
+   "polearm": 16,
+   "torch": 1
+  },
+  "wall:hearth": {
+   "farm": 2,
+   "trophy": 54,
+   "boss": 9,
+   "shield": 65,
+   "fish": 1,
+   "bow": 2,
+   "polearm": 4,
+   "curio": 8,
+   "other": 11,
+   "axe-tool": 1
+  },
+  "wall:smith": {
+   "boss": 23,
+   "axe-tool": 11,
+   "tool": 20,
+   "axe": 13,
+   "blunt": 15,
+   "farm": 9,
+   "trophy": 131,
+   "shield": 91,
+   "other": 14,
+   "staff": 12,
+   "polearm": 11,
+   "knife": 7,
+   "bow": 6,
+   "sword": 8,
+   "hat": 1,
+   "curio": 6,
+   "material": 2,
+   "helmet": 1,
+   "armor": 1
+  },
+  "seat": {
+   "tankard": 71,
+   "trophy": 27,
+   "mead": 60,
+   "sword": 2,
+   "food": 33,
+   "curio": 9,
+   "tool": 4,
+   "armor": 3,
+   "axe-tool": 1,
+   "hat": 3,
+   "herbs": 9,
+   "other": 15,
+   "fish": 1,
+   "shield": 9,
+   "knife": 10,
+   "blunt": 1,
+   "axe": 1,
+   "bow": 1,
+   "produce": 1
+  },
+  "shelf": {
+   "hat": 66,
+   "other": 17,
+   "trophy": 265,
+   "produce": 85,
+   "food": 99,
+   "fish": 35,
+   "tankard": 122,
+   "blunt": 61,
+   "staff": 6,
+   "axe-tool": 5,
+   "tool": 8,
+   "curio": 176,
+   "mead": 409,
+   "shield": 171,
+   "herbs": 192,
+   "knife": 12,
+   "helmet": 11,
+   "rawmeat": 1,
+   "material": 6,
+   "armor": 7,
+   "polearm": 4,
+   "valuable": 1,
+   "bow": 12,
+   "sword": 5,
+   "farm": 1
+  },
+  "wall:magic": {
+   "trophy": 34,
+   "boss": 11,
+   "staff": 13,
+   "blunt": 1,
+   "shield": 10,
+   "axe": 1,
+   "valuable": 1,
+   "other": 5,
+   "polearm": 2,
+   "hat": 3,
+   "curio": 4,
+   "sword": 4,
+   "bow": 2
+  },
+  "counter": {
+   "axe-tool": 8,
+   "sword": 25,
+   "blunt": 44,
+   "staff": 7,
+   "curio": 30,
+   "hat": 26,
+   "trophy": 159,
+   "boss": 30,
+   "produce": 59,
+   "food": 50,
+   "tankard": 84,
+   "herbs": 22,
+   "mead": 694,
+   "shield": 105,
+   "knife": 16,
+   "helmet": 5,
+   "material": 2,
+   "armor": 1,
+   "other": 12,
+   "rawmeat": 3,
+   "tool": 34,
+   "axe": 2,
+   "fish": 4,
+   "polearm": 4,
+   "farm": 1,
+   "bow": 7
+  },
+  "stand": {
+   "bow": 3,
+   "food": 100,
+   "rawmeat": 10,
+   "sword": 1,
+   "hat": 3,
+   "trophy": 32,
+   "produce": 281,
+   "herbs": 174,
+   "tankard": 55,
+   "shield": 132,
+   "mead": 102,
+   "curio": 26,
+   "knife": 17,
+   "material": 7,
+   "helmet": 4,
+   "tool": 3,
+   "armor": 25,
+   "fish": 10,
+   "other": 39,
+   "blunt": 5,
+   "staff": 2
+  },
+  "wall:craft": {
+   "shield": 92,
+   "boss": 17,
+   "trophy": 119,
+   "blunt": 11,
+   "knife": 1,
+   "tool": 11,
+   "staff": 2,
+   "sword": 10,
+   "hat": 5,
+   "bow": 6,
+   "axe-tool": 2,
+   "curio": 21,
+   "helmet": 1,
+   "polearm": 7,
+   "axe": 4,
+   "other": 24,
+   "material": 14,
+   "farm": 4,
+   "fish": 2
+  },
+  "wall:sleep": {
+   "boss": 15,
+   "trophy": 92,
+   "shield": 51,
+   "bow": 7,
+   "other": 6,
+   "blunt": 7,
+   "axe": 3,
+   "knife": 4,
+   "polearm": 4,
+   "axe-tool": 4,
+   "food": 2,
+   "curio": 4,
+   "sword": 7,
+   "tool": 1,
+   "staff": 1,
+   "farm": 2,
+   "herbs": 19,
+   "rawmeat": 3
+  },
+  "other": {
+   "tankard": 82,
+   "herbs": 68,
+   "food": 136,
+   "mead": 563,
+   "rawmeat": 7,
+   "staff": 9,
+   "trophy": 43,
+   "fish": 1,
+   "other": 15,
+   "hat": 28,
+   "curio": 55,
+   "shield": 49,
+   "polearm": 3,
+   "produce": 59,
+   "boss": 1,
+   "tool": 7,
+   "sword": 2,
+   "axe-tool": 2,
+   "helmet": 2,
+   "knife": 6,
+   "material": 1,
+   "blunt": 2,
+   "axe": 2
+  },
+  "station": {
+   "trophy": 40,
+   "blunt": 1,
+   "food": 21,
+   "mead": 9,
+   "tankard": 4,
+   "tool": 3,
+   "sword": 2,
+   "knife": 1,
+   "produce": 17,
+   "other": 8,
+   "material": 3,
+   "fish": 1,
+   "helmet": 3,
+   "shield": 1,
+   "polearm": 5,
+   "curio": 6,
+   "hat": 4,
+   "staff": 5,
+   "bow": 5,
+   "boss": 8,
+   "herbs": 2
+  },
+  "chest": {
+   "axe": 1,
+   "tankard": 6,
+   "shield": 10,
+   "trophy": 10,
+   "food": 5,
+   "rawmeat": 2,
+   "produce": 24,
+   "herbs": 2,
+   "mead": 13,
+   "bow": 2,
+   "other": 3
+  }
+ },
+ "kindUse": {
+  "mead": {
+   "dine": 283,
+   "brew": 139,
+   "throne": 50,
+   "none": 2123,
+   "kitchen": 162,
+   "sleep": 65,
+   "armor": 37,
+   "smith": 56,
+   "craft": 95,
+   "hearth": 15,
+   "magic": 55
+  },
+  "food": {
+   "dine": 628,
+   "throne": 102,
+   "kitchen": 207,
+   "brew": 42,
+   "none": 508,
+   "craft": 50,
+   "sleep": 22,
+   "smith": 39,
+   "armor": 20,
+   "hearth": 7,
+   "magic": 1
+  },
+  "herbs": {
+   "dine": 47,
+   "throne": 32,
+   "none": 701,
+   "craft": 38,
+   "armor": 104,
+   "brew": 23,
+   "smith": 79,
+   "sleep": 99,
+   "kitchen": 34,
+   "magic": 7,
+   "hearth": 5
+  },
+  "tankard": {
+   "dine": 609,
+   "none": 536,
+   "sleep": 57,
+   "armor": 33,
+   "throne": 119,
+   "brew": 97,
+   "smith": 61,
+   "magic": 5,
+   "craft": 37,
+   "kitchen": 128,
+   "hearth": 4
+  },
+  "tool": {
+   "throne": 6,
+   "none": 154,
+   "craft": 55,
+   "smith": 106,
+   "armor": 25,
+   "dine": 13,
+   "kitchen": 4,
+   "sleep": 1,
+   "brew": 5
+  },
+  "knife": {
+   "kitchen": 44,
+   "none": 67,
+   "dine": 48,
+   "armor": 17,
+   "craft": 5,
+   "sleep": 7,
+   "smith": 16,
+   "brew": 6,
+   "throne": 15
+  },
+  "trophy": {
+   "none": 1947,
+   "armor": 479,
+   "brew": 57,
+   "magic": 45,
+   "hearth": 147,
+   "throne": 235,
+   "kitchen": 255,
+   "craft": 152,
+   "smith": 188,
+   "dine": 240,
+   "sleep": 116
+  },
+  "boss": {
+   "none": 326,
+   "smith": 30,
+   "brew": 19,
+   "hearth": 21,
+   "throne": 18,
+   "kitchen": 26,
+   "craft": 19,
+   "armor": 18,
+   "sleep": 16,
+   "magic": 12,
+   "dine": 8
+  },
+  "axe-tool": {
+   "throne": 6,
+   "dine": 16,
+   "hearth": 7,
+   "smith": 16,
+   "none": 56,
+   "armor": 17,
+   "kitchen": 3,
+   "brew": 4,
+   "craft": 4,
+   "sleep": 5,
+   "magic": 1
+  },
+  "polearm": {
+   "throne": 7,
+   "armor": 49,
+   "dine": 24,
+   "none": 140,
+   "smith": 17,
+   "brew": 3,
+   "hearth": 4,
+   "sleep": 4,
+   "craft": 7,
+   "magic": 3,
+   "kitchen": 5
+  },
+  "farm": {
+   "throne": 6,
+   "hearth": 2,
+   "none": 18,
+   "smith": 12,
+   "dine": 6,
+   "armor": 6,
+   "craft": 4,
+   "kitchen": 3,
+   "sleep": 2
+  },
+  "sword": {
+   "throne": 16,
+   "armor": 73,
+   "dine": 67,
+   "hearth": 3,
+   "none": 320,
+   "kitchen": 8,
+   "craft": 14,
+   "brew": 5,
+   "smith": 19,
+   "magic": 5,
+   "sleep": 7
+  },
+  "shield": {
+   "throne": 181,
+   "none": 1865,
+   "brew": 66,
+   "dine": 177,
+   "hearth": 101,
+   "armor": 232,
+   "kitchen": 109,
+   "craft": 95,
+   "smith": 113,
+   "sleep": 65,
+   "magic": 17
+  },
+  "blunt": {
+   "throne": 15,
+   "hearth": 10,
+   "none": 565,
+   "dine": 22,
+   "smith": 116,
+   "armor": 76,
+   "brew": 14,
+   "craft": 30,
+   "sleep": 9,
+   "magic": 6,
+   "kitchen": 85
+  },
+  "hat": {
+   "smith": 55,
+   "none": 567,
+   "magic": 29,
+   "craft": 35,
+   "armor": 68,
+   "sleep": 7,
+   "brew": 1,
+   "dine": 13,
+   "kitchen": 11,
+   "throne": 14,
+   "hearth": 1
+  },
+  "staff": {
+   "throne": 15,
+   "none": 69,
+   "armor": 45,
+   "hearth": 2,
+   "magic": 16,
+   "craft": 2,
+   "smith": 16,
+   "dine": 9,
+   "kitchen": 4,
+   "sleep": 3
+  },
+  "curio": {
+   "hearth": 24,
+   "throne": 31,
+   "sleep": 26,
+   "none": 505,
+   "armor": 107,
+   "dine": 74,
+   "smith": 35,
+   "craft": 51,
+   "brew": 29,
+   "kitchen": 96,
+   "magic": 56
+  },
+  "bow": {
+   "none": 120,
+   "armor": 42,
+   "sleep": 7,
+   "throne": 2,
+   "dine": 23,
+   "hearth": 2,
+   "brew": 5,
+   "craft": 7,
+   "smith": 11,
+   "kitchen": 1,
+   "magic": 16
+  },
+  "axe": {
+   "dine": 8,
+   "armor": 27,
+   "none": 61,
+   "smith": 17,
+   "craft": 5,
+   "sleep": 3,
+   "throne": 3,
+   "magic": 1,
+   "kitchen": 21,
+   "brew": 8
+  },
+  "rawmeat": {
+   "throne": 5,
+   "dine": 26,
+   "none": 22,
+   "kitchen": 24,
+   "sleep": 3
+  },
+  "other": {
+   "sleep": 11,
+   "dine": 55,
+   "none": 231,
+   "armor": 35,
+   "smith": 35,
+   "brew": 5,
+   "kitchen": 23,
+   "craft": 40,
+   "magic": 15,
+   "hearth": 21,
+   "throne": 4
+  },
+  "produce": {
+   "none": 513,
+   "dine": 107,
+   "sleep": 1,
+   "hearth": 1,
+   "kitchen": 132,
+   "smith": 188,
+   "brew": 81,
+   "armor": 25,
+   "craft": 20,
+   "throne": 9
+  },
+  "fish": {
+   "dine": 110,
+   "none": 131,
+   "hearth": 5,
+   "kitchen": 19,
+   "armor": 5,
+   "smith": 2,
+   "craft": 5
+  },
+  "helmet": {
+   "sleep": 3,
+   "dine": 12,
+   "throne": 1,
+   "smith": 8,
+   "armor": 24,
+   "none": 17,
+   "craft": 6,
+   "magic": 1,
+   "brew": 1
+  },
+  "feast": {
+   "dine": 4,
+   "kitchen": 2,
+   "none": 1,
+   "armor": 1,
+   "smith": 1
+  },
+  "material": {
+   "kitchen": 6,
+   "dine": 13,
+   "none": 18,
+   "magic": 4,
+   "armor": 3,
+   "sleep": 3,
+   "throne": 3,
+   "craft": 23,
+   "smith": 12,
+   "brew": 5
+  },
+  "armor": {
+   "dine": 12,
+   "kitchen": 2,
+   "none": 24,
+   "armor": 10,
+   "smith": 8,
+   "craft": 1
+  },
+  "valuable": {
+   "magic": 3,
+   "none": 1,
+   "dine": 1
+  },
+  "torch": {
+   "none": 1
+  }
+ },
+ "kindTilt": {
+  "mead": {
+   "upright": 3077,
+   "upside": 2,
+   "side": 1
+  },
+  "food": {
+   "upright": 1610,
+   "upside": 4,
+   "side": 4
+  },
+  "herbs": {
+   "upright": 1101,
+   "leaning": 7,
+   "side": 28
+  },
+  "tankard": {
+   "upright": 1662,
+   "upside": 8,
+   "side": 1,
+   "leaning": 12
+  },
+  "trophy": {
+   "upright": 968,
+   "side": 58,
+   "leaning": 10
+  },
+  "hat": {
+   "upright": 260,
+   "side": 267,
+   "leaning": 143,
+   "upside": 81
+  },
+  "polearm": {
+   "upright": 29,
+   "side": 24
+  },
+  "knife": {
+   "upright": 156,
+   "side": 6
+  },
+  "shield": {
+   "upright": 212,
+   "upside": 13,
+   "leaning": 297,
+   "side": 89
+  },
+  "sword": {
+   "upright": 106,
+   "side": 95,
+   "leaning": 1
+  },
+  "axe-tool": {
+   "upright": 48,
+   "side": 4
+  },
+  "blunt": {
+   "upright": 259,
+   "side": 261,
+   "leaning": 24
+  },
+  "staff": {
+   "upright": 46
+  },
+  "curio": {
+   "upright": 759,
+   "leaning": 5,
+   "side": 1
+  },
+  "bow": {
+   "upright": 50,
+   "upside": 1,
+   "side": 12
+  },
+  "rawmeat": {
+   "upright": 57
+  },
+  "boss": {
+   "upright": 65,
+   "leaning": 1,
+   "side": 3
+  },
+  "tool": {
+   "upright": 44,
+   "side": 25,
+   "leaning": 187,
+   "upside": 4
+  },
+  "other": {
+   "upright": 255,
+   "side": 12,
+   "leaning": 19
+  },
+  "axe": {
+   "upright": 47
+  },
+  "produce": {
+   "upright": 1003,
+   "side": 35,
+   "leaning": 32
+  },
+  "fish": {
+   "upright": 159,
+   "side": 1
+  },
+  "helmet": {
+   "upright": 63,
+   "leaning": 1
+  },
+  "farm": {
+   "upright": 7
+  },
+  "feast": {
+   "upright": 8
+  },
+  "material": {
+   "upright": 55,
+   "side": 1,
+   "leaning": 3
+  },
+  "armor": {
+   "side": 10,
+   "upright": 35
+  },
+  "valuable": {
+   "leaning": 3,
+   "upright": 1
+  },
+  "torch": {
+   "upright": 1
+  }
+ },
+ "kindAnchor": {
+  "mead": {
+   "table": 214,
+   "floor-or-shelf": 861,
+   "other": 563,
+   "none": 155,
+   "seat": 60,
+   "station": 9,
+   "counter": 694,
+   "shelf": 409,
+   "stand": 102,
+   "chest": 13
+  },
+  "food": {
+   "table": 598,
+   "floor-or-shelf": 545,
+   "stand": 100,
+   "other": 136,
+   "shelf": 99,
+   "counter": 50,
+   "seat": 33,
+   "station": 21,
+   "none": 31,
+   "chest": 5
+  },
+  "herbs": {
+   "table": 37,
+   "other": 68,
+   "floor-or-shelf": 326,
+   "stand": 174,
+   "counter": 22,
+   "none": 304,
+   "shelf": 192,
+   "chest": 2,
+   "seat": 9,
+   "station": 2
+  },
+  "tankard": {
+   "table": 618,
+   "floor-or-shelf": 513,
+   "seat": 71,
+   "none": 128,
+   "other": 82,
+   "shelf": 122,
+   "chest": 6,
+   "counter": 84,
+   "station": 4,
+   "stand": 55
+  },
+  "trophy": {
+   "none": 282,
+   "counter": 159,
+   "other": 43,
+   "table": 43,
+   "shelf": 265,
+   "floor-or-shelf": 135,
+   "stand": 32,
+   "station": 40,
+   "seat": 27,
+   "chest": 10
+  },
+  "hat": {
+   "floor-or-shelf": 211,
+   "none": 408,
+   "shelf": 66,
+   "counter": 26,
+   "stand": 3,
+   "other": 28,
+   "table": 2,
+   "seat": 3,
+   "station": 4
+  },
+  "polearm": {
+   "table": 12,
+   "floor-or-shelf": 9,
+   "shelf": 4,
+   "other": 3,
+   "station": 5,
+   "counter": 4,
+   "none": 16
+  },
+  "knife": {
+   "table": 34,
+   "floor-or-shelf": 62,
+   "shelf": 12,
+   "counter": 16,
+   "none": 4,
+   "station": 1,
+   "stand": 17,
+   "other": 6,
+   "seat": 10
+  },
+  "shield": {
+   "table": 47,
+   "stand": 132,
+   "shelf": 171,
+   "counter": 105,
+   "other": 49,
+   "chest": 10,
+   "floor-or-shelf": 36,
+   "none": 51,
+   "station": 1,
+   "seat": 9
+  },
+  "sword": {
+   "table": 45,
+   "counter": 25,
+   "stand": 1,
+   "seat": 2,
+   "station": 2,
+   "floor-or-shelf": 28,
+   "none": 92,
+   "shelf": 5,
+   "other": 2
+  },
+  "axe-tool": {
+   "table": 16,
+   "counter": 8,
+   "shelf": 5,
+   "floor-or-shelf": 20,
+   "seat": 1,
+   "other": 2
+  },
+  "blunt": {
+   "counter": 44,
+   "station": 1,
+   "shelf": 61,
+   "table": 9,
+   "floor-or-shelf": 90,
+   "none": 331,
+   "stand": 5,
+   "seat": 1,
+   "other": 2
+  },
+  "staff": {
+   "counter": 7,
+   "other": 9,
+   "none": 3,
+   "floor-or-shelf": 11,
+   "shelf": 6,
+   "station": 5,
+   "stand": 2,
+   "table": 3
+  },
+  "curio": {
+   "counter": 30,
+   "floor-or-shelf": 366,
+   "none": 67,
+   "seat": 9,
+   "other": 55,
+   "shelf": 176,
+   "stand": 26,
+   "table": 30,
+   "station": 6
+  },
+  "bow": {
+   "stand": 3,
+   "floor-or-shelf": 10,
+   "shelf": 12,
+   "none": 16,
+   "chest": 2,
+   "counter": 7,
+   "station": 5,
+   "table": 7,
+   "seat": 1
+  },
+  "rawmeat": {
+   "stand": 10,
+   "other": 7,
+   "floor-or-shelf": 20,
+   "table": 14,
+   "shelf": 1,
+   "chest": 2,
+   "counter": 3
+  },
+  "boss": {
+   "none": 25,
+   "floor-or-shelf": 3,
+   "counter": 30,
+   "other": 1,
+   "station": 8,
+   "table": 2
+  },
+  "tool": {
+   "floor-or-shelf": 32,
+   "shelf": 8,
+   "seat": 4,
+   "table": 5,
+   "station": 3,
+   "none": 164,
+   "stand": 3,
+   "other": 7,
+   "counter": 34
+  },
+  "other": {
+   "shelf": 17,
+   "other": 15,
+   "floor-or-shelf": 99,
+   "table": 29,
+   "counter": 12,
+   "none": 49,
+   "station": 8,
+   "stand": 39,
+   "seat": 15,
+   "chest": 3
+  },
+  "axe": {
+   "floor-or-shelf": 40,
+   "chest": 1,
+   "counter": 2,
+   "seat": 1,
+   "other": 2,
+   "table": 1
+  },
+  "produce": {
+   "counter": 59,
+   "floor-or-shelf": 466,
+   "shelf": 85,
+   "stand": 281,
+   "table": 62,
+   "none": 16,
+   "station": 17,
+   "other": 59,
+   "chest": 24,
+   "seat": 1
+  },
+  "fish": {
+   "other": 1,
+   "shelf": 35,
+   "table": 33,
+   "floor-or-shelf": 75,
+   "station": 1,
+   "stand": 10,
+   "seat": 1,
+   "counter": 4
+  },
+  "helmet": {
+   "none": 2,
+   "table": 9,
+   "counter": 5,
+   "floor-or-shelf": 28,
+   "shelf": 11,
+   "stand": 4,
+   "station": 3,
+   "other": 2
+  },
+  "farm": {
+   "table": 2,
+   "floor-or-shelf": 3,
+   "counter": 1,
+   "shelf": 1
+  },
+  "feast": {
+   "table": 5,
+   "floor-or-shelf": 2,
+   "none": 1
+  },
+  "material": {
+   "floor-or-shelf": 30,
+   "none": 8,
+   "shelf": 6,
+   "counter": 2,
+   "stand": 7,
+   "station": 3,
+   "table": 2,
+   "other": 1
+  },
+  "armor": {
+   "shelf": 7,
+   "none": 1,
+   "floor-or-shelf": 6,
+   "counter": 1,
+   "stand": 25,
+   "seat": 3,
+   "table": 2
+  },
+  "valuable": {
+   "none": 2,
+   "shelf": 1,
+   "table": 1
+  },
+  "torch": {
+   "none": 1
+  }
+ },
+ "wallRoll": {
+  "tool": {
+   "0": 108,
+   "90": 1
+  },
+  "knife": {
+   "0": 62,
+   "90": 1
+  },
+  "trophy": {
+   "0": 2825
+  },
+  "boss": {
+   "0": 442,
+   "15": 2
+  },
+  "axe-tool": {
+   "0": 82,
+   "45": 1
+  },
+  "polearm": {
+   "0": 206,
+   "15": 2,
+   "45": 2
+  },
+  "farm": {
+   "0": 52
+  },
+  "sword": {
+   "0": 329,
+   "45": 5,
+   "90": 1
+  },
+  "shield": {
+   "0": 2372,
+   "15": 1,
+   "30": 32,
+   "90": 5
+  },
+  "blunt": {
+   "0": 404
+  },
+  "axe": {
+   "0": 107
+  },
+  "bow": {
+   "0": 171,
+   "90": 2
+  },
+  "staff": {
+   "0": 135
+  },
+  "fish": {
+   "0": 117
+  },
+  "other": {
+   "0": 189
+  },
+  "curio": {
+   "0": 269
+  },
+  "hat": {
+   "0": 50
+  },
+  "helmet": {
+   "0": 9
+  },
+  "armor": {
+   "0": 12
+  },
+  "valuable": {
+   "0": 1
+  },
+  "material": {
+   "0": 31
+  },
+  "tankard": {
+   "0": 3
+  },
+  "food": {
+   "0": 8
+  },
+  "rawmeat": {
+   "0": 23
+  },
+  "feast": {
+   "0": 1
+  },
+  "produce": {
+   "0": 7
+  },
+  "herbs": {
+   "0": 33
+  }
+ },
+ "runs": {
+  "mead": {
+   "1": 1239,
+   "2": 199,
+   "3": 86,
+   "4": 29,
+   "5": 14,
+   "6+": 81
+  },
+  "food": {
+   "1": 1010,
+   "2": 53,
+   "3": 46,
+   "4": 24,
+   "5": 16,
+   "6+": 23
+  },
+  "herbs": {
+   "1": 564,
+   "2": 12,
+   "3": 14,
+   "4": 36,
+   "5": 5,
+   "6+": 30
+  },
+  "tankard": {
+   "1": 897,
+   "2": 66,
+   "3": 22,
+   "4": 18,
+   "5": 14,
+   "6+": 46
+  },
+  "tool": {
+   "1": 300,
+   "2": 9,
+   "3": 15,
+   "6+": 1
+  },
+  "knife": {
+   "1": 183,
+   "2": 4,
+   "3": 3,
+   "4": 2,
+   "5": 1,
+   "6+": 2
+  },
+  "trophy": {
+   "1": 2408,
+   "2": 77,
+   "3": 37,
+   "4": 77,
+   "5": 13,
+   "6+": 47
+  },
+  "boss": {
+   "1": 497,
+   "2": 2,
+   "6+": 2
+  },
+  "axe-tool": {
+   "1": 125,
+   "2": 5
+  },
+  "polearm": {
+   "1": 198,
+   "2": 16,
+   "3": 2,
+   "4": 1,
+   "5": 2,
+   "6+": 2
+  },
+  "farm": {
+   "1": 55,
+   "4": 1
+  },
+  "sword": {
+   "1": 305,
+   "2": 15,
+   "3": 13,
+   "4": 9,
+   "5": 2,
+   "6+": 9
+  },
+  "shield": {
+   "1": 2033,
+   "2": 23,
+   "3": 4,
+   "4": 8,
+   "5": 21,
+   "6+": 42
+  },
+  "blunt": {
+   "1": 644,
+   "2": 24,
+   "3": 1,
+   "4": 11,
+   "5": 2,
+   "6+": 22
+  },
+  "hat": {
+   "1": 757,
+   "2": 17,
+   "3": 2,
+   "4": 1
+  },
+  "staff": {
+   "1": 162,
+   "2": 6,
+   "3": 1,
+   "4": 1
+  },
+  "curio": {
+   "1": 772,
+   "2": 25,
+   "3": 8,
+   "4": 6,
+   "5": 1,
+   "6+": 11
+  },
+  "bow": {
+   "1": 197,
+   "2": 1,
+   "3": 2,
+   "4": 4,
+   "5": 3
+  },
+  "axe": {
+   "1": 119,
+   "2": 1,
+   "5": 1,
+   "6+": 1
+  },
+  "rawmeat": {
+   "1": 42,
+   "3": 2,
+   "4": 4,
+   "6+": 2
+  },
+  "other": {
+   "1": 290,
+   "2": 9,
+   "3": 3,
+   "4": 4,
+   "5": 2,
+   "6+": 16
+  },
+  "produce": {
+   "1": 61,
+   "2": 25,
+   "3": 15,
+   "4": 22,
+   "5": 11,
+   "6+": 64
+  },
+  "fish": {
+   "1": 151,
+   "2": 8,
+   "3": 9,
+   "4": 5,
+   "5": 4,
+   "6+": 5
+  },
+  "helmet": {
+   "1": 64,
+   "2": 2,
+   "5": 1
+  },
+  "feast": {
+   "1": 9
+  },
+  "material": {
+   "1": 62,
+   "2": 3,
+   "3": 6,
+   "4": 1
+  },
+  "armor": {
+   "1": 44,
+   "2": 1,
+   "5": 1,
+   "6+": 1
+  },
+  "valuable": {
+   "1": 2,
+   "3": 1
+  },
+  "torch": {
+   "1": 1
+  }
+ },
+ "armor": {
+  "stands": 1996,
+  "empty": 777,
+  "full": 477,
+  "mixed": 282,
+  "ctx": {
+   "armor": 701,
+   "kitchen": 19,
+   "none": 294,
+   "throne": 42,
+   "magic": 15,
+   "craft": 27,
+   "smith": 35,
+   "dine": 33,
+   "sleep": 26,
+   "hearth": 20,
+   "brew": 7
+  },
+  "pattern": {
+   "CLH..c.": 266,
+   "CLH....": 184,
+   "CLH.Wc.": 112,
+   ".....c.": 106,
+   "CLHSWc.": 77,
+   "..H....": 48,
+   "C......": 46,
+   "CLH.W..": 37,
+   "CL.....": 33,
+   "CLHS.c.": 25,
+   "CLHSW..": 24,
+   "C.H....": 24,
+   "....W..": 22,
+   "CL...c.": 14,
+   "...S...": 11,
+   "...S.c.": 8,
+   "C....c.": 7,
+   "..H..c.": 5,
+   "...SW..": 5,
+   "CLHS...": 4,
+   "....Wc.": 4,
+   "C.H..c.": 4,
+   ".L...c.": 3,
+   "CL.SWc.": 3,
+   "CL..Wc.": 2,
+   "CLHSWcu": 2,
+   "..H.W..": 2,
+   "CL..W..": 2,
+   "CL.S...": 2,
+   ".LH..c.": 1,
+   "C...W..": 1,
+   ".L.....": 1,
+   ".LH....": 1,
+   "C.H.Wc.": 1,
+   "..H.Wc.": 1,
+   "CL.SW..": 1,
+   "C.H.Wcu": 1,
+   "CLH.Wcu": 1,
+   "CLHS.cu": 1,
+   "C..SWc.": 1,
+   "CL.S.c.": 1,
+   "C.H.W..": 1
+  },
+  "slotItems": {
+   "0": {
+    "ArmorRootChest": 40,
+    "ArmorTrollLeatherChest": 60,
+    "ArmorFenringChest": 103,
+    "ArmorPaddedCuirass": 75,
+    "ArmorWolfChest": 57,
+    "ArmorMageChest": 65,
+    "ArmorCarapaceChest": 56,
+    "ArmorIronChest": 87,
+    "ArmorBronzeChest": 49,
+    "ArmorRagsChest": 14,
+    "ArmorLeatherChest": 35,
+    "ArmorBerserkerUndeadChest": 12,
+    "ArmorFlametalChest": 50,
+    "ArmorBerserkerChest": 10,
+    "bearchest2": 1,
+    "warlordchest": 1,
+    "stjudechest": 1,
+    "samuraichest": 1,
+    "frostmagechest": 1,
+    "chiefchest": 1,
+    "valkchest": 1,
+    "sven2chest": 1,
+    "ArmorTunic7": 3,
+    "ArmorTunic10": 33,
+    "ArmorDress5": 4,
+    "ArmorHarvester2": 2,
+    "ArmorTunic6": 3,
+    "ArmorSpellSlingerChest_Mistlands_TW": 1,
+    "ArmorMageChest_Ashlands": 21,
+    "ArmorAshlandsMediumChest": 34,
+    "wschest": 2,
+    "ArmorTunic3": 5,
+    "ArmorTunic9": 4,
+    "ArmorDress10": 4,
+    "ArmorDress7": 4,
+    "ArmorTunic4": 3,
+    "ArmorDress4": 4,
+    "ArmorTunic1": 2,
+    "ArmorTunic5": 4,
+    "ArmorTunic2": 2,
+    "ArmorDress2": 3,
+    "ArmorDress1": 2,
+    "ArmorDress3": 2,
+    "ArmorDress6": 3,
+    "BestialRobes": 1,
+    "ArmorHarvester1": 3,
+    "ArmorTunic8": 3,
+    "ArmorNobleChest": 1,
+    "ArmorDress9": 1,
+    "ArmorBarbarianBronzeChestJD": 1,
+    "ArmorBlackmetalgarbChest": 1
+   },
+   "1": {
+    "ArmorRootLegs": 36,
+    "ArmorTrollLeatherLegs": 69,
+    "ArmorFenringLegs": 104,
+    "ArmorPaddedGreaves": 73,
+    "ArmorWolfLegs": 85,
+    "ArmorMageLegs": 61,
+    "ArmorCarapaceLegs": 57,
+    "ArmorIronLegs": 77,
+    "ArmorBronzeLegs": 44,
+    "ArmorRagsLegs": 12,
+    "ArmorLeatherLegs": 37,
+    "ArmorBerserkerUndeadLegs": 11,
+    "ArmorFlametalLegs": 50,
+    "ArmorBerserkerLegs": 9,
+    "bearlegs2": 1,
+    "warlordlegs": 1,
+    "stjudelegs": 1,
+    "samurailegs": 1,
+    "frostmagelegs": 1,
+    "chieflegs": 1,
+    "valklegs": 1,
+    "sven2legs": 1,
+    "ArmorSpellslingerLegs_Mistlands_TW": 1,
+    "ArmorMageLegs_Ashlands": 23,
+    "ArmorAshlandsMediumlegs": 33,
+    "wslegs": 2,
+    "ArmorNobleLegs": 1,
+    "ArmorWarriorLegs": 1,
+    "ArmorBarbarianBronzeLegsJD": 1,
+    "ArmorBlackmetalgarbLegs": 1,
+    "ArmorLegsBoarHTD": 1
+   },
+   "2": {
+    "HelmetRoot": 34,
+    "HelmetTrollLeather": 49,
+    "HelmetFenring": 75,
+    "HelmetPadded": 77,
+    "HelmetDrake": 88,
+    "HelmetMage": 96,
+    "HelmetCarapace": 67,
+    "HelmetIron": 48,
+    "HelmetBronze": 39,
+    "HelmetOdin": 7,
+    "HelmetLeather": 27,
+    "HelmetDverger": 48,
+    "HelmetBerserkerUndead": 11,
+    "HelmetFlametal": 50,
+    "HelmetBerserkerHood": 11,
+    "bearhelm2": 1,
+    "warlordhelm": 1,
+    "stjudehelm": 1,
+    "samuraihelm": 1,
+    "frostmagehelm": 1,
+    "chiefhelmboar": 1,
+    "valkhelm": 1,
+    "sven2": 1,
+    "HelmetAshlandsMediumHood": 33,
+    "HelmetHat9": 4,
+    "HelmetHat10": 3,
+    "HelmetPointyHat": 3,
+    "HelmetMage_Ashlands": 20,
+    "HelmetSpellslinger_Mistlands_TW": 1,
+    "HelmetSpellslinger_Surtr_TW": 1,
+    "HelmetHat7": 2,
+    "HelmetFishingHat": 2,
+    "HelmetYule": 1,
+    "HelmetHat6": 2,
+    "HelmetHat2": 3,
+    "HelmetHat4": 3,
+    "HelmetHat3": 1,
+    "TamingHat": 1,
+    "HelmetMidsummerCrown": 2,
+    "HelmetHat1": 2,
+    "ArmorNobleHelmet": 1,
+    "ArmorBarbarianBronzeHelmetJD": 1,
+    "ArmorWandererHelmet": 1
+   },
+   "3": {
+    "ShieldWood": 20,
+    "ShieldBanded": 10,
+    "ShieldBronzeBuckler": 16,
+    "ShieldIronTower": 11,
+    "ShieldSilver": 15,
+    "ShieldBlackmetal": 8,
+    "ShieldCarapace": 19,
+    "CrossbowRipperLightning": 1,
+    "ShieldSerpentscale": 15,
+    "ShieldBlackmetalTower": 8,
+    "CrossbowArbalest": 10,
+    "ShieldCarapaceBuckler": 2,
+    "AxeEarly": 1,
+    "ShieldBoneTower": 5,
+    "AxeBerzerkrLightning": 1,
+    "ShieldFlametal": 6,
+    "ShieldIronBuckler": 5,
+    "PickaxeIron": 1,
+    "ShieldWoodTower": 1,
+    "ShieldFlametalTower": 3,
+    "CrossbowRipperNature": 1,
+    "AxeBerzerkr": 3,
+    "BattleaxeCrystal": 1,
+    "AxeBerzerkrBlood": 1,
+    "AxeBerzerkrNature": 1
+   },
+   "4": {
+    "SpearFlint": 5,
+    "SledgeStagbreaker": 8,
+    "BowFineWood": 11,
+    "SpearBronze": 5,
+    "SledgeIron": 6,
+    "BowHuntsman": 15,
+    "AtgeirBlackmetal": 13,
+    "MaceNeedle": 11,
+    "BowDraugrFang": 19,
+    "AtgeirHimminAfl": 12,
+    "StaffFireball": 13,
+    "BowAshlandsStorm": 3,
+    "BattleaxeCrystal": 8,
+    "StaffIceShards": 4,
+    "SledgeDemolisher": 2,
+    "StaffShield": 6,
+    "MaceSilver": 7,
+    "THSwordKrom": 6,
+    "SwordMistwalker": 12,
+    "BowSpineSnap": 6,
+    "Bow": 2,
+    "MaceBronze": 3,
+    "SwordBlackmetal": 8,
+    "SpearElderbark": 4,
+    "StaffVulkarion_TW": 1,
+    "BattleaxeBlackmetal": 2,
+    "StaffRedTroll": 1,
+    "AxeFlint": 4,
+    "SwordBronze": 5,
+    "Hammer": 5,
+    "SpearSplitner_Lightning": 1,
+    "SwordNiedhoggLightning": 2,
+    "SpearSplitner": 3,
+    "SwordIron": 12,
+    "THSwordSlayer": 7,
+    "ShieldBronzeBuckler": 1,
+    "AxeBronze": 1,
+    "THSwordSlayerLightning": 2,
+    "THSwordSlayerBlood": 3,
+    "StaffClusterbomb": 2,
+    "PlanHammer": 1,
+    "AxeIron": 5,
+    "StaffGreenRoots": 3,
+    "SpearCarapace": 14,
+    "SpearWolfFang": 4,
+    "AtgeirIron": 5,
+    "Lantern": 2,
+    "SwordSilver": 6,
+    "Club": 1,
+    "Battleaxe": 5,
+    "AtgeirBronze": 1,
+    "Torch": 1,
+    "el_AdvancedTamingTool": 1,
+    "MaceEldnerLightning": 1,
+    "MaceEldnerNature": 1,
+    "MaceIron": 1,
+    "BowAshlandsRoot": 1,
+    "KnifeSkollAndHati": 1,
+    "SwordNiedhoggNature": 1,
+    "StaffSkeleton": 1,
+    "SwordDyrnwyn": 1,
+    "AxeBlackMetal": 1,
+    "KnifeChitin": 1
+   },
+   "5": {
+    "CapeTrollHide": 70,
+    "CapeLox": 89,
+    "CapeWolf": 119,
+    "CapeFeather": 102,
+    "CapeDeerHide": 47,
+    "CapeOdin": 12,
+    "CapeLinen": 123,
+    "CapeAsh": 43,
+    "CapeAsksvin": 35,
+    "CapeDvergr": 1,
+    "CapeLeech": 1,
+    "ArmorNobleCape": 1,
+    "ArmorBarbarianCapeJD": 1,
+    "ArmorPlateCape": 1,
+    "ArmorShoulderBoarHTD": 1
+   },
+   "6": {
+    "BeltStrength": 4,
+    "CalmingGloves": 1
+   }
+  },
+  "outfits": {
+   "HelmetDverger": 42,
+   "CapeLinen": 42,
+   "ArmorFenringChest,ArmorFenringLegs,CapeLinen,HelmetMage": 31,
+   "ArmorFenringChest,ArmorFenringLegs,HelmetFenring": 25,
+   "ArmorMageChest,ArmorMageLegs,CapeFeather,HelmetMage": 23,
+   "CapeLox": 21,
+   "CapeFeather": 19,
+   "ArmorWolfChest,ArmorWolfLegs,CapeWolf,HelmetDrake": 18,
+   "ArmorTunic10,ArmorWolfLegs,HelmetDrake": 18,
+   "ArmorTrollLeatherChest,ArmorTrollLeatherLegs,CapeTrollHide,HelmetTrollLeather": 16,
+   "ArmorPaddedCuirass,ArmorPaddedGreaves,HelmetPadded": 15,
+   "ArmorIronChest,ArmorIronLegs,HelmetIron": 15,
+   "ArmorAshlandsMediumChest,ArmorAshlandsMediumlegs,CapeAsksvin,HelmetAshlandsMediumHood": 15,
+   "CapeWolf": 15,
+   "ArmorPaddedCuirass,ArmorPaddedGreaves,CapeLox,HelmetPadded": 13,
+   "ArmorCarapaceChest,ArmorCarapaceLegs,HelmetCarapace": 13,
+   "ArmorFlametalChest,ArmorFlametalLegs,CapeAsh,HelmetFlametal": 13,
+   "ArmorRootChest,ArmorRootLegs,HelmetRoot": 12,
+   "ArmorIronChest,ArmorIronLegs,HelmetCarapace": 11,
+   "ArmorTunic10,ArmorWolfLegs,CapeLinen,HelmetDrake": 10,
+   "ArmorMageChest,ArmorMageLegs,CapeFeather,HelmetMage,StaffFireball": 8,
+   "CapeWolf,ShieldCarapace": 8,
+   "ArmorFenringChest,ArmorFenringLegs,CapeWolf,HelmetFenring": 8,
+   "ArmorFlametalChest,ArmorFlametalLegs,HelmetFlametal": 8,
+   "ArmorLeatherChest,ArmorLeatherLegs,CapeDeerHide,HelmetLeather": 8,
+   "ArmorIronChest,ArmorIronLegs,CapeWolf,HelmetPadded": 8,
+   "ArmorLeatherChest,ArmorLeatherLegs": 8,
+   "ArmorTrollLeatherChest,ArmorTrollLeatherLegs": 8,
+   "ArmorMageChest_Ashlands,ArmorMageLegs_Ashlands,HelmetMage_Ashlands": 7,
+   "ArmorTunic6": 7,
+   "ArmorFenringChest,ArmorFenringLegs,BowDraugrFang,HelmetFenring": 6,
+   "ArmorBerserkerChest,ArmorBerserkerLegs,HelmetBerserkerHood": 6,
+   "ArmorBerserkerUndeadChest,ArmorBerserkerUndeadLegs,HelmetBerserkerUndead": 6,
+   "ArmorMageChest_Ashlands,ArmorMageLegs_Ashlands,CapeAsksvin,HelmetMage_Ashlands": 6,
+   "ArmorCarapaceChest,ArmorCarapaceLegs,CapeFeather,HelmetCarapace": 6,
+   "CapeDeerHide": 6,
+   "ArmorMageChest,ArmorMageLegs,HelmetMage": 5,
+   "ArmorBronzeChest,ArmorBronzeLegs,CapeTrollHide,HelmetBronze": 5,
+   "ArmorAshlandsMediumChest,ArmorAshlandsMediumlegs,HelmetAshlandsMediumHood": 5,
+   "ArmorAshlandsMediumChest,ArmorAshlandsMediumlegs,CapeAsksvin,CrossbowArbalest,HelmetAshlandsMediumHood": 5,
+   "ArmorIronChest,ArmorIronLegs,CapeTrollHide,HelmetIron": 5,
+   "ArmorDress10": 5,
+   "ArmorIronChest,ArmorIronLegs,HelmetPadded": 5,
+   "CapeAsh": 5,
+   "ArmorCarapaceChest,ArmorCarapaceLegs,CapeWolf,HelmetCarapace": 4,
+   "ArmorTrollLeatherChest,ArmorTrollLeatherLegs,BowFineWood,CapeTrollHide,HelmetTrollLeather": 4,
+   "ArmorBronzeChest,ArmorBronzeLegs,HelmetBronze,ShieldBronzeBuckler,SpearBronze": 4,
+   "CapeWolf,HelmetDverger": 4,
+   "CapeOdin": 4,
+   "ArmorCarapaceChest,ArmorCarapaceLegs,CapeLox,HelmetCarapace": 4,
+   "ShieldWood": 4,
+   "ArmorBronzeChest,ArmorBronzeLegs,HelmetBronze": 4,
+   "ArmorIronChest": 4,
+   "ArmorRootChest,ArmorRootLegs,CapeTrollHide,HelmetRoot": 4,
+   "ArmorDress7": 4,
+   "ArmorFlametalChest,ArmorFlametalLegs,CapeAsh,HelmetFlametal,SpearCarapace": 4,
+   "ArmorDress5": 4,
+   "ArmorFenringChest,ArmorFenringLegs,CapeFeather,HelmetFenring": 4,
+   "ArmorDress4": 4,
+   "ArmorDress2": 4,
+   "ArmorDress6": 4,
+   "ArmorDress3": 4,
+   "ArmorIronChest,ArmorIronLegs,CapeWolf,HelmetPadded,ShieldSerpentscale,SwordIron": 4,
+   "ArmorCarapaceChest,ArmorCarapaceLegs,AxeIron,CapeLinen,HelmetCarapace,ShieldWood": 4,
+   "ArmorWolfChest,ArmorWolfLegs,HelmetDrake": 4,
+   "ArmorFlametalChest,ArmorFlametalLegs,HelmetFlametal,THSwordSlayer": 4,
+   "ArmorMageChest,ArmorMageLegs,CapeFeather,HelmetMage,ShieldBronzeBuckler,SpearCarapace": 4,
+   "ArmorMageChest,ArmorMageLegs,CapeFeather,HelmetMage,SpearCarapace": 4,
+   "ArmorRagsChest,ArmorRagsLegs,CapeOdin,HelmetOdin,ShieldWood,SpearFlint": 3,
+   "ArmorLeatherChest,ArmorLeatherLegs,CapeDeerHide,HelmetLeather,ShieldBanded,SledgeStagbreaker": 3,
+   "ArmorIronChest,ArmorIronLegs,HelmetIron,ShieldIronTower,SledgeIron": 3,
+   "ArmorRootChest,ArmorRootLegs,BowHuntsman,CapeLinen,HelmetRoot": 3,
+   "ArmorWolfChest,ArmorWolfLegs,AtgeirBlackmetal,HelmetDrake,ShieldSilver": 3,
+   "ArmorPaddedCuirass,ArmorPaddedGreaves,CapeLox,HelmetPadded,MaceNeedle,ShieldBlackmetal": 3,
+   "ArmorCarapaceChest,ArmorCarapaceLegs,AtgeirHimminAfl,CapeWolf,HelmetCarapace": 3,
+   "ArmorBronzeChest,ArmorBronzeLegs,CapeLinen,HelmetBronze,ShieldCarapace,SwordMistwalker": 3,
+   "AxeFlint": 3,
+   "SwordBronze": 3,
+   "ArmorIronChest,HelmetIron": 3,
+   "ArmorWolfChest,HelmetDrake": 3,
+   "ArmorTrollLeatherChest": 3,
+   "ArmorBronzeChest": 3,
+   "ArmorCarapaceChest,ArmorCarapaceLegs,CapeLinen,HelmetMage,ShieldSerpentscale,SwordMistwalker": 3,
+   "ArmorTrollLeatherChest,ArmorTrollLeatherLegs,HelmetTrollLeather": 3,
+   "ArmorLeatherChest": 3,
+   "ArmorFenringChest,ArmorFenringLegs": 3,
+   "ArmorDress9": 3,
+   "ArmorHarvester2": 3,
+   "ArmorPaddedCuirass,ArmorPaddedGreaves,BowDraugrFang,CapeLox,HelmetFenring,ShieldIronTower": 3,
+   "ArmorFlametalChest,ArmorFlametalLegs,CapeFeather,HelmetFlametal": 3,
+   "CapeTrollHide": 3,
+   "CapeAsksvin": 3,
+   "ArmorBronzeChest,ArmorBronzeLegs,HelmetLeather": 3,
+   "ArmorWolfChest,ArmorWolfLegs,CapeWolf": 3,
+   "ArmorRagsChest,ArmorRagsLegs": 3,
+   "ArmorBronzeChest,ArmorBronzeLegs,CapeLox,HelmetBronze": 2,
+   "ArmorBerserkerUndeadChest,ArmorBerserkerUndeadLegs,CapeLox,HelmetBerserkerUndead": 2,
+   "ArmorFenringChest,ArmorFenringLegs,BowDraugrFang,CapeFeather,HelmetFenring": 2,
+   "ArmorWolfChest,ArmorWolfLegs,BattleaxeCrystal,CapeFeather,HelmetCarapace": 2,
+   "ArmorPaddedCuirass,ArmorPaddedGreaves,AtgeirHimminAfl,CapeLox,HelmetDrake,ShieldSerpentscale": 2,
+   "ArmorFenringChest,ArmorFenringLegs,AtgeirHimminAfl,CapeFeather,HelmetFenring": 2,
+   "ArmorCarapaceChest,ArmorCarapaceLegs,CapeFeather,HelmetCarapace,ShieldCarapaceBuckler": 2,
+   "ArmorWolfChest,ArmorWolfLegs,BowDraugrFang,CapeWolf,HelmetDrake,ShieldSilver": 2,
+   "ArmorPaddedCuirass,ArmorPaddedGreaves,HelmetPadded,ShieldIronTower,SwordBlackmetal": 2,
+   "AtgeirBlackmetal": 2,
+   "ArmorTrollLeatherChest,ArmorTrollLeatherLegs,BowSpineSnap,CapeTrollHide,HelmetTrollLeather": 2,
+   "ShieldBronzeBuckler": 2,
+   "ArmorFlametalChest,ArmorFlametalLegs,CapeAsh,HelmetFlametal,THSwordSlayer": 2,
+   "ArmorBronzeChest,HelmetBronze": 2,
+   "ArmorBronzeChest,ArmorBronzeLegs,CapeDeerHide,HelmetBronze": 2,
+   "ArmorMageChest,ArmorMageLegs,CapeLinen,HelmetMage,StaffClusterbomb": 2,
+   "StaffShield": 2,
+   "ArmorLeatherChest,ArmorLeatherLegs,HelmetLeather": 2,
+   "ArmorWolfChest,ArmorWolfLegs,BowDraugrFang,HelmetDrake": 2,
+   "ArmorRootChest": 2,
+   "ArmorLeatherLegs,ArmorTunic7": 2,
+   "ArmorMageChest,ArmorMageLegs,HelmetMage,StaffGreenRoots": 2,
+   "ArmorTunic3": 2,
+   "ArmorTrollLeatherChest,ArmorTrollLeatherLegs,BowHuntsman,CapeTrollHide,HelmetTrollLeather": 2,
+   "ArmorMageChest,ArmorMageLegs,CapeLinen,HelmetMage": 2,
+   "THSwordKrom": 2,
+   "ShieldWood,SpearWolfFang": 2,
+   "ArmorDress8": 2,
+   "ArmorMageChest_Ashlands,ArmorMageLegs_Ashlands": 2,
+   "ArmorDress1": 2,
+   "ArmorCarapaceChest,ArmorCarapaceLegs,AtgeirBlackmetal,CapeLox,HelmetCarapace": 2,
+   "ArmorIronLegs,ArmorRootChest,Battleaxe,CapeLinen,HelmetFenring,ShieldBlackmetalTower": 2,
+   "ArmorWolfChest,ArmorWolfLegs,CapeWolf,HelmetDrake,ShieldBoneTower,SwordSilver": 2,
+   "ShieldFlametalTower": 2,
+   "ArmorFenringLegs,ArmorRootChest,ShieldFlametal": 2,
+   "ArmorBronzeChest,ArmorBronzeLegs,AxeBerzerkr,CapeDeerHide,HelmetBronze": 2,
+   "HelmetCarapace": 2,
+   "ArmorCarapaceChest,ArmorCarapaceLegs": 2,
+   "ArmorLeatherChest,ArmorLeatherLegs,CapeDeerHide,HelmetLeather,ShieldWood": 2,
+   "ArmorRootChest,ArmorRootLegs,CapeLox,HelmetRoot": 2,
+   "ArmorIronChest,ArmorIronLegs,CapeLox,HelmetIron,ShieldIronTower,SwordIron": 2,
+   "ArmorFenringChest,ArmorFenringLegs,CapeLox,HelmetFenring,ShieldBanded,SpearElderbark": 2,
+   "ArmorFenringChest,ArmorFenringLegs,CapeLox,HelmetFenring": 2,
+   "ArmorPaddedCuirass,ArmorPaddedGreaves,CapeWolf,HelmetPadded": 2,
+   "ArmorMageChest_Ashlands,ArmorMageLegs_Ashlands,CapeFeather,HelmetMage_Ashlands": 2,
+   "ArmorMageChest_Ashlands,ArmorMageLegs_Ashlands,CapeAsh,HelmetMage_Ashlands": 2,
+   "ArmorTrollLeatherLegs,ArmorTunic3,CapeLinen,HelmetHat1": 2,
+   "Battleaxe": 2,
+   "ArmorIronChest,ArmorIronLegs,BowHuntsman,CapeWolf,HelmetIron": 2,
+   "BowSpineSnap": 2,
+   "ArmorIronChest,ArmorPaddedGreaves,CapeLox,HelmetPadded": 2,
+   "ArmorIronChest,ArmorIronLegs,CapeDeerHide,HelmetDrake": 1,
+   "ArmorFlametalChest,ArmorFlametalLegs,CapeWolf,HelmetFlametal": 1,
+   "ArmorRootChest,ArmorRootLegs,BowAshlandsStorm,CapeAsh,HelmetRoot": 1,
+   "CrossbowRipperLightning,bearchest2,bearhelm2,bearlegs2": 1
+  },
+  "perBuild": {
+   "n": 194,
+   "stands": [
+    3,
+    8,
+    16
+   ],
+   "distinct": [
+    2,
+    5,
+    12
+   ],
+   "maxSame": [
+    1,
+    2,
+    5
+   ],
+   "allSame": 8,
+   "multi": 134
+  }
+ },
+ "kindMaxHomes": {
+  "mead": {
+   "builds": 21,
+   "p50": 4,
+   "p75": 6,
+   "p90": 8,
+   "max": 11
+  },
+  "food": {
+   "builds": 29,
+   "p50": 2,
+   "p75": 3,
+   "p90": 6,
+   "max": 11
+  },
+  "herbs": {
+   "builds": 12,
+   "p50": 2,
+   "p75": 4,
+   "p90": 6,
+   "max": 8
+  },
+  "tankard": {
+   "builds": 43,
+   "p50": 2,
+   "p75": 6,
+   "p90": 8,
+   "max": 16
+  },
+  "tool": {
+   "builds": 9,
+   "p50": 1,
+   "p75": 1,
+   "p90": 17,
+   "max": 17
+  },
+  "knife": {
+   "builds": 5,
+   "p50": 1,
+   "p75": 2,
+   "p90": 2,
+   "max": 2
+  },
+  "trophy": {
+   "builds": 47,
+   "p50": 3,
+   "p75": 8,
+   "p90": 18,
+   "max": 24
+  },
+  "boss": {
+   "builds": 27,
+   "p50": 1,
+   "p75": 2,
+   "p90": 4,
+   "max": 14
+  },
+  "axe-tool": {
+   "builds": 9,
+   "p50": 1,
+   "p75": 1,
+   "p90": 2,
+   "max": 2
+  },
+  "polearm": {
+   "builds": 6,
+   "p50": 1,
+   "p75": 1,
+   "p90": 2,
+   "max": 2
+  },
+  "farm": {
+   "builds": 3,
+   "p50": 1,
+   "p75": 1,
+   "p90": 1,
+   "max": 1
+  },
+  "sword": {
+   "builds": 8,
+   "p50": 1,
+   "p75": 5,
+   "p90": 6,
+   "max": 6
+  },
+  "shield": {
+   "builds": 38,
+   "p50": 3,
+   "p75": 5,
+   "p90": 13,
+   "max": 47
+  },
+  "blunt": {
+   "builds": 8,
+   "p50": 1,
+   "p75": 3,
+   "p90": 8,
+   "max": 8
+  },
+  "hat": {
+   "builds": 9,
+   "p50": 3,
+   "p75": 3,
+   "p90": 13,
+   "max": 13
+  },
+  "staff": {
+   "builds": 1,
+   "p50": 2,
+   "p75": 2,
+   "p90": 2,
+   "max": 2
+  },
+  "curio": {
+   "builds": 14,
+   "p50": 2,
+   "p75": 4,
+   "p90": 12,
+   "max": 17
+  },
+  "bow": {
+   "builds": 8,
+   "p50": 1,
+   "p75": 1,
+   "p90": 2,
+   "max": 2
+  },
+  "axe": {
+   "builds": 5,
+   "p50": 1,
+   "p75": 2,
+   "p90": 2,
+   "max": 2
+  },
+  "rawmeat": {
+   "builds": 2,
+   "p50": 3,
+   "p75": 3,
+   "p90": 3,
+   "max": 3
+  },
+  "other": {
+   "builds": 7,
+   "p50": 1,
+   "p75": 2,
+   "p90": 3,
+   "max": 3
+  },
+  "produce": {
+   "builds": 6,
+   "p50": 4,
+   "p75": 5,
+   "p90": 9,
+   "max": 9
+  },
+  "fish": {
+   "builds": 4,
+   "p50": 4,
+   "p75": 12,
+   "p90": 12,
+   "max": 12
+  },
+  "helmet": {
+   "builds": 2,
+   "p50": 5,
+   "p75": 5,
+   "p90": 5,
+   "max": 5
+  },
+  "feast": {
+   "builds": 1,
+   "p50": 1,
+   "p75": 1,
+   "p90": 1,
+   "max": 1
+  },
+  "material": {
+   "builds": 2,
+   "p50": 3,
+   "p75": 3,
+   "p90": 3,
+   "max": 3
+  }
+ },
+ "homes": {
+  "n": 87,
+  "stands": [
+   7,
+   14,
+   29
+  ],
+  "distinctPerStand": [
+   0.18,
+   0.4,
+   0.72
+  ]
+ },
+ "lift": {
+  "mead": {
+   "dine": 0.76,
+   "brew": 1.62,
+   "throne": 0.4,
+   "none": 1.31,
+   "kitchen": 0.82,
+   "sleep": 0.86,
+   "armor": 0.17,
+   "smith": 0.32,
+   "craft": 0.85,
+   "hearth": 0.28,
+   "magic": 1.32
+  },
+  "food": {
+   "dine": 3.21,
+   "throne": 1.54,
+   "kitchen": 1.98,
+   "brew": 0.93,
+   "none": 0.59,
+   "craft": 0.85,
+   "sleep": 0.55,
+   "smith": 0.42,
+   "armor": 0.17,
+   "hearth": 0.25,
+   "magic": 0.05
+  },
+  "herbs": {
+   "dine": 0.33,
+   "throne": 0.67,
+   "none": 1.14,
+   "craft": 0.9,
+   "armor": 1.24,
+   "brew": 0.71,
+   "smith": 1.19,
+   "sleep": 3.44,
+   "kitchen": 0.45,
+   "magic": 0.44,
+   "hearth": 0.25
+  },
+  "tankard": {
+   "dine": 3,
+   "none": 0.6,
+   "sleep": 1.37,
+   "armor": 0.27,
+   "throne": 1.74,
+   "brew": 2.06,
+   "smith": 0.63,
+   "magic": 0.22,
+   "craft": 0.6,
+   "kitchen": 1.18,
+   "hearth": 0.14
+  },
+  "tool": {
+   "throne": 0.4,
+   "none": 0.79,
+   "craft": 4.11,
+   "smith": 5.04,
+   "armor": 0.95,
+   "dine": 0.29,
+   "kitchen": 0.17,
+   "sleep": 0.11,
+   "brew": 0.49
+  },
+  "knife": {
+   "kitchen": 3.05,
+   "none": 0.57,
+   "dine": 1.77,
+   "armor": 1.06,
+   "craft": 0.61,
+   "sleep": 1.27,
+   "smith": 1.25,
+   "brew": 0.96,
+   "throne": 1.64
+  },
+  "trophy": {
+   "none": 0.96,
+   "armor": 1.73,
+   "brew": 0.53,
+   "magic": 0.86,
+   "hearth": 2.2,
+   "throne": 1.5,
+   "kitchen": 1.03,
+   "craft": 1.08,
+   "smith": 0.85,
+   "dine": 0.52,
+   "sleep": 1.22
+  },
+  "boss": {
+   "none": 1.21,
+   "smith": 1.03,
+   "brew": 1.33,
+   "hearth": 2.36,
+   "throne": 0.86,
+   "kitchen": 0.79,
+   "craft": 1.02,
+   "armor": 0.49,
+   "sleep": 1.27,
+   "magic": 1.73,
+   "dine": 0.13
+  },
+  "axe-tool": {
+   "throne": 1.09,
+   "dine": 0.98,
+   "hearth": 2.99,
+   "smith": 2.08,
+   "none": 0.79,
+   "armor": 1.76,
+   "kitchen": 0.35,
+   "brew": 1.06,
+   "craft": 0.82,
+   "sleep": 1.51,
+   "magic": 0.55
+  },
+  "polearm": {
+   "throne": 0.66,
+   "armor": 2.6,
+   "dine": 0.76,
+   "none": 1.01,
+   "smith": 1.13,
+   "brew": 0.41,
+   "hearth": 0.88,
+   "sleep": 0.62,
+   "craft": 0.73,
+   "magic": 0.84,
+   "kitchen": 0.3
+  },
+  "farm": {
+   "throne": 2.5,
+   "hearth": 1.96,
+   "none": 0.58,
+   "smith": 3.57,
+   "dine": 0.84,
+   "armor": 1.42,
+   "craft": 1.87,
+   "kitchen": 0.79,
+   "sleep": 1.38
+  },
+  "sword": {
+   "throne": 0.73,
+   "armor": 1.9,
+   "dine": 1.04,
+   "hearth": 0.32,
+   "none": 1.13,
+   "kitchen": 0.23,
+   "craft": 0.72,
+   "brew": 0.33,
+   "smith": 0.62,
+   "magic": 0.69,
+   "sleep": 0.53
+  },
+  "shield": {
+   "throne": 1.48,
+   "none": 1.17,
+   "brew": 0.78,
+   "dine": 0.49,
+   "hearth": 1.93,
+   "armor": 1.07,
+   "kitchen": 0.56,
+   "craft": 0.87,
+   "smith": 0.66,
+   "sleep": 0.88,
+   "magic": 0.42
+  },
+  "blunt": {
+   "throne": 0.39,
+   "hearth": 0.61,
+   "none": 1.13,
+   "dine": 0.19,
+   "smith": 2.15,
+   "armor": 1.12,
+   "brew": 0.53,
+   "craft": 0.87,
+   "sleep": 0.39,
+   "magic": 0.47,
+   "kitchen": 1.4
+  },
+  "hat": {
+   "smith": 1.21,
+   "none": 1.34,
+   "magic": 2.68,
+   "craft": 1.2,
+   "armor": 1.19,
+   "sleep": 0.36,
+   "brew": 0.04,
+   "dine": 0.13,
+   "kitchen": 0.21,
+   "throne": 0.43,
+   "hearth": 0.07
+  },
+  "staff": {
+   "throne": 2.04,
+   "none": 0.72,
+   "armor": 3.47,
+   "hearth": 0.64,
+   "magic": 6.54,
+   "craft": 0.3,
+   "smith": 1.55,
+   "dine": 0.41,
+   "kitchen": 0.34,
+   "sleep": 0.67
+  },
+  "curio": {
+   "hearth": 1.34,
+   "throne": 0.74,
+   "sleep": 1.02,
+   "none": 0.93,
+   "armor": 1.45,
+   "dine": 0.59,
+   "smith": 0.59,
+   "craft": 1.36,
+   "brew": 1.01,
+   "kitchen": 1.45,
+   "magic": 4.01
+  },
+  "bow": {
+   "none": 0.97,
+   "armor": 2.49,
+   "sleep": 1.21,
+   "throne": 0.21,
+   "dine": 0.81,
+   "hearth": 0.49,
+   "brew": 0.76,
+   "craft": 0.82,
+   "smith": 0.82,
+   "kitchen": 0.07,
+   "magic": 5.01
+  },
+  "axe": {
+   "dine": 0.43,
+   "armor": 2.45,
+   "none": 0.75,
+   "smith": 1.94,
+   "craft": 0.89,
+   "sleep": 0.79,
+   "throne": 0.48,
+   "magic": 0.48,
+   "kitchen": 2.13,
+   "brew": 1.86
+  },
+  "rawmeat": {
+   "throne": 1.54,
+   "dine": 2.7,
+   "none": 0.52,
+   "kitchen": 4.68,
+   "sleep": 1.53
+  },
+  "other": {
+   "sleep": 0.94,
+   "dine": 0.96,
+   "none": 0.92,
+   "armor": 1.03,
+   "smith": 1.29,
+   "brew": 0.38,
+   "kitchen": 0.75,
+   "craft": 2.32,
+   "magic": 2.34,
+   "hearth": 2.55,
+   "throne": 0.21
+  },
+  "produce": {
+   "none": 0.9,
+   "dine": 0.82,
+   "sleep": 0.04,
+   "hearth": 0.05,
+   "kitchen": 1.91,
+   "smith": 3.06,
+   "brew": 2.7,
+   "armor": 0.32,
+   "craft": 0.51,
+   "throne": 0.21
+  },
+  "fish": {
+   "dine": 3.3,
+   "none": 0.9,
+   "hearth": 1.04,
+   "kitchen": 1.07,
+   "armor": 0.25,
+   "smith": 0.13,
+   "craft": 0.5
+  },
+  "helmet": {
+   "sleep": 1.67,
+   "dine": 1.36,
+   "throne": 0.34,
+   "smith": 1.92,
+   "armor": 4.59,
+   "none": 0.44,
+   "craft": 2.26,
+   "magic": 1.01,
+   "brew": 0.49
+  },
+  "material": {
+   "kitchen": 1.04,
+   "dine": 1.2,
+   "none": 0.38,
+   "magic": 3.29,
+   "armor": 0.47,
+   "sleep": 1.36,
+   "throne": 0.82,
+   "craft": 7.04,
+   "smith": 2.34,
+   "brew": 1.99
+  },
+  "armor": {
+   "dine": 1.75,
+   "kitchen": 0.55,
+   "none": 0.8,
+   "armor": 2.45,
+   "smith": 2.46,
+   "craft": 0.48
+  }
+ },
+ "source": "lab/mine_stand_items.js over the unpacked corpus (2,657 files; vanilla builds only), 2026-11-12"
+}

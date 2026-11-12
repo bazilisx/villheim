@@ -50,3 +50,22 @@ The 16 showcase designs (names in `TYLER_NOTES.md`, files in the profile's
 `config/PlanBuild/blueprints/inspiration/generated/ingame/showcase`) are regenerated after each merge and checked
 against every note Tyler made on them. A note is closed when the render shows it fixed and the cause is fixed in a
 rule, never by a one-off patch for that building.
+
+## Council (Tyler, 2026-11-12)
+
+Tyler's plan: the helpers learn their areas, then one generates a building and the others audit, critique and refine
+it until they agree it meets what they learned; then it goes to Tyler. At least two buildings per council member.
+
+1. **Learn.** Tracks A to D as above. Each also writes `criteria/<track>.md`: a weighted checklist with tests, a pass
+   mark and hard fails, grounded in its evidence.
+2. **Build.** Track E rewrites interior furnishing from the A, B and C findings and generates a random s3d3 building
+   (random kind, culture, biome, seed). Buildings are never edited by hand: each critique becomes a rule change and
+   the building is regenerated from its seed, so every village gets the fix.
+3. **Council.** A, B, C and D each score the building against their criteria and propose rule changes. An independent
+   judge, a fresh helper who never worked on the generator, scores it from Tyler's notes and all criteria files.
+4. **Quorum.** Every member at or above its pass mark, no hard fails, the judge passes it, and every building approved
+   earlier still passes. Then the building is saved as a PlanBuild blueprint in Tyler's profile
+   (`config/PlanBuild/blueprints/inspiration/generated/ingame/council/`) with its renders and scorecards. After 6 rounds
+   without quorum, the lead takes the disagreement to Tyler.
+5. **Target.** Five members (A to E) means 10 approved buildings, different kinds, cultures and biomes, all s3d3, plus
+   the 16 showcase designs regenerated as a regression set. Tyler reviews them in the game.

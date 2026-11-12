@@ -589,6 +589,77 @@ Proposed Decisions rows:
 Where round 7b stopped: everything above is pushed (e9fdf25 plus this record). Not ready to merge: check:headroom 1
 and floating 4 are new, gen-test request 2 reached 80.3 s in one of two runs.
 
+## Integration, round 7c (2026-11-12, branch design/integration3 from 9c5f761)
+
+Commits:
+- ce42a84 the new check_interiors problems of round 7b, each traced on its design (lab one-design runs at 16767eb,
+  c4045e3, d4414d5 and the tip):
+  - floating (home Meadows s3d3 213, three BK-island stands at 3.92 m): openWays moved their table after the loose-piece
+    pass. generate.js dropLoose runs that pass again after openWays.
+  - headroom (tower Plains s3d3 539): KC-100's beam laid on a half wall and a chest (a counter top, 0.88 m) read as a
+    ceiling. checks.js headroom: a furnishing's piece (p.decor) under 1.8 m over the floor point is furniture; one hung
+    higher still counts (D-127: the audit rule is what changes when corpus builders do it).
+  - overlap, bench and ledge (longhouse Plains s3d3 303): the stand pass placed KS-s-arms over a bench the fitter had
+    listed to move aside (got.displace), and stands.js never moves anything. A stand set with a displace list is not
+    placed.
+  - overlap, gem cutter in blackforge_ext1 (smithy Black Forest s3d3 384): openWays moved the gem cutter alone into its
+    own set's piece. layout.js kbClear: every group move (moveAside, openWays, the part moves) keeps the colliders out
+    of set pieces round it by the audit's kbClip rule.
+  - overlap and stairs, pots (workshop Meadows s3d3 287): landscape pots under the eaves by a door torch and 0.6 m from
+    an inside stair, through the wall. landscape.js keeps greenery 0.65 m off every stair over its height, and pots off
+    the furnishing's catalog boxes at the audit's margin (4300d87 narrowed this to pots: with every class, test_landscape
+    3 put mushrooms out of band).
+- 3caa23f BIG_ITEM_M from the corpus houses alone (lab/trophy_sizes.js over the corpus blueprints of the private repo,
+  D-157; categories starter home, building, advanced base, tree house, interior design): 1,108 trophy stands in 86
+  builds, 50th 0.74, 75th 1.34, 90th 2.215 (a wraith), 95th 2.92 m. Halls, taverns, villages, castles, towers,
+  smithies and temples: 770 stands in 56 builds, 75th 1.61, 90th 2.82 m. Value in use: the houses' 90th, 2.215 m;
+  15 trophies listed (the Abomination 2.82 m among them; houses hang it 36 times, all in the top tenth). The reach
+  rule is unchanged (D-161 Open; value in use any biome). Seed 54715 now hangs TrophyBlob.
+- 58db293 speed, same output (check_interiors rows identical before and after over 702 designs; request 2 md5 the same):
+  spotsFor reads its furniture and door buckets in place; clearLanes keeps the walk map across moveAside calls that put
+  everything back.
+- ac59989 bundles rebuilt at 4300d87.
+
+Before and after (round 7a, round 7b, this round at 4300d87; full runs):
+
+| Measure | Round 7a | Round 7b | Round 7c |
+|---|---|---|---|
+| check_interiors floating | 1 | 4 | 0 |
+| overlap | 3 | 5 | 2 |
+| check:headroom | 0 | 1 | 0 |
+| door | 3 | 2 | 2 |
+| stairs | 2 | 3 | 1 |
+| entryZone | 1 | 1 | 1 |
+| bareFloors | 11 | 10 | 10 |
+| rooms not reached | 6 of 987 | 8 of 987 | 8 of 987 |
+| main pieces not reached | 13 of 3,838 | 8 of 3,814 | 8 of 3,812 |
+| Norse Meadows prefabsPerD3, setShare | 13.1, 0.406 | 13.6, 0.412 | 13.6, 0.412 pass |
+| norse-forest Black Forest | 11.9, 0.37 | 11.4, 0.355 | 11.4, 0.355 pass |
+| middle-eastern Plains | 12.0, 0.5 | 11.9, 0.478 | 11.9, 0.478 pass |
+| test_stands misses at d3 (3 --gate) | flat bench 18.6, wall station 31.5, wall table 14.9, flat share 86, distinct q1 4 | flat bench 20.7, flat chest 4.5, wall station 29.1, wall table 14.1, flat share 83, distinct q1 5 (--d3) | flat bench 20.7, flat chest 4.5, wall station 29.1, wall table 14.1, flat share 83, distinct q1 4 |
+| gen-test request 2, 3 (s) | 73 to 77, 18 to 21 | 80.3 and 77.5, 20.0 and 19.5 | 79.9, 78.7, 79.5; 20.4, 20.4, 20.0 |
+
+Other checks at 58db293 (4300d87 where marked): test_structure 36 hold; test_sizes 0 off; check_set 2: set 239 of 240,
+late 96 of 96, cultures 147 of 147, overlap 1 (as 7a); essentials ran (homes, longhouses, taverns, smithies,
+storehouses with no light 44, 31, 39, 78, 100 %, read from its rug and light table); test_variance hall s2 and s3
+0.44, home-c s3d3 0.41 (closest 0.57); test_hub all pass; test_hub_variance every seed differs; test_landscape 3
+(4300d87): all landscaping rules hold (without the seed count it fails on 7a too: mushroom pieces 2 against 8);
+compare_page all same (4300d87); gen-test 5 of 5 byte for byte; dotnet build 0 errors, 43 warnings. A test_landscape 3
+run on d4414d5 put the pot share at 0.05 (band 0.06 to 0.19), on c4045e3 0.08; at 4300d87 it is back in band.
+
+Remaining check_interiors problems: overlap 2 (a Mistlands home's log bench on a fiddlehead, as in 7a; a smithy yard's
+ground torch by forge_ext5, as in 7a: the boxes miss in the colliders and meet in the catalog boxes); door 2 (a flat
+stand in a barn, a chair in a barn); stairs 1 (a wood stack by a tavern stair); entryZone 1 (a tavern fire pit); reach
+rooms 8 (Mistlands longhouse nave ends 211, 116, 312; Mistlands workshop 528 upper floor, 3 rooms; home Meadows 213
+upper room; Mistlands home 255 upper floor).
+
+Not done this round (time): items 3 and 4 of the brief (woodworker s3 seed 21; Mistlands nave ends, a plan change in
+generate.js for 2 m cells between 1 m walls; workshop 528; entry zones reserved before big furniture; the court first
+chest), the test_stands bands (INST_ROLL stays off: on, Meadows and Black Forest setShare fall under 0.34; the ways
+named by the lead, a roll only in rooms whose sets went in or set picks that carry their stands at the corpus share,
+were not tried), and request 2 at 75 s or under (three runs 78.7 to 79.9 s; node 5.1 to 5.3 s against 4.9 s at
+16767eb; profile: clearLanes 1.0 s of 4.6 s, moveAside 0.8, spotsFor 0.56, GC 0.6, pruneMotifs 0.36).
+
 ## Rules for every helper (copy of /home/claude/briefs/common.md; /home/claude is not kept between sessions)
 
 A new session gives each helper these rules in its brief, with its own branch, working copy and file ownership.

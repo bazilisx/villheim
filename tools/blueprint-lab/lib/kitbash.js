@@ -96,7 +96,10 @@ function barCounter(b, ctx, zones) {
       for (const a of [c - 1, c + 1]) { const [x, z] = at(a, dIn); b.put(ctx.K.beam || 'wood_beam', x, y + 1.1, z, yaw, T); }
       const barrel = can(ctx.biome, 'piece_chest_barrel') ? 'piece_chest_barrel' : 'piece_chest_wood';
       const thick = /stone|marble|grausten/.test((ctx.C && ctx.C.wallStyle) || '') ? 0.5 : 0; // a stone wall is a metre thick
-      for (const a of [c - 1.2, c + 1.2]) { const [x, z] = at(a, 0.5 + thick); b.put(barrel, x, y + 0.1, z, yaw + 180, T); }
+      // (on the floor's own top: 0.5 m over a stone floor's pivot, 0.1 m over a wood floor's; lib/decorate.js standOf)
+      const stOf = decorB()._int.standOf;
+      const topAt = (x, z) => { let t = null; for (const p of b.pieces) { if (p.decor || PB.piece(p.name).role !== 'floor') continue; const o = Ck.aabb(p); if (x < o.x0 || x > o.x1 || z < o.z0 || z > o.z1) continue; const tt = p.y + stOf(p.name); if (Math.abs(tt - (y + 0.1)) < 0.6 && (t == null || tt > t)) t = tt; } return t == null ? y + 0.1 : t; };
+      for (const a of [c - 1.2, c + 1.2]) { const [x, z] = at(a, 0.5 + thick); b.put(barrel, x, topAt(x, z), z, yaw + 180, T); }
       if (can(ctx.biome, 'itemstandh')) for (const a of [c - 1.1, c + 0.4]) { const [x, z] = at(a, dIn); b.put('itemstandh', x, y + 1.35, z, yaw, T); }
       // a seat or table the furnishing left touching the new counter goes too
       const counter = b.pieces.slice(-8).filter(p => p.trim && p.decor).map(p => Ck.aabb(p));

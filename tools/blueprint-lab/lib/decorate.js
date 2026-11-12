@@ -177,6 +177,10 @@ function modelSizes() {
     // is what shows, so its head meets the wall as corpus beds do (track B: head at the wall, p50 0 m) and does not go
     // into it
     if (f.cat === 'bed' && md.show[2] > m[2]) m[2] = md.show[2];
+    // a piece whose model starts over its pivot (the stool's legs 7 cm up) stands with its pivot that much under the
+    // floor's top, as corpus builders set it (piece_chair: pivot 0.070 m under the floor top at the median of 1,018
+    // in /work/bp; mesh bottom 0.071 m; lab measure of 2026-11-12, track E record)
+    if (['floor', 'wall'].includes(f.at) && f.base == null && md.showAt) { const bot = md.showAt[1] - md.show[1] / 2; if (bot > 0.02) f.base = -+bot.toFixed(3); }
     if (Math.abs(f.rel || 0) % 180 === 90) [m[0], m[2]] = [m[2], m[0]];
     const old = f.s;
     const body = [0, 1, 2].map(i => (Math.abs(old[i] - m[i]) > 0.1 ? +m[i].toFixed(2) : old[i]));

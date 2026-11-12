@@ -1734,7 +1734,15 @@ function backing(pieces, opts) {
     const r = P.piece(p.name).role;
     if (any) { if ((!opts.floors && ['floor', 'stair'].includes(r)) || (!opts.roofs && ['roof', 'roofTop', 'roofCorner'].includes(r)) || ['plant', 'rug'].includes(r)) return; }
     else if (p.decor || isHung(p.name) || !BACKING[r]) return;
-    const parts = partsOf(p);
+    let parts = partsOf(p);
+    // a floor holds what stands on it by its collider, which can stand over what shows (the ashwood floor's model top
+    // 0.077 m over its pivot, its collider 0.097; corpus furniture on it stands 0.099 over the pivot at the median of
+    // 2,149, lab measure of 2026-11-12, track E record)
+    if (any && opts.floors && r === 'floor') { const col = Sh && Sh.world ? Sh.world(p) : null; if (col && col.length) parts = (parts || []).concat(col); }
+    // and a chest, barrel, table or seat holds what is set on it by what shows of its top: the barrel chest's collider
+    // is its staves and its floor, open at the top, where corpus builders set flat stands on its lid (0.92 m over its
+    // pivot at the median of 169, model top 0.899; lab measure of 2026-11-12, track E record)
+    if (any && opts.floors && ['storage', 'table', 'seat', 'craft'].includes(r) && p.decor !== false) { const mb = modelWorldBox(p, 0); if (mb) parts = (parts || []).concat([{ ...mb, m: 1 }]); }
     if (!parts || !parts.length) return;
     const e = { p, role: r, parts, bb: Me.aabbOf(parts) };
     list.push(e);
@@ -3095,13 +3103,18 @@ function dressStands(b, ctx) {
     return best;
   };
   // the box a flat stand stands on (for the edge test)
+  // (the top is what shows of the piece, from its model: corpus flat stands stand at the model's top, 0.817 m over a
+  // plank table's pivot against its model top 0.820 and its collider top 0.86; on a wall ledge 0.075 to 0.085 m
+  // against its model top 0.07; lab measures of 2026-11-12, track E record)
+  const Ms = (() => { try { return NODE_P ? require('./mesh.js') : window.VHMesh; } catch (e) { return null; } })();
+  const showTop = q => { const md = Ms && Ms.dims ? Ms.dims(q.name) : null; return md && md.show && md.showAt && !P_.piece(q.name).structural ? q.y + md.showAt[1] + md.show[1] / 2 : null; };
   const topOf = (p, near) => {
     let best = null;
     for (const q of near) {
       if (q === p || /^itemstand/.test(q.name)) continue;
-      const o = Ck.aabb(q);
-      if (o.pass || o.x0 > p.x || o.x1 < p.x || o.z0 > p.z || o.z1 < p.z || o.y1 > p.y + 0.3 || o.y1 < p.y - 0.15) continue;
-      if (!best || o.y1 > best.y) best = { x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1, y: o.y1 };
+      const o = Ck.aabb(q), st = showTop(q), y1 = st != null ? st : o.y1;
+      if (o.pass || o.x0 > p.x || o.x1 < p.x || o.z0 > p.z || o.z1 < p.z || y1 > p.y + 0.3 || y1 < p.y - 0.15) continue;
+      if (!best || y1 > best.y) best = { x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1, y: +y1.toFixed(3) };
     }
     return best;
   };
@@ -3122,6 +3135,7 @@ function dressStands(b, ctx) {
     if (r.q) p.q = r.q;
     if (r.yaw != null) p.yaw = r.yaw;
     if (r.y != null) p.y = +r.y.toFixed(3);
+    else if (flat) { const t = topOf(p, near); if (t) p.y = t.y; }
     delete p.want; delete p.at;
     n++;
   }
@@ -5901,6 +5915,10 @@ function modelSizes() {
     // is what shows, so its head meets the wall as corpus beds do (track B: head at the wall, p50 0 m) and does not go
     // into it
     if (f.cat === 'bed' && md.show[2] > m[2]) m[2] = md.show[2];
+    // a piece whose model starts over its pivot (the stool's legs 7 cm up) stands with its pivot that much under the
+    // floor's top, as corpus builders set it (piece_chair: pivot 0.070 m under the floor top at the median of 1,018
+    // in /work/bp; mesh bottom 0.071 m; lab measure of 2026-11-12, track E record)
+    if (['floor', 'wall'].includes(f.at) && f.base == null && md.showAt) { const bot = md.showAt[1] - md.show[1] / 2; if (bot > 0.02) f.base = -+bot.toFixed(3); }
     if (Math.abs(f.rel || 0) % 180 === 90) [m[0], m[2]] = [m[2], m[0]];
     const old = f.s;
     const body = [0, 1, 2].map(i => (Math.abs(old[i] - m[i]) > 0.1 ? +m[i].toFixed(2) : old[i]));
@@ -11577,7 +11595,10 @@ function barCounter(b, ctx, zones) {
       for (const a of [c - 1, c + 1]) { const [x, z] = at(a, dIn); b.put(ctx.K.beam || 'wood_beam', x, y + 1.1, z, yaw, T); }
       const barrel = can(ctx.biome, 'piece_chest_barrel') ? 'piece_chest_barrel' : 'piece_chest_wood';
       const thick = /stone|marble|grausten/.test((ctx.C && ctx.C.wallStyle) || '') ? 0.5 : 0; // a stone wall is a metre thick
-      for (const a of [c - 1.2, c + 1.2]) { const [x, z] = at(a, 0.5 + thick); b.put(barrel, x, y + 0.1, z, yaw + 180, T); }
+      // (on the floor's own top: 0.5 m over a stone floor's pivot, 0.1 m over a wood floor's; lib/decorate.js standOf)
+      const stOf = decorB()._int.standOf;
+      const topAt = (x, z) => { let t = null; for (const p of b.pieces) { if (p.decor || PB.piece(p.name).role !== 'floor') continue; const o = Ck.aabb(p); if (x < o.x0 || x > o.x1 || z < o.z0 || z > o.z1) continue; const tt = p.y + stOf(p.name); if (Math.abs(tt - (y + 0.1)) < 0.6 && (t == null || tt > t)) t = tt; } return t == null ? y + 0.1 : t; };
+      for (const a of [c - 1.2, c + 1.2]) { const [x, z] = at(a, 0.5 + thick); b.put(barrel, x, topAt(x, z), z, yaw + 180, T); }
       if (can(ctx.biome, 'itemstandh')) for (const a of [c - 1.1, c + 0.4]) { const [x, z] = at(a, dIn); b.put('itemstandh', x, y + 1.35, z, yaw, T); }
       // a seat or table the furnishing left touching the new counter goes too
       const counter = b.pieces.slice(-8).filter(p => p.trim && p.decor).map(p => Ck.aabb(p));

@@ -516,13 +516,18 @@ function dressStands(b, ctx) {
     return best;
   };
   // the box a flat stand stands on (for the edge test)
+  // (the top is what shows of the piece, from its model: corpus flat stands stand at the model's top, 0.817 m over a
+  // plank table's pivot against its model top 0.820 and its collider top 0.86; on a wall ledge 0.075 to 0.085 m
+  // against its model top 0.07; lab measures of 2026-11-12, track E record)
+  const Ms = (() => { try { return NODE_P ? require('./mesh.js') : window.VHMesh; } catch (e) { return null; } })();
+  const showTop = q => { const md = Ms && Ms.dims ? Ms.dims(q.name) : null; return md && md.show && md.showAt && !P_.piece(q.name).structural ? q.y + md.showAt[1] + md.show[1] / 2 : null; };
   const topOf = (p, near) => {
     let best = null;
     for (const q of near) {
       if (q === p || /^itemstand/.test(q.name)) continue;
-      const o = Ck.aabb(q);
-      if (o.pass || o.x0 > p.x || o.x1 < p.x || o.z0 > p.z || o.z1 < p.z || o.y1 > p.y + 0.3 || o.y1 < p.y - 0.15) continue;
-      if (!best || o.y1 > best.y) best = { x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1, y: o.y1 };
+      const o = Ck.aabb(q), st = showTop(q), y1 = st != null ? st : o.y1;
+      if (o.pass || o.x0 > p.x || o.x1 < p.x || o.z0 > p.z || o.z1 < p.z || y1 > p.y + 0.3 || y1 < p.y - 0.15) continue;
+      if (!best || y1 > best.y) best = { x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1, y: +y1.toFixed(3) };
     }
     return best;
   };
@@ -543,6 +548,7 @@ function dressStands(b, ctx) {
     if (r.q) p.q = r.q;
     if (r.yaw != null) p.yaw = r.yaw;
     if (r.y != null) p.y = +r.y.toFixed(3);
+    else if (flat) { const t = topOf(p, near); if (t) p.y = t.y; }
     delete p.want; delete p.at;
     n++;
   }

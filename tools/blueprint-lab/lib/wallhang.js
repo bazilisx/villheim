@@ -159,7 +159,15 @@ function backing(pieces, opts) {
     const r = P.piece(p.name).role;
     if (any) { if ((!opts.floors && ['floor', 'stair'].includes(r)) || (!opts.roofs && ['roof', 'roofTop', 'roofCorner'].includes(r)) || ['plant', 'rug'].includes(r)) return; }
     else if (p.decor || isHung(p.name) || !BACKING[r]) return;
-    const parts = partsOf(p);
+    let parts = partsOf(p);
+    // a floor holds what stands on it by its collider, which can stand over what shows (the ashwood floor's model top
+    // 0.077 m over its pivot, its collider 0.097; corpus furniture on it stands 0.099 over the pivot at the median of
+    // 2,149, lab measure of 2026-11-12, track E record)
+    if (any && opts.floors && r === 'floor') { const col = Sh && Sh.world ? Sh.world(p) : null; if (col && col.length) parts = (parts || []).concat(col); }
+    // and a chest, barrel, table or seat holds what is set on it by what shows of its top: the barrel chest's collider
+    // is its staves and its floor, open at the top, where corpus builders set flat stands on its lid (0.92 m over its
+    // pivot at the median of 169, model top 0.899; lab measure of 2026-11-12, track E record)
+    if (any && opts.floors && ['storage', 'table', 'seat', 'craft'].includes(r) && p.decor !== false) { const mb = modelWorldBox(p, 0); if (mb) parts = (parts || []).concat([{ ...mb, m: 1 }]); }
     if (!parts || !parts.length) return;
     const e = { p, role: r, parts, bb: Me.aabbOf(parts) };
     list.push(e);

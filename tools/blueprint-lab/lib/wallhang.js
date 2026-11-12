@@ -95,16 +95,20 @@ function partBox(p, sub, shrink) {
 function backDir(p) { return rotW(qOf(p), HUNG[p.name].back); }
 
 // The moves t along unit u for which box A moved by t*u meets box B: [t0, t1], or null when it never does.
+// Separating axes: the 3 axes of each box and the 9 cross products. Written without arrays in the inner loop (the same
+// arithmetic as before, in the same order), since it runs for every part a hung piece could meet and the in-game
+// engine has a time limit per design.
 function sweep(A, B, u) {
   let t0 = -Infinity, t1 = Infinity;
-  const d = [B.c[0] - A.c[0], B.c[1] - A.c[1], B.c[2] - A.c[2]];
-  const axis = L => {
-    const l = Math.hypot(L[0], L[1], L[2]);
+  const d0 = B.c[0] - A.c[0], d1 = B.c[1] - A.c[1], d2 = B.c[2] - A.c[2];
+  const Aa = A.a, Ba = B.a, Ah = A.h, Bh = B.h;
+  const axis = (L0, L1, L2) => {
+    const l = Math.hypot(L0, L1, L2);
     if (l < 1e-5) return true;
-    const n = [L[0] / l, L[1] / l, L[2] / l];
-    const r = A.h[0] * Math.abs(dotW(A.a[0], n)) + A.h[1] * Math.abs(dotW(A.a[1], n)) + A.h[2] * Math.abs(dotW(A.a[2], n))
-      + B.h[0] * Math.abs(dotW(B.a[0], n)) + B.h[1] * Math.abs(dotW(B.a[1], n)) + B.h[2] * Math.abs(dotW(B.a[2], n));
-    const dd = dotW(d, n), v = dotW(u, n);
+    const n0 = L0 / l, n1 = L1 / l, n2 = L2 / l;
+    const r = Ah[0] * Math.abs(Aa[0][0] * n0 + Aa[0][1] * n1 + Aa[0][2] * n2) + Ah[1] * Math.abs(Aa[1][0] * n0 + Aa[1][1] * n1 + Aa[1][2] * n2) + Ah[2] * Math.abs(Aa[2][0] * n0 + Aa[2][1] * n1 + Aa[2][2] * n2)
+      + Bh[0] * Math.abs(Ba[0][0] * n0 + Ba[0][1] * n1 + Ba[0][2] * n2) + Bh[1] * Math.abs(Ba[1][0] * n0 + Ba[1][1] * n1 + Ba[1][2] * n2) + Bh[2] * Math.abs(Ba[2][0] * n0 + Ba[2][1] * n1 + Ba[2][2] * n2);
+    const dd = d0 * n0 + d1 * n1 + d2 * n2, v = u[0] * n0 + u[1] * n1 + u[2] * n2;
     if (Math.abs(v) < 1e-9) return Math.abs(dd) < r;
     let a = (dd - r) / v, b = (dd + r) / v;
     if (a > b) { const t = a; a = b; b = t; }
@@ -112,8 +116,16 @@ function sweep(A, B, u) {
     if (b < t1) t1 = b;
     return t0 < t1;
   };
-  for (let i = 0; i < 3; i++) if (!axis(A.a[i]) || !axis(B.a[i])) return null;
-  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (!axis(crossW(A.a[i], B.a[j]))) return null;
+  for (let i = 0; i < 3; i++) {
+    if (!axis(Aa[i][0], Aa[i][1], Aa[i][2]) || !axis(Ba[i][0], Ba[i][1], Ba[i][2])) return null;
+  }
+  for (let i = 0; i < 3; i++) {
+    const a = Aa[i];
+    for (let j = 0; j < 3; j++) {
+      const b = Ba[j];
+      if (!axis(a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])) return null;
+    }
+  }
   return t0 < t1 ? [t0, t1] : null;
 }
 
@@ -123,9 +135,17 @@ function sweep(A, B, u) {
 // What shows of a backing piece: its fine parts (to 2 cm of the game's mesh: a stone wall's single coarse box sits at
 // its outermost stone, a log wall's 5 cm out), else its coarse parts where its model stands proud of its collider,
 // else its colliders.
+// Kept per piece object while its name, place and turn stay the same: the indexes are built again for every new list
+// (a room's own list, a list joined with a set's pieces), and the parts were most of that cost.
+const CACHE_P = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
 function partsOf(p) {
+  const key = p.name + '|' + p.x + '|' + p.y + '|' + p.z + '|' + p.yaw + '|' + (p.q ? p.q.join(',') : '') + '|' + (p.scale ? [].concat(p.scale).join(',') : '');
+  const c = CACHE_P && CACHE_P.get(p);
+  if (c && c.key === key) return c.parts;
   const Me = meshW();
-  return (Me.proud(p.name) && (Me.worldFine(p) || Me.world(p))) || shapesW().world(p) || null;
+  const parts = (Me.proud(p.name) && (Me.worldFine(p) || Me.world(p))) || shapesW().world(p) || null;
+  if (CACHE_P) CACHE_P.set(p, { key, parts });
+  return parts;
 }
 // opts.any: every piece but floors, roofs and the plants counts (what a piece is mounted on, for the corpus counts);
 // opts.floors with it: floors and stairs too (what a piece stands on)
@@ -133,12 +153,14 @@ function backing(pieces, opts) {
   const cells = new Map(), list = [];
   const P = piecesW(), Me = meshW(), Sh = shapesW();
   const any = opts && opts.any;
-  for (const p of pieces) {
+  // a piece of the list goes in the index when it counts for these opts (the same test for the first build and for
+  // pieces added to the list later, see indexOf)
+  const addKeep = p => {
     const r = P.piece(p.name).role;
-    if (any) { if ((!opts.floors && ['floor', 'stair'].includes(r)) || (!opts.roofs && ['roof', 'roofTop', 'roofCorner'].includes(r)) || ['plant', 'rug'].includes(r)) continue; }
-    else if (p.decor || isHung(p.name) || !BACKING[r]) continue;
+    if (any) { if ((!opts.floors && ['floor', 'stair'].includes(r)) || (!opts.roofs && ['roof', 'roofTop', 'roofCorner'].includes(r)) || ['plant', 'rug'].includes(r)) return; }
+    else if (p.decor || isHung(p.name) || !BACKING[r]) return;
     const parts = partsOf(p);
-    if (!parts || !parts.length) continue;
+    if (!parts || !parts.length) return;
     const e = { p, role: r, parts, bb: Me.aabbOf(parts) };
     list.push(e);
     for (let i = Math.floor(e.bb.x0 / 2); i <= Math.floor(e.bb.x1 / 2); i++) for (let k = Math.floor(e.bb.z0 / 2); k <= Math.floor(e.bb.z1 / 2); k++) {
@@ -146,7 +168,8 @@ function backing(pieces, opts) {
       if (!cells.has(key)) cells.set(key, []);
       cells.get(key).push(e);
     }
-  }
+  };
+  for (const p of pieces) addKeep(p);
   const near = (x, z, r) => {
     const out = new Set();
     for (let i = Math.floor((x - r) / 2); i <= Math.floor((x + r) / 2); i++) for (let k = Math.floor((z - r) / 2); k <= Math.floor((z + r) / 2); k++)
@@ -166,13 +189,28 @@ function backing(pieces, opts) {
       cells.get(key).push(e);
     }
   };
-  return { list, near, add };
+  return { list, near, add, addKeep };
 }
 
 // How far box A moves along u before it meets what shows of the backing pieces in reach: the least t0 over the parts
 // it would meet with t1 > 0 (below 0: it is already that far in). Infinity when nothing is met within reach.
 // hit (optional): set to the backing entry first met.
 const REACH = 1.5;
+// The least move t along u at which box A's axis-aligned bounds meet box B's, or null when they never meet with t1 > 0.
+function aabbFrom(A, B, u) {
+  let t0 = -Infinity, t1 = Infinity;
+  const lo = [A.x0, A.y0, A.z0], hi = [A.x1, A.y1, A.z1], blo = [B.x0, B.y0, B.z0], bhi = [B.x1, B.y1, B.z1];
+  for (let k = 0; k < 3; k++) {
+    const v = u[k];
+    if (Math.abs(v) < 1e-9) { if (hi[k] < blo[k] || lo[k] > bhi[k]) return null; continue; }
+    let a = (blo[k] - hi[k]) / v, b = (bhi[k] - lo[k]) / v;
+    if (a > b) { const t = a; a = b; b = t; }
+    if (a > t0) t0 = a;
+    if (b < t1) t1 = b;
+    if (t0 > t1) return null;
+  }
+  return t1 > 0 ? t0 : null;
+}
 function travel(A, u, B, hit, skip) {
   let best = Infinity;
   // the corridor A sweeps through, from where it is (and a little in front) to reach behind it
@@ -185,6 +223,10 @@ function travel(A, u, B, hit, skip) {
     if (b.x0 > sx1 || b.x1 < sx0 || b.y0 > sy1 || b.y1 < sy0 || b.z0 > sz1 || b.z1 < sz0) continue;
     for (const o of e.parts) {
       if (o.x0 > sx1 || o.x1 < sx0 || o.y0 > sy1 || o.y1 < sy0 || o.z0 > sz1 || o.z1 < sz0) continue;
+      // the axis-aligned boxes hold the oriented ones, so the moves where the boxes meet hold the moves where the parts
+      // meet: when those start past what is already met (or past reach), the full test cannot give a nearer touch
+      const lo = aabbFrom(A, o, u);
+      if (lo === null || lo >= best || lo > REACH) continue;
       const iv = sweep(A, o, u);
       if (!iv || iv[1] <= 0 || iv[0] > REACH) continue;
       if (iv[0] < best) { best = iv[0]; if (hit) { hit.e = e; hit.o = o; } }
@@ -292,24 +334,37 @@ function attach(p, A) {
   return { below, above };
 }
 
+// A design's piece list only grows while it is made: an index kept for a list takes in the pieces added since it was
+// built, in list order, which gives the same index as building it again (the same entries in the same order). When
+// the list changed some other way (its last indexed piece is no longer where it was, or it is shorter), it is built
+// again. This replaced rebuilding on every added piece, which cost the in-game engine its time limit on large
+// buildings (gen-test longhouse bf s3d2, 2026-11-12).
+function indexOf(cache, pieces, opts) {
+  const c = cache && cache.get(pieces);
+  const n = pieces.length;
+  if (c && n >= c.n && (c.n === 0 || pieces[c.n - 1] === c.last)) {
+    for (let i = c.n; i < n; i++) c.B.addKeep(pieces[i]);
+    c.n = n; c.last = n ? pieces[n - 1] : null;
+    return c.B;
+  }
+  const B = backing(pieces, opts);
+  if (cache) cache.set(pieces, { n, last: n ? pieces[n - 1] : null, B });
+  return B;
+}
+
 /** What holds pieces up, for attach and settle: every piece but roofs, rugs and plants, floors included, kept while
  * the list's length stays the same. */
 const CACHE_S = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
 function supportOf(pieces) {
-  const c = CACHE_S && CACHE_S.get(pieces);
-  if (c && c.n === pieces.length) return c.A;
-  const A = backing(pieces, { any: true, floors: true });
-  if (CACHE_S) CACHE_S.set(pieces, { n: pieces.length, A });
-  return A;
+  return indexOf(CACHE_S, pieces, { any: true, floors: true });
 }
 /** The height that hangs a ceiling piece (a hanging brazier) from the first beam, floor or roof over it, its chain's
  * top 5 cm into it as corpus builders hang them (739 in liked builds: 5 cm at the median, 13 cm at the 10th
  * percentile), or null when nothing is within 3 m over it (hub braziers hung 1.9 to 2.5 m under anything). */
 const CACHE_H = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
 function hangFrom(p, pieces) {
-  let c = CACHE_H && CACHE_H.get(pieces);
-  if (!c || c.n !== pieces.length) { c = { n: pieces.length, A: backing(pieces, { any: true, floors: true, roofs: true }) }; if (CACHE_H) CACHE_H.set(pieces, c); }
-  const m = attach({ ...p, y: p.y - 0.5 }, c.A);
+  const A = indexOf(CACHE_H, pieces, { any: true, floors: true, roofs: true });
+  const m = attach({ ...p, y: p.y - 0.5 }, A);
   if (!isFinite(m.above) || m.above > 3.5) return null;
   return +(p.y - 0.5 + m.above + 0.05).toFixed(3);
 }
@@ -390,13 +445,7 @@ const CACHE_W = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
 /** Two backing indexes read as one (a set's own pieces not yet in the building, lib/kitbash.js fit). */
 function both(A, B) { return { list: A.list.concat(B.list), near: (x, z, r) => A.near(x, z, r).concat(B.near(x, z, r)), add: A.add }; }
 function backingOf(pieces) {
-  let nb = 0;
-  for (const p of pieces) if (!p.decor) nb++;
-  const c = CACHE_W && CACHE_W.get(pieces);
-  if (c && c.nb === nb) return c.B;
-  const B = backing(pieces);
-  if (CACHE_W) CACHE_W.set(pieces, { nb, B });
-  return B;
+  return indexOf(CACHE_W, pieces);
 }
 
 /** Put a hung piece up on the wall at a spot: { x, z } a point on or near the wall (its line or its face), { nx, nz }

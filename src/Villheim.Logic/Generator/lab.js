@@ -958,6 +958,591 @@ const apiM = { coarseParts, world, worldFine, aabbOf, depth, deepest, source, li
 if (NODE_M) module.exports = apiM; else window.VHMesh = apiM;
 
 })();
+// ---- wallhang.js
+(function () {
+// Things hung on a wall: signs, item stands, wall torches and Dvergr wall lanterns, banners, shelves (wood_ledge),
+// wall carvings and the cauldron's wall racks. One place decides how each one sits against what shows of the wall
+// behind it, and one place measures it, so the generator, the pool audit (lib/audit.js) and lab/test_structure.js
+// agree.
+//
+// Measuring: each hung piece's model box (data/piece-models.json bounds) is moved straight back along the side that
+// goes to the wall until it meets what shows of a wall, beam, post, window or door (lib/mesh.js parts, the colliders
+// where a model shows no more than its collider). The distance moved is its gap: 0 flush, below 0 into the wall,
+// above 0 standing off it. The same is done for the front side, so a piece with the wall in front of it and the room
+// behind it is turned the wrong way. Corpus depths in docs/handoffs/2026-11-12-showcase-review/wallhung.md.
+//
+// Placing: hang() puts a piece out in front of a wall and moves it back the same way until it meets what shows, then
+// as deep into it as corpus builders hang that prefab. No wall within reach behind every part of its back, no spot.
+// Works in Node, the lab page and the game's bundle (Jint), like lib/mesh.js.
+
+const NODE_W = typeof module !== 'undefined';
+const meshW = () => (NODE_W ? require('./mesh.js') : window.VHMesh);
+const shapesW = () => (NODE_W ? require('./shapes.js') : window.VHShapes);
+const piecesW = () => (NODE_W ? require('./pieces.js') : window.VHPieces);
+
+// ---------------------------------------------------------------- what hangs, and which side goes to the wall
+// back: the piece's own axis that points into the wall (from the game's models: the torch's wall plate is at local -x,
+// the Dvergr lantern's at +x, the item stand's board at -z with its peg toward +z, a banner's rod and cloth lie in
+// local y-z). sym: the model is the same from both sides along that axis, so it cannot face the wrong way. plate: the
+// part of the back that rests on the wall, as [a0, a1, b0, b1] over the two other local axes (horizontal first, then y);
+// null for the whole model box. kind: the family the arrangement rules use.
+const HUNG = {
+  sign: { kind: 'sign', back: [0, 0, -1], sym: true },
+  sign_notext: { kind: 'sign', back: [0, 0, -1], sym: true },
+  itemstand: { kind: 'stand', back: [0, 0, -1] },
+  piece_walltorch: { kind: 'light', back: [-1, 0, 0], plate: [-0.15, 0.15, -0.33, 0.34] },
+  piece_dvergr_lantern: { kind: 'light', back: [1, 0, 0], plate: [-0.33, 0.33, -0.45, 0.45] },
+  wood_ledge: { kind: 'shelf', back: [0, 0, -1], sym: true },
+  wood_dragon1: { kind: 'carving', back: [0, 0, -1], plate: [-0.25, 0.25, 0, 1.2] },
+  darkwood_raven: { kind: 'carving', back: [0, 0, -1], plate: [-0.2, 0.2, 0, 1.2] },
+  darkwood_wolf: { kind: 'carving', back: [0, 0, -1], plate: [-0.2, 0.2, 0, 1.2] },
+  // (the spice rack's board; the herbs hang a meter under it)
+  cauldron_ext1_spice: { kind: 'rack', back: [0, 0, -1], plate: [-1.0, 1.0, 0.66, 1.3] },
+  cauldron_ext4_pots: { kind: 'rack', back: [0, 0, -1] },
+};
+// the banners: rod across local z, cloth down local -y; only the rod rests on the wall
+for (let i = 1; i <= 11; i++) HUNG['piece_banner' + (i < 10 ? '0' : '') + i] = { kind: 'banner', back: [1, 0, 0], sym: true, plate: [-0.6, 0.6, -0.1, 0.1] };
+const isHung = name => Object.prototype.hasOwnProperty.call(HUNG, name);
+
+// What a hung piece rests against: what shows of these roles of building piece.
+const BACKING = { wall: 1, beam: 1, pole: 1, window: 1, door: 1, gable: 1 };
+
+// ---------------------------------------------------------------- small vector helpers
+function rotW(q, v) {
+  const [x, y, z, w] = q, [vx, vy, vz] = v;
+  const ix = w * vx + y * vz - z * vy, iy = w * vy + z * vx - x * vz;
+  const iz = w * vz + x * vy - y * vx, iw = -x * vx - y * vy - z * vz;
+  return [ix * w + iw * -x + iy * -z - iz * -y, iy * w + iw * -y + iz * -x - ix * -z, iz * w + iw * -z + ix * -y - iy * -x];
+}
+const dotW = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const crossW = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+function qOf(p) {
+  if (p.q) return p.q;
+  const a = (p.yaw || 0) * Math.PI / 360;
+  return [0, Math.sin(a), 0, Math.cos(a)];
+}
+function boxW(o) {
+  const e = [0, 1, 2].map(k => Math.abs(o.a[0][k]) * o.h[0] + Math.abs(o.a[1][k]) * o.h[1] + Math.abs(o.a[2][k]) * o.h[2]);
+  o.x0 = o.c[0] - e[0]; o.x1 = o.c[0] + e[0]; o.y0 = o.c[1] - e[1]; o.y1 = o.c[1] + e[1]; o.z0 = o.c[2] - e[2]; o.z1 = o.c[2] + e[2];
+  return o;
+}
+
+// The model's box of a hung piece in its own frame: [sx, sy, sz] and its middle, from the game's model.
+function modelBox(name) {
+  const d = meshW().dims(name);
+  if (d && d.show) return { s: d.show, c: d.showAt };
+  const P = piecesW().piece(name);
+  return { s: P.size || [0.5, 0.5, 0.1], c: P.center || [0, (P.size ? P.size[1] / 2 : 0.25), 0] };
+}
+
+// The oriented box of a part of a hung piece in world space. sub: [a0, a1, b0, b1] over the two local axes that are
+// not its back axis (horizontal first, then y), clipped to the model box; shrink: taken off every side but the back
+// and the front, so a piece resting on a beam or touching a crossing wall at its edge does not count as meeting it.
+function partBox(p, sub, shrink) {
+  const h = HUNG[p.name], mb = modelBox(p.name), q = qOf(p);
+  const bk = h.back, ax = Math.abs(bk[0]) > 0.5 ? 0 : 2, side = ax === 0 ? 2 : 0;
+  let lo = mb.c.map((c, i) => c - mb.s[i] / 2), hi = mb.c.map((c, i) => c + mb.s[i] / 2);
+  if (sub) {
+    lo = lo.slice(); hi = hi.slice();
+    lo[side] = Math.max(lo[side], sub[0]); hi[side] = Math.min(hi[side], sub[1]);
+    lo[1] = Math.max(lo[1], sub[2]); hi[1] = Math.min(hi[1], sub[3]);
+  }
+  const s = shrink || 0;
+  const hs = [0, 1, 2].map(i => Math.max(0.004, (hi[i] - lo[i]) / 2 - (i === ax ? 0 : s)));
+  const lc = [0, 1, 2].map(i => (lo[i] + hi[i]) / 2);
+  const c = rotW(q, lc);
+  return boxW({ c: [c[0] + p.x, c[1] + p.y, c[2] + p.z], a: [rotW(q, [1, 0, 0]), rotW(q, [0, 1, 0]), rotW(q, [0, 0, 1])], h: hs });
+}
+/** The world direction from a hung piece into the wall it hangs on (its back), as [x, y, z]. */
+function backDir(p) { return rotW(qOf(p), HUNG[p.name].back); }
+
+// The moves t along unit u for which box A moved by t*u meets box B: [t0, t1], or null when it never does.
+// Separating axes: the 3 axes of each box and the 9 cross products. Written without arrays in the inner loop (the same
+// arithmetic as before, in the same order), since it runs for every part a hung piece could meet and the in-game
+// engine has a time limit per design.
+function sweep(A, B, u) {
+  let t0 = -Infinity, t1 = Infinity;
+  const d0 = B.c[0] - A.c[0], d1 = B.c[1] - A.c[1], d2 = B.c[2] - A.c[2];
+  const Aa = A.a, Ba = B.a, Ah = A.h, Bh = B.h;
+  const axis = (L0, L1, L2) => {
+    const l = Math.hypot(L0, L1, L2);
+    if (l < 1e-5) return true;
+    const n0 = L0 / l, n1 = L1 / l, n2 = L2 / l;
+    const r = Ah[0] * Math.abs(Aa[0][0] * n0 + Aa[0][1] * n1 + Aa[0][2] * n2) + Ah[1] * Math.abs(Aa[1][0] * n0 + Aa[1][1] * n1 + Aa[1][2] * n2) + Ah[2] * Math.abs(Aa[2][0] * n0 + Aa[2][1] * n1 + Aa[2][2] * n2)
+      + Bh[0] * Math.abs(Ba[0][0] * n0 + Ba[0][1] * n1 + Ba[0][2] * n2) + Bh[1] * Math.abs(Ba[1][0] * n0 + Ba[1][1] * n1 + Ba[1][2] * n2) + Bh[2] * Math.abs(Ba[2][0] * n0 + Ba[2][1] * n1 + Ba[2][2] * n2);
+    const dd = d0 * n0 + d1 * n1 + d2 * n2, v = u[0] * n0 + u[1] * n1 + u[2] * n2;
+    if (Math.abs(v) < 1e-9) return Math.abs(dd) < r;
+    let a = (dd - r) / v, b = (dd + r) / v;
+    if (a > b) { const t = a; a = b; b = t; }
+    if (a > t0) t0 = a;
+    if (b < t1) t1 = b;
+    return t0 < t1;
+  };
+  for (let i = 0; i < 3; i++) {
+    if (!axis(Aa[i][0], Aa[i][1], Aa[i][2]) || !axis(Ba[i][0], Ba[i][1], Ba[i][2])) return null;
+  }
+  for (let i = 0; i < 3; i++) {
+    const a = Aa[i];
+    for (let j = 0; j < 3; j++) {
+      const b = Ba[j];
+      if (!axis(a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])) return null;
+    }
+  }
+  return t0 < t1 ? [t0, t1] : null;
+}
+
+// ---------------------------------------------------------------- the walls round a piece
+/** An index of what shows of the building's backing pieces (walls, beams, posts, windows, doors, gables), by 2 m
+ * cells. pieces: the design's list; only pieces that are not decor and whose role backs a hung piece count. */
+// What shows of a backing piece: its fine parts (to 2 cm of the game's mesh: a stone wall's single coarse box sits at
+// its outermost stone, a log wall's 5 cm out), else its coarse parts where its model stands proud of its collider,
+// else its colliders.
+// Kept per piece object while its name, place and turn stay the same: the indexes are built again for every new list
+// (a room's own list, a list joined with a set's pieces), and the parts were most of that cost.
+const CACHE_P = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+function partsOf(p) {
+  const key = p.name + '|' + p.x + '|' + p.y + '|' + p.z + '|' + p.yaw + '|' + (p.q ? p.q.join(',') : '') + '|' + (p.scale ? [].concat(p.scale).join(',') : '');
+  const c = CACHE_P && CACHE_P.get(p);
+  if (c && c.key === key) return c.parts;
+  const Me = meshW();
+  const parts = (Me.proud(p.name) && (Me.worldFine(p) || Me.world(p))) || shapesW().world(p) || null;
+  if (CACHE_P) CACHE_P.set(p, { key, parts });
+  return parts;
+}
+// opts.any: every piece but floors, roofs and the plants counts (what a piece is mounted on, for the corpus counts);
+// opts.floors with it: floors and stairs too (what a piece stands on)
+function backing(pieces, opts) {
+  const cells = new Map(), list = [];
+  const P = piecesW(), Me = meshW(), Sh = shapesW();
+  const any = opts && opts.any;
+  // a piece of the list goes in the index when it counts for these opts (the same test for the first build and for
+  // pieces added to the list later, see indexOf)
+  const addKeep = p => {
+    const r = P.piece(p.name).role;
+    if (any) { if ((!opts.floors && ['floor', 'stair'].includes(r)) || (!opts.roofs && ['roof', 'roofTop', 'roofCorner'].includes(r)) || ['plant', 'rug'].includes(r)) return; }
+    else if (p.decor || isHung(p.name) || !BACKING[r]) return;
+    const parts = partsOf(p);
+    if (!parts || !parts.length) return;
+    const e = { p, role: r, parts, bb: Me.aabbOf(parts) };
+    list.push(e);
+    for (let i = Math.floor(e.bb.x0 / 2); i <= Math.floor(e.bb.x1 / 2); i++) for (let k = Math.floor(e.bb.z0 / 2); k <= Math.floor(e.bb.z1 / 2); k++) {
+      const key = i + ',' + k;
+      if (!cells.has(key)) cells.set(key, []);
+      cells.get(key).push(e);
+    }
+  };
+  for (const p of pieces) addKeep(p);
+  const near = (x, z, r) => {
+    const out = new Set();
+    for (let i = Math.floor((x - r) / 2); i <= Math.floor((x + r) / 2); i++) for (let k = Math.floor((z - r) / 2); k <= Math.floor((z + r) / 2); k++)
+      for (const e of cells.get(i + ',' + k) || []) out.add(e);
+    return [...out];
+  };
+  const add = p => {
+    const r = P.piece(p.name).role;
+    if (!BACKING[r]) return;
+    const parts = partsOf(p);
+    if (!parts || !parts.length) return;
+    const e = { p, role: r, parts, bb: Me.aabbOf(parts) };
+    list.push(e);
+    for (let i = Math.floor(e.bb.x0 / 2); i <= Math.floor(e.bb.x1 / 2); i++) for (let k = Math.floor(e.bb.z0 / 2); k <= Math.floor(e.bb.z1 / 2); k++) {
+      const key = i + ',' + k;
+      if (!cells.has(key)) cells.set(key, []);
+      cells.get(key).push(e);
+    }
+  };
+  return { list, near, add, addKeep };
+}
+
+// How far box A moves along u before it meets what shows of the backing pieces in reach: the least t0 over the parts
+// it would meet with t1 > 0 (below 0: it is already that far in). Infinity when nothing is met within reach.
+// hit (optional): set to the backing entry first met.
+const REACH = 1.5;
+// The least move t along u at which box A's axis-aligned bounds meet box B's, or null when they never meet with t1 > 0.
+function aabbFrom(A, B, u) {
+  let t0 = -Infinity, t1 = Infinity;
+  const lo = [A.x0, A.y0, A.z0], hi = [A.x1, A.y1, A.z1], blo = [B.x0, B.y0, B.z0], bhi = [B.x1, B.y1, B.z1];
+  for (let k = 0; k < 3; k++) {
+    const v = u[k];
+    if (Math.abs(v) < 1e-9) { if (hi[k] < blo[k] || lo[k] > bhi[k]) return null; continue; }
+    let a = (blo[k] - hi[k]) / v, b = (bhi[k] - lo[k]) / v;
+    if (a > b) { const t = a; a = b; b = t; }
+    if (a > t0) t0 = a;
+    if (b < t1) t1 = b;
+    if (t0 > t1) return null;
+  }
+  return t1 > 0 ? t0 : null;
+}
+function travel(A, u, B, hit, skip) {
+  let best = Infinity;
+  // the corridor A sweeps through, from where it is (and a little in front) to reach behind it
+  const sx0 = Math.min(A.x0, A.x0 + u[0] * REACH) - 0.3, sx1 = Math.max(A.x1, A.x1 + u[0] * REACH) + 0.3;
+  const sy0 = Math.min(A.y0, A.y0 + u[1] * REACH) - 0.3, sy1 = Math.max(A.y1, A.y1 + u[1] * REACH) + 0.3;
+  const sz0 = Math.min(A.z0, A.z0 + u[2] * REACH) - 0.3, sz1 = Math.max(A.z1, A.z1 + u[2] * REACH) + 0.3;
+  for (const e of B) {
+    if (skip && e.p === skip) continue;
+    const b = e.bb;
+    if (b.x0 > sx1 || b.x1 < sx0 || b.y0 > sy1 || b.y1 < sy0 || b.z0 > sz1 || b.z1 < sz0) continue;
+    for (const o of e.parts) {
+      if (o.x0 > sx1 || o.x1 < sx0 || o.y0 > sy1 || o.y1 < sy0 || o.z0 > sz1 || o.z1 < sz0) continue;
+      // the axis-aligned boxes hold the oriented ones, so the moves where the boxes meet hold the moves where the parts
+      // meet: when those start past what is already met (or past reach), the full test cannot give a nearer touch
+      const lo = aabbFrom(A, o, u);
+      if (lo === null || lo >= best || lo > REACH) continue;
+      const iv = sweep(A, o, u);
+      if (!iv || iv[1] <= 0 || iv[0] > REACH) continue;
+      if (iv[0] < best) { best = iv[0]; if (hit) { hit.e = e; hit.o = o; } }
+    }
+  }
+  return best;
+}
+
+/** One hung piece against the walls behind it: { gap, front, cover, facing, wall } (metres). gap: from its back to
+ * what shows behind it (Infinity: nothing within 1.5 m); front: the same out of its front; cover: share of its back
+ * plate (3 by 3 parts) that meets the wall within 5 cm of the gap; facing: false when the wall is on its front side
+ * (only for pieces that look different from the front). B: backing(...) of the design. */
+function measure(p, B) {
+  const h = HUNG[p.name];
+  if (!h) return null;
+  const u = backDir(p), n = [-u[0], -u[1], -u[2]];
+  const near = B.near(p.x, p.z, 2.6);
+  const whole = partBox(p, h.plate, 0.012);
+  const hit = {};
+  const gap = travel(whole, u, near, hit);
+  const front = travel(partBox(p, h.plate, 0.012), n, near);
+  // the plate in 3 by 3 parts: how much of it has the wall behind it
+  const mb = modelBox(p.name), ax = Math.abs(h.back[0]) > 0.5 ? 0 : 2, side = ax === 0 ? 2 : 0;
+  const pl = h.plate || [mb.c[side] - mb.s[side] / 2, mb.c[side] + mb.s[side] / 2, mb.c[1] - mb.s[1] / 2, mb.c[1] + mb.s[1] / 2];
+  // (as hang counts it: past the first touch, up to half the plate may stand off an uneven wall by its median)
+  const cells = [];
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+    const a0 = pl[0] + (pl[1] - pl[0]) * i / 3, b0 = pl[2] + (pl[3] - pl[2]) * j / 3;
+    cells.push(travel(partBox(p, [a0, a0 + (pl[1] - pl[0]) / 3, b0, b0 + (pl[3] - pl[2]) / 3], 0.004), u, near) - gap);
+  }
+  const med = cells.slice().sort((a, b) => a - b)[4];
+  const extra = med > 0.04 && med <= (BUMPY[h.kind] || 0) ? med : 0;
+  const met = isFinite(gap) ? cells.filter(c => c <= extra + 0.05).length : 0;
+  // turned the wrong way: the wall it touches or is sunk into lies on its front side, or the wall is nearer in front
+  // (pieces that look the same from both sides only by the sides); turned a quarter: a wall nearer at its side than
+  // behind it, and none behind it within 10 cm (a torch put up with its arm along the wall)
+  let facing = true, turn = 0;
+  if (!h.sym) {
+    if (gap <= 0.1 && hit.o) facing = (hit.o.c[0] - whole.c[0]) * u[0] + (hit.o.c[1] - whole.c[1]) * u[1] + (hit.o.c[2] - whole.c[2]) * u[2] > 0;
+    else facing = !(front < gap - 0.02 && front < 0.6);
+    if (!facing) turn = 180;
+  }
+  if (facing && !(gap <= 0.1)) {
+    const sx = -u[2], sz = u[0];
+    for (const sd of [[sx, 0, sz], [-sx, 0, -sz]]) {
+      const g = travel(partBox(p, h.plate, 0.012), sd, near);
+      if (g >= -0.05 && g < 0.1 && g < gap - 0.05) { facing = false; turn = 90; }
+    }
+  }
+  return { gap, front, cover: met / 9, facing, turn, wall: hit.e ? hit.e.p : null, kind: h.kind };
+}
+
+/** What a piece of the hung kinds rests on or is mounted on when it is no wall's: { on, how } with how 'stands' (on a
+ * floor, a shelf or furniture within 4 cm under it: a sign set on edge on a floor, a ledge as a cabinet's top) or
+ * 'mounted' (on something that is no wall within 3 cm behind it: a label on a chest's front, a stand on a banner),
+ * or null. A: backing(pieces, { any: true, floors: true }). */
+function restsOn(p, A) {
+  const near = A.near(p.x, p.z, 2.6);
+  // the first piece met moving its box along u that it does not reach into already by more than 8 cm
+  const meet = (box, u, lo, hi, under) => {
+    let best = null;
+    for (const e of near) {
+      if (e.p === p) continue;
+      for (const o of e.parts) {
+        // (what it stands on: a part whose top is at its foot, not a wall it is hung against or a cup set on it)
+        if (under && (o.y1 > box.y0 + 0.08 || o.y1 < box.y0 - 0.08)) continue;
+        const iv = sweep(box, o, u);
+        if (!iv || iv[1] <= 0 || iv[0] < lo || iv[0] > hi) continue;
+        if (!best || iv[0] < best.t) best = { t: iv[0], e };
+      }
+    }
+    return best;
+  };
+  const d = meet(partBox(p, null, 0.01), [0, -1, 0], -0.08, 0.04, true);
+  if (d) return { on: d.e.p, how: 'stands' };
+  const g = meet(partBox(p, HUNG[p.name].plate, 0.012), backDir(p), -0.1, 0.03);
+  if (g && !BACKING[g.e.role]) return { on: g.e.p, how: 'mounted' };
+  return null;
+}
+
+// ---------------------------------------------------------------- what any piece is attached to
+// The model box of any piece in world space (shrink off its sides, so a piece touching its neighbor at an edge does
+// not count as standing on it).
+function modelWorldBox(p, shrink) {
+  const mb = modelBox(p.name), q = qOf(p), s = shrink || 0;
+  const c = rotW(q, mb.c);
+  return boxW({ c: [c[0] + p.x, c[1] + p.y, c[2] + p.z], a: [rotW(q, [1, 0, 0]), rotW(q, [0, 1, 0]), rotW(q, [0, 0, 1])],
+    h: [Math.max(0.004, mb.s[0] / 2 - s), mb.s[1] / 2, Math.max(0.004, mb.s[2] / 2 - s)] });
+}
+/** How a piece meets what holds it: { below, above } the gaps (m) from its model box down to the first piece under it
+ * whose top is within reach of its foot, and up to the first piece over it whose underside is within reach of its top
+ * (Infinity when none within 1.5 m); 0 or less: touching or into it. A: backing(pieces, { any: true, floors: true }). */
+function attach(p, A) {
+  const box = modelWorldBox(p, 0.02), near = A.near(p.x, p.z, 2.6);
+  let below = Infinity, above = Infinity;
+  for (const e of near) {
+    if (e.p === p) continue;
+    for (const o of e.parts) {
+      const d = sweep(box, o, [0, -1, 0]);
+      if (d && d[1] > 0 && d[0] > -0.15 && d[0] < below && o.y1 <= box.y0 + 0.15) below = d[0];
+      const u = sweep(box, o, [0, 1, 0]);
+      if (u && u[1] > 0 && u[0] > -0.15 && u[0] < above && o.y0 >= box.y1 - 0.15) above = u[0];
+    }
+  }
+  return { below, above };
+}
+
+// A design's piece list only grows while it is made: an index kept for a list takes in the pieces added since it was
+// built, in list order, which gives the same index as building it again (the same entries in the same order). When
+// the list changed some other way (its last indexed piece is no longer where it was, or it is shorter), it is built
+// again. This replaced rebuilding on every added piece, which cost the in-game engine its time limit on large
+// buildings (gen-test longhouse bf s3d2, 2026-11-12).
+function indexOf(cache, pieces, opts) {
+  const c = cache && cache.get(pieces);
+  const n = pieces.length;
+  if (c && n >= c.n && (c.n === 0 || pieces[c.n - 1] === c.last)) {
+    for (let i = c.n; i < n; i++) c.B.addKeep(pieces[i]);
+    c.n = n; c.last = n ? pieces[n - 1] : null;
+    return c.B;
+  }
+  const B = backing(pieces, opts);
+  if (cache) cache.set(pieces, { n, last: n ? pieces[n - 1] : null, B });
+  return B;
+}
+
+/** What holds pieces up, for attach and settle: every piece but roofs, rugs and plants, floors included, kept while
+ * the list's length stays the same. */
+const CACHE_S = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+function supportOf(pieces) {
+  return indexOf(CACHE_S, pieces, { any: true, floors: true });
+}
+/** The height that hangs a ceiling piece (a hanging brazier) from the first beam, floor or roof over it, its chain's
+ * top 5 cm into it as corpus builders hang them (739 in liked builds: 5 cm at the median, 13 cm at the 10th
+ * percentile), or null when nothing is within 3 m over it (hub braziers hung 1.9 to 2.5 m under anything). */
+const CACHE_H = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+function hangFrom(p, pieces) {
+  const A = indexOf(CACHE_H, pieces, { any: true, floors: true, roofs: true });
+  const m = attach({ ...p, y: p.y - 0.5 }, A);
+  if (!isFinite(m.above) || m.above > 3.5) return null;
+  return +(p.y - 0.5 + m.above + 0.05).toFixed(3);
+}
+/** The height that sets a piece's model on the first thing under its foot within reach (m up or down), or null.
+ * For what stands (a standing torch whose foot hovered 10 to 64 cm over the floor, showcase 01 and 05). */
+function settle(p, pieces, reach) {
+  const r = reach || 0.7, A = supportOf(pieces);
+  const q = { ...p, y: p.y + r };
+  const m = attach(q, A);
+  if (!isFinite(m.below) || m.below > 2 * r) return null;
+  return +(q.y - m.below).toFixed(3);
+}
+
+// ---------------------------------------------------------------- hung pieces against each other
+// The rectangle a hung piece covers on its wall: along the wall (a), up (y), and how far out (n), given the wall's
+// inward normal nx, nz.
+function faceRect(p, nx, nz) {
+  const A = partBox(p, null, 0);
+  const ux = -nz, uz = nx;
+  const ea = A.h[0] * Math.abs(A.a[0][0] * ux + A.a[0][2] * uz) + A.h[1] * Math.abs(A.a[1][0] * ux + A.a[1][2] * uz) + A.h[2] * Math.abs(A.a[2][0] * ux + A.a[2][2] * uz);
+  const en = A.h[0] * Math.abs(A.a[0][0] * nx + A.a[0][2] * nz) + A.h[1] * Math.abs(A.a[1][0] * nx + A.a[1][2] * nz) + A.h[2] * Math.abs(A.a[2][0] * nx + A.a[2][2] * nz);
+  const a = A.c[0] * ux + A.c[2] * uz, n = A.c[0] * nx + A.c[2] * nz;
+  return { a0: a - ea, a1: a + ea, y0: A.y0, y1: A.y1, n0: n - en, n1: n + en };
+}
+/** Pairs of hung pieces on the same wall (backs within 25 degrees, out from it within 0.7 m of each other) whose
+ * pictures on the wall overlap: { i, j, share (of the smaller one's picture), depth (how far apart out from the wall
+ * their middles are), names }. A pair a third or more over one another with one standing out in front of the other is
+ * a stack. Skips a stand or a torch on a banner, which builders do (see the corpus counts in the track record). */
+function overlaps(pieces, idx) {
+  const hung = [];
+  pieces.forEach((p, i) => { if (isHung(p.name) && (!idx || idx(p))) hung.push({ p, i, u: backDir(p) }); });
+  const out = [];
+  const cells = new Map();
+  for (const h of hung) { const k = Math.floor(h.p.x / 2) + ',' + Math.floor(h.p.z / 2); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(h); }
+  for (const A of hung) {
+    const ci = Math.floor(A.p.x / 2), ck = Math.floor(A.p.z / 2);
+    for (let i = ci - 1; i <= ci + 1; i++) for (let k = ck - 1; k <= ck + 1; k++) for (const Bq of cells.get(i + ',' + k) || []) {
+      if (Bq.i <= A.i) continue;
+      if (A.u[0] * Bq.u[0] + A.u[2] * Bq.u[2] < 0.9) continue;
+      const nx = -(A.u[0] + Bq.u[0]) / 2, nz = -(A.u[2] + Bq.u[2]) / 2, l = Math.hypot(nx, nz) || 1;
+      const ra = faceRect(A.p, nx / l, nz / l), rb = faceRect(Bq.p, nx / l, nz / l);
+      if (Math.abs((ra.n0 + ra.n1) / 2 - (rb.n0 + rb.n1) / 2) > 0.7) continue;
+      const oa = Math.min(ra.a1, rb.a1) - Math.max(ra.a0, rb.a0), oy = Math.min(ra.y1, rb.y1) - Math.max(ra.y0, rb.y0);
+      if (oa <= 0.01 || oy <= 0.01) continue;
+      const sa = Math.min((ra.a1 - ra.a0) * (ra.y1 - ra.y0), (rb.a1 - rb.a0) * (rb.y1 - rb.y0));
+      out.push({ i: A.i, j: Bq.i, share: oa * oy / Math.max(1e-4, sa), depth: Math.abs((ra.n0 + ra.n1) / 2 - (rb.n0 + rb.n1) / 2), names: [A.p.name, Bq.p.name] });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- placing
+// How deep a hung piece goes into what shows of the wall when it is put up: just touching (5 mm in, so no seam shows)
+// for boards, stands, torches and shelves, where decor-use corpus pieces sit (liked builds: wall torches 0 mm at the
+// median, item stands and signs 5 cm, the 25th percentile of torches 8 cm); a banner's rod 10 cm, so its cloth lies on
+// the wall (corpus median 12 cm); a Dvergr wall lantern's bracket 15 cm (corpus median 20 cm); the wall carvings and
+// the cauldron's racks 5 cm (corpus medians 10 to 23 cm). Past 1.5 cm (2.5 cm for a banner) the piece carries the depth as a
+// clip made on purpose (p.wclip, D-098), so the pool audit's mountClip passes it.
+const SINK = { light: 0.005, sign: 0.005, stand: 0.005, shelf: 0.005, banner: 0.10, carving: 0.05, rack: 0.05 };
+const SINK_NAME = { piece_dvergr_lantern: 0.15 };
+// How much further a piece may go into an uneven wall so half its back touches (stones bulge 5 to 10 cm, log rounds
+// 3 to 5 cm): up to the depth decor-use corpus pieces sit at the 25th percentile (liked builds: item stands 11 cm,
+// signs and torches 8 to 9 cm), less for a shelf, whose top must stay level.
+const BUMPY = { stand: 0.10, sign: 0.08, light: 0.08, shelf: 0.03, rack: 0.08, carving: 0.1, banner: 0.05 };
+const sinkOf = name => (SINK_NAME[name] != null ? SINK_NAME[name] : SINK[HUNG[name].kind] != null ? SINK[HUNG[name].kind] : 0.005);
+// The turn from a wall's inward normal that puts a piece's back to the wall (lib/decorate.js rel): 0 for a back along
+// local -z, 270 for local -x (the torch), 90 for local +x (the lantern, the banners).
+function relOf(name) {
+  const b = HUNG[name].back;
+  return Math.abs(b[0]) > 0.5 ? (b[0] < 0 ? 270 : 90) : (b[2] < 0 ? 0 : 180);
+}
+const normW = a => ((a % 360) + 360) % 360;
+const quatW = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
+
+// The backing index of a design's piece list, kept while its building pieces stay the same (the furnishing passes ask
+// again and again; walls are all in before any decor).
+const CACHE_W = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+/** Two backing indexes read as one (a set's own pieces not yet in the building, lib/kitbash.js fit). */
+function both(A, B) { return { list: A.list.concat(B.list), near: (x, z, r) => A.near(x, z, r).concat(B.near(x, z, r)), add: A.add }; }
+function backingOf(pieces) {
+  return indexOf(CACHE_W, pieces);
+}
+
+/** Put a hung piece up on the wall at a spot: { x, z } a point on or near the wall (its line or its face), { nx, nz }
+ * the wall's normal into the room, y the pivot height. Moves the piece back from 0.7 m out until what shows of it
+ * meets what shows of the wall at that height (a plinth's face and the thinner wall over it are different faces), then
+ * as deep as the prefab sinks (sinkOf). Gives { name, x, y, z, yaw, q, gap, wclip, wall } or null when the spot has no
+ * wall behind all of the piece's back (cover: share of the 3 by 3 parts of its back plate that meet the wall within
+ * 4 cm; default all of them, opts.cover to ask less), when something stands in front of the wall there, or when the
+ * piece would go deeper into anything than its sink (a crossing wall or a post at its side).
+ * opts.heights: other heights to try, in order, when the first fails (a 2x2 wood wall's rails). opts.pieces: what is
+ * in the building already (and of the set being fitted); a spot whose outline on the wall overlaps one hung there is
+ * refused (a torch hung over an item stand, a spice rack over two ledges, showcase 01 and 06). B: backingOf(pieces). */
+function hang(name, spot, B, opts) {
+  opts = opts || {};
+  const h = HUNG[name];
+  if (!h) return null;
+  const l = Math.hypot(spot.nx, spot.nz) || 1, nx = spot.nx / l, nz = spot.nz / l;
+  const yaw = normW(Math.atan2(nx, nz) * 180 / Math.PI + relOf(name) + (opts.turn || 0));
+  const sink = opts.sink != null ? opts.sink : sinkOf(name);
+  const need = opts.cover != null ? opts.cover : 7 / 9;
+  const out0 = opts.out != null ? opts.out : 0.7;
+  const near = B.near(spot.x, spot.z, 2.6);
+  for (const y of [spot.y].concat(opts.heights || [])) {
+    const p = { name, x: spot.x + nx * out0, y, z: spot.z + nz * out0, yaw, q: quatW(yaw) };
+    const u = backDir(p);
+    const g = travel(partBox(p, h.plate, 0.012), u, near);
+    if (!(g > 0.02) || g > (opts.reach || 1.4)) continue;
+    // the back plate in 3 by 3 parts: how far past the first touch each part meets the wall; on an uneven wall (stones,
+    // logs) the piece goes in until half its parts touch, as builders sink them (D-127), no deeper than BUMPY
+    const mb = modelBox(name), ax = Math.abs(h.back[0]) > 0.5 ? 0 : 2, side = ax === 0 ? 2 : 0;
+    const pl = h.plate || [mb.c[side] - mb.s[side] / 2, mb.c[side] + mb.s[side] / 2, mb.c[1] - mb.s[1] / 2, mb.c[1] + mb.s[1] / 2];
+    const cells = [];
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+      const a0 = pl[0] + (pl[1] - pl[0]) * i / 3, b0 = pl[2] + (pl[3] - pl[2]) * j / 3;
+      cells.push(travel(partBox(p, [a0, a0 + (pl[1] - pl[0]) / 3, b0, b0 + (pl[3] - pl[2]) / 3], 0.004), u, near) - g);
+    }
+    const sorted = cells.slice().sort((a, b) => a - b), med = sorted[4];
+    const extra = med > 0.04 && med <= (BUMPY[h.kind] || 0) ? med : 0;
+    const d = g + sink + extra;
+    p.x = +(p.x + u[0] * d).toFixed(3); p.z = +(p.z + u[2] * d).toFixed(3); p.y = +(+y).toFixed(3);
+    // nothing deeper than the sink: the whole model against everything round it
+    const deep = travel(partBox(p, null, 0.004), u, near);
+    if (deep < -(sink + extra) - 0.02) continue;
+    // the back plate on the wall: parts within 4 cm of touching
+    const met = cells.filter(c => c <= extra + 0.05).length;
+    if (met / 9 < need - 1e-6) continue;
+    // never over or under another piece hung on that wall: their outlines on the wall keep apart
+    if (opts.pieces && clashOnWall(p, opts.pieces, opts.gapOk != null ? opts.gapOk : 0.02)) continue;
+    const lim = h.kind === 'banner' ? 0.025 : 0.015;
+    const res = { name, x: p.x, y: p.y, z: p.z, yaw, q: p.q, gap: -(sink + extra) };
+    if (sink + extra > lim) res.wclip = +(sink + extra + 0.01).toFixed(3);
+    return res;
+  }
+  return null;
+}
+
+// Whether a hung piece's outline on its wall overlaps one of the pieces of the hung kinds on the same wall (backs
+// within 25 degrees, middles within 0.7 m out from the wall), closer than gap along the wall or up it.
+function clashOnWall(p, pieces, gap) {
+  const u = backDir(p), nx = -u[0], nz = -u[2];
+  const ra = faceRect(p, nx, nz);
+  for (const q of pieces) {
+    if (q === p || !isHung(q.name) || Math.abs(q.x - p.x) > 3 || Math.abs(q.z - p.z) > 3 || Math.abs(q.y - p.y) > 3.5) continue;
+    const v = backDir(q);
+    if (u[0] * v[0] + u[2] * v[2] < 0.9) continue;
+    const rb = faceRect(q, nx, nz);
+    if (Math.abs((ra.n0 + ra.n1) / 2 - (rb.n0 + rb.n1) / 2) > 0.7) continue;
+    if (Math.min(ra.a1, rb.a1) - Math.max(ra.a0, rb.a0) > -gap && Math.min(ra.y1, rb.y1) - Math.max(ra.y0, rb.y0) > -gap) return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------- arranging
+// Where things go on a wall, from decor-use corpus pieces (docs/ROOM_STUDY.md section 7, data/rooms-corpus/walls.json,
+// and the track record): one thing alone on its stretch of wall (59 % of item stands, 68 % of signs, 96 % of lights and
+// banners), centered over what stands against the wall (15 % of signs over a chest), a pair either side of a window or
+// a door at one height, or a row at one height. Lights stand alone on a wall, 2.7 m apart (p50) and at one height
+// (71 %). Never one over another unless a set stacks them on purpose.
+//
+// plan(face, o): the slots of one wall face in the order to try them. face: { a0, a1, runs: [{ kind, a0, a1 }] } as
+// lib/decorate.js faceModel makes it. o.under: what stands against the face, [{ t0, t1, kind }] along it; o.w: the
+// width of what goes up; o.light: a light (alone on its stretch, beside openings first). Each slot: { t, why, rank,
+// mate } (mate: the other slot of a symmetric pair, tried with the same thing or not at all).
+// spaced(taken, t, w, light): whether t keeps clear of the slots already used on the face.
+function plan(face, o) {
+  o = o || {};
+  const w = o.w || 1, out = [];
+  const plain = face.runs.filter(r => r.kind === 'wall');
+  const onPlain = (t0, t1) => plain.some(r => r.a0 <= t0 + 0.01 && r.a1 >= t1 - 0.01);
+  const pairAt = (mid, d, why, rank) => {
+    if (!onPlain(mid - d - w / 2, mid - d + w / 2) || !onPlain(mid + d - w / 2, mid + d + w / 2)) return false;
+    const A = { t: +(mid - d).toFixed(3), why, rank }, B = { t: +(mid + d).toFixed(3), why, rank };
+    A.mate = B; B.mate = A; out.push(A, B);
+    return true;
+  };
+  // a pair either side of an opening, symmetric about its middle (lights first beside the door, as the corpus puts them)
+  for (const r of face.runs) {
+    if (r.kind !== 'window' && r.kind !== 'door') continue;
+    const mid = (r.a0 + r.a1) / 2, half = (r.a1 - r.a0) / 2;
+    for (const off of [0.3, 0.5, 0.8]) if (pairAt(mid, half + off + w / 2, 'beside the ' + r.kind, o.light ? 4 : 2)) break;
+  }
+  // over what stands against the wall, centered on it
+  for (const u of o.under || []) {
+    const t = (u.t0 + u.t1) / 2;
+    if (onPlain(t - w / 2, t + w / 2)) out.push({ t: +t.toFixed(3), why: 'over the ' + (u.kind || 'furniture'), rank: o.light ? 1 : 3 });
+  }
+  for (const r of plain) {
+    const len = r.a1 - r.a0, mid = (r.a0 + r.a1) / 2;
+    // the middle of a plain stretch
+    if (len >= w + 0.4) out.push({ t: +mid.toFixed(3), why: 'middle of the wall', rank: o.light ? 2 : 1.5 });
+    // a long stretch: a pair at its quarters, mirrored about its middle
+    if (len >= 2 * w + 2.4) pairAt(mid, len / 4, 'pair on a long wall', 1);
+  }
+  out.sort((x, y) => y.rank - x.rank || Math.abs(x.t - (face.a0 + face.a1) / 2) - Math.abs(y.t - (face.a0 + face.a1) / 2));
+  return out;
+}
+/** The height of a building's wall lights over their floor: one for the household, 1.55 to 1.95 m (corpus wall torches
+ * p25 1.9, p50 2.3 m over the floor, 71 % of lights on one wall at one height), the same in every room and every pass,
+ * as an architect keeps a feature the same through a house (Tyler, 2026-11-12, on consistency). */
+function lightY(P) { return P && P.salt != null ? 1.55 + ((P.salt >>> 3) % 5) * 0.1 : 1.75; }
+function spaced(taken, t, w, light) {
+  const min = light ? 2.0 : w + 0.6;
+  return !taken.some(u => Math.abs(u.t - t) < Math.max(min, (u.w + w) / 2 + 0.6));
+}
+/** n pieces of width w in a row at one height centered on t, gap apart (the along-wall places). */
+function row(t, n, w, gap) {
+  const step = w + gap, out = [];
+  for (let i = 0; i < n; i++) out.push(+(t + (i - (n - 1) / 2) * step).toFixed(3));
+  return out;
+}
+
+const apiWH = { HUNG, isHung, BACKING, backing, backingOf, measure, overlaps, backDir, partBox, sweep, travel, modelBox, faceRect, hang, sinkOf, relOf, plan, spaced, row, restsOn, clashOnWall, both, attach, modelWorldBox, settle, supportOf, hangFrom, lightY };
+if (NODE_W) module.exports = apiWH; else window.VHWallhang = apiWH;
+
+})();
 // ---- styles.js
 (function () {
 // Building kits per biome and culture. The piece choices and proportions come from the corpus palettes
@@ -2734,6 +3319,7 @@ const SHD = NODE_D ? require('./shapes.js') : window.VHShapes;
 const PERS = () => (NODE_D ? require('./persona.js') : window.VHPersona);
 // what a piece shows, as boxes (lib/mesh.js): where a model stands proud of its collider (the 2x2 wood wall's bars)
 const MESH_D = () => (NODE_D ? require('./mesh.js') : window.VHMesh);
+const WHD = () => (NODE_D ? require('./wallhang.js') : window.VHWallhang);
 let RULES = null, LEARN = null;
 function setRules(r) { RULES = r; }
 function setInterior(d) { LEARN = d; }
@@ -2751,7 +3337,9 @@ const ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistla
 // spacing between two of the same; see docs/INTERIOR_DESIGN.md). Pivots are in the middle of the footprint.
 // at: floor (stands free), wall (back to a wall), mount (hung on a wall), rug, top (on a table), fire (on a fire),
 // hang (from the ceiling). rel: turn from the wall's inward normal when standing against a wall (0: local +z faces
-// the room). base: pivot height above the floor (floor torches stand 0.75 m below their pivot). b: the first biome
+// the room). base: pivot height above the floor (the standing torches' models reach 0.65 m under their pivot; corpus
+// builders' 0.75 m is over the floor piece's pivot, 0.1 m under the floor's top, and at 0.75 m over the floor's top their
+// foot hovered 10 cm, showcase 2026-11-12). b: the first biome
 // whose village can make it, the lower of the game's notes (design-list.csv) and the recipe.
 // Sizes are at least the game's own: the box round each piece's solid colliders (its mesh for rugs), from
 // data/piece-models.json, so furniture does not clip into walls or each other in the game. For pieces turned 90 or
@@ -2818,10 +3406,10 @@ const F = {
   wood_dragon1: { s: [3.34, 1.46, 1.0], c: [0.0, 1.69], at: 'mount', b: 'Black Forest', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
   darkwood_raven: { s: [3.09, 1.46, 0.8], c: [0.0, 1.54], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
   darkwood_wolf: { s: [2.18, 1.79, 0.83], c: [0.0, 1.09], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
-  piece_groundtorch_wood: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Meadows', cat: 'light', base: 0.75 },
-  piece_groundtorch: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
-  piece_groundtorch_green: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
-  piece_groundtorch_mist: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Mistlands', cat: 'light', base: 0.75 },
+  piece_groundtorch_wood: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Meadows', cat: 'light', base: 0.65 },
+  piece_groundtorch: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.65 },
+  piece_groundtorch_green: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.65 },
+  piece_groundtorch_mist: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Mistlands', cat: 'light', base: 0.65 },
   piece_walltorch: { s: [0.31, 0.95, 0.45], at: 'mount', b: 'Black Forest', cat: 'light', wall: 0.28, y: 1.55, rel: 270 },
   piece_dvergr_lantern: { s: [0.78, 1.21, 1.11], c: [-0.55, 0.0], at: 'mount', b: 'Mistlands', cat: 'light', wall: 0.42, under: 0.35, rel: 90 },
   piece_brazierceiling01: { s: [0.97, 1.6, 0.91], at: 'hang', b: 'Swamp', cat: 'light', under: 1.6 },
@@ -3697,7 +4285,17 @@ function clearOfRelief(room, name, spot) {
   return null;
 }
 function putMount(room, name, spot) {
-  spot = clearOfRelief(room, name, spot);
+  // what lib/wallhang.js knows goes up against what shows of the wall at its own height (a plinth and the thinner wall
+  // over it have different faces), turned with its back to the wall, as deep as corpus builders hang it; heights
+  // between the spot's limits are tried in turn when the first has no wall behind it (a 2x2 wall's rails)
+  if (WHD() && WHD().isHung(name) && room.out && spot.face) {
+    const hs = [];
+    if ((F[name] || {}).under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) if (spot.lowY == null || (yy >= spot.lowY && yy <= spot.topY)) hs.push(+yy.toFixed(2));
+    const r = WHD().hang(name, { x: spot.x0 != null ? spot.x0 : spot.x, z: spot.z0 != null ? spot.z0 : spot.z, nx: spot.face.nx, nz: spot.face.nz, y: spot.y }, WHD().backingOf(room.out), { heights: hs, pieces: room.out });
+    if (!r) return null;
+    const [mx, mz] = middleOf(name, r.x, r.z, r.yaw);
+    spot = { ...spot, x: mx, z: mz, y: r.y, yaw: r.yaw, clip: r.wclip ? r.wclip - 0.005 : 0, hung: true };
+  } else spot = clearOfRelief(room, name, spot);
   if (!spot) return null;
   const [w, h] = size(name);
   const f = F[name] || {};
@@ -4296,13 +4894,15 @@ function lightsIn(room, k, n, o) {
     const c = cells[0];
     if (c) {
       const top = room.ceilAt(c.x, c.z);
-      if (top - room.stand > 3.9 && room.add('piece_brazierceiling01', c.x, top - F.piece_brazierceiling01.under, c.z, 0, { mount: true, y0: top - 1.6 })) done++;
+      // (hung from the beam, floor or roof over it as builders hang it, lib/wallhang.js hangFrom)
+      const hy = top - room.stand > 3.9 && WHD() ? WHD().hangFrom({ name: 'piece_brazierceiling01', x: c.x, y: top - F.piece_brazierceiling01.under, z: c.z, yaw: 0 }, room.out) : null;
+      if (hy != null && hy - room.stand > 2.3 && room.add('piece_brazierceiling01', c.x, hy, c.z, 0, { mount: true, y0: hy })) done++;
     }
   }
   if (k.wallLight && lightOk(k.wallLight, room.biome)) {
     const f = F[k.wallLight] || {};
-    // the household's height for its sconces: 1.6 to 2.0 m, or as the piece hangs
-    const y = f.under != null ? undefined : 1.6 + R() * 0.4;
+    // the household's height for its sconces, one through the house (lib/wallhang.js lightY), or as the piece hangs
+    const y = f.under != null ? undefined : WHD() ? WHD().lightY(P) : 1.6 + R() * 0.4;
     const spots = mountSpots(room, k.wallLight, { pairs: true, y });
     while (done < n) {
       const ranked = spots.map(s => {
@@ -6343,7 +6943,8 @@ function auditOne(p, ctx, extra, allow) {
   const hung = it.f.at === 'mount' || p.rest === 'wall';
   if (hung || MOUNT_LIKE.test(p.name)) {
     const d = hungInto(p, hung ? A.struct.map(sb => sb.p).concat(more) : A.struct.map(sb => sb.p).filter(q => !q.decor));
-    if (d > Math.max(hungLimit(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
+    // (a piece lib/wallhang.js put up into an uneven wall carries its depth as p.wclip, D-098)
+    if (d > Math.max(hungLimit(p.name), allow || 0, p.wclip || 0)) { ONE_WHY = 'hung'; return false; }
     if (d > HUNG_CLIP(p.name)) used = Math.max(used, d);
   }
   if (used) p.wclip = +(used + 0.005).toFixed(3);
@@ -6518,6 +7119,7 @@ if (NODE_D) module.exports = api; else window.VHDecorate = api;
 const NODE_M = typeof module !== 'undefined';
 const PM = NODE_M ? require('./pieces.js') : window.VHPieces;
 const checksM = () => (NODE_M ? require('./checks.js') : window.VHChecks);
+const hangMo = () => (typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang);
 const meshMo = () => (NODE_M ? require('./mesh.js') : window.VHMesh);
 
 const normM = a => ((a % 360) + 360) % 360;
@@ -6893,6 +7495,20 @@ const BLOCKING = ['door', 'stair', 'storage', 'craft', 'seat', 'table', 'bed', '
 // put a motif on a feature; returns the number of pieces placed, or 0 when it would lose too much (nothing placed)
 //   fr: { x, y, z, nx, nz } the feature frame; g: the motif's own fit; f: the feature's size (windows, doors);
 //   opts: { mirror, ground, minH (lowest h kept), noInfill (glass in the opening), keepOut: [boxes], minShare }
+// A motif piece of the hung kinds whose back is to the motif's wall (fr's normal points out of it): moved onto what
+// shows of that wall at its height, its back to it, and refused where the wall does not take it or something hangs
+// there already (a sign of MA-0219 sat 21 cm into the beam over a door, showcase 06). Anything else as it is.
+function onWallM(b, p, fr, there) {
+  const WH = hangMo();
+  if (!WH || !WH.isHung(p.name)) return p;
+  const u = WH.backDir(p), l = Math.hypot(fr.nx, fr.nz) || 1, nx = fr.nx / l, nz = fr.nz / l;
+  if (u[0] * -nx + u[2] * -nz < 0.9) return p;
+  const r = WH.hang(p.name, { x: p.x - nx * 0.5, z: p.z - nz * 0.5, nx, nz, y: p.y }, WH.backingOf(b.pieces), { pieces: there });
+  if (!r) return null;
+  const q = { ...p, x: r.x, z: r.z, yaw: r.yaw, q: r.q };
+  if (r.wclip) q.wclip = r.wclip;
+  return q;
+}
 function place(b, c, fr, f, opts = {}) {
   const Ck = checksM();
   const cand = [];
@@ -6939,7 +7555,10 @@ function place(b, c, fr, f, opts = {}) {
   const floors = b.pieces.filter(q => !q.trim && !q.decor && PM.piece(q.name).role === 'floor' && Math.hypot(q.x - fr.x, q.z - fr.z) < 6 &&
     (q.x - fr.x) * fr.nx + (q.z - fr.z) * fr.nz > 0.6).map(q => boxOf(Ck, q));
   const overFloor = bx => floors.some(o => (bx.x0 + bx.x1) / 2 > o.x0 && (bx.x0 + bx.x1) / 2 < o.x1 && (bx.z0 + bx.z1) / 2 > o.z0 && (bx.z0 + bx.z1) / 2 < o.z1 && bx.y0 >= o.y1 - 0.05 && bx.y0 - o.y1 < 2.35 && bx.y0 - o.y1 > 0.3);
-  for (const p of cand) {
+  for (const p0 of cand) {
+    // a prop hung on the motif's own wall goes against what shows of it (lib/wallhang.js), or not at all
+    const p = onWallM(b, p0, fr, there);
+    if (!p) continue;
     const bx = Ck.aabb(p), info = PM.piece(p.name);
     // the same shape already there from the rules (a corner post, a sill): one is enough
     if (trimNear.some(q => classOf(q.name) === p.cls && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.3)) continue;
@@ -7805,6 +8424,21 @@ function bannerPieces(X, as, h, o) { return as.map(a => [X.banner.name, a, o, h,
 // hang them on a frame at the plan's height, else a little lower or higher (the corpus rods 2.9 to 3.6 m over the
 // floor: the cloth's foot 0 to 0.7 m up), 0.3 m out from the wall's middle (0.1 m off a stone wall's face) or, past a
 // timber at the wall's head, 0.15 m further
+// The banners' rods against what shows of the wall (lib/wallhang.js), the cloth on it; false when one does not take
+// (a banner set out by the wall's relief stood 20 to 29 cm off a log or a 2x2 wall, showcase 06 and 10)
+function bannersOnWall(b, placed, fr) {
+  const WH = typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang;
+  if (!WH) return true;
+  const l = Math.hypot(fr.nx, fr.nz) || 1, nx = fr.nx / l, nz = fr.nz / l;
+  for (const p of placed) {
+    if (!WH.isHung(p.name)) continue;
+    const r = WH.hang(p.name, { x: p.x - nx * 0.5, z: p.z - nz * 0.5, nx, nz, y: p.y }, WH.backingOf(b.pieces), { pieces: b.pieces.concat(placed.filter(q => q !== p)) });
+    if (!r) return false;
+    p.x = r.x; p.z = r.z; p.yaw = r.yaw; p.q = r.q;
+    if (r.wclip) p.wclip = r.wclip;
+  }
+  return true;
+}
 function hangBanners(b, X, fr, as, id, wall) {
   const o0 = Math.max(0.3, (wall ? relief(wall) : 0.15) + 0.1);
   const pref = 2.98 + X.banner.lift, hs = [pref];
@@ -7819,6 +8453,7 @@ function hangBanners(b, X, fr, as, id, wall) {
     const placed = MotifsD.place(b, c, fr, null, { ground: 0, dry: true, minShare: 1, keepOut });
     if (!placed.length) continue;
     if (!placed.every(p => wallBehind(b, p, fr) && mountClearD(b, p))) return false; // an open bay, a window: no other height helps
+    if (!bannersOnWall(b, placed, fr)) continue;
     hold(b, placed); return true;
   }
   return false;
@@ -8595,7 +9230,9 @@ function vignettes(b, ctx, zones) {
       const n0 = b.pieces.length;
       if (kind === 'bench') {
         const [x, z] = at(0.4); b.put('piece_bench01', x, top, z, yaw, T);
-        const [tx, tz] = at(0.28); b.put('piece_walltorch', tx, top + 1.55, tz, (Math.atan2(nx, nz) * 180 / Math.PI + 270 + 360) % 360, { decor: true });
+        // the torch against what shows of the wall (lib/wallhang.js: a log wall shows 5 cm past its collider)
+        const [tx, tz] = at(0.0), r = hangB().hang('piece_walltorch', { x: tx, z: tz, nx, nz, y: top + 1.55 }, hangB().backingOf(b.pieces), { pieces: b.pieces });
+        if (r) b.put('piece_walltorch', r.x, r.y, r.z, r.yaw, r.wclip ? { decor: true, wclip: r.wclip } : { decor: true });
       } else if (kind === 'store') {
         const [x, z] = at(0.42, -0.45); b.put('piece_chest_wood', x, top, z, yaw, T);
         const [x2, z2] = at(0.4, 0.75); b.put('piece_chest_barrel', x2, top, z2, yaw, T);
@@ -8620,6 +9257,7 @@ function vignettes(b, ctx, zones) {
 // own assembly no deeper than its source builds did (marked p.clip, which lib/checks.js and the audit allow).
 const decorB = () => (NODE_B ? require('./decorate.js') : window.VHDecorate);
 const meshB = () => (NODE_B ? require('./mesh.js') : window.VHMesh);
+const hangB = () => (NODE_B ? require('./wallhang.js') : window.VHWallhang);
 // an item (food, drink) rather than a piece: what the game drops when it is placed loose
 function looseItem(name) {
   const Me = meshB();
@@ -9027,7 +9665,20 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     }
     // what hangs on the wall goes back to it: its solid back against the nearest wall face's collider (what holds it up
     // in the game), whatever depth the source build gave a piece of another size (a tool shelf stood 0.25 m off)
-    if (mm.rest === 'wall' && m.faces) {
+    // (what lib/wallhang.js knows: against what shows of the wall at its own height, turned with its back to it, as
+    // deep as corpus builders hang it; a plinth and the thinner wall over it have different faces, and a stand put at
+    // the plinth's face hung 35 cm out from the wall over it, showcase 01)
+    if (mm.rest === 'wall' && m.faces && hangB().isHung(p.name)) {
+      const f = wallFaceAt(m, p);
+      const ceil = m.ceilAt(p.x, p.z);
+      const hs = [];
+      for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [p.y + d, p.y - d]) if (yy >= stand + 0.9 || mm.y < 0.9) hs.push(+yy.toFixed(3));
+      const own = made.filter(Boolean), Bk = own.length ? hangB().both(hangB().backingOf(b.pieces), hangB().backing(own)) : hangB().backingOf(b.pieces);
+      const r = f && hangB().hang(p.name, { x: f.px(f.t), z: f.pz(f.t), nx: f.nx, nz: f.nz, y: p.y }, Bk, { heights: hs.filter(yy => yy < ceil - 0.3), pieces: b.pieces.concat(made.filter(Boolean)) });
+      if (!r) { WHY_B = 34; LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
+      p.x = r.x; p.y = r.y; p.z = r.z; p.yaw = r.yaw; p.q = r.q; p.hung = true;
+      if (r.wclip) p.wclip = r.wclip;
+    } else if (mm.rest === 'wall' && m.faces) {
       const V = SH.world(p);
       if (V && V.length) {
         let best = null;
@@ -9066,13 +9717,15 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       const y0 = p.y, top = bx.y1, why0 = WHY_B;
       const ceil = Math.min(...[[0, 0], [-0.3, 0], [0.3, 0]].map(([u, v]) => m.ceilAt(p.x + u * c + v * s, p.z - u * s + v * c)));
       const tries = [slide, why0 === 4 ? ceil - 0.1 - top : null, -0.1, 0.1, -0.2, 0.2, -0.3, 0.3, -0.4, 0.4].filter((d, k, l) => d != null && d !== 0 && l.indexOf(d) === k);
+      const x0 = p.x, z0 = p.z, f0 = p.hung ? wallFaceAt(m, p) : null;
       for (const d of tries) {
         p.y = +(y0 + d).toFixed(3);
+        if (f0) { const r = hangB().hang(p.name, { x: f0.px(f0.t), z: f0.pz(f0.t), nx: f0.nx, nz: f0.nz, y: p.y }, hangB().backingOf(b.pieces), { pieces: b.pieces.concat(made.filter(Boolean)) }); if (!r) continue; p.x = r.x; p.z = r.z; if (r.wclip) p.wclip = r.wclip; else delete p.wclip; }
         bx = Ck.aabbShapes(p);
         if (bx.y0 < stand + 0.9 || bx.y1 > ceil - 0.08) continue;
         if (placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a, showOf)) { okP = true; slide = d; break; }
       }
-      if (!okP) { p.y = y0; bx = Ck.aabbShapes(p); WHY_B = why0; }
+      if (!okP) { p.y = y0; p.x = x0; p.z = z0; bx = Ck.aabbShapes(p); WHY_B = why0; }
     }
     if (!okP) { LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
     // the pool audit's height for a sign or a wall stand (lib/audit.js MID, by the middle of what shows over the
@@ -9140,6 +9793,21 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   }
   got.displace = displace ? [...displace] : [];
   return got;
+}
+
+// The wall face a hung piece goes on: the room's face nearest its middle whose stretch it lies along, with t, the
+// place along the face (lib/wallhang.js hang moves it onto what shows of the wall from there)
+function wallFaceAt(m, p) {
+  let best = null;
+  for (const f of m.faces) {
+    if (f.edge) continue;
+    const t = p.x * f.ux + p.z * f.uz;
+    if (t < f.a0 - 0.1 || t > f.a1 + 0.1) continue;
+    const off = (p.x - f.px(t)) * f.nx + (p.z - f.pz(t)) * f.nz - f.ht;
+    if (off < -0.4 || off > 0.9) continue;
+    if (!best || Math.abs(off) < Math.abs(best.off)) best = { f, t, off };
+  }
+  return best ? { px: best.f.px, pz: best.f.pz, nx: best.f.nx, nz: best.f.nz, t: best.t } : null;
 }
 
 // Whether a sign or a wall stand would fail the pool audit's height test (lib/audit.js MID and its label rule)
@@ -9639,47 +10307,105 @@ function dressWalls(b, ctx, room, idx, zones, anchors, fires, R2, used) {
   const byFace = new Map();
   for (const an of anchors) if (an.anchor === 'wall') { if (!byFace.has(an.face)) byFace.set(an.face, []); byFace.get(an.face).push(an); }
   const d3 = ctx.decor === 'd3';
-  const gap = PS.wallGap(P), skip = PS.wallSkip(P);
+  const skip = PS.wallSkip(P);
   const ww = PS.wallWeights(P, room.role);
   const kinds = Object.keys(WALL_KITS).filter(k => ww[k] > 0);
-  const passes = [{ main: true, step: (d3 ? 2.5 : 3.2) * gap, y0: 1.3, y1: 2.4, reach: 0.9 }];
-  if (d3 && (!P || R2() < 0.2 + 0.5 * P.clutter * P.likes.shelves)) passes.push({ kits: [WALL_HIGH], step: 3 * gap, y0: 2.0, y1: 2.7, reach: 0.9 });
-  passes.push({ kits: [WALL_LIGHT], step: PS.torchGap(P), y0: 0, y1: 4, reach: 2, light: true });
-  let n = 0;
-  for (const pass of passes) for (const list of byFace.values()) {
-    list.sort((p, q) => p.t - q.t);
-    let next = -Infinity, kc = 0;
-    for (const an of list) {
-      if (an.t < next) continue;
-      const f = an.face, ux = f.ux, uz = f.uz, R = pass.reach;
-      const box = { x0: Math.min(an.x - ux * R, an.x + ux * R, an.x + f.nx * 0.7) - 0.05, x1: Math.max(an.x - ux * R, an.x + ux * R, an.x + f.nx * 0.7) + 0.05,
-        z0: Math.min(an.z - uz * R, an.z + uz * R, an.z + f.nz * 0.7) - 0.05, z1: Math.max(an.z - uz * R, an.z + uz * R, an.z + f.nz * 0.7) + 0.05 };
-      const busy = idx.near(box, 0).some(r => r.p.decor && PB.piece(r.p.name).role !== 'rug' && (!pass.light || PB.piece(r.p.name).role === 'light') &&
-        r.b.y1 > m.stand + pass.y0 && r.b.y0 < m.stand + pass.y1 && r.b.x0 < box.x1 && r.b.x1 > box.x0 && r.b.z0 < box.z1 && r.b.z1 > box.z0);
-      const jit = 0.7 + 0.8 * R2();
-      if (busy) { next = an.t + pass.step * 0.6 * jit; continue; }
-      if (pass.light && wallLightsFull(b, an.x, m.stand + 1.5, an.z)) { next = an.t + pass.step * jit; continue; }
-      // a neat household leaves some of the wall bare
-      if (!pass.light && R2() < skip) { next = an.t + pass.step * 0.5 * jit; continue; }
-      let kits = pass.kits;
-      if (pass.main) {
-        // the kind drawn by the household's weights first, the others after it by weight
-        const first = PS.pickW(R2, Object.fromEntries(kinds.map(k => [k, ww[k]])));
-        kits = [first, ...kinds.filter(k => k !== first).sort((a, c) => ww[c] - ww[a])].flatMap(k => WALL_KITS[k]);
+  // per: wall length per kit (the household's wallGap), per light (its torchGap, never under the corpus 2.7 m)
+  const passes = [{ main: true, per: (d3 ? 2.5 : 3.2) * PS.wallGap(P), y0: 1.3, y1: 2.4, reach: 0.9 }];
+  if (d3 && (!P || R2() < 0.2 + 0.5 * P.clutter * P.likes.shelves)) passes.push({ kits: [WALL_HIGH], y0: 2.0, y1: 2.7, reach: 0.9 });
+  passes.push({ kits: [WALL_LIGHT], per: Math.max(2.7, PS.torchGap(P)), y0: 0, y1: 4, reach: 2, light: true });
+  return dressWallsPlanned(b, ctx, room, idx, zones, byFace, passes, kinds, ww, skip, fires, R2, used);
+}
+
+// The wall dressing by intent (lib/wallhang.js plan): on each wall face, a kit centered over what stands against the
+// wall, a mirrored pair either side of a window or a door, or one in the middle of a plain stretch; never closer than
+// its width and 0.6 m to the next; lights alone on a stretch, 2 m apart or more, beside the door first; the high shelf
+// only over a ledge the main pass put up, as a second tier. It replaced a walk along each face that put a kit every
+// 2.5 to 3.2 m with a random jitter and random gaps (Tyler on wood_ledge: "like throwing spaghetti at a wall").
+// A neat household leaves whole walls bare (persona wallSkip), not random stretches of them.
+function dressWallsPlanned(b, ctx, room, idx, zones, byFace, passes, kinds, ww, skip, fires, R2, used) {
+  const m = room.m, P = ctx.persona, PS = personaB(), WH = hangB();
+  const yawOfN = (nx, nz) => normB(Math.atan2(nx, nz) * 180 / Math.PI);
+  const kitW = k => 2 * Math.max(0.3, ...k.pieces.filter(q => q.rest === 'wall').map(q => Math.abs(q.x))) + 0.5;
+  // what stands against a face, along it (beds, tables, chests, seats, stations)
+  const underOf = f => {
+    const out = [];
+    for (const q of b.pieces) {
+      if (!q.decor || Math.abs(q.y - m.stand) > 0.6) continue;
+      const role = PB.piece(q.name).role;
+      if (!['bed', 'table', 'storage', 'seat', 'craft'].includes(role)) continue;
+      const o = checksB().aabbShapes(q);
+      if (!o || o.pass) continue;
+      let lo = Infinity, hi = -Infinity, near = Infinity;
+      for (const [x, z] of [[o.x0, o.z0], [o.x1, o.z0], [o.x0, o.z1], [o.x1, o.z1]]) {
+        const t = x * f.ux + z * f.uz;
+        lo = Math.min(lo, t); hi = Math.max(hi, t);
+        near = Math.min(near, (x - f.px(t)) * f.nx + (z - f.pz(t)) * f.nz - f.ht);
       }
+      if (near > -0.1 && near < 0.5 && lo > f.a0 - 0.2 && hi < f.a1 + 0.2) out.push({ t0: lo, t1: hi, kind: role });
+    }
+    return out;
+  };
+  const taken = new Map();
+  const ledges = new Map();
+  let n = 0;
+  for (const pass of passes) for (const f of byFace.keys()) {
+    const plainLen = f.runs.filter(r => r.kind === 'wall').reduce((s0, r) => s0 + r.a1 - r.a0, 0);
+    if (!pass.light && pass.main && R2() < skip) continue;
+    const used0 = taken.get(f) || [];
+    taken.set(f, used0);
+    let cap = pass.per ? Math.max(1, Math.floor(plainLen / pass.per)) : 9;
+    // the kinds drawn once per face by the household's weights, so a pair matches and a face reads as one thing
+    let kits = pass.kits;
+    // the household's one height for wall lights (lib/wallhang.js lightY)
+    if (pass.light) kits = kits.map(k => ({ ...k, pieces: k.pieces.map(q => (q.rest === 'wall' ? { ...q, y: WH.lightY(P) } : q)) }));
+    if (pass.main) {
+      const first = PS.pickW(R2, Object.fromEntries(kinds.map(k => [k, ww[k]])));
+      kits = [first, ...kinds.filter(k => k !== first).sort((a, c) => ww[c] - ww[a])].flatMap(k => WALL_KITS[k]);
+    }
+    const w = Math.max(...kits.map(kitW));
+    let slots = WH.plan(f, { w, light: pass.light, under: pass.main ? underOf(f) : [] });
+    // the high shelf: a second tier over a ledge of the main pass
+    if (!pass.main && !pass.light) slots = (ledges.get(f) || []).map(t => ({ t, why: 'second tier', rank: 1 }));
+    const tried = new Set();
+    for (const sl of slots) {
+      if (cap <= 0) break;
+      if (tried.has(sl) || !WH.spaced(used0, sl.t, w, pass.light) || (sl.mate && !WH.spaced(used0, sl.mate.t, w, pass.light))) continue;
+      tried.add(sl); if (sl.mate) tried.add(sl.mate);
+      const group = sl.mate ? [sl, sl.mate] : [sl];
+      if (group.some(g => busyAt(idx, m, f, g.t, pass))) continue;
+      if (pass.light && group.some(g => wallLightsFull(b, f.px(g.t), m.stand + 1.5, f.pz(g.t)))) continue;
+      const anOf = g => ({ anchor: 'wall', x: f.px(g.t) + f.nx * f.ht, z: f.pz(g.t) + f.nz * f.ht, yaw: yawOfN(f.nx, f.nz), face: f, t: g.t });
       for (const k of kits) {
-        const got = fit(b, ctx, room, idx, zones, an, k, false, fires);
-        if (!got) continue;
-        // every other piece on a wall goes up at the third stage, and the high shelf (D-071)
-        const ds = pass.light ? 2 : pass.main ? (kc++ % 2 ? 3 : 2) : 3;
-        for (const p of got) { p.ds = ds; b.pieces.push(p); idx.add(p); }
-        used[k.id] = (used[k.id] || 0) + 1;
-        next = an.t + pass.step * jit; n++;
+        // ledges as shelves with things on them, and in a building no more than LEDGE_KITS of them (D-166, Tyler:
+        // "fine to use provided you have use for them and dont use them randomly, or all the time")
+        const isLedge = k.pieces.some(q => q.n === 'wood_ledge' && q.rest === 'wall');
+        if (isLedge && ((b._ledgeKits || 0) + group.length > LEDGE_KITS || !k.pieces.some(q => q.rest === 'on'))) continue;
+        const gots = [];
+        for (const g of group) { const got = fit(b, ctx, room, idx, zones, anOf(g), k, false, fires); if (!got) break; gots.push(got); }
+        if (gots.length !== group.length) continue;
+        const ds = pass.light ? 2 : pass.main ? (n % 2 ? 3 : 2) : 3;
+        for (const got of gots) for (const p of got) { p.ds = ds; b.pieces.push(p); idx.add(p); }
+        for (const g of group) used0.push({ t: g.t, w });
+        if (isLedge) b._ledgeKits = (b._ledgeKits || 0) + group.length;
+        if (pass.main && k.pieces.some(q => q.n === 'wood_ledge' && q.rest === 'wall')) for (const g of group) { if (!ledges.has(f)) ledges.set(f, []); ledges.get(f).push(g.t); }
+        used[k.id] = (used[k.id] || 0) + group.length;
+        n += group.length; cap -= group.length;
         break;
       }
     }
   }
   return n;
+}
+// Wall ledge kits in one building (the main pass and the high shelf together)
+const LEDGE_KITS = 2;
+// Whether decor stands or hangs at a wall slot already (the busy test of the walk it replaced)
+function busyAt(idx, m, f, t, pass) {
+  const x = f.px(t) + f.nx * f.ht, z = f.pz(t) + f.nz * f.ht, R = pass.reach;
+  const box = { x0: Math.min(x - f.ux * R, x + f.ux * R, x + f.nx * 0.7) - 0.05, x1: Math.max(x - f.ux * R, x + f.ux * R, x + f.nx * 0.7) + 0.05,
+    z0: Math.min(z - f.uz * R, z + f.uz * R, z + f.nz * 0.7) - 0.05, z1: Math.max(z - f.uz * R, z + f.uz * R, z + f.nz * 0.7) + 0.05 };
+  return idx.near(box, 0).some(r => r.p.decor && PB.piece(r.p.name).role !== 'rug' && (!pass.light || PB.piece(r.p.name).role === 'light') &&
+    r.b.y1 > m.stand + pass.y0 && r.b.y0 < m.stand + pass.y1 && r.b.x0 < box.x1 && r.b.x1 > box.x0 && r.b.z0 < box.z1 && r.b.z1 > box.z0);
 }
 
 // Whether the room at a point has its budget of wall lights already (lib/decorate.js lightBudget), so the wall torch
@@ -14403,6 +15129,7 @@ const CkH = () => (NODE_H ? require('./checks.js') : window.VHChecks);
 const DecH = () => (NODE_H ? require('./decorate.js') : window.VHDecorate);
 const BPH = () => (NODE_H ? require('./blueprint.js') : window.VHBlueprint);
 const SHH = () => (NODE_H ? require('./shapes.js') : window.VHShapes);
+const WHH = () => (NODE_H ? require('./wallhang.js') : window.VHWallhang);
 const PSH = () => (NODE_H ? require('./persona.js') : window.VHPersona);
 const KBH = () => (NODE_H ? require('./kitbash.js') : window.VHKitbash);
 // distance in plan from (x, z) to a piece's turned solids (o.sol, from checks.js gameBox), else to its box
@@ -14680,13 +15407,32 @@ function placer(b, T) {
     },
     put(name, x, y, z, yaw, extra = {}, o = {}) {
       refresh();
+      // a piece hung on a wall (lib/wallhang.js): yaw is the wall's normal into the room, x, z a point near the wall;
+      // it goes up against what shows of the wall at its own height, its back to the wall (a wall torch put up at the
+      // yaw alone had its arm along the wall, and a stand put at the stone plinth's face hung 35 cm out from the wood
+      // wall over it, showcase 01)
+      if (WHH() && WHH().isHung(name) && !o.asIs) {
+        const a = normH(yaw) * Math.PI / 180, nx = Math.sin(a), nz = Math.cos(a);
+        const hs = [];
+        for (let d = 0.1; d <= 0.301; d += 0.1) hs.push(y + d, y - d);
+        const r = WHH().hang(name, { x: x - nx * 0.3, z: z - nz * 0.3, nx, nz, y }, WHH().backingOf(b.pieces), { heights: hs.filter(v => v > 0.9 + (o.floor || 0)), pieces: b.pieces });
+        if (!r) return false;
+        x = r.x; y = r.y; z = r.z; yaw = r.yaw;
+        extra = r.wclip ? { ...extra, wclip: r.wclip } : extra;
+        o = { ...o, hung: true };
+      }
+      // a standing torch on what is under its foot (lib/wallhang.js settle): it was put 0.75 m over a level that was the
+      // floor's pivot in one place and 0.125 m over it in another, and hovered 10 to 64 cm (showcase 01)
+      // a hanging brazier from the beam, floor or roof over it (lib/wallhang.js hangFrom), or not at all
+      if (WHH() && name === 'piece_brazierceiling01' && !o.asIs) { const yy = WHH().hangFrom({ name, x, y, z, yaw: normH(yaw) }, b.pieces); if (yy == null) return false; y = yy; }
+      if (WHH() && /^piece_groundtorch/.test(name) && !o.asIs) { const yy = WHH().settle({ name, x, y, z, yaw: normH(yaw) }, b.pieces); if (yy == null) return false; y = yy; }
       const p = { name, x, y, z, yaw: normH(yaw), q: T.quat(normH(yaw)) };
       const bx = Ck.gameBox(p);
       if (!o.free) {
         // (a turned table, and what stands or hangs at a wall (o.solid), is judged by its own solids against walls and
         // furniture; everything else by its box)
         const H = name === 'piece_table' || o.solid ? hits : over;
-        if (hard.some(h => H(bx, h))) return false;
+        if (!o.hung && hard.some(h => H(bx, h))) return false;
         if (!o.onFurn && furn.some(h => H(bx, h, 0.01))) return false;
         if (keep.some(k => (k.always || !o.inKeep) && over(bx, k, 0))) return false;
       }
@@ -14720,22 +15466,38 @@ function leanTo(b, K, bearing, d0) {
 }
 
 // The notice board (D-140): two posts, a board of planks, a cap, and notices as signs on both faces. A sign's info is
-// its heading in the game (the mod reads it).
+// its heading in the game (the mod reads it). Builders tile signs edge to edge, side by side or in a column stepping
+// half a meter (docs/ROOM_STUDY.md section 7: neighbors 0.03 m apart, 0.48 m apart in height); the board's posts leave
+// 1.96 m, too little for two 1 m signs side by side, so each face carries a column of two, flat on the planks
+// (lib/wallhang.js). Three 1 m signs 0.55 m apart on a 2 m board overlapped each other by 45 % (showcase 01 and 02,
+// Tyler: "stacked and layered and smushed randomly together").
+const NOTICE_HEADS = ['Village notices', 'Work wanted', 'Trades'];
+// sign places on a face: along it, up from the board's middle; and the headings of each face of the board
+const NOTICE_WALL = [[-0.51, -0.24], [0.51, -0.24], [0, 0.27]];
+const NOTICE_BOARD = [[0, 0.255], [0, -0.255]];
 function noticeBoard(b, K, x, z, yaw) {
   const ux = Math.cos(rad(yaw)), uz = -Math.sin(rad(yaw)), nx = Math.sin(rad(yaw)), nz = Math.cos(rad(yaw));
   for (const s of [-1.1, 1.1]) b.put(K.pole, x + ux * s, 1, z + uz * s, yaw, { notice: true });
   b.put(K.wallHalf || 'wood_wall_half', x, 1.5, z, yaw, { notice: true });
   b.put(K.beam, x, 2.1, z, yaw, { notice: true });
-  const heads = ['Village notices', 'Work wanted', 'Trades'];
-  [-0.55, 0, 0.55].forEach((s, i) => { for (const f of [-1, 1]) b.put('sign', x + ux * s + nx * f * 0.16, 1.55 + (i === 1 ? 0.2 : 0), z + uz * s + nz * f * 0.16, f > 0 ? yaw : yaw + 180, { decor: true, notice: true, info: heads[i] }); });
+  noticeSigns(b, x, 1.5, z, ux, uz, nx, nz, NOTICE_BOARD, [0, 1]);
+  noticeSigns(b, x, 1.5, z, ux, uz, -nx, -nz, NOTICE_BOARD, [2, 0]);
+}
+// Notices on one face of a board or a wall: (x, y, z) the board's middle, n out of that face, the places, the headings.
+function noticeSigns(b, x, y, z, ux, uz, nx, nz, layout, heads) {
+  const WH = WHH(), B = WH ? WH.backingOf(b.pieces) : null;
+  layout.forEach(([s, dy], i) => {
+    // (the 2x2 and half walls carry a rail on one face: a sign that meets it goes over it instead, or stays off)
+    const r = WH && WH.hang('sign', { x: x + ux * s, z: z + uz * s, nx, nz, y: y + dy }, B, { cover: 1, pieces: b.pieces, gapOk: 0, heights: [y + 0.23, y + dy + 0.1, y + dy - 0.1] });
+    if (r) b.put('sign', r.x, r.y, r.z, r.yaw, { decor: true, notice: true, info: NOTICE_HEADS[heads[i]], ...(r.wclip ? { wclip: r.wclip } : {}) });
+  });
 }
 
 // Signs on a wall by the door (the notices on an open wall, D-140). wall: { x, z, yaw, nx, nz } of a wall bay, n into
-// the room.
+// the room; laid out as on the board.
 function noticeWall(b, w, y0) {
   const ux = Math.cos(rad(w.yaw)), uz = -Math.sin(rad(w.yaw));
-  const yawIn = normH(Math.atan2(w.nx, w.nz) * 180 / Math.PI);
-  [-0.6, 0, 0.6].forEach((s, i) => b.put('sign', w.x + ux * s + w.nx * 0.15, y0 + 1.5 + (i % 2) * 0.35, w.z + uz * s + w.nz * 0.15, yawIn, { decor: true, notice: true, info: ['Village notices', 'Work wanted', 'Trades'][i] }));
+  noticeSigns(b, w.x, y0 + 1.75, w.z, ux, uz, w.nx, w.nz, NOTICE_WALL, [0, 1, 2]);
 }
 
 function campDesign(b, K, T, o) {
@@ -15872,7 +16634,7 @@ function furnish(b, K, C, T, o, F) {
   for (const [i, sp] of edgeSpots.entries()) {
     if (nt >= 4 + 2 * k) break;
     if (i % tStep !== 1) continue;
-    if (place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + 1.6, sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true })) nt++;
+    if (place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + WHH().lightY(P), sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true })) nt++;
   }
   // (banners as the persona likes them, lib/persona.js wallWeights: none to six)
   const nBan = Math.max(0, Math.min(6, Math.round(4 * ww.banner - 1)));
@@ -15910,7 +16672,7 @@ function furnish(b, K, C, T, o, F) {
     const spots = edgeSpots.filter((sp, i) => i % 2 === 0).concat(edgeSpots.filter((sp, i) => i % 2 === 1));
     let have = edgeSpots.filter(dressed).length, turn = 0;
     const items = [
-      sp => place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + 1.6, sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true, solid: true }),
+      sp => place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + WHH().lightY(P), sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true, solid: true }),
       sp => place.put('piece_chest_wood', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, { ds: 2, chest: true }, { solid: true }),
       sp => place.put('piece_bench01', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, ds(2), { solid: true }),
       sp => place.put('itemstand', sp.x + sp.nx * (highT + 0.12), sp.y + 1.85, sp.z + sp.nz * (highT + 0.12), sp.yawIn, { ds: 2, memento: true }, { inKeep: true, solid: true }),
@@ -17542,6 +18304,16 @@ function balcony(b, K, C, w, edges, o) {
   return false;
 }
 
+// A door torch against what shows of the wall at its height (lib/wallhang.js: a log wall shows 5 cm past its collider,
+// and a torch at the collider's face stood 4 cm off it, showcase 05), or none when the wall does not take it there.
+function doorTorchOnWall(b, q, e, ox, oz, half) {
+  const WH = typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang;
+  if (!WH) return q;
+  const t = (q.x - e.x) * (1 - Math.abs(ox)) + (q.z - e.z) * (1 - Math.abs(oz));
+  const r = WH.hang(q.name, { x: e.x + ox * half + (1 - Math.abs(ox)) * t, z: e.z + oz * half + (1 - Math.abs(oz)) * t, nx: ox, nz: oz, y: q.y }, WH.backingOf(b.pieces), { pieces: b.pieces });
+  return r ? { ...q, x: r.x, z: r.z, yaw: r.yaw, wclip: r.wclip } : null;
+}
+
 // Lights by the doors (coverage audit 2026-11-09: wall torches by the door on 47 % of the best-liked builds, 5 % of
 // ours). From d2 the front door gets a wall torch on each side on the outside face, from d3 the back door too; where
 // the biome has no wall torch yet (Meadows) a standing torch beside a door at ground level. A side that would touch
@@ -17588,7 +18360,8 @@ function doorLights(b, o) {
           const bx = q.x - ox * 0.35, bz = q.z - oz * 0.35; return bx > pb.x0 - 0.02 && bx < pb.x1 + 0.02 && bz > pb.z0 - 0.02 && bz < pb.z1 + 0.02 && q.y > pb.y0 && q.y < pb.y1; });
         if (!hit && back) { put = q; break; }
       }
-      if (put) { b.put(put.name, put.x, put.y, put.z, put.yaw, { decor: true, ds: op.back ? 3 : 2 }); n++; }
+      if (put && name) put = doorTorchOnWall(b, put, e, ox, oz, half);
+      if (put) { b.put(put.name, put.x, put.y, put.z, put.yaw, { decor: true, ds: op.back ? 3 : 2, ...(put.wclip ? { wclip: put.wclip } : {}) }); n++; }
     }
   }
   if (n) b.notes.push(`${n} lights by the doors.`);
@@ -20063,6 +20836,9 @@ if (NODE_FP) module.exports = apiFP; else window.VHFloorplan = apiFP;
 //             cross bars, T-606, T-612)
 //   hang      banners whose cloth goes into the floor or up into the roof, or whose foot hangs more than 1 m over the
 //             floor or ground under it (T-606 "banners too high"); signs and wall item stands outside a sensible height
+//   wallOff   things hung on walls more than 3 cm off what shows of the wall behind them, or with no wall behind
+//             (lib/wallhang.js measure); wallHalf less than two thirds of the back on the wall; wallTurn back away from
+//             the wall or along it; wallStack two hung on one wall over one another or one in front of the other
 //   loose     food and drink set down loose (not on an item stand): the game drops them and a player picks them up
 //             by walking past (T-626)
 //   doorway   anything solid in the middle 0.9 m of a door's way, 0.35 to 1.95 m over its floor, 0.7 m either side of
@@ -20084,6 +20860,7 @@ const C = NODE_A ? require('./checks.js') : window.VHChecks;
 const D = NODE_A ? require('./decorate.js') : window.VHDecorate;
 const M = NODE_A ? require('./mesh.js') : window.VHMesh;
 const SH = NODE_A ? require('./shapes.js') : window.VHShapes;
+const WHA = () => (NODE_A ? require('./wallhang.js') : window.VHWallhang);
 // The gated measures: a pool fails when any of them is above zero.
 // Floors for the richness measures (pool below): a little under what the generator reaches on the Norse Meadows pool
 // and the second sample (lab/make_testpool.js --sample: Norse Meadows 12.2, 0.443, 1.07; norse-forest Black Forest 14,
@@ -20102,9 +20879,9 @@ function indoorDecor(pieces, decor) {
   const h = hull(pts);
   return decor.filter(p => !BANNER.test(p.name) || inHull(h, p.x, p.z, 0.05));
 }
-const GATE = ['richness', 'homeAlike', 'shapeChange', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
+const GATE = ['richness', 'homeAlike', 'shapeChange', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall', 'wallOff', 'wallTurn', 'wallHalf', 'wallStack'];
 // Watched only: printed with the totals; to be gated once the generator clears them.
-const WATCH = ['outside', 'intoWallSoft'];
+const WATCH = ['outside', 'intoWallSoft', 'floats'];
 // Reported only, never gated (D-132): decor stages that do not nest.
 const REPORTED = ['nestBroken'];
 const MOUNT = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
@@ -20189,12 +20966,54 @@ function inHull(h, x, z, pad) {
   return true;
 }
 
+const WALL_TOL = 0.03;
+function wallHung(pieces, r) {
+  const WH = WHA();
+  if (!WH || !pieces.some(p => WH.isHung(p.name))) return;
+  const B = WH.backing(pieces);
+  let A = null;
+  const loose = new Set();
+  const at = p => `${p.name} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`;
+  pieces.forEach((p, i) => {
+    if (!WH.isHung(p.name)) return;
+    const m = WH.measure(p, B);
+    const ok = isFinite(m.gap) && m.gap <= WALL_TOL && m.gap >= -Math.max(WALL_TOL, (p.wclip || 0) + 0.01) && m.cover >= 0.67 && m.facing;
+    if (ok) return;
+    if (!A) A = WH.backing(pieces, { any: true, floors: true });
+    if (WH.restsOn(p, A) || (m.kind === 'carving' && !isFinite(m.gap) || m.kind === 'carving' && p.y > 6)) { loose.add(i); return; }
+    if (!isFinite(m.gap)) r.wallOff.push(`${at(p)}: no wall behind it`);
+    else if (m.gap > WALL_TOL) r.wallOff.push(`${at(p)}: ${Math.round(m.gap * 100)} cm off the wall`);
+    if (!m.facing) r.wallTurn.push(`${at(p)}: turned ${m.turn} degrees from its wall`);
+    else if (isFinite(m.gap) && m.gap <= WALL_TOL && m.cover < 0.67) r.wallHalf.push(`${at(p)}: ${Math.round(m.cover * 9)} of 9 parts of its back on the wall`);
+  });
+  for (const o of WH.overlaps(pieces)) if (o.share >= 0.1 && !loose.has(o.i) && !loose.has(o.j)) r.wallStack.push(`${o.names[0]} and ${o.names[1]} over one another (${Math.round(o.share * 100)} %)`);
+}
+
+const HANGS_A = /^(piece_brazierceiling01|piece_dvergr_lantern_pole|piece_chain|cloth_hanging_|piece_cloth_hanging|fenrirhide_hanging|piece_banner)/;
+function floats(pieces, r) {
+  const WH = WHA();
+  if (!WH || !WH.attach) return;
+  let A = null, AR = null;
+  for (const p of pieces) {
+    if (WH.isHung(p.name) || p.green || p.yard || p.outside) continue;
+    const role = PC.piece(p.name).role;
+    if (PC.piece(p.name).structural || !['deco', 'light', 'storage', 'seat', 'table', 'bed', 'craft', 'clutter', 'fire'].includes(role)) continue;
+    const hang = HANGS_A.test(p.name);
+    if (hang ? !AR : !A) { if (hang) AR = WH.backing(pieces, { any: true, floors: true, roofs: true }); else A = WH.backing(pieces, { any: true, floors: true }); }
+    const m = WH.attach(p, hang ? AR : A);
+    const gap = hang ? Math.min(m.above, m.below) : m.below;
+    // (outside on the terrain the ground holds it: nothing under it at all and its foot near the ground)
+    if (!isFinite(gap) || gap <= WALL_TOL) continue;
+    r.floats.push(`${p.name} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}: ${Math.round(gap * 100)} cm ${hang ? 'under what holds it' : 'over what holds it'}`);
+  }
+}
+
 // shell: keys of the building's own pieces (its d1 file at the same stage); built furniture added at d2 and d3 (a
 // cabinet whose back is a half wall, shelves on posts) is part of its set and is left out of the wall measures.
 function audit(pieces, shell) {
   const boxes = pieces.map(p => C.catBox(p));
   const r = { pieces: pieces.length, furnClip: [], stacked: [], overWin: [], outside: [], stairFoot: [], stations: [],
-    mountClip: [], hang: [], loose: [], doorway: [], onStation: [], intoWall: [], intoWallSoft: [] };
+    mountClip: [], hang: [], loose: [], doorway: [], onStation: [], intoWall: [], intoWallSoft: [], wallOff: [], wallTurn: [], wallHalf: [], wallStack: [], floats: [] };
   const vis = pieces.map(p => M.world(p) || []), visBox = vis.map(M.aabbOf);
   const sol = pieces.map(p => SH.world(p) || []), solBox = pieces.map(p => SH.aabb(p));
   const furn = pieces.map((p, i) => i).filter(i => FURN.includes(role(pieces[i])));
@@ -20301,6 +21120,16 @@ function audit(pieces, shell) {
       if (h < lo || h > hi) r.hang.push(`${p.name} middle ${h.toFixed(1)} m over the floor`);
     }
   });
+  // things hung on walls against what shows of the wall behind them (lib/wallhang.js measure; track F, showcase
+  // 2026-11-12, Tyler: "Signs and stands and sometimes lights that werent touching walls and were a foot or more away"):
+  // wallOff more than 3 cm off the wall or no wall within 1.5 m behind; wallHalf less than two thirds of the back on the
+  // wall; wallTurn its back away from the wall or along it; wallStack two on one wall one over the other or in front of it.
+  // A piece standing on a floor or furniture, or set on something that is no wall (a label on a chest's front), is
+  // read where it stands, as corpus builders set them (D-127). The roof carvings on gable ends are roof trim, left out.
+  wallHung(pieces, r);
+  // decor that neither stands on anything nor hangs from anything within 3 cm (lib/wallhang.js attach): a standing
+  // torch's foot over the floor, a hanging brazier under no beam, a flat stand over its shelf; watched
+  floats(pieces, r);
   // food and drink set down loose
   for (const p of pieces) if (isLooseItem(p.name)) r.loose.push(p.name);
   // door ways
@@ -20374,7 +21203,7 @@ function pool(input, name) {
   }
   const dir = name || '';
   const report = { pool: dir, designs: Object.values(designs).reduce((s, d) => s + Object.keys(d).length, 0), lines: {}, totals: {} };
-  const MEASURES = ['furnClip', 'stacked', 'overWin', 'outside', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall', 'intoWallSoft'];
+  const MEASURES = ['furnClip', 'stacked', 'overWin', 'outside', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall', 'intoWallSoft', 'wallOff', 'wallTurn', 'wallHalf', 'wallStack', 'floats'];
   const tot = Object.fromEntries([...MEASURES, 'nestBroken', 'shapeChange'].map(k => [k, 0]));
   for (const [line, d] of Object.entries(designs)) {
     const L = report.lines[line] = { nest: {}, lineage: {}, shape: {}, issues: {} };
@@ -20516,7 +21345,7 @@ function group(files, parse) {
   return out;
 }
 
-const apiA = { STAND_HI, MID, floorSign, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
+const apiA = { STAND_HI, MID, floorSign, wallHung, floats, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
 if (NODE_A) module.exports = apiA; else window.VHAudit = apiA;
 
 })();

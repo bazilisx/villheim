@@ -319,9 +319,7 @@ namespace Villheim.Logic.Villagers
             ZDO zdo = view.GetZDO();
             zdo.Set(Keys.BuiltBy, hearth.VillageId);
             zdo.Set(KeyStandOf, hearth.VillageId);
-            zdo.Set(ZDOVars.s_item, trophy.m_dropPrefab.name);
-            zdo.Set(ZDOVars.s_variant, trophy.m_variant);
-            zdo.Set(ZDOVars.s_quality, trophy.m_quality);
+            Designs.StandItems.SetItem(zdo, trophy.m_dropPrefab.name, trophy.m_variant, trophy.m_quality);
             itemStand.UpdateVisual();
             villager.GetInventory().RemoveItem(trophy, 1);
             Chronicle.Add(hearth, $"{villager.VillagerName} hung a {Localization.instance.Localize(trophy.m_shared.m_name)} at home.");

@@ -64,13 +64,46 @@ namespace Villheim.Logic.Designs
             }
 
             ZDO zdo = view.GetZDO();
-            zdo.Set(ZDOVars.s_item, name);
-            zdo.Set(ZDOVars.s_variant, variant);
-            zdo.Set(ZDOVars.s_quality, quality);
+            SetItem(zdo, name, variant, quality);
             zdo.Set(KeyLocked, 1);
             stand.m_canBeRemoved = false;
             stand.UpdateVisual();
             return true;
+        }
+
+        /// <summary>
+        /// Writes a stand's item the way the game reads it. ItemStand.UpdateVisual reads ZDOVars.s_item with GetInt: the
+        /// stable hash of the item prefab's name (ItemStand.UpdateAttach writes m_dropPrefab.name.GetStableHashCode()).
+        /// The item written as its name in text read back as 0, so every stand showed empty (showcase test,
+        /// 2026-11-11).
+        /// </summary>
+        internal static void SetItem(ZDO zdo, string prefabName, int variant, int quality)
+        {
+            zdo.Set(ZDOVars.s_item, prefabName.GetStableHashCode());
+            zdo.Set(ZDOVars.s_variant, variant);
+            zdo.Set(ZDOVars.s_quality, Mathf.Max(1, quality));
+        }
+
+        /// <summary>The item prefab name on a stand, or "" when it is empty. Reads the game's hash; a name in text
+        /// written by older builds is still read.</summary>
+        internal static string ItemName(ZDO zdo)
+        {
+            if (zdo == null)
+            {
+                return "";
+            }
+
+            int hash = zdo.GetInt(ZDOVars.s_item);
+            if (hash != 0 && ObjectDB.instance != null)
+            {
+                GameObject prefab = ObjectDB.instance.GetItemPrefab(hash);
+                if (prefab != null)
+                {
+                    return prefab.name;
+                }
+            }
+
+            return zdo.GetString(ZDOVars.s_item, "");
         }
 
         /// <summary>A loose item placed as part of a design: it keeps its place, is never picked up and never despawns.</summary>

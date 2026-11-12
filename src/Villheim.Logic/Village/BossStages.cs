@@ -120,7 +120,7 @@ namespace Villheim.Logic.Village
             {
                 ItemStand stand = collider.GetComponentInParent<ItemStand>();
                 ZNetView view = stand != null ? stand.GetComponent<ZNetView>() : null;
-                string item = view != null && view.IsValid() ? view.GetZDO().GetString(ZDOVars.s_item, "") : "";
+                string item = view != null && view.IsValid() ? Designs.StandItems.ItemName(view.GetZDO()) : "";
                 var boss = Bosses.FirstOrDefault(b => b.Trophy == item);
                 if (boss.Trophy != null && hung.Add(item))
                 {

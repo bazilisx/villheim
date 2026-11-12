@@ -950,13 +950,14 @@ function mountSpots(room, name, o = {}) {
 // a banner's cloth 3 cm, as it hangs against the 2x2 wood wall's bars in any build (lib/audit.js uses the same).
 const HUNG_CLIP = name => (/^piece_banner\d+$/.test(name) ? 0.03 : 0.015);
 // D-127 (Tyler: "if the corpus builders do it, its allowed and you should mirror their work"): what corpus builders hang
-// into a wall's relief on purpose, up to the median depth they use (data/kitbash-interior.json, lab/mine_kitbash.js):
-// a wall item stand 5.3 cm (15 mined sets with the stand clipped into the wall, max 28 cm; 7.7 cm median over all
-// 4,212 stands), a wall torch 8.6 cm (808 torches in 238 builds, 90th percentile 23 cm). Past HUNG_CLIP the piece
+// into a wall's relief on purpose, up to the median depth they use. hungInto reads what shows (lib/mesh.js fine parts), so
+// the depths come from the fine run of lab/mine_kitbash.js (data/kitbash-interior-fine.json, VH_SHAPES=fine; round 7b):
+// a wall item stand 6.0 cm (60 mined sets with the stand clipped into the wall, max 12.2 cm; the colliders gave 5.3 cm
+// over 15), a wall torch 10.2 cm (239 builds, 90th percentile 16 cm; colliders 8.6 cm). Past HUNG_CLIP the piece
 // carries its depth as p.wclip, a clip made on purpose in the file's #VillheimClips (D-098). A Dvergr wall lantern
-// 18.8 cm (462 lanterns in 107 builds, 395 of them resting on the wall, 90th percentile 37.6 cm, the same file): its
-// bracket goes into the wall, and with no depth allowed none was ever put up.
-const HUNG_CORPUS = { itemstand: 0.053, piece_walltorch: 0.086, piece_dvergr_lantern: 0.188 };
+// 15.2 cm (103 builds, 90th percentile 31 cm; colliders 18.8 cm): its bracket goes into the wall, and with no depth
+// allowed none was ever put up.
+const HUNG_CORPUS = { itemstand: 0.060, piece_walltorch: 0.102, piece_dvergr_lantern: 0.152 };
 const hungLimit = name => Math.max(HUNG_CLIP(name), HUNG_CORPUS[name] || 0);
 // Clear of the wall's own relief (lib/mesh.js), by what shows of the piece against what shows of the walls round it:
 // a height between the bars within 0.4 m (T-606, T-612). A hung piece keeps its collider against the wall's, which is

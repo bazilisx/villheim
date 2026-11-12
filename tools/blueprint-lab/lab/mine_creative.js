@@ -131,16 +131,14 @@ function mine(d) {
   const ids = [...info.keys()], parent = new Map(ids.map(i => [i, i]));
   const find = i => { while (parent.get(i) !== i) { parent.set(i, parent.get(parent.get(i))); i = parent.get(i); } return i; };
   const isRug = i => role(i) === 'rug';
+  // Contact is what rests on or snaps to what, so it reads the colliders in every VH_SHAPES mode (lead's rule, round 7b:
+  // collision boxes for rest and snap, fine shapes for what shows). The clip depths below read what shows.
   const touch = (i, j) => {
     const A = bx[i], B = bx[j], g = 0.02;
     const near2 = e => !(A.x0 > B.x1 + e || B.x0 > A.x1 + e || A.y0 > B.y1 + e || B.y0 > A.y1 + e || A.z0 > B.z1 + e || B.z0 > A.z1 + e);
-    if (!near2(g)) {
-      // a piece's shown parts can stand past its collider box, so with VH_SHAPES solid pieces get a wider box test before the parts
-      if (!(SM.MODE && !(A.pass || B.pass || !A.sol || !B.sol) && near2(0.5))) return false;
-    }
+    if (!near2(g)) return false;
     if (A.pass || B.pass || !A.sol || !B.sol) return true;
-    const SA = shown(i), SB = shown(j);
-    for (const a of SA) for (const b of SB) if (SHP.hit(a, b, g)) return true;
+    for (const a of A.sol) for (const b of B.sol) if (SHP.hit(a, b, g)) return true;
     return false;
   };
   for (const i of ids) {
@@ -213,17 +211,29 @@ function mine(d) {
     // what rests on a piece left out goes too
     for (let k = 0; k < 3; k++) items = items.filter(i => rests.get(i).rest !== 'on' || items.includes(rests.get(i).on));
     if (items.length + (at != null ? 1 : 0) < 2 || !items.some(i => info.get(i).dec)) continue;
-    const clips = [];
+    // clips: the colliders' depths (the generator's fitter tests set pieces against each other, the anchor and the walls'
+    // colliders); show: the same depths in what shows (VH_SHAPES), for the generator's tests of what shows (lib/decorate.js
+    // auditOne). With VH_SHAPES unset show equals clips and is left out. The "on purpose" rule reads what shows.
+    const clips = [], show = [];
+    const sol = i => bx[i].sol;
     let deep = 0;
+    const both = (u, v, A, B) => {
+      const dc = SHP.clipDepth(A(0), B(0)), ds = SM.MODE ? SHP.clipDepth(A(1), B(1)) : dc;
+      if (dc > 0.01) clips.push([u, v, +dc.toFixed(3)]);
+      if (ds > 0.01) { show.push([u, v, +ds.toFixed(3)]); deep = Math.max(deep, ds); }
+    };
+    const of = i => f => (f ? shown(i) : sol(i));
     for (let u = 0; u < items.length; u++) {
-      for (let v = u + 1; v < items.length; v++) { const dd = SHP.clipDepth(shown(items[u]), shown(items[v])); if (dd > 0.01) { clips.push([u, v, +dd.toFixed(3)]); deep = Math.max(deep, dd); } }
-      if (at != null) { const dd = SHP.clipDepth(shown(items[u]), shown(at)); if (dd > 0.01) { clips.push([u, 'a', +dd.toFixed(3)]); deep = Math.max(deep, dd); } }
-      let dw = 0;
+      for (let v = u + 1; v < items.length; v++) both(u, v, of(items[u]), of(items[v]));
+      if (at != null) both(u, 'a', of(items[u]), of(at));
       const ws = new Set();
       for (const f of fcs) for (const w of f.walls) ws.add(w);
       for (const w of around(cx(items[u]), cz(items[u]), 1.5, bx[items[u]].y0, bx[items[u]].y1)) if (isWall(w)) ws.add(w);
-      for (const w of ws) dw = Math.max(dw, SHP.clipDepth(shown(items[u]), shown(w)));
+      let dw = 0, dwS = 0;
+      for (const w of ws) { dw = Math.max(dw, SHP.clipDepth(sol(items[u]), sol(w))); if (SM.MODE) dwS = Math.max(dwS, SHP.clipDepth(shown(items[u]), shown(w))); }
+      if (!SM.MODE) dwS = dw;
       if (dw > 0.01) clips.push([u, 'w', +dw.toFixed(3)]);
+      if (dwS > 0.01) show.push([u, 'w', +dwS.toFixed(3)]);
     }
     // one object on purpose: a member on another, a clip of 3 cm or more between members, or a building piece used
     const stacked = items.some(i => rests.get(i).rest === 'on' || rests.get(i).rest === 'anchor');
@@ -245,6 +255,7 @@ function mine(d) {
       top = Math.max(top, b.y1 - ft);
     }
     const r = { anchor, members, clips, foot: [+(x1 - x0).toFixed(2), +(z1 - z0).toFixed(2)], h: +top.toFixed(2) };
+    if (SM.MODE) r.show = show;
     if (anchor === 'corner') r.angle = angle;
     if (at != null) { r.of = akind(ps[at].name); r.anchorPiece = ps[at].name; }
     out.push(r);
@@ -287,17 +298,25 @@ function run(src, likedSet) {
   // well-liked: the top quarter by downloads among the vanilla builds (as lab/mine_kitbash.js), or every board build
   const bySig = new Map();
   let n = 0, nb = 0, nv = 0;
-  const pending = [];
-  for (const d of each()) {
+  let pending = [];
+  // Long runs (VH_SHAPES=fine) go in slices: SLICE=i/k mines every k-th vanilla build starting at i, DUMP=file writes the builds and
+  // their objects and stops; MERGE=file1,file2,... reads the dumps in place of mining (same ranking and matching after).
+  const SLICE = (process.env.SLICE || '0/1').split('/').map(Number);
+  if (process.env.MERGE) for (const f of process.env.MERGE.split(',')) {
+    const D = JSON.parse(fs.readFileSync(f, 'utf8'));
+    for (const [meta, res] of D.pending) { builds.push(meta); pending.push([meta, res]); }
+  }
+  else for (const d of each()) {
     if (++nb % 100 === 0) console.error(`${nb} builds read, ${nv} vanilla, ${n} objects`);
     if (!d.p || d.p.length < 20 || d.p.some(p => MOD.test(p[0])) || d.p.length > 15000) continue;
-    nv++;
+    if (nv++ % SLICE[1] !== SLICE[0]) continue;
     let res;
     try { res = mine(d); } catch (e) { console.error(d.file, e.message); continue; }
     const meta = { file: d.file, title: d.title, by: d.by, dls: d.dls, board: d.board };
     builds.push(meta);
     pending.push([meta, res]);
   }
+  if (process.env.DUMP) { fs.writeFileSync(process.env.DUMP, JSON.stringify({ pending })); console.log('dumped', pending.length, 'builds'); process.exit(0); }
   const ranked = builds.filter(d => d.dls > 0).sort((a, b) => b.dls - a.dls);
   const liked = likedSet || new Set(ranked.slice(0, Math.ceil(ranked.length / 4)).map(d => d.file));
   for (const [d, res] of pending) {

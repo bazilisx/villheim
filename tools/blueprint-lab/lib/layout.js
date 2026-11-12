@@ -422,20 +422,23 @@ function roomsOf(b, ctx) {
 
 // A group of loose furniture to another spot of its floor, clear of the lane cells given and reached by a person
 // (walkMap, spotsFor below); false when it fits nowhere or holds a piece that never moves.
-function moveAside(b, list, path) {
+// wc (clearLanes): the walk map of the last call that moved nothing, kept while b.pieces is the same list (a call that
+// moves nothing puts every piece back, so the map is the same; the game's engine ran walkMap once per call)
+function moveAside(b, list, path, wc) {
   if (!b.rooms || !b.rooms.length) return false;
   const F = decorL().FURNITURE, Ck = checksL();
   if (list.some(p => !p.decor || p.wclip || p.fclip || p.trim || p.outside || p.yard || PL.piece(p.name).role === 'door' || PL.piece(p.name).role === 'fire' || (p.rest && ['wall', 'hang'].includes(p.rest)) || ['mount', 'hang'].includes((F[p.name] || {}).at))) return false;
   // the biggest piece on the floor leads
   const area = p => { const o = Ck.aabb(p); return (o.x1 - o.x0) * (o.z1 - o.z0) - (p.rest === 'on' ? 99 : 0) - p.y; };
   const grp = [...list].sort((a, c) => area(c) - area(a));
-  const W = walkMap(b);
+  const W = wc && wc.pieces === b.pieces && wc.n === b.pieces.length ? wc.W : walkMap(b);
+  if (wc) { wc.pieces = b.pieces; wc.n = b.pieces.length; wc.W = W; }
   let h = 0;
   for (const p of grp) h = (Math.imul(h ^ Math.round(p.x * 100 + p.z * 7), 16777619) + 1) >>> 0;
   const S = spotsFor(b, W, grp, (path || []).map(c => ({ x: c.x, z: c.z })), h);
   for (const s of S.slice(0, 10)) {
     const u = placeGroup(grp, S.cx, S.cz, s);
-    if (meshClear(b, grp)) return true;
+    if (meshClear(b, grp) && kbClear(b, grp)) { if (wc) wc.pieces = null; return true; }
     u();
   }
   return false;
@@ -450,7 +453,7 @@ function clearLanes(b, ctx, rooms) {
   const Ck = checksL();
   const firstChest = b.pieces.find(p => p.decor && !p.kb && !p.outside && PL.piece(p.name).role === 'storage' && /chest/.test(p.name)) || null;
   let gone = 0, moved = 0;
-  const cache = new Map();
+  const cache = new Map(), wc = {};
   for (const room of rooms || roomsOf(b, ctx)) {
     const m = room.m;
     const hall = ['hall', 'tavern', 'temple'].includes(room.role);
@@ -499,7 +502,7 @@ function clearLanes(b, ctx, rooms) {
           if (keep) continue;
           // moved off the lane to a spot of its floor a person reaches, before it is left out (D-148: what does not
           // fit is left out)
-          if (moveAside(b, [...drop], path)) { budget--; moved++; any = true; continue; }
+          if (moveAside(b, [...drop], path, wc)) { budget--; moved++; any = true; continue; }
           if (leavesBare(b, m, drop)) continue;
           b.pieces = b.pieces.filter(p => !drop.has(p));
           budget--; gone++; any = true;
@@ -896,6 +899,7 @@ function spotsFor(b, W, grp, keep, seedN) {
   let h = (seedN >>> 0) || 7;
   const R = () => { h ^= h << 13; h >>>= 0; h ^= h >> 17; h ^= h << 5; h >>>= 0; return h / 4294967296; };
   const out = [];
+  const Ab = { x: 0, z: 0, hw: 0, hd: 0, c: 1, s: 0, r: 0 };
   for (let k = 0; k < 4; k++) {
     const boxes = rel.map(r => ({ ...turn(r, k), y0: r.y0, y1: r.y1, floor: r.floor }));
     // what itemBox works out for each of mine at this turn and does not depend on the spot
@@ -917,13 +921,24 @@ function spotsFor(b, W, grp, keep, seedN) {
         // itemBox (above) at this spot: the same numbers, worked the same way
         const px = nx + m.dx, pz = nz + m.dz;
         const mx = m.cc ? px + m.cc[0] * m.ca + m.cc[1] * m.sa : px, mz = m.cc ? pz - m.cc[0] * m.sa + m.cc[1] * m.ca : pz;
-        const Ab = { x: mx, z: mz, hw: m.hw, hd: m.hd, c: m.c, s: m.s, r: m.r }, ra = m.r;
-        const qb = { x0: mx - ra, x1: mx + ra, z0: mz - ra, z1: mz + ra };
-        const cand = near(qb, iIdx, items);
-        for (let n = 0; n < cand.length; n++) { const c2 = cand[n]; if (!(m.y0 > c2.y1 - 0.05 || c2.y0 > m.y1 - 0.05) && DI.overlap(Ab, c2.b, -0.02)) { ok = false; break; } }
+        Ab.x = mx; Ab.z = mz; Ab.hw = m.hw; Ab.hd = m.hd; Ab.c = m.c; Ab.s = m.s; Ab.r = m.r;
+        const ra = m.r, qx0 = mx - ra, qx1 = mx + ra, qz0 = mz - ra, qz1 = mz + ra;
+        // (the buckets read in place, no list made: the same pieces in the same order as near)
+        stamp++;
+        for (let i = Math.floor(qx0); i <= Math.floor(qx1) && ok; i++) for (let j = Math.floor(qz0); j <= Math.floor(qz1); j++) {
+          const l = iIdx.get(i * 4096 + j);
+          if (!l) continue;
+          for (const n of l) { const c2 = items[n]; if (c2._s === stamp) continue; c2._s = stamp; if (!(m.y0 > c2.y1 - 0.05 || c2.y0 > m.y1 - 0.05) && DI.overlap(Ab, c2.b, -0.02)) { ok = false; break; } }
+          if (!ok) break;
+        }
         if (!ok) break;
-        const dcand = near(qb, dIdx, doorList);
-        for (let n = 0; n < dcand.length; n++) if (DI.overlap(dcand[n].b, Ab, 0.02)) { ok = false; break; }
+        stamp++;
+        for (let i = Math.floor(qx0); i <= Math.floor(qx1) && ok; i++) for (let j = Math.floor(qz0); j <= Math.floor(qz1); j++) {
+          const l = dIdx.get(i * 4096 + j);
+          if (!l) continue;
+          for (const n of l) { const c2 = doorList[n]; if (c2._s === stamp) continue; c2._s = stamp; if (DI.overlap(c2.b, Ab, 0.02)) { ok = false; break; } }
+          if (!ok) break;
+        }
         if (!ok) break;
       }
       if (!ok) continue;
@@ -1130,6 +1145,30 @@ const meshL = () => (NODE_L ? require('./mesh.js') : window.VHMesh);
 const SHL = () => (NODE_L ? require('./shapes.js') : window.VHShapes);
 const W_STATION = /^(piece_workbench|forge|piece_stonecutter|piece_artisanstation|blackforge|piece_magetable|piece_cauldron)$/;
 const W_FURN = ['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter'];
+// A moved group against the library's set pieces round it, as the pool audit reads a set piece (lib/decorate.js audit
+// overlap, kbClip): the colliders no deeper than the pieces' own marked clip (p.clip), 3 cm between solid furniture
+// of two sets, and 2 cm more. A gem cutter moved alone went 0.5 m into the anvil of its own set (smithy Black Forest
+// s3d3 seed 384, round 7c).
+function kbClear(b, grp) {
+  const SH = SHL(), FD = decorL().FURNITURE;
+  if (!SH || !SH.world || !SH.clipDepth) return true;
+  const set = new Set(grp), SOLID = ['storage', 'craft', 'bed', 'table'];
+  const skip = q => ['mount', 'hang', 'top', 'fire', 'rug'].includes((FD[q.name] || {}).at);
+  for (const p of grp) {
+    if (!p.decor || skip(p)) continue;
+    let A = null;
+    for (const q of b.pieces) {
+      if (set.has(q) || !q.decor || !(p.kb || q.kb) || skip(q) || Math.abs(q.x - p.x) > 3 || Math.abs(q.z - p.z) > 3 || Math.abs(q.y - p.y) > 3) continue;
+      if (!A) { A = SH.world(p); if (!A || !A.length) break; }
+      const B = SH.world(q);
+      if (!B || !B.length) continue;
+      const solid = SOLID.includes((FD[p.name] || {}).cat) && SOLID.includes((FD[q.name] || {}).cat);
+      const lim = solid && p.kb !== q.kb ? 0.03 : Math.max(p.clip || 0, q.clip || 0);
+      if (SH.clipDepth(A, B) > lim + 0.02) return false;
+    }
+  }
+  return true;
+}
 function meshClear(b, grp) {
   const M = meshL(), SH = SHL();
   if (!M || !M.world || !M.deepest) return true;
@@ -1189,7 +1228,7 @@ function openWays(b, ctx) {
     const S = spotsFor(b, W, grp, keep, seedN++);
     for (const s of S.slice(0, 10)) {
       const undo = placeGroup(grp, S.cx, S.cz, s);
-      if (!meshClear(b, grp)) { undo(); continue; }
+      if (!meshClear(b, grp) || !kbClear(b, grp)) { undo(); continue; }
       const W2 = walkMap(b);
       if (accept(W2)) { W = W2; res.moved++; return true; }
       undo();
@@ -1305,7 +1344,7 @@ function openWays(b, ctx) {
             const S = undoAll.length ? spotsFor(b, W, grp, keep, seedN++) : S0;
             for (let i = Math.max(0, Math.min(r, S.length - 1)); i < S.length && i < r + 6; i++) {
               const u = placeGroup(grp, S.cx, S.cz, S[i]);
-              if (meshClear(b, grp)) { undoAll.push(u); break; }
+              if (meshClear(b, grp) && kbClear(b, grp)) { undoAll.push(u); break; }
               u();
             }
           }

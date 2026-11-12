@@ -495,6 +495,171 @@ Open:
 - Round 7b items from the brief: clip limits from the recount data, the woodworker s3 seed 21 workbench set, Mistlands
   longhouse nave ends, Mistlands workshop 528, entry zones before big furniture.
 
+## Integration, round 7b (2026-11-11, branch design/integration3 from main 16767eb)
+
+Merged b9e68e7 design/wip-recount2 c4856d1 (creative miner full fine run, data only). Commits:
+- 6dd711c landscape.js: vines keep 0.1 m apart on every axis (two vines 8 cm apart read as one doubled piece in the
+  checks.js overlap key, Norse Meadows pool smithy s2d3).
+- c4045e3 clip limits (lead's rule: colliders for rest and snap, fine shapes for what shows).
+  - lab/mine_creative.js: contact that joins pieces into one object (`touch`) reads the colliders in every VH_SHAPES
+    mode; each object keeps `clips` (colliders) and `show` (the same depths in what shows); the 3 cm "on purpose" rule
+    reads `show`. Full run (VH_SHAPES=fine, 8 slices, 16 to 50 s each, merge 3 s): 1,536 builds, 16,343 objects, 9,811
+    distinct (colliders run 9,800; the unsplit fine run 10,335). Written over data/creative-mined-fine.json.
+  - lab/show_clips.js (new): KB sets get `a.show` from data/kitbash-interior-fine.json, matched by anchor, prefabs and
+    spots within 0.35 m (mirrored too): 265 of 459 matched; the rest keep `a.clips` for what shows too. Wall clips of the
+    matched sets: colliders 50th/90th 11.7/30 cm (144 clips), what shows 10.6/24.5 cm (305).
+  - lib/kitbash.js: auditOne's wall allowance (a test of what shows, lib/mesh.js) reads `a.show` where a set has it
+    (showOf); the collider tests keep `a.clips`.
+  - lib/stands.js WALL_SHOW 12 to 9.7 cm (fine 90th percentile, data/recount-stands.json). lib/decorate.js HUNG_CORPUS
+    from the fine kitbash run: item stand 5.3 to 6.0 cm (60 mined sets, colliders 15), wall torch 8.6 to 10.2, Dvergr
+    lantern 18.8 to 15.2 cm.
+- d4414d5 curated creative picks (data/creative-mined.json): 116 of 125 found again in the split run; 9 not (picks 214,
+  215, 149, 48, 252, 216, 235, 290, 227; 149, 48, 252 and 290 were in creative_sets.js DROP already). The library loses
+  KC-103, 104, 133, 138, 143 of the old numbering (built groups of quarter walls, beams and posts round a chest, a
+  fermenter or a bench, each seen in one build); 143 KC sets (was 148), ids after KC-102 renumbered. A pick keeps its own
+  members and colliders' clips and takes `cs` (what shows) from the matched object; creative_sets.js writes it as
+  `show`. Taking the run's object whole (`WHOLE=1`; members up to 0.43 m off) put norse-forest Black Forest setShare at
+  0.319 (corpusSetsPerD3 1.44).
+  - lib/stands.js INST_ROLL (off, round 7a behavior): one roll per bench, seat and chest at the corpus's inst shares
+    (data/stands-corpus.json: bench 4.5 %, seat 1.4 %, chest 1.0 %), leaned by clutter. On (3 seeds, d3): flat bench
+    1.9 %, flat chest 1.5 %, flat share 79 % (all in band), stands median 19 to 14; Norse Meadows setShare 0.339 and
+    norse-forest 0.311, under the 0.34 floor. Left off: the floor holds.
+- 6564d45 lib/persona.js (lead's added item, Tyler's lab test: home Meadows anglo-saxon long gable half-timber s2d3 seed
+  54715 hung TrophyAbomination, a 2.82 m item model): a trophy or boss trophy longer than BIG_ITEM_M 1.90 m goes only on
+  the hub's stands (D-134: larger mementos at the central hearth). 1.90 m is the corpus's 75th percentile of trophies on
+  stands (data/item-models.json bounds, weighted by data/stands-corpus.json itemBuilds; 833 sightings, 50th 1.07, 90th
+  2.92, 95th 3.08 m). The count covers every kind of build; its 95th percentile would keep the Abomination (2.82 m) in
+  homes. Names listed in BIG_ITEM (20), so the engine needs no item models. The same request now hangs TrophyDraugrElite.
+- e9fdf25 bundles rebuilt at 6564d45.
+
+Not changed, with the reason:
+- Motif and yard clip values: lib/motifs.js reads a piece's clip in a collider box test (depthM) and tests what shows
+  with fixed limits (3 cm banners, 1.5 cm others); lib/yards.js MAX_CLIP is a box test. No what-shows test reads them.
+  data/motifs-fine.json shares 1,246 of 2,750 keys with data/motifs.json (it was mined with no Review verdicts).
+- Furniture into furniture (fine 7.3/26.6/41.8 cm): the generator tests set pieces against each other with colliders
+  (kitbash.js placeable) and the audit's furnClip with boxes; the fine tests on furniture are onStation (5 cm) and
+  layout.js's station test (4 cm), a use rule for stations. Unchanged. intoWall 15 cm is within 1 cm of the fine 50th
+  (14.1 cm).
+- Trophy tier against the village (lead's item b): lib/persona.js itemFrom picks from any biome, with the village's own
+  biome weighted more (D-126, common.md: "any vanilla furniture, decor, light, rug, station and stand item in any
+  biome"). D-134 says mementos follow what the village or person has earned in the game. Proposed row below; code left
+  as it is.
+- Item color on the page: in node (lib/render.js itemModel, partColor) the Abomination's parts draw olive brown (model
+  colors #443f2e to #4d4932 mixed with ITEM_INFO #8a7656; /tmp/int7b-renders/abom-before.png). The pink was not
+  reproduced; the only loud item color in render.js is the missing-model box (#c8452c), drawn 0.1 m.
+- Items 3 and 4 of the brief (woodworker s3 seed 21, Mistlands nave ends and workshop 528, entry zones before big
+  furniture, court first chest, the small counts): not done this round.
+
+Before and after (round 7a record, then this branch at e9fdf25; check_interiors full, 702 designs; test_stands
+3 --d3, same seeds as a full run):
+
+| Measure | Round 7a | Round 7b |
+|---|---|---|
+| check_interiors floating | 1 | 4 (2 designs) |
+| overlap | 3 | 5 (4 designs) |
+| bareFloors | 11 | 10 |
+| door | 3 | 2 |
+| stairs | 2 | 3 |
+| entryZone | 1 | 1 |
+| check:headroom | 0 | 1 |
+| rooms not reached | 6 of 987 | 8 of 987 |
+| main pieces not reached | 13 of 3,838 | 8 of 3,814 |
+| furniture per d2 / d3 design | 22.3 / 41.0 | 21.9 / 41.7 |
+| Norse Meadows prefabsPerD3, setShare | 13.1, 0.406 | 13.6, 0.412 pass |
+| norse-forest Black Forest | 11.9, 0.37 | 11.4, 0.355 pass (corpusSetsPerD3 2.11 to 1.56) |
+| middle-eastern Plains | 12.0, 0.5 | 11.9, 0.478 pass |
+| test_stands misses at d3 | flat bench 18.6, wall station 31.5, wall table 14.9, flat share 86, distinct q1 4 | flat bench 20.7, flat chest 4.5, wall station 29.1, wall table 14.1, flat share 83, distinct q1 5 |
+| gen-test request 2, 3 (s) | 73 to 77, 18 to 21 | 80.3 and 77.5, 20.0 and 19.5 (two runs; 5 of 5 byte for byte) |
+
+New in check_interiors: floating, three flat stands at 3.92 m in home Meadows norse L+T+nave s3d3 213; check:headroom,
+tower Plains byzantine octagon s3d3 539 (4 floor points by a wood_beam); overlap, a black marble bench on a wood ledge
+(longhouse Plains 303), a gem cutter in blackforge_ext1 (smithy Black Forest 384), a ground torch by a pot (workshop
+Meadows 287). Not traced; the KC library change and the what-shows allowances are the changes on these paths.
+test_structure 36 hold; compare_page all same (7 requests). Not run: check_set, test_sizes, essentials, test_variance,
+test_hub, test_landscape, dotnet build (gen-test builds the engine host only).
+
+Renders: /tmp/int7b-renders/abom-before.png and abom-after.png (seed 54715, not kept).
+
+Proposed Decisions rows:
+- Trophies on stands follow the village's reach (D-134: earned) or any biome (D-126)? Options: A) any biome (now);
+  B) up to lib/pieces.js buildReach (the village biome and the next); C) by village stage. Value in use: A.
+- BIG_ITEM_M 1.90 m (corpus 75th percentile of trophies on stands, all build kinds) for non-hub stands; or the 90th
+  (2.92 m), which keeps the Abomination in homes. Value in use: 1.90 m.
+
+Where round 7b stopped: everything above is pushed (e9fdf25 plus this record). Not ready to merge: check:headroom 1
+and floating 4 are new, gen-test request 2 reached 80.3 s in one of two runs.
+
+## Integration, round 7c (2026-11-12, branch design/integration3 from 9c5f761)
+
+Commits:
+- ce42a84 the new check_interiors problems of round 7b, each traced on its design (lab one-design runs at 16767eb,
+  c4045e3, d4414d5 and the tip):
+  - floating (home Meadows s3d3 213, three BK-island stands at 3.92 m): openWays moved their table after the loose-piece
+    pass. generate.js dropLoose runs that pass again after openWays.
+  - headroom (tower Plains s3d3 539): KC-100's beam laid on a half wall and a chest (a counter top, 0.88 m) read as a
+    ceiling. checks.js headroom: a furnishing's piece (p.decor) under 1.8 m over the floor point is furniture; one hung
+    higher still counts (D-127: the audit rule is what changes when corpus builders do it).
+  - overlap, bench and ledge (longhouse Plains s3d3 303): the stand pass placed KS-s-arms over a bench the fitter had
+    listed to move aside (got.displace), and stands.js never moves anything. A stand set with a displace list is not
+    placed.
+  - overlap, gem cutter in blackforge_ext1 (smithy Black Forest s3d3 384): openWays moved the gem cutter alone into its
+    own set's piece. layout.js kbClear: every group move (moveAside, openWays, the part moves) keeps the colliders out
+    of set pieces round it by the audit's kbClip rule.
+  - overlap and stairs, pots (workshop Meadows s3d3 287): landscape pots under the eaves by a door torch and 0.6 m from
+    an inside stair, through the wall. landscape.js keeps greenery 0.65 m off every stair over its height, and pots off
+    the furnishing's catalog boxes at the audit's margin (4300d87 narrowed this to pots: with every class, test_landscape
+    3 put mushrooms out of band).
+- 3caa23f BIG_ITEM_M from the corpus houses alone (lab/trophy_sizes.js over the corpus blueprints of the private repo,
+  D-157; categories starter home, building, advanced base, tree house, interior design): 1,108 trophy stands in 86
+  builds, 50th 0.74, 75th 1.34, 90th 2.215 (a wraith), 95th 2.92 m. Halls, taverns, villages, castles, towers,
+  smithies and temples: 770 stands in 56 builds, 75th 1.61, 90th 2.82 m. Value in use: the houses' 90th, 2.215 m;
+  15 trophies listed (the Abomination 2.82 m among them; houses hang it 36 times, all in the top tenth). The reach
+  rule is unchanged (D-161 Open; value in use any biome). Seed 54715 now hangs TrophyBlob.
+- 58db293 speed, same output (check_interiors rows identical before and after over 702 designs; request 2 md5 the same):
+  spotsFor reads its furniture and door buckets in place; clearLanes keeps the walk map across moveAside calls that put
+  everything back.
+- ac59989 bundles rebuilt at 4300d87.
+
+Before and after (round 7a, round 7b, this round at 4300d87; full runs):
+
+| Measure | Round 7a | Round 7b | Round 7c |
+|---|---|---|---|
+| check_interiors floating | 1 | 4 | 0 |
+| overlap | 3 | 5 | 2 |
+| check:headroom | 0 | 1 | 0 |
+| door | 3 | 2 | 2 |
+| stairs | 2 | 3 | 1 |
+| entryZone | 1 | 1 | 1 |
+| bareFloors | 11 | 10 | 10 |
+| rooms not reached | 6 of 987 | 8 of 987 | 8 of 987 |
+| main pieces not reached | 13 of 3,838 | 8 of 3,814 | 8 of 3,812 |
+| Norse Meadows prefabsPerD3, setShare | 13.1, 0.406 | 13.6, 0.412 | 13.6, 0.412 pass |
+| norse-forest Black Forest | 11.9, 0.37 | 11.4, 0.355 | 11.4, 0.355 pass |
+| middle-eastern Plains | 12.0, 0.5 | 11.9, 0.478 | 11.9, 0.478 pass |
+| test_stands misses at d3 (3 --gate) | flat bench 18.6, wall station 31.5, wall table 14.9, flat share 86, distinct q1 4 | flat bench 20.7, flat chest 4.5, wall station 29.1, wall table 14.1, flat share 83, distinct q1 5 (--d3) | flat bench 20.7, flat chest 4.5, wall station 29.1, wall table 14.1, flat share 83, distinct q1 4 |
+| gen-test request 2, 3 (s) | 73 to 77, 18 to 21 | 80.3 and 77.5, 20.0 and 19.5 | 79.9, 78.7, 79.5; 20.4, 20.4, 20.0 |
+
+Other checks at 58db293 (4300d87 where marked): test_structure 36 hold; test_sizes 0 off; check_set 2: set 239 of 240,
+late 96 of 96, cultures 147 of 147, overlap 1 (as 7a); essentials: homes, longhouses, taverns, smithies,
+storehouses with no light 33, 22, 3, 42, 50 % (7a 33, 19, 3, 42, 56 %); test_variance hall s2 and s3
+0.44, home-c s3d3 0.41 (closest 0.57); test_hub all pass; test_hub_variance every seed differs; test_landscape 3
+(4300d87): all landscaping rules hold (without the seed count it fails on 7a too: mushroom pieces 2 against 8);
+compare_page all same (4300d87); gen-test 5 of 5 byte for byte; dotnet build 0 errors, 43 warnings. A test_landscape 3
+run on d4414d5 put the pot share at 0.05 (band 0.06 to 0.19), on c4045e3 0.08; at 4300d87 it is back in band.
+
+Remaining check_interiors problems: overlap 2 (a Mistlands home's log bench on a fiddlehead, as in 7a; a smithy yard's
+ground torch by forge_ext5, as in 7a: the boxes miss in the colliders and meet in the catalog boxes); door 2 (a flat
+stand in a barn, a chair in a barn); stairs 1 (a wood stack by a tavern stair); entryZone 1 (a tavern fire pit); reach
+rooms 8 (Mistlands longhouse nave ends 211, 116, 312; Mistlands workshop 528 upper floor, 3 rooms; home Meadows 213
+upper room; Mistlands home 255 upper floor).
+
+Not done this round (time): items 3 and 4 of the brief (woodworker s3 seed 21; Mistlands nave ends, a plan change in
+generate.js for 2 m cells between 1 m walls; workshop 528; entry zones reserved before big furniture; the court first
+chest), the test_stands bands (INST_ROLL stays off: on, Meadows and Black Forest setShare fall under 0.34; the ways
+named by the lead, a roll only in rooms whose sets went in or set picks that carry their stands at the corpus share,
+were not tried), and request 2 at 75 s or under (three runs 78.7 to 79.9 s; node 5.1 to 5.3 s against 4.9 s at
+16767eb; profile: clearLanes 1.0 s of 4.6 s, moveAside 0.8, spotsFor 0.56, GC 0.6, pruneMotifs 0.36).
+
 ## Rules for every helper (copy of /home/claude/briefs/common.md; /home/claude is not kept between sessions)
 
 A new session gives each helper these rules in its brief, with its own branch, working copy and file ownership.

@@ -353,7 +353,7 @@ function lite(d) {
   // and what their stands hold
   return { assemblies: d.assemblies.map(a => ({ id: a.id, anchor: a.anchor, angle: a.angle, of: a.of, rooms: a.rooms, score: a.score, once: a.once,
     decor: a.decor, traits: a.traits, min: a.min, creative: a.creative, from: a.from,
-    clips: a.clips, pieces: a.pieces.map(m => { const o = { n: m.n, k: m.k, x: m.x, y: m.y, z: m.z, yaw: m.yaw, rest: m.rest }; if (m.on != null) o.on = m.on; if (m.sink) o.sink = m.sink; if (m.key) o.key = true; if (m.want) o.want = m.want; return o; }) })) };
+    clips: a.clips, show: a.show, pieces: a.pieces.map(m => { const o = { n: m.n, k: m.k, x: m.x, y: m.y, z: m.z, yaw: m.yaw, rest: m.rest }; if (m.on != null) o.on = m.on; if (m.sink) o.sink = m.sink; if (m.key) o.key = true; if (m.want) o.want = m.want; return o; }) })) };
 }
 
 function rngB(seed) {
@@ -637,6 +637,9 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   const Ck = checksB(), SH = shapesB(), m = room.m;
   const fy = anc.yaw * Math.PI / 180, c = Math.cos(fy), s = Math.sin(fy);
   const clipOf = (u, v) => { let d = 0; for (const cl of a.clips || []) if ((cl[0] === u && cl[1] === v) || (cl[0] === v && cl[1] === u)) d = Math.max(d, cl[2]); return d; };
+  // the same depths in what shows (a.show, lab/show_clips.js: fine parts of the source builds), for auditOne's tests of
+  // what shows; the colliders' depths (a.clips) where the set has none
+  const showOf = (u, v) => { if (!a.show) return clipOf(u, v); let d = 0; for (const cl of a.show) if ((cl[0] === u && cl[1] === v) || (cl[0] === v && cl[1] === u)) d = Math.max(d, cl[2]); return d; };
   const order = a.pieces.map((p, i) => i).sort((i, j) => (a.pieces[i].rest === 'on' ? 1 : 0) - (a.pieces[j].rest === 'on' ? 1 : 0));
   const made = new Array(a.pieces.length).fill(null);
   // what the set moves out of its way: the decorator's extras for any set (the library comes first, the rule-based
@@ -768,7 +771,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       // the depth its source set it into the floor goes with it, so the audit's rest test allows it (a post sunk 14 cm)
       if (mm.sink) p.sink = mm.sink;
     }
-    let okP = placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a);
+    let okP = placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a, showOf);
     // a hung piece that meets the ceiling or the wall's own relief (the bars of a 2x2 wall) slides up or down the
     // wall, as the decorator's wall pieces do (building pieces stay where the set holds them up): the set's last slide first, so a pair stays level; never
     // under 0.9 m (what stands on it moves with it)
@@ -780,7 +783,7 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
         p.y = +(y0 + d).toFixed(3);
         bx = Ck.aabbShapes(p);
         if (bx.y0 < stand + 0.9 || bx.y1 > ceil - 0.08) continue;
-        if (placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a)) { okP = true; slide = d; break; }
+        if (placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a, showOf)) { okP = true; slide = d; break; }
       }
       if (!okP) { p.y = y0; bx = Ck.aabbShapes(p); WHY_B = why0; }
     }
@@ -876,7 +879,7 @@ function hangOff(p, stand, idx, made) {
 let WHY_B = 0, LAST_B = '', LASTQ_B = '', STATS_B = null;
 const no = k => { WHY_B = k; if (globalThis.__kbNo) globalThis.__kbNo[k] = (globalThis.__kbNo[k] || 0) + 1; return false; };
 const MOVABLE = ['storage', 'seat', 'deco', 'clutter', 'light'];
-function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a) {
+function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a, showOf) {
   const Ck = checksB(), SH = shapesB(), D = decorB(), m = room.m;
   const cx = (bx.x0 + bx.x1) / 2, cz = (bx.z0 + bx.z1) / 2;
   const info = PB.piece(p.name);
@@ -1017,7 +1020,7 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
   const audited = () => {
     // a set's own piece may go into what shows of the walls as deep as its source builds put it (D-098: clips made on
     // purpose); a piece put in its place gets nothing
-    if (decorB().auditOne(p, idx.audit, made.filter(Boolean), ownP ? clipOf(i, 'w') : 0)) return true;
+    if (decorB().auditOne(p, idx.audit, made.filter(Boolean), ownP ? (showOf || clipOf)(i, 'w') : 0)) return true;
     if (STATS_B) { const H = STATS_B.audit || (STATS_B.audit = {}); const k = decorB().oneWhy() + ' ' + p.name; H[k] = (H[k] || 0) + 1; }
     return no(13);
   };

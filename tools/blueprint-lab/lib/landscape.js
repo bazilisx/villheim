@@ -286,15 +286,22 @@ function survey(b, G0) {
   for (const x of boxes) {
     if (x.info.role === 'stair' && x.o.y0 < G0 + 0.8) keep.push({ x0: x.o.x0 - 1.2, x1: x.o.x1 + 1.2, z0: x.o.z0 - 1.2, z1: x.o.z1 + 1.2, y0: -50, y1: 50, why: 'stair' });
     if (/^wood_(fine_|core_)?stack$/.test(x.p.name) && x.o.y0 < G0 + 0.5) keep.push({ x0: x.o.x0 - 1, x1: x.o.x1 + 1, z0: x.o.z0 - 1, z1: x.o.z1 + 1, y0: -50, y1: 50, why: 'woodpile' });
+    // and 0.65 m round any stair over its height, as the pool audit's stairs test reads it whatever stands between
+    // (a stair inside against the wall, pots outside it; workshop Meadows s3d3 seed 287, round 7c)
+    if (x.info.role === 'stair') keep.push({ x0: x.o.x0 - 0.65, x1: x.o.x1 + 0.65, z0: x.o.z0 - 0.65, z1: x.o.z1 + 0.65, y0: x.o.y0 - 0.1, y1: x.o.y1 + 0.3, why: 'stair' });
   }
   // what a plant may not stand in: anything but floors laid on the ground, rugs and other plants
   const solid = boxes.filter(x => !['rug'].includes(x.info.role) && !classOf(x.p.name) && !(x.info.role === 'floor' && x.o.y1 < G0 + 0.12)).map(x => x.o);
+  // the furnishing's own pieces by their catalog boxes too, as the pool audit's overlap test reads them (a ground torch
+  // by a door, whose collider is a thin stick, and a pot set into it; workshop Meadows s3d3 seed 287, round 7c)
+  // (pots only: they are the greenery the audit reads as furniture; the rest keep to the colliders, as before)
+  const furnBoxes = boxes.filter(x => x.p.decor && !x.p.green && !['rug'].includes(x.info.role)).map(x => Ck.catBox(x.p));
   const roofs = boxes.filter(x => ['roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'floor'].includes(x.info.role) && x.o.y0 > G0 + 1.2).map(x => x.o);
   const fences = boxes.filter(x => x.p.yard && x.info.role === 'fence').map(x => x.o);
   // the gate closes the fence line for 'inside the yard'
   const gates = boxes.filter(x => x.p.yard && /gate/.test(x.p.name)).map(x => x.o);
   const paths = keep.filter(z => z.path);
-  return { boxes, faces, doors, keep, solid, roofs, fences, gates, paths, onFloor };
+  return { boxes, faces, doors, keep, solid, furn: furnBoxes, roofs, fences, gates, paths, onFloor };
 }
 function rectAlong(x, z, ux, uz, nx, nz, a0, a1, b0, b1) {
   const xs = [], zs = [];
@@ -403,6 +410,7 @@ function add(b, ctx) {
     if (inKeep({ ...foot, x0: x - rk, x1: x + rk, z0: z - rk, z1: z + rk })) return false;
     const box = Ck.aabb({ name: e[0], x, y: G0, z, yaw: 0, s: sc !== 1 ? [sc, sc, sc] : undefined });
     if (S.solid.some(o => hit(box, o, 0.08))) return false;
+    if (kind === 'pot' && S.furn.some(o => hit(box, o, -0.06))) return false;
     // the crown of a tree or bush clear of roofs, eaves and floors over it (a low plant passes under the eaves)
     if (kind === 'tree' || kind === 'bush') {
       const crown = { x0: x - r, x1: x + r, z0: z - r, z1: z + r, y0: G0 + top * 0.35, y1: G0 + top };
@@ -601,7 +609,8 @@ function add(b, ctx) {
         // the card's back on the wall face, its pivot out from it by the model's depth behind the pivot
         const [x, z] = f.base(t - V.along, V.back + R() * 0.06, y, y + h);
         const py = y - V.y0;
-        if (ok && !placed.some(q => q.green.k === 'vine' && Math.hypot(q.x - x, q.z - z) < 0.08 && Math.abs(q.y - py) < 0.08)) {
+        // (within 0.1 m on every axis two vines read as one doubled piece in lib/checks.js overlap, which keys pieces to 0.1 m)
+        if (ok && !placed.some(q => q.green.k === 'vine' && Math.abs(q.x - x) < 0.1 && Math.abs(q.z - z) < 0.1 && Math.abs(q.y - py) < 0.1)) {
           if (put(e, 'vine', 'wall', pick.src, x, py, z, yaw, 1)) { k++; left--; got.vine = (got.vine || 0) + 1; }
           else miss++;
         } else miss++;

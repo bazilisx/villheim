@@ -1866,9 +1866,10 @@ function biomeSafe(b, biome) {
   });
 }
 
-function finish(b, info) {
-  // nothing left in the air: a piece set on another (a chest on a bench, a mug on a table) goes when what held it was
-  // taken out by a later pass (a lane cleared, a set undone), checked the way the interior library checks its pieces
+// Nothing left in the air: a piece set on another (a chest on a bench, a mug on a table) goes when what held it was
+// taken out or moved by a later pass (a lane cleared, a set undone), checked the way the interior library checks its
+// pieces. Run before the stands are dressed and again after openWays, which moves furniture.
+function dropLoose(b) {
   for (let pass = 0; pass < 3; pass++) {
     const ctx = Decor.auditContext(b.pieces);
     // a chest stays up only on another chest (a set's chest left on the decorator's table, 2026-11-10)
@@ -1880,6 +1881,10 @@ function finish(b, info) {
     const out = new Set(loose);
     b.pieces = b.pieces.filter(p => !out.has(p));
   }
+}
+
+function finish(b, info) {
+  dropLoose(b);
   // a table rolled dressed that the passes left bare gets one thing on it (lib/kitbash.js redressTables)
   if (Kitbash.redressTables) Kitbash.redressTables(b, { culture: info.cultureKey });
   // every item stand holds something the household would keep there, or goes (lib/persona.js)
@@ -1890,7 +1895,7 @@ function finish(b, info) {
   // a person can walk in through every door, into every room and up to every bed, table, station and chest (D-152,
   // D-148; lib/layout.js openWays), after every pass that sets or moves furniture
   if (b.walks && b.rooms && b.rooms.length) { const yl = Math.min(...b.rooms.map(r => r.y)); for (const w of b.walks) if (w.y == null) w.y = yl; }
-  { const Lw = layoutLib(); if (Lw && Lw.openWays) Lw.openWays(b, info); }
+  { const Lw = layoutLib(); if (Lw && Lw.openWays) { Lw.openWays(b, info); dropLoose(b); } }
   dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
   for (const p of b.pieces) { const pi = P.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }

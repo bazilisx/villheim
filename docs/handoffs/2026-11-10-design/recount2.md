@@ -32,3 +32,9 @@ path outside docs.
 
 - Whether the library is rebuilt with the fine clip values (kitbash clips, motif clip allowance, yard sink and heights), and whether
   the creative set membership change is wanted. Integration decides.
+
+## Creative full run (2026-11-11)
+
+- `lab/mine_creative.js`: `SLICE=i/k`, `DUMP`, `MERGE` added. Fine run in 8 slices, 594 s, peak 3.2 GB per slice; colliders run 41 s, 3.2 GB.
+- New data: `data/creative-mined-fine.json` (full), `data/creative-compare-full.json`. Numbers in `docs/BLUEPRINT_LAB.md`, "Creative sets, full run".
+- Keys only in the colliders run: 35.5 %; only in the fine run: 38.9 %.

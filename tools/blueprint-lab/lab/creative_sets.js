@@ -409,6 +409,8 @@ function minedSet(o) {
   const core = order.find(m => STORE.test(m.n) || STATION.test(m.n)) || big;
   pieces[at.get(core.i)].key = true;
   const clips = (o.c || []).map(([u, v, d]) => [at.get(u), typeof v === 'number' ? at.get(v) : v, +(d + 0.02).toFixed(3)]);
+  // the same clips in what shows (cs, lab/show_clips.js), for the fitter's tests of what shows (lib/kitbash.js showOf)
+  const show = o.cs ? o.cs.map(([u, v, d]) => [at.get(u), typeof v === 'number' ? at.get(v) : v, +(d + 0.02).toFixed(3)]) : null;
   const words = [...new Set(order.map(m => wordOf(m.n)).filter(Boolean))];
   const name = words.slice(0, 4).join(', ').replace(/, ([^,]+)$/, ' and $1');
   const has = re => order.some(m => re.test(m.n));
@@ -434,7 +436,7 @@ function minedSet(o) {
   const decor = essential ? ['d1', 'd2', 'd3'] : pieces.length >= 5 || family === 'display' ? ['d3'] : ['d2', 'd3'];
   const score = +Math.min(6, 1.4 + 0.4 * o.l + 0.1 * o.b).toFixed(2);
   return { anchor, ...(o.ang ? { angle: o.ang } : {}), ...(o.of ? { of: o.of } : {}), creative: true, mined: true, name, family, role, traits, rooms, decor,
-    slots: pieces.map(q => q.k), pieces, clips, maxClip: clips.reduce((m, c) => Math.max(m, c[2]), 0), biome, from, foot: o.f, h: o.h, score,
+    slots: pieces.map(q => q.k), pieces, clips, ...(show ? { show } : {}), maxClip: clips.reduce((m, c) => Math.max(m, c[2]), 0), biome, from, foot: o.f, h: o.h, score,
     min: Math.max(2, Math.ceil(pieces.length * 0.6)), basis: `combined in ${o.b} corpus builds, ${o.l} of them well-liked (lab/mine_creative.js)`, src: o.s };
 }
 

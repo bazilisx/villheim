@@ -16,6 +16,7 @@ const SHD = NODE_D ? require('./shapes.js') : window.VHShapes;
 const PERS = () => (NODE_D ? require('./persona.js') : window.VHPersona);
 // what a piece shows, as boxes (lib/mesh.js): where a model stands proud of its collider (the 2x2 wood wall's bars)
 const MESH_D = () => (NODE_D ? require('./mesh.js') : window.VHMesh);
+const WHD = () => (NODE_D ? require('./wallhang.js') : window.VHWallhang);
 let RULES = null, LEARN = null;
 function setRules(r) { RULES = r; }
 function setInterior(d) { LEARN = d; }
@@ -979,7 +980,17 @@ function clearOfRelief(room, name, spot) {
   return null;
 }
 function putMount(room, name, spot) {
-  spot = clearOfRelief(room, name, spot);
+  // what lib/wallhang.js knows goes up against what shows of the wall at its own height (a plinth and the thinner wall
+  // over it have different faces), turned with its back to the wall, as deep as corpus builders hang it; heights
+  // between the spot's limits are tried in turn when the first has no wall behind it (a 2x2 wall's rails)
+  if (WHD() && WHD().isHung(name) && room.out && spot.face) {
+    const hs = [];
+    if ((F[name] || {}).under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) if (spot.lowY == null || (yy >= spot.lowY && yy <= spot.topY)) hs.push(+yy.toFixed(2));
+    const r = WHD().hang(name, { x: spot.x0 != null ? spot.x0 : spot.x, z: spot.z0 != null ? spot.z0 : spot.z, nx: spot.face.nx, nz: spot.face.nz, y: spot.y }, WHD().backingOf(room.out), { heights: hs });
+    if (!r) return null;
+    const [mx, mz] = middleOf(name, r.x, r.z, r.yaw);
+    spot = { ...spot, x: mx, z: mz, y: r.y, yaw: r.yaw, clip: r.wclip ? r.wclip - 0.005 : 0, hung: true };
+  } else spot = clearOfRelief(room, name, spot);
   if (!spot) return null;
   const [w, h] = size(name);
   const f = F[name] || {};
@@ -3625,7 +3636,8 @@ function auditOne(p, ctx, extra, allow) {
   const hung = it.f.at === 'mount' || p.rest === 'wall';
   if (hung || MOUNT_LIKE.test(p.name)) {
     const d = hungInto(p, hung ? A.struct.map(sb => sb.p).concat(more) : A.struct.map(sb => sb.p).filter(q => !q.decor));
-    if (d > Math.max(hungLimit(p.name), allow || 0)) { ONE_WHY = 'hung'; return false; }
+    // (a piece lib/wallhang.js put up into an uneven wall carries its depth as p.wclip, D-098)
+    if (d > Math.max(hungLimit(p.name), allow || 0, p.wclip || 0)) { ONE_WHY = 'hung'; return false; }
     if (d > HUNG_CLIP(p.name)) used = Math.max(used, d);
   }
   if (used) p.wclip = +(used + 0.005).toFixed(3);

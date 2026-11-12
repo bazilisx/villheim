@@ -333,6 +333,7 @@ function vignettes(b, ctx, zones) {
 // own assembly no deeper than its source builds did (marked p.clip, which lib/checks.js and the audit allow).
 const decorB = () => (NODE_B ? require('./decorate.js') : window.VHDecorate);
 const meshB = () => (NODE_B ? require('./mesh.js') : window.VHMesh);
+const hangB = () => (NODE_B ? require('./wallhang.js') : window.VHWallhang);
 // an item (food, drink) rather than a piece: what the game drops when it is placed loose
 function looseItem(name) {
   const Me = meshB();
@@ -740,7 +741,19 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     }
     // what hangs on the wall goes back to it: its solid back against the nearest wall face's collider (what holds it up
     // in the game), whatever depth the source build gave a piece of another size (a tool shelf stood 0.25 m off)
-    if (mm.rest === 'wall' && m.faces) {
+    // (what lib/wallhang.js knows: against what shows of the wall at its own height, turned with its back to it, as
+    // deep as corpus builders hang it; a plinth and the thinner wall over it have different faces, and a stand put at
+    // the plinth's face hung 35 cm out from the wall over it, showcase 01)
+    if (mm.rest === 'wall' && m.faces && hangB().isHung(p.name)) {
+      const f = wallFaceAt(m, p);
+      const ceil = m.ceilAt(p.x, p.z);
+      const hs = [];
+      for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [p.y + d, p.y - d]) if (yy >= stand + 0.9 || mm.y < 0.9) hs.push(+yy.toFixed(3));
+      const r = f && hangB().hang(p.name, { x: f.px(f.t), z: f.pz(f.t), nx: f.nx, nz: f.nz, y: p.y }, hangB().backingOf(b.pieces), { heights: hs.filter(yy => yy < ceil - 0.3) });
+      if (!r) { WHY_B = 34; LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
+      p.x = r.x; p.y = r.y; p.z = r.z; p.yaw = r.yaw; p.q = r.q; p.hung = true;
+      if (r.wclip) p.wclip = r.wclip;
+    } else if (mm.rest === 'wall' && m.faces) {
       const V = SH.world(p);
       if (V && V.length) {
         let best = null;
@@ -779,13 +792,15 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       const y0 = p.y, top = bx.y1, why0 = WHY_B;
       const ceil = Math.min(...[[0, 0], [-0.3, 0], [0.3, 0]].map(([u, v]) => m.ceilAt(p.x + u * c + v * s, p.z - u * s + v * c)));
       const tries = [slide, why0 === 4 ? ceil - 0.1 - top : null, -0.1, 0.1, -0.2, 0.2, -0.3, 0.3, -0.4, 0.4].filter((d, k, l) => d != null && d !== 0 && l.indexOf(d) === k);
+      const x0 = p.x, z0 = p.z, f0 = p.hung ? wallFaceAt(m, p) : null;
       for (const d of tries) {
         p.y = +(y0 + d).toFixed(3);
+        if (f0) { const r = hangB().hang(p.name, { x: f0.px(f0.t), z: f0.pz(f0.t), nx: f0.nx, nz: f0.nz, y: p.y }, hangB().backingOf(b.pieces)); if (!r) continue; p.x = r.x; p.z = r.z; if (r.wclip) p.wclip = r.wclip; else delete p.wclip; }
         bx = Ck.aabbShapes(p);
         if (bx.y0 < stand + 0.9 || bx.y1 > ceil - 0.08) continue;
         if (placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a, showOf)) { okP = true; slide = d; break; }
       }
-      if (!okP) { p.y = y0; bx = Ck.aabbShapes(p); WHY_B = why0; }
+      if (!okP) { p.y = y0; p.x = x0; p.z = z0; bx = Ck.aabbShapes(p); WHY_B = why0; }
     }
     if (!okP) { LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
     // the pool audit's height for a sign or a wall stand (lib/audit.js MID, by the middle of what shows over the
@@ -853,6 +868,21 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   }
   got.displace = displace ? [...displace] : [];
   return got;
+}
+
+// The wall face a hung piece goes on: the room's face nearest its middle whose stretch it lies along, with t, the
+// place along the face (lib/wallhang.js hang moves it onto what shows of the wall from there)
+function wallFaceAt(m, p) {
+  let best = null;
+  for (const f of m.faces) {
+    if (f.edge) continue;
+    const t = p.x * f.ux + p.z * f.uz;
+    if (t < f.a0 - 0.1 || t > f.a1 + 0.1) continue;
+    const off = (p.x - f.px(t)) * f.nx + (p.z - f.pz(t)) * f.nz - f.ht;
+    if (off < -0.4 || off > 0.9) continue;
+    if (!best || Math.abs(off) < Math.abs(best.off)) best = { f, t, off };
+  }
+  return best ? { px: best.f.px, pz: best.f.pz, nx: best.f.nx, nz: best.f.nz, t: best.t } : null;
 }
 
 // Whether a sign or a wall stand would fail the pool audit's height test (lib/audit.js MID and its label rule)

@@ -38,6 +38,7 @@ const CkH = () => (NODE_H ? require('./checks.js') : window.VHChecks);
 const DecH = () => (NODE_H ? require('./decorate.js') : window.VHDecorate);
 const BPH = () => (NODE_H ? require('./blueprint.js') : window.VHBlueprint);
 const SHH = () => (NODE_H ? require('./shapes.js') : window.VHShapes);
+const WHH = () => (NODE_H ? require('./wallhang.js') : window.VHWallhang);
 const PSH = () => (NODE_H ? require('./persona.js') : window.VHPersona);
 const KBH = () => (NODE_H ? require('./kitbash.js') : window.VHKitbash);
 // distance in plan from (x, z) to a piece's turned solids (o.sol, from checks.js gameBox), else to its box
@@ -315,13 +316,27 @@ function placer(b, T) {
     },
     put(name, x, y, z, yaw, extra = {}, o = {}) {
       refresh();
+      // a piece hung on a wall (lib/wallhang.js): yaw is the wall's normal into the room, x, z a point near the wall;
+      // it goes up against what shows of the wall at its own height, its back to the wall (a wall torch put up at the
+      // yaw alone had its arm along the wall, and a stand put at the stone plinth's face hung 35 cm out from the wood
+      // wall over it, showcase 01)
+      if (WHH() && WHH().isHung(name) && !o.asIs) {
+        const a = normH(yaw) * Math.PI / 180, nx = Math.sin(a), nz = Math.cos(a);
+        const hs = [];
+        for (let d = 0.1; d <= 0.301; d += 0.1) hs.push(y + d, y - d);
+        const r = WHH().hang(name, { x: x - nx * 0.3, z: z - nz * 0.3, nx, nz, y }, WHH().backingOf(b.pieces), { heights: hs.filter(v => v > 0.9 + (o.floor || 0)) });
+        if (!r) return false;
+        x = r.x; y = r.y; z = r.z; yaw = r.yaw;
+        extra = r.wclip ? { ...extra, wclip: r.wclip } : extra;
+        o = { ...o, hung: true };
+      }
       const p = { name, x, y, z, yaw: normH(yaw), q: T.quat(normH(yaw)) };
       const bx = Ck.gameBox(p);
       if (!o.free) {
         // (a turned table, and what stands or hangs at a wall (o.solid), is judged by its own solids against walls and
         // furniture; everything else by its box)
         const H = name === 'piece_table' || o.solid ? hits : over;
-        if (hard.some(h => H(bx, h))) return false;
+        if (!o.hung && hard.some(h => H(bx, h))) return false;
         if (!o.onFurn && furn.some(h => H(bx, h, 0.01))) return false;
         if (keep.some(k => (k.always || !o.inKeep) && over(bx, k, 0))) return false;
       }
@@ -355,22 +370,35 @@ function leanTo(b, K, bearing, d0) {
 }
 
 // The notice board (D-140): two posts, a board of planks, a cap, and notices as signs on both faces. A sign's info is
-// its heading in the game (the mod reads it).
+// its heading in the game (the mod reads it). The three notices on each face are laid out as builders tile signs
+// (corpus: neighboring signs edge to edge, docs/handoffs/2026-11-12-showcase-review/wallhung.md): two side by side
+// over the board's lower half and the third centered over them, each flat on the planks (lib/wallhang.js). Three 1 m
+// signs 0.55 m apart on a 2 m board overlapped each other by 45 % (showcase 01 and 02, Tyler: "stacked and layered").
+const NOTICE_HEADS = ['Village notices', 'Work wanted', 'Trades'];
+// sign places on a 2 m by 1 m board: along the board, up from its middle
+const NOTICE_LAYOUT = [[-0.51, -0.24], [0.51, -0.24], [0, 0.27]];
 function noticeBoard(b, K, x, z, yaw) {
   const ux = Math.cos(rad(yaw)), uz = -Math.sin(rad(yaw)), nx = Math.sin(rad(yaw)), nz = Math.cos(rad(yaw));
   for (const s of [-1.1, 1.1]) b.put(K.pole, x + ux * s, 1, z + uz * s, yaw, { notice: true });
   b.put(K.wallHalf || 'wood_wall_half', x, 1.5, z, yaw, { notice: true });
   b.put(K.beam, x, 2.1, z, yaw, { notice: true });
-  const heads = ['Village notices', 'Work wanted', 'Trades'];
-  [-0.55, 0, 0.55].forEach((s, i) => { for (const f of [-1, 1]) b.put('sign', x + ux * s + nx * f * 0.16, 1.55 + (i === 1 ? 0.2 : 0), z + uz * s + nz * f * 0.16, f > 0 ? yaw : yaw + 180, { decor: true, notice: true, info: heads[i] }); });
+  noticeSigns(b, x, 1.5, z, ux, uz, nx, nz);
+  noticeSigns(b, x, 1.5, z, ux, uz, -nx, -nz);
+}
+// The three notices on one face of a board or a wall: (x, y, z) the board's middle, n out of that face.
+function noticeSigns(b, x, y, z, ux, uz, nx, nz) {
+  const WH = WHH(), B = WH ? WH.backingOf(b.pieces) : null;
+  NOTICE_LAYOUT.forEach(([s, dy], i) => {
+    const r = WH && WH.hang('sign', { x: x + ux * s, z: z + uz * s, nx, nz, y: y + dy }, B, { cover: 1 });
+    if (r) b.put('sign', r.x, r.y, r.z, r.yaw, { decor: true, notice: true, info: NOTICE_HEADS[i], ...(r.wclip ? { wclip: r.wclip } : {}) });
+  });
 }
 
 // Signs on a wall by the door (the notices on an open wall, D-140). wall: { x, z, yaw, nx, nz } of a wall bay, n into
-// the room.
+// the room; laid out as on the board.
 function noticeWall(b, w, y0) {
   const ux = Math.cos(rad(w.yaw)), uz = -Math.sin(rad(w.yaw));
-  const yawIn = normH(Math.atan2(w.nx, w.nz) * 180 / Math.PI);
-  [-0.6, 0, 0.6].forEach((s, i) => b.put('sign', w.x + ux * s + w.nx * 0.15, y0 + 1.5 + (i % 2) * 0.35, w.z + uz * s + w.nz * 0.15, yawIn, { decor: true, notice: true, info: ['Village notices', 'Work wanted', 'Trades'][i] }));
+  noticeSigns(b, w.x, y0 + 1.75, w.z, ux, uz, w.nx, w.nz);
 }
 
 function campDesign(b, K, T, o) {

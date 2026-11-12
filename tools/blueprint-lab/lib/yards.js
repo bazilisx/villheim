@@ -151,7 +151,11 @@ function survey(b) {
     const ex = Math.abs(o.ux) * 2 + Math.abs(o.nx) * 1.15, ez = Math.abs(o.uz) * 2 + Math.abs(o.nz) * 1.15;
     zones.push({ x0: o.x + o.nx * 1.15 - ex, x1: o.x + o.nx * 1.15 + ex, y0: -1, y1: 3, z0: o.z + o.nz * 1.15 - ez, z1: o.z + o.nz * 1.15 + ez, door: true });
   }
-  return { W, B, solid, wallBoxes, zones, doors, minY: Math.min(...b.pieces.map(p => p.y)) };
+  // (the lowest pivot as the game will see it: pieces that stand on their pivot go down to their foot at the end of
+  // the generator, so a 2 m grausten footing course ends a metre lower than its middle; the yard was set on the middle
+  // and stood a metre over the ground in the game, Ashlands workshop s2 seed 3)
+  const footY = p => { const pi = PY.piece(p.name); return pi.onPivot && !p.decor && !p.footed ? p.y - pi.size[1] / 2 : p.y; };
+  return { W, B, solid, wallBoxes, zones, doors, minY: Math.min(...b.pieces.map(footY)) };
 }
 
 // ---------------------------------------------------------------- the outline

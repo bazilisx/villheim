@@ -69,7 +69,9 @@ const TYPE_WORDS = { hearth: 'hub', house: 'home', hall: 'longhouse', greathall:
   storehouse: 'storage', watchtower: 'tower', market: 'stall', shrine: 'temple', church: 'temple', boathouse: 'dock' };
 
 function evaluate(d, biome, scorer) {
-  const checks = CQ.check(d, biome);
+  // (the shell checks of the showcase review are the lab's gates, lab/test_structure.js; ranking seeds leaves them out,
+  // so the game's engine stays inside its time limit)
+  const checks = CQ.check(d, biome, { shell: false });
   const score = rank(scorer, d.pieces, d.request && d.request.stage);
   return { checks, score, pass: checks.filter(c => c.ok).length };
 }

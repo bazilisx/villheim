@@ -2,7 +2,7 @@
 // Each library goes in its own function scope; they publish themselves on window.
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
-const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'render.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'stands.js', 'layout.js', 'yards.js', 'landscape.js', 'reach.js', 'hub.js', 'generate.js', 'critic.js', 'request.js', 'repair.js', 'floorplan.js', 'audit.js'];
+const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'render.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'program.js', 'details.js', 'kitbash.js', 'stands.js', 'layout.js', 'yards.js', 'landscape.js', 'reach.js', 'hub.js', 'generate.js', 'critic.js', 'request.js', 'repair.js', 'floorplan.js', 'audit.js'];
 const interior = fs.readFileSync(path.join(dir, '../data/interior-lite.json'), 'utf8').trim();
 // piece models for the renderer: the bounds only (the page has no use for colliders); the parts come from VH_MESH and
 // VH_MESH_FINE through lib/mesh.js
@@ -33,7 +33,7 @@ const scoresPath = path.join(dir, '../data/room-scores.json');
 const roomWeights = fs.existsSync(scoresPath) ? JSON.stringify(JSON.parse(fs.readFileSync(scoresPath, 'utf8')).weights) : '{}';
 const standsPath = path.join(dir, '../data/stands-corpus.json');
 const stands = JSON.stringify({ heights: fs.existsSync(standsPath) ? JSON.parse(fs.readFileSync(standsPath, 'utf8')).heights : null });
-const code = `window.VH_INTERIOR = ${interior};\nwindow.VH_KITBASH = ${kitbash};\nwindow.VH_LAYOUTS = ${layouts};\nwindow.VH_ROOMS = ${roomsLite};\nwindow.VH_ROOM_WEIGHTS = ${roomWeights};\nwindow.VH_STANDS = ${stands};\nwindow.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};\nwindow.VH_MOTIF_WEIGHTS = ${JSON.stringify(motifLite.weights)};\nwindow.VH_CRITIC = ${critic};\nwindow.VH_SOLIDS = ${solids};\nwindow.VH_MESH = ${meshLite};\nwindow.VH_MESH_FINE = ${meshFine};\nwindow.VHModels = ${JSON.stringify({ pieces: lite })};\nwindow.VHItemModels = ${itemModels};\n` + libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
+const code = `window.VH_INTERIOR = ${interior};\nwindow.VH_KITBASH = ${kitbash};\nwindow.VH_LAYOUTS = ${layouts};\nwindow.VH_ROOMS = ${roomsLite};\nwindow.VH_ROOM_WEIGHTS = ${roomWeights};\nwindow.VH_STANDS = ${stands};\nwindow.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};\nwindow.VH_MOTIF_WEIGHTS = ${JSON.stringify(motifLite.weights)};\nwindow.VH_CRITIC = ${critic};\nwindow.VH_ARCH = ${fs.readFileSync(path.join(dir, '../data/architecture/rules.json'), 'utf8').trim()};\nwindow.VH_SOLIDS = ${solids};\nwindow.VH_MESH = ${meshLite};\nwindow.VH_MESH_FINE = ${meshFine};\nwindow.VHModels = ${JSON.stringify({ pieces: lite })};\nwindow.VHItemModels = ${itemModels};\n` + libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8');
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8');
 let html = fs.readFileSync(path.join(dir, '../web/app.html'), 'utf8');

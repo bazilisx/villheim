@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
 
@@ -10,7 +11,7 @@ namespace Villheim.Logic.Designs
     /// locked: nobody can take the item off, swap it or take the stand down with the hammer. The lock is kept in the
     /// stand's ZDO so it holds after a reload.
     ///
-    /// Armor stands save several slots in another format; they are left as they are for now.
+    /// An armor stand's text lists its gear as "Prefab:variant", comma separated (ApplyArmor).
     /// </summary>
     internal static class StandItems
     {
@@ -22,6 +23,12 @@ namespace Villheim.Logic.Designs
             if (instance == null || string.IsNullOrEmpty(text))
             {
                 return false;
+            }
+
+            ArmorStand armor = instance.GetComponentInChildren<ArmorStand>();
+            if (armor != null)
+            {
+                return ApplyArmor(armor, instance.GetComponent<ZNetView>(), text);
             }
 
             ItemStand stand = instance.GetComponentInChildren<ItemStand>();
@@ -69,6 +76,68 @@ namespace Villheim.Logic.Designs
             stand.m_canBeRemoved = false;
             stand.UpdateVisual();
             return true;
+        }
+
+        /// <summary>
+        /// Dresses an armor stand from a design. The text lists items as "Prefab:variant", comma separated, for example
+        /// "HelmetBronze:0,ArmorBronzeChest:0,ArmorBronzeLegs:0,CapeDeerHide:0,ShieldBronzeBuckler:0". Each item goes
+        /// into the first free slot that takes its type, as the game's ArmorStand.CanAttach decides. The game keeps a
+        /// slot's item in the ZDO as "&lt;slot&gt;_item" (hash of the prefab name) and "&lt;slot&gt;_variant"
+        /// (ArmorStand.InitKeys). The stand is locked like an item stand: its gear cannot be taken or dropped.
+        /// </summary>
+        private static bool ApplyArmor(ArmorStand armor, ZNetView view, string text)
+        {
+            if (view == null || !view.IsValid() || ObjectDB.instance == null)
+            {
+                return false;
+            }
+
+            ZDO zdo = view.GetZDO();
+            var used = new bool[armor.m_slots.Count];
+            int placed = 0;
+            foreach (string token in text.Split(','))
+            {
+                string[] f = token.Trim().Split(':');
+                string name = f[0].Trim();
+                GameObject prefab = name.Length > 0 ? ObjectDB.instance.GetItemPrefab(name) : null;
+                ItemDrop drop = prefab != null ? prefab.GetComponent<ItemDrop>() : null;
+                if (drop == null)
+                {
+                    VillheimPlugin.Debug($"Armor stand item '{name}' is no item prefab; left off.");
+                    continue;
+                }
+
+                ItemDrop.ItemData.SharedData shared = drop.m_itemData.m_shared;
+                ItemDrop.ItemData.ItemType type = shared.m_attachOverride != 0 ? shared.m_attachOverride : shared.m_itemType;
+                int slot = -1;
+                for (int i = 0; i < armor.m_slots.Count && slot < 0; i++)
+                {
+                    List<ItemDrop.ItemData.ItemType> types = armor.m_slots[i].m_supportedTypes;
+                    if (!used[i] && (types.Count == 0 || types.Contains(type)))
+                    {
+                        slot = i;
+                    }
+                }
+
+                if (slot < 0)
+                {
+                    VillheimPlugin.Debug($"Armor stand item '{name}' has no free slot that takes it; left off.");
+                    continue;
+                }
+
+                used[slot] = true;
+                int variant = f.Length > 1 && int.TryParse(f[1], out int v) ? v : 0;
+                zdo.Set((slot + "_item").GetStableHashCode(), name.GetStableHashCode());
+                zdo.Set((slot + "_variant").GetStableHashCode(), variant);
+                placed++;
+            }
+
+            if (placed > 0)
+            {
+                zdo.Set(KeyLocked, 1);
+            }
+
+            return placed > 0;
         }
 
         /// <summary>
@@ -229,10 +298,37 @@ namespace Villheim.Logic.Designs
         {
             private static void Postfix(Piece __instance, ref bool __result)
             {
-                if (__result && __instance.m_nview != null && Locked(__instance.m_nview) && __instance.GetComponentInChildren<ItemStand>() != null)
+                if (__result && __instance.m_nview != null && Locked(__instance.m_nview) &&
+                    (__instance.GetComponentInChildren<ItemStand>() != null || __instance.GetComponentInChildren<ArmorStand>() != null))
                 {
                     __result = false;
                 }
+            }
+        }
+
+        /// <summary>A locked armor stand keeps its gear: no item is taken off or hung on.</summary>
+        [HarmonyPatch(typeof(ArmorStand), "UseItem")]
+        internal static class ArmorUsePatch
+        {
+            private static bool Prefix(ArmorStand __instance, ref bool __result)
+            {
+                if (!Locked(__instance.m_nview))
+                {
+                    return true;
+                }
+
+                __result = true;
+                return false;
+            }
+        }
+
+        /// <summary>A locked armor stand never drops its gear, even when it breaks; the gear goes with the stand.</summary>
+        [HarmonyPatch(typeof(ArmorStand), "DropItem")]
+        internal static class ArmorDropPatch
+        {
+            private static bool Prefix(ArmorStand __instance)
+            {
+                return !Locked(__instance.m_nview);
             }
         }
 

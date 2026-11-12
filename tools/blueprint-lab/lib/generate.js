@@ -927,6 +927,20 @@ function generate(req) {
   if (kneeLoft) dctx.profile.svalgang = false;
   dctx.wallSegment = wallSegment;
 
+  // the rhythm of a wall line: its bay count (k) and whether every bay takes a window; the front of a formal building
+  // counts its bays from the main door
+  const lineOf = e => `${e.out[0]},${e.out[1]}@${Math.round((e.x * e.out[0] + e.z * e.out[1]) * 10) / 10}`;
+  // (only where the door stands on the middle bay of its wall: else counting from it moves the windows off the corners
+  // and mirrors nothing)
+  const midDoor = door && (() => { const ux = door.yaw === 0 ? 1 : 0, uz = 1 - ux, at = e => e.x * ux + e.z * uz, l = gEdges.filter(e => lineOf(e) === lineOf(door)).map(at);
+    return l.length && Math.abs((Math.min(...l) + Math.max(...l)) / 2 - at(door)) < 0.1; })();
+  const formalLine = dctx.program && dctx.program.formal && midDoor ? lineOf(door) : null;
+  const rhythm = e => {
+    const line = lineOf(e), ux = e.yaw === 0 ? 1 : 0, uz = e.yaw === 0 ? 0 : 1;
+    const k = line === formalLine ? Math.round(((e.x - doorX) * ux + (e.z - doorZ) * uz) / 2) : Math.round((e.x + e.z) / 2);
+    return { k, every: windowExtra(C, seed, line) };
+  };
+
   // walls, frame and top plates per storey
   const open = T.open || null;
   let top = F;
@@ -950,10 +964,13 @@ function generate(req) {
       const isDoor = s === 0 && (e === door || e === backDoor || e === door2);
       // a barn's gates: three bays on the ground, the door bay alone when the floor is raised (one stair up)
       const isGate = (dctx.profile.gateDoor && s === 0 && (e === door || e === door2)) || T.bigDoor && s === 0 && e.out[1] < 0 && Math.abs(e.x - doorX) <= (F >= 0.9 ? 0.01 : 2.01) && Math.abs(e.z - doorZ) < 0.1;
-      // every other bay, and with the window kit some of the bays between (windowExtra: corpus walls carry 0.56 windows
-      // per plain wall bay, the generator had 0.31 with every other bay)
-      const evenBay = Math.round((e.x + e.z) / 2) % 2 === 0;
-      let isWindow = !knee && !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (evenBay || windowExtra(C, seed, e, s)) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5 &&
+      // the wall's rhythm, chosen per wall line and the same on every storey (lib/program.js, D-167): every other bay,
+      // or with 1 m lights every bay on some lines (windowExtra: corpus walls carry 0.56 windows per plain wall bay, the
+      // generator had 0.31 with every other bay); on a formal front the bays count from the door, so the windows
+      // mirror about it
+      const rh = rhythm(e);
+      const evenBay = rh.k % 2 === 0;
+      let isWindow = !knee && !isDoor && !isGate && (!T.tower || (form === 'keep' && s > 0)) && (evenBay || rh.every) && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5 &&
         !(door2 && Math.abs(e.x - door2.x) + Math.abs(e.z - door2.z) < 2.5);
       if (plan === 'gables' && e.out[1] >= 0) isWindow = false;
       // a gable end gets one window per floor, in its middle bay (2026-11-09 review: windows scattered over gable ends)
@@ -963,7 +980,7 @@ function generate(req) {
         Math.abs(e.z - w0g.cz) < 1.1 && Math.abs(e.x - doorX) + Math.abs(e.z - doorZ) > 2.5 && !(open || arcade.has(e))) isWindow = true;
       // a stone wall needs a timber bay over every opening (stone cannot span): half as many windows there, so the
       // wall reads as stone with openings, not timber between stone piers (2026-11-09 review)
-      if (isWindow && /^stone$|marble|grausten/.test(C.wallStyle || '') && Math.round((e.x + e.z) / 2) % 4 !== 0) isWindow = false;
+      if (isWindow && /^stone$|marble|grausten/.test(C.wallStyle || '') && rh.k % 4 !== 0) isWindow = false;
       // no window behind a wall hearth, on any storey (its hood and shaft stand against that bay)
       if (isWindow && hearthBay(e)) isWindow = false;
       const style = C.frontWood && plan === 'gables' ? (e.out[1] < 0 ? 'plank' : null) : null;
@@ -2587,15 +2604,16 @@ function windowKit(cultureKey, biome, type, seed, SH) {
   if (fill === 'mesh' && size !== 'big') return { size, fill: 'open' };
   return { size, fill };
 }
-// A bay between two window bays takes a window too at this share (WINDOW_EXTRA), drawn per bay from the building's
-// seed, so the walls come nearer the corpus count of windows per plain bay (ideas gap 3).
+// A wall line whose bays between the window bays take a window too, at this share (WINDOW_EXTRA), drawn per line from
+// the building's seed so every storey of the wall keeps one rhythm (D-167), and the walls come nearer the corpus count
+// of windows per plain bay (ideas gap 3).
 const WINDOW_EXTRA = 0.45;
-function windowExtra(C, seed, e, s) {
+function windowExtra(C, seed, line) {
   // (only 1 m lights, each with a 1 m wall piece in its bay: 2 m and tall lights side by side left no wall 2.5 m up
   // within 1.6 m, which the headroom check refuses, Norse Meadows pool home s3 seed 101)
   if (!C.winKit || C.winKit.size !== 'single') return false;
   let h = 2166136261;
-  for (const ch of `${seed}|${e.x}|${e.z}|${s}|extra`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  for (const ch of `${seed}|${line}|rhythm`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
   return rng(h >>> 0)() < WINDOW_EXTRA;
 }
 // the pieces that fill one light: its middle along the wall (x, z), its foot y, width and height, the wall's yaw

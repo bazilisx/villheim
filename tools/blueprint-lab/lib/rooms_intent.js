@@ -478,6 +478,7 @@ function furnishRoom(room, role, c, H) {
     if (d >= 2 && H.ok('piece_chest_barrel', room.biome)) H.placeStorageRow(room, k, d >= 3 ? 2 : 1, { chest: 'piece_chest_barrel' });
     tally(m);
     zone('store walls', room.placed.filter(q => (H.F[q.name] || {}).cat === 'storage'));
+    if (d >= 3) { const got = builtZone(room, plan, H, I); if (got) I.zones.push({ purpose: 'built ' + got[0].p.asm, pieces: [got[0].p.asm] }); }
     if (d >= 2) lightsN(Math.max(1, lightN(0.6)));
     return I;
   }
@@ -584,6 +585,7 @@ function longTable(room, plan, H, k, c, n) {
 // between): after the core set, the room takes zones the household's traits ask for until it holds the corpus's
 // furniture per 10 m2 for its kind (kinds.json furniturePer10m2: the median at d2, the upper quartile at d3, the
 // household's clutter between). Each zone is a small set placed whole at a wall, away from the other zones.
+const ASM_KINDS_Z = { home: 1, bedroom: 1, dormitory: 1, 'tavern hall': 1, 'feast hall': 1, 'throne hall': 1, smithy: 1, workshop: 1, storage: 1, kitchen: 1, shrine: 1 };
 const ZONES = {
   sitting: { kinds: ['home', 'bedroom', 'feast hall', 'throne hall', 'tavern hall'], w: P => 0.6 + (P.comfort || 0) },
   gear: { kinds: ['home', 'bedroom', 'dormitory', 'smithy', 'feast hall'], w: P => 0.5 + 0.5 * (P.hobby.collect || 0) },
@@ -592,7 +594,87 @@ const ZONES = {
   craft: { kinds: ['home', 'workshop'], w: P => 0.1 + 0.9 * (P.hobby.crafts || 0) },
   maps: { kinds: ['home', 'feast hall', 'throne hall', 'bedroom'], w: P => 0.05 + 0.8 * (P.hobby.maps || 0) },
   games: { kinds: ['home', 'tavern hall', 'feast hall'], w: P => 0.05 + 0.6 * (P.hobby.games || 0) },
+  // built furniture for the room's program (lib/assemblies.js)
+  built: { kinds: Object.keys(ASM_KINDS_Z), w: P => 1.2 + 0.4 * (P.hobby.crafts || 0) },
 };
+// Furniture built from pieces for the room's program (track G, lib/assemblies.js; criteria/assemblies.md item 7):
+// the kinds that suit each room kind, placed against a plain stretch of wall in the suite's family.
+const ASM_KINDS = {
+  home: ['kitchen-hutch', 'pantry-shelf', 'cabinet', 'drink-shelf', 'herb-shelf', 'shelving', 'chest-shelf'],
+  bedroom: ['dresser', 'wardrobe-nook', 'armor-alcove', 'chest-shelf', 'herb-shelf'], dormitory: ['chest-shelf', 'armor-row', 'shelving'],
+  'tavern hall': ['bar-counter', 'keg-rack', 'drink-shelf'], 'feast hall': ['weapon-rack', 'armor-row', 'display-shelf', 'keg-rack'],
+  'throne hall': ['weapon-rack', 'armor-row', 'display-shelf'], smithy: ['tool-shelf', 'weapon-rack', 'armor-row'],
+  workshop: ['tool-shelf', 'drying-rack', 'shelving'], storage: ['labeled-storage', 'shelving', 'chest-shelf'], kitchen: ['kitchen-hutch', 'pantry-shelf', 'prep-counter', 'herb-shelf'],
+  shrine: ['display-plinth', 'display-shelf'], 'watch room': ['weapon-rack', 'armor-row'],
+};
+const ROOM_ASM = { home: 'home', bedroom: 'bedroom', dormitory: 'bedroom', 'tavern hall': 'tavern', 'feast hall': 'hall', 'throne hall': 'hall', smithy: 'smithy', workshop: 'workshop', storage: 'storage', kitchen: 'kitchen', shrine: 'study', 'watch room': 'armory' };
+const ASM_SKIP = /^(bed|piece_bed02|ashwood_bed|piece_chair|piece_chair0\d|piece_bench01|piece_table|piece_table_round|piece_table_oak|piece_throne)/;
+const DBG_ASM = typeof process !== 'undefined' && process.env && process.env.VH_DEBUG_ASM ? {} : null;
+if (DBG_ASM) process.on('exit', () => console.log(JSON.stringify(DBG_ASM)));
+const ASM_P = () => { try { return NODE_I ? require('./assemblies.js') : window.VHAssemblies; } catch (e) { return null; } };
+function builtZone(room, plan, H, I) {
+  const AS = ASM_P();
+  if (!AS || !AS.find) return null;
+  const kinds = ASM_KINDS[I.kind];
+  if (!kinds) return null;
+  plan.asm = plan.asm || { used: {}, R: room.R };
+  // (narrow ones first: generated walls have a window every bay or two, so a plain stretch is rarely over 3 m)
+  const list = AS.find({ kinds, room: ROOM_ASM[I.kind], wall: 'back', maxW: 4.2, maxD: 2, culture: plan.culture }).sort((a, b) => (a.foot.x[1] - a.foot.x[0]) - (b.foot.x[1] - b.foot.x[0]))
+    // (no beam overhead out in the room: headroom 2.4 m, lab/test_structure.js)
+    .filter(r => !r.pieces.some(p => ASM_SKIP.test(p.n) || (/beam|floor/.test(p.n) && p.y > 1.2 && p.y < 2.6 && (p.z > 0.7 || p.y >= 1.9))) && !plan.asm.used[r.id]);
+  if (!list.length) return null;
+  const P = (H.PIECES || null);
+  const anchors = room.placed.filter(r => !r.rug && !r.mount && !r.onTable);
+  for (const r of list.slice(0, 8)) {
+    const w = r.foot.x[1] - r.foot.x[0], d = Math.max(0.3, r.foot.z[1] - Math.max(0, r.foot.z[0]));
+    // plain wall stretches the recipe's width, away from what stands already
+    const spots = [];
+    for (const face of room.faces) for (let t = face.a0 + w / 2; t <= face.a1 - w / 2 + 0.01; t += 0.5) {
+      const st = H.stretch(face, t - w / 2 - 0.1, t + w / 2 + 0.1);
+      // plain wall, or under a window where the piece stays below the sill
+      if (st.ks.has('door') || st.ks.has('open') || st.ks.has('none') || (st.ks.has('window') && r.foot.h > st.top - 0.1)) continue;
+      const x0 = face.px(t) + face.nx * (face.ht + 0.02), z0 = face.pz(t) + face.nz * (face.ht + 0.02);
+      const cx = x0 + face.nx * d / 2, cz = z0 + face.nz * d / 2, yaw = H.yawOfDir(face.nx, face.nz);
+      const box = H.obox(cx, cz, w, d, yaw);
+      let ok = true;
+      for (const [u, v] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 1]]) { const a = yaw * PI_I / 180, px = cx + u * (w / 2 - 0.1) * Math.cos(a) + v * (d / 2 - 0.1) * Math.sin(a), pz = cz - u * (w / 2 - 0.1) * Math.sin(a) + v * (d / 2 - 0.1) * Math.cos(a); if (!room.inside(px, pz)) ok = false; }
+      const dbg = DBG_ASM ? (DBG_ASM[r.id] = DBG_ASM[r.id] || { inside: 0, zone: 0, placed: 0, path: 0, ok: 0 }) : null;
+      if (!ok) { if (dbg) dbg.inside++; continue; }
+      // (a vent's keep-clear strip runs the whole ridge; against a wall it matters only near the fire)
+      const zh = room.zones.find(zn => H.overlap(zn.b, box, 0) && !(zn.why === 'flue' && !(room.fire && Math.hypot(room.fire.x - cx, room.fire.z - cz) < 3)));
+      if (zh) { if (dbg) { dbg.zone++; dbg[zh.why] = (dbg[zh.why] || 0) + 1; } continue; }
+      if (room.placed.some(q => !q.rug && H.overlap(q.b, box, 0.1))) { if (dbg) dbg.placed++; continue; }
+      if (room.paths.some(([px, pz]) => H.ptDist(box, px, pz) < 0.6)) { if (dbg) dbg.path++; continue; }
+      if (dbg) dbg.ok++;
+      let m = 6; for (const a2 of anchors) m = Math.min(m, Math.hypot(a2.x - cx, a2.z - cz));
+      spots.push({ x0, z0, yaw, v: Math.min(m, 4) + room.R() * 0.5 });
+    }
+    spots.sort((a, b) => b.v - a.v);
+    const s = spots[0];
+    if (!s) continue;
+    const got = AS.place(r, { x: s.x0, y: room.stand, z: s.z0, facing: s.yaw }, { family: plan.suite.table ? (pc(plan.suite.table) || {}).f : null });
+    if (!got) continue;
+    plan.asm.used[r.id] = 1;
+    const recs = [];
+    for (const p of got.pieces) {
+      const rec = room.add(p.name, p.x, p.y, p.z, p.yaw, {});
+      if (!rec) continue;
+      if (p.q) rec.p.q = p.q;
+      rec.p.x = p.x; rec.p.z = p.z; rec.p.asm = got.id;
+      if (p.want) rec.p.want = p.want;
+      if (p.info) rec.p.info = p.info;
+      if (P && P.piece(p.name).structural) rec.p.trim = true;
+      note(plan, p.name);
+      recs.push(rec);
+    }
+    for (const rec of recs) rec.p.kb = `RI-asm-${got.id}-${(plan.sets = (plan.sets || 0) + 1)}`;
+    const kb = recs.length ? recs[0].p.kb : null;
+    for (const rec of recs) rec.p.kb = kb;
+    return recs;
+  }
+  return null;
+}
+
 const floorCount = room => room.placed.filter(q => !q.rug && !q.mount && !q.onTable && !q.stacked && !q.onFire).length;
 function supportZones(room, I, plan, H, c, k) {
   const K = data().kinds[I.kind];
@@ -606,6 +688,8 @@ function supportZones(room, I, plan, H, c, k) {
   const away = (s, corner) => { let m = 6; for (const r of anchors()) m = Math.min(m, Math.hypot(r.x - s.x, r.z - s.z)); return Math.min(m, 4) * 0.8 + (corner && s.corner ? 1 : 0); };
   const tried = new Set();
   let n = 0;
+  // built furniture for the room's program first, where the room kind has one (criteria/assemblies.md item 7)
+  if (ASM_KINDS[I.kind] && d === 3) { tried.add('built'); const got = builtZone(room, plan, H, I); if (got && got.length) { I.zones.push({ purpose: 'built ' + got[0].p.asm, pieces: [got[0].p.asm] }); n++; } }
   for (let guard = 0; guard < 6 && floorCount(room) < target; guard++) {
     const cand = Object.entries(ZONES).filter(([z, Z]) => Z.kinds.includes(I.kind) && !tried.has(z)).map(([z, Z]) => [z, Z.w(P)]);
     const z = pickI(R, cand);
@@ -634,6 +718,7 @@ function beside(room, plan, H, anchor, name, gap = 0.15) {
   return null;
 }
 const ZONE_FN = {
+  built(room, plan, H, k, away) { return builtZone(room, plan, H, room.intent); },
   // a reading or sitting nook: a chair of the suite turned to the room, a barrel beside it as a side table, a rug
   // before it (vignette 6)
   sitting(room, plan, H, k, away) {

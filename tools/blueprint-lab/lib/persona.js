@@ -497,7 +497,8 @@ function dressStands(b, ctx) {
   const P = ctx.persona;
   const P_ = NODE_P ? require('./pieces.js') : window.VHPieces, Ck = NODE_P ? require('./checks.js') : window.VHChecks;
   const floorM2 = (b.rooms || []).reduce((a, r) => a + Math.max(0, (r.x1 - r.x0) * (r.z1 - r.z0)), 0);
-  const L = b.standLedger || (b.standLedger = SI.ledger({ biome: ctx.biome, stage: 3, kind: ctx.type, floorM2, persona: P, seed: ((P ? P.salt : 7) ^ 0x51a7) >>> 0 }));
+  // (a home keeps the home caps whatever its floor: the corpus's house-sized builds, track G kindMaxHomes)
+  const L = b.standLedger || (b.standLedger = SI.ledger({ biome: ctx.biome, stage: 3, kind: ctx.type, floorM2: ctx.type === 'home' ? Math.min(floorM2, 140) : floorM2, persona: P, seed: ((P ? P.salt : 7) ^ 0x51a7) >>> 0 }));
   let n = 0;
   const out = new Set();
   const nearOf = p => b.pieces.filter(q => Math.abs(q.x - p.x) < 2.5 && Math.abs(q.z - p.z) < 2.5 && Math.abs(q.y - p.y) < 2.5);

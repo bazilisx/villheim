@@ -3821,7 +3821,7 @@ function decorateExisting(pieces, { use = 'home', decor = 'd2', biome = 'Meadows
 // The placers the room intent planner works through (lib/rooms_intent.js furnishRoom)
 const HELP = { F, size, ok, wallSpots, best, mountSpots, putMount, placeFire, onFire, planPaths, placeBeds, placeTable, placeRug, placeStorageRow,
   placeStation, placeLights, placeMounts, placeAgainst, placeOnTable, dressTable, cookCorner, kitchenExtras, storeLabels, storeStacks, lightCount,
-  obox, overlap, ptDist, yawOfDir, norm, stretch, roomU };
+  obox, overlap, ptDist, yawOfDir, norm, stretch, roomU, PIECES };
 const api = { HELP, lateClash, corpusPick, corpusRate, tableRate, tableDressed, corpusTilt, topPick, keepsBarrels, oneWhy: () => ONE_WHY, furnClash, asBuilt, decorate, strip, findRooms, decorateExisting, setRules, setInterior, setTemplates, templateById, audit, auditContext, auditOne, itemOf, ITEM_BIOME, FURNITURE: F, readLevel,
   lightCls, lightBudget, rugBudget, lightRoomOf, LIGHT_D2, topWeights, mountClear,
   _int: { floorLevels, standGuess, roleFor, stretch, size, ok, obox, overlap, ptDist, yawOfDir, pyaw, standOf, norm, WALLISH, middleOf } };

@@ -154,7 +154,7 @@ function pick(L, q) {
     for (const [t, tv] of Object.entries(themes)) tw += tv * ((RU.themes[t] && RU.themes[t].kinds[k]) || 0);
     x *= tw;
     if (group && !RU.groups[group].includes(k)) continue;
-    if (q.want) { if (q.want === k) x *= 6; else if (RU.kindGroups[q.want] && RU.kindGroups[q.want].includes(k)) x *= 3; else if (RU.themes[q.want] && RU.themes[q.want].kinds[k]) x *= 3; else x *= 0.15; }
+    if (q.want) { if (q.want === k) x *= 6; else if (RU.kindGroups[q.want] && RU.kindGroups[q.want].includes(k)) x *= 3; else if (RU.groups[q.want] && RU.groups[q.want].includes && RU.groups[q.want].includes(k)) x *= 3; else if (RU.themes[q.want] && RU.themes[q.want].kinds[k]) x *= 3; else x *= 0.15; }
     // a big trophy goes only at the hub's or the hall's central place (D-134 in lib/persona.js)
     if (k === 'boss' && !(L.large && (q.room === 'hall' || q.room === 'hearth' || q.room === 'temple'))) continue;
     if (x > 0) w[k] = x;
@@ -342,6 +342,42 @@ function check(pieces, o) {
   return { fails, counts };
 }
 
-const apiSI = { data, setData, ledger, themesFrom, pick, armor, pose, overhang, check, quat, BIOMES };
+// ---------------------------------------------------------------- item kinds (lab/mine_stand_items.js uses the same)
+const BOSS = /^Trophy(Eikthyr|TheElder|Bonemass|DragonQueen|GoblinKing|SeekerQueen|Fader|SkeletonHildir|Cultist_Hildir|GoblinBruteBrosShaman|GoblinBruteBrosBrute|Elaking)$/;
+function kindOf(n) {
+  if (!n) return 'empty';
+  if (BOSS.test(n)) return 'boss';
+  if (/^Trophy/.test(n)) return 'trophy';
+  if (/^Shield/.test(n)) return 'shield';
+  if (/^(Tankard|Horn)/.test(n)) return 'tankard';
+  if (/^(Mead|BarleyWine|Lingondricka|OatMilk)/.test(n)) return 'mead';
+  if (/^(Hammer|Pickaxe|FishingRod|Shovel|Tankard)/.test(n)) return 'tool';
+  if (/^(Hoe|Cultivator|Scythe)/.test(n)) return 'farm';
+  if (/^Axe(Stone|Flint|Bronze|Iron|BlackMetal|Jotun|Wood)/.test(n)) return 'axe-tool';
+  if (/^(Axe|Battleaxe)/.test(n)) return 'axe';
+  if (/^(Sword|THSword|Greatsword)/.test(n)) return 'sword';
+  if (/^(Mace|Club|Sledge|Fist)/.test(n)) return 'blunt';
+  if (/^(Spear|Atgeir|Lance)/.test(n)) return 'polearm';
+  if (/^(Bow|Crossbow)/.test(n)) return 'bow';
+  if (/^Knife/.test(n)) return 'knife';
+  if (/^Staff/.test(n)) return 'staff';
+  if (/^Torch/.test(n)) return 'torch';
+  if (/^Feast|^Feaster/.test(n)) return 'feast';
+  if (/^Fish(\d|_)/.test(n) || /^Fish\d+/.test(n)) return 'fish';
+  if (/^(RawMeat|DeerMeat|NeckTail|SerpentMeat$|LoxMeat|WolfMeat|HareMeat|ChickenMeat|BugMeat|AsksvinMeat|VoltureMeat|BoneMawSerpentMeat|MooseMeat|SealMeat)/.test(n)) return 'rawmeat';
+  if (/^(Dandelion|Thistle|Mushroom|Fiddlehead|SmokePuff|Kale$|MushroomJotunPuffs|MushroomMagecap|MushroomBlue|MushroomYellow|FragrantBundle)/.test(n)) return 'herbs';
+  if (/^(Carrot$|Turnip$|Onion$|Barley$|Flax$|Blueberries|Raspberry|Cloudberry|Pukeberries|Vineberry|Honey$|RoyalJelly|Lingonberry|ChickenEgg|Potato|Poteitr|Fiddleheadfern|CarrotSeeds|TurnipSeeds|OnionSeeds|BarleyFlour|Acorn|BeechSeeds|FirCone|PineCone|BirchSeeds)/.test(n)) return 'produce';
+  if (/^(Cooked|Bread|Sausages|LoxPie|FishWraps|BloodPudding|QueensJam|CarrotSoup|TurnipStew|SerpentStew|MeatPlatter|HoneyGlazed|MisthareSupreme|Salad|MushroomOmelette|Eyescream|ShocklateSmoothie|MagicallyStuffed|BlackSoup|DeerStew|MinceMeatSauce|WolfMeatSkewer|WolfJerky|BoarJerky|OnionSoup|YggdrasilPorridge|SeekerAspic|ScorchingMedley|SizzlingBerryBroth|SparklingShroomshake|SpicyMarmalade|RoastedCrustPie|PiquantPie|MarinatedGreens|MashedMeat|FierySvinstew|StuffedMushroom|Pancakes|SmokedFish|FishSoup|SealSoup|KaleChips|MooseKebab|BakedPoteitr|FishAndBread|MeatballsMashedPoteitr|OvenPancake)/.test(n)) return 'food';
+  if (/^(Helmet(Yule|Midsummer|Dverger|Hat|Fishing|Pointy|Straw|Sweatband|Odin)|HelmetHat\d|Hat)/.test(n)) return 'hat';
+  if (/^(Helmet)/.test(n)) return 'helmet';
+  if (/^(Armor|Cape|Belt)/.test(n)) return 'armor';
+  if (/^(Ruby|Amber|AmberPearl|SilverNecklace|Coins|GoldRubyRing)/.test(n)) return 'valuable';
+  if (/^(DragonEgg|AsksvinEgg|VoltureEgg|SurtlingCore|BlackCore|MoltenCore|AncientSeed|DragonTear|CelestialFeather|Thunderstone|Wishbone|CryptKey|DvergrKey|SwampKey|Bell|BellFragment|MechanicalSpring|DvergrNeedle|BarberKit|SaddleLox|SaddleAsksvin|SealBreaker|GoblinTotem|TornSpirit|YagluthDrop|ShieldCore|Fader|Bomb|Ooze|BombOoze|BombBile|ProustitePowder)/.test(n)) return 'curio';
+  if (/^(Wood|Stone|Flint|Resin|Coal|Iron|Copper|Tin|Bronze|Silver|BlackMetal|Obsidian|Crystal|LeatherScraps|DeerHide|TrollHide|WolfPelt|LoxPelt|Chitin|Guck|Tar|Needle|Feathers|BoneFragments|Entrails|Bloodbag|Ectoplasm|Sap|Eitr|Grausten|Flametal|FineWood|ElderBark|RoundLog|YggdrasilWood|BlackMarble|Carapace|Sulfur|CharredBone|Linen|BronzeNails|IronNails|JuteRed|JuteBlue|Charcoal|HardAntler|Wisp|Softtissue|MorgenHeart|AskHide|ScaleHide)/.test(n)) return 'material';
+  return 'other';
+}
+
+
+const apiSI = { kindOf, data, setData, ledger, themesFrom, pick, armor, pose, overhang, check, quat, BIOMES };
 if (typeof module !== 'undefined') module.exports = apiSI;
 else window.VHStandItems = apiSI;

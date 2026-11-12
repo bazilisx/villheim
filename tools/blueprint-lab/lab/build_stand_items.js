@@ -8,6 +8,7 @@ const src = process.argv[2] || '/tmp/assemblies-work/stand-items.json';
 const C = JSON.parse(fs.readFileSync(src, 'utf8'));
 const IM = require('../data/item-models.json').items;
 const PER = require('../lib/persona.js');
+const SIk = require('../lib/standitems.js');
 const OUT = path.join(__dirname, '../data/stand-items');
 
 const BIOMES = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands', 'Deep North'];
@@ -56,24 +57,8 @@ for (const n of names) {
     corpus: c ? { builds: c.builds, stands: c.stands, flat: c.flat, wall: c.wall, tilt: c.tilt, use: c.use } : null,
   };
   if (!rec.kind) {
-    // name rules for items the corpus does not show
-    if (/^Trophy/.test(n)) rec.kind = /Eikthyr|TheElder|Bonemass|DragonQueen|GoblinKing|SeekerQueen|Fader|Elaking|Hildir|BrosShaman/.test(n) ? 'boss' : 'trophy';
-    else if (/^Shield/.test(n)) rec.kind = 'shield';
-    else if (/^Mead|BarleyWine|Lingondricka|OatMilk/.test(n)) rec.kind = 'mead';
-    else if (/^Tankard/.test(n)) rec.kind = 'tankard';
-    else if (/^Fish\d/.test(n)) rec.kind = 'fish';
-    else if (/^(Sword|THSword)/.test(n)) rec.kind = 'sword';
-    else if (/^(Mace|Club|Sledge|Fist)/.test(n)) rec.kind = 'blunt';
-    else if (/^(Spear|Atgeir)/.test(n)) rec.kind = 'polearm';
-    else if (/^(Bow|Crossbow)/.test(n)) rec.kind = 'bow';
-    else if (/^Knife/.test(n)) rec.kind = 'knife';
-    else if (/^Staff/.test(n)) rec.kind = 'staff';
-    else if (/^Axe(Stone|Flint|Bronze|Iron|BlackMetal|Jotun)/.test(n)) rec.kind = 'axe-tool';
-    else if (/^(Axe|Battleaxe)/.test(n)) rec.kind = 'axe';
-    else if (/^(Hammer|Pickaxe|FishingRod|Shovel)/.test(n)) rec.kind = 'tool';
-    else if (/^(Hoe|Cultivator|Scythe)/.test(n)) rec.kind = 'farm';
-    else if (/^Helmet/.test(n)) rec.kind = 'hat';
-    else rec.kind = 'other';
+    // name rules for items the corpus does not show (lib/standitems.js kindOf)
+    rec.kind = SIk.kindOf(n);
     rec.tall = !!(flat && flat.top >= 0.55 && !/^(trophy|boss|curio)$/.test(rec.kind));
   }
   items[n] = rec;

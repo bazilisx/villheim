@@ -17,39 +17,8 @@ const index = fs.existsSync(idxF) ? new Map(JSON.parse(fs.readFileSync(idxF, 'ut
 const MOD = /^(kg_|GB_|CastleKit|MB|mm_|BBH|rk_|Piece_vf|OdinsKingdom|h_|\$|Hayze|rae_|teq_|tkd_|rkc_)/;
 
 // ---------------------------------------------------------------- item kinds (finer than lab/mine_stands.js)
-const BOSS = /^Trophy(Eikthyr|TheElder|Bonemass|DragonQueen|GoblinKing|SeekerQueen|Fader|SkeletonHildir|Cultist_Hildir|GoblinBruteBrosShaman|GoblinBruteBrosBrute|Elaking)$/;
-function kindOf(n) {
-  if (!n) return 'empty';
-  if (BOSS.test(n)) return 'boss';
-  if (/^Trophy/.test(n)) return 'trophy';
-  if (/^Shield/.test(n)) return 'shield';
-  if (/^(Tankard|Horn)/.test(n)) return 'tankard';
-  if (/^(Mead|BarleyWine|Lingondricka|OatMilk)/.test(n)) return 'mead';
-  if (/^(Hammer|Pickaxe|FishingRod|Shovel|Tankard)/.test(n)) return 'tool';
-  if (/^(Hoe|Cultivator|Scythe)/.test(n)) return 'farm';
-  if (/^Axe(Stone|Flint|Bronze|Iron|BlackMetal|Jotun|Wood)/.test(n)) return 'axe-tool';
-  if (/^(Axe|Battleaxe)/.test(n)) return 'axe';
-  if (/^(Sword|THSword|Greatsword)/.test(n)) return 'sword';
-  if (/^(Mace|Club|Sledge|Fist)/.test(n)) return 'blunt';
-  if (/^(Spear|Atgeir|Lance)/.test(n)) return 'polearm';
-  if (/^(Bow|Crossbow)/.test(n)) return 'bow';
-  if (/^Knife/.test(n)) return 'knife';
-  if (/^Staff/.test(n)) return 'staff';
-  if (/^Torch/.test(n)) return 'torch';
-  if (/^Feast|^Feaster/.test(n)) return 'feast';
-  if (/^Fish(\d|_)/.test(n) || /^Fish\d+/.test(n)) return 'fish';
-  if (/^(RawMeat|DeerMeat|NeckTail|SerpentMeat$|LoxMeat|WolfMeat|HareMeat|ChickenMeat|BugMeat|AsksvinMeat|VoltureMeat|BoneMawSerpentMeat|MooseMeat|SealMeat)/.test(n)) return 'rawmeat';
-  if (/^(Dandelion|Thistle|Mushroom|Fiddlehead|SmokePuff|Kale$|MushroomJotunPuffs|MushroomMagecap|MushroomBlue|MushroomYellow|FragrantBundle)/.test(n)) return 'herbs';
-  if (/^(Carrot$|Turnip$|Onion$|Barley$|Flax$|Blueberries|Raspberry|Cloudberry|Pukeberries|Vineberry|Honey$|RoyalJelly|Lingonberry|ChickenEgg|Potato|Poteitr|Fiddleheadfern|CarrotSeeds|TurnipSeeds|OnionSeeds|BarleyFlour|Acorn|BeechSeeds|FirCone|PineCone|BirchSeeds)/.test(n)) return 'produce';
-  if (/^(Cooked|Bread|Sausages|LoxPie|FishWraps|BloodPudding|QueensJam|CarrotSoup|TurnipStew|SerpentStew|MeatPlatter|HoneyGlazed|MisthareSupreme|Salad|MushroomOmelette|Eyescream|ShocklateSmoothie|MagicallyStuffed|BlackSoup|DeerStew|MinceMeatSauce|WolfMeatSkewer|WolfJerky|BoarJerky|OnionSoup|YggdrasilPorridge|SeekerAspic|ScorchingMedley|SizzlingBerryBroth|SparklingShroomshake|SpicyMarmalade|RoastedCrustPie|PiquantPie|MarinatedGreens|MashedMeat|FierySvinstew|StuffedMushroom|Pancakes|SmokedFish|FishSoup|SealSoup|KaleChips|MooseKebab|BakedPoteitr|FishAndBread|MeatballsMashedPoteitr|OvenPancake)/.test(n)) return 'food';
-  if (/^(Helmet(Yule|Midsummer|Dverger|Hat|Fishing|Pointy|Straw|Sweatband|Odin)|HelmetHat\d|Hat)/.test(n)) return 'hat';
-  if (/^(Helmet)/.test(n)) return 'helmet';
-  if (/^(Armor|Cape|Belt)/.test(n)) return 'armor';
-  if (/^(Ruby|Amber|AmberPearl|SilverNecklace|Coins|GoldRubyRing)/.test(n)) return 'valuable';
-  if (/^(DragonEgg|AsksvinEgg|VoltureEgg|SurtlingCore|BlackCore|MoltenCore|AncientSeed|DragonTear|CelestialFeather|Thunderstone|Wishbone|CryptKey|DvergrKey|SwampKey|Bell|BellFragment|MechanicalSpring|DvergrNeedle|BarberKit|SaddleLox|SaddleAsksvin|SealBreaker|GoblinTotem|TornSpirit|YagluthDrop|ShieldCore|Fader|Bomb|Ooze|BombOoze|BombBile|ProustitePowder)/.test(n)) return 'curio';
-  if (/^(Wood|Stone|Flint|Resin|Coal|Iron|Copper|Tin|Bronze|Silver|BlackMetal|Obsidian|Crystal|LeatherScraps|DeerHide|TrollHide|WolfPelt|LoxPelt|Chitin|Guck|Tar|Needle|Feathers|BoneFragments|Entrails|Bloodbag|Ectoplasm|Sap|Eitr|Grausten|Flametal|FineWood|ElderBark|RoundLog|YggdrasilWood|BlackMarble|Carapace|Sulfur|CharredBone|Linen|BronzeNails|IronNails|JuteRed|JuteBlue|Charcoal|HardAntler|Wisp|Softtissue|MorgenHeart|AskHide|ScaleHide)/.test(n)) return 'material';
-  return 'other';
-}
+// item kinds: lib/standitems.js kindOf (the same rules the picker and the audit use)
+const { kindOf } = require('../lib/standitems.js');
 
 // ---------------------------------------------------------------- use pieces round a stand (what the room is for)
 const USE = [

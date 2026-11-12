@@ -291,7 +291,11 @@ function audit(pieces, shell) {
   pieces.forEach((p, i) => {
     if (!MOUNT.test(p.name) || !visBox[i]) return;
     let deep = 0, what = '';
-    for (const j of structVis.concat(roofIdx)) { const d = M.deepest(vis[i], vis[j]); if (d > deep) { deep = d; what = pieces[j].name; } }
+    // (a flat stand on a beam, ledge or wall top stands where the game's placement lands, on the collider top under
+    // its pivot, as corpus builders stand them: darkwood_beam +0.45 in 19 builds where its model top is 0.4625,
+    // wood_ledge +0.03 on 17 of 20 level ledges where its model top is 0.07; what it stands on is not counted)
+    const onTop = j => { if (p.name !== 'itemstandh') return false; const t = SH.topAt(sol[j], p.x, p.z); return t != null && t <= p.y + 0.01 && t >= p.y - 0.06; };
+    for (const j of structVis.concat(roofIdx)) { if (onTop(j)) continue; const d = M.deepest(vis[i], vis[j]); if (d > deep) { deep = d; what = pieces[j].name; } }
     // a piece marked with a clip made on purpose (D-098, p.wclip from the file's '#VillheimClips') passes up to its mark
     if (deep > Math.max(BANNER.test(p.name) ? 0.03 : 0.015, (p.wclip || 0) + 0.005)) r.mountClip.push(`${p.name} ${Math.round(deep * 100)} cm into ${what} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`);
     const b = visBox[i], mid = (b.y0 + b.y1) / 2;

@@ -735,6 +735,13 @@ function walkMap(b) {
     if (A.length && B.length) links.push([yl, A, yh, B]);
   }
   out.links = links;
+  // no door: a person walks in over any open edge of the ground floor (an open front, a pavilion, an arcade), so every
+  // free cell on the floor's edge that no wall or post makes hard is a way in. One cell of the main room was the seed,
+  // and what it reached hung on the order of the cells (candidate smithy md steppe 614: its forge was left out).
+  if (!queue.length) {
+    const g = out.grids.get(levels[0]);
+    for (const c of g.list) if (c.free && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([di, dj]) => !g.cn.has((c.i + di) * 4096 + c.j + dj))) seed(levels[0], c);
+  }
   if (!queue.length) { const g = out.grids.get(levels[0]); const m = g.rs.find(r => r.main) || g.rs[0]; for (const c of g.list) if (c.free && c.x > m.x0 && c.x < m.x1 && c.z > m.z0 && c.z < m.z1) { seed(levels[0], c); break; } }
   const walk = () => {
     while (queue.length) {

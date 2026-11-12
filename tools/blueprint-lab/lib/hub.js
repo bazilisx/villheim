@@ -383,12 +383,16 @@ function leanTo(b, K, bearing, d0) {
 const NOTICE_HEADS = ['Village notices', 'Work wanted', 'Trades'];
 // sign places on a face: along it, up from the board's middle; and the headings of each face of the board
 const NOTICE_WALL = [[-0.51, -0.24], [0.51, -0.24], [0, 0.27]];
-const NOTICE_BOARD = [[0, 0.255], [0, -0.255]];
+// (the board's two rows sit 2 cm low on its half wall: the darkwood cap's mesh reaches 2.5 cm under its pivot's box,
+// and the cap rests on the posts' tops at 2.0 m)
+const NOTICE_BOARD = [[0, 0.235], [0, -0.275]];
 function noticeBoard(b, K, x, z, yaw) {
   const ux = Math.cos(rad(yaw)), uz = -Math.sin(rad(yaw)), nx = Math.sin(rad(yaw)), nz = Math.cos(rad(yaw));
   for (const s of [-1.1, 1.1]) b.put(K.pole, x + ux * s, 1, z + uz * s, yaw, { notice: true });
   b.put(K.wallHalf || 'wood_wall_half', x, 1.5, z, yaw, { notice: true });
-  b.put(K.beam, x, 2.1, z, yaw, { notice: true });
+  // (the cap rests on the half wall's top at 2.0 m: at 2.1 its lower 10 cm sat in the half wall and in the top sign's
+  // place, 3 cm into the sign once the biome's thicker darkwood beam took its place, showcase 02)
+  b.put(K.beam, x, 2.2, z, yaw, { notice: true });
   noticeSigns(b, x, 1.5, z, ux, uz, nx, nz, NOTICE_BOARD, [0, 1]);
   noticeSigns(b, x, 1.5, z, ux, uz, -nx, -nz, NOTICE_BOARD, [2, 0]);
 }
@@ -397,7 +401,12 @@ function noticeSigns(b, x, y, z, ux, uz, nx, nz, layout, heads) {
   const WH = WHH(), B = WH ? WH.backingOf(b.pieces) : null;
   layout.forEach(([s, dy], i) => {
     // (the 2x2 and half walls carry a rail on one face: a sign that meets it goes over it instead, or stays off)
-    const r = WH && WH.hang('sign', { x: x + ux * s, z: z + uz * s, nx, nz, y: y + dy }, B, { cover: 1, pieces: b.pieces, gapOk: 0, heights: [y + 0.23, y + dy + 0.1, y + dy - 0.1] });
+    // (and clear of the board's own beams and posts: a top sign went 3 cm into the beam over it, showcase 02)
+    const clear = r => { const sb = WH.modelWorldBox({ name: 'sign', x: r.x, y: r.y, z: r.z, yaw: normH(r.yaw) }, 0); if (!sb) return true;
+      return !b.pieces.some(q => q.notice && /beam|pole/.test(q.name) && (() => { const o = WH.modelWorldBox(q, 0); return o && o.x0 < sb.x1 - 0.015 && o.x1 > sb.x0 + 0.015 && o.y0 < sb.y1 - 0.01 && o.y1 > sb.y0 + 0.01 && o.z0 < sb.z1 - 0.015 && o.z1 > sb.z0 + 0.015; })()); };
+    let r = null;
+    const hs = [y + 0.23, y + dy + 0.1, y + dy - 0.1];
+    if (WH) for (const h of [hs, ...hs.map(v => [v]), [y + dy - 0.2]]) { const t = WH.hang('sign', { x: x + ux * s, z: z + uz * s, nx, nz, y: y + dy }, B, { cover: 1, pieces: b.pieces, gapOk: 0, heights: h }); if (t && clear(t)) { r = t; break; } }
     if (r) b.put('sign', r.x, r.y, r.z, r.yaw, { decor: true, notice: true, info: NOTICE_HEADS[heads[i]], ...(r.wclip ? { wclip: r.wclip } : {}) });
   });
 }

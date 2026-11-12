@@ -1211,7 +1211,11 @@ function placeBeds(room, k, n, d, row = 1.5) {
       const spots = [...wallSpots(room, name, { rel: 90 }), ...wallSpots(room, name, { rel: 270 }),
         ...room.cells.filter(c => room.area < 40 || (c.i % 2 === 0 && c.j % 2 === 0)).flatMap(c => [0, 90, 45, 135].map(yaw => ({ x: c.x, z: c.z, yaw }))),
         ...room.cells.filter(c => room.area < 40).flatMap(c => [0, 90].map(yaw => ({ x: c.x + 0.25, z: c.z + 0.25, yaw })))];
-      const rec = best(room, name, spots, sp => 2 * fr.v(sp.x, sp.z) / fr.D - (room.fire ? Math.max(0, 2.6 - Math.hypot(sp.x - room.fire.x, sp.z - room.fire.z)) * 2 : 0), { noise: 0.2, ignore: ['work', 'fire'], tries: 2000, overhang: 0.9 });
+      // (free-standing, the head toward the nearer wall and close to it: a bed whose foot is nearer a wall faces it,
+      // which the corpus does in 4 % of beds; the catalog's bed check reads it so)
+      const edge = (x, z, dx, dz) => { let t = 0; while (t < 6 && room.inside(x + dx * t, z + dz * t)) t += 0.25; return t; };
+      const headV = sp => { if (!room.intent) return 0; const a = (sp.yaw || 0) * PI / 180, dx = Math.sin(a), dz = Math.cos(a), h = edge(sp.x, sp.z, -dx, -dz), f = edge(sp.x, sp.z, dx, dz); return (f < h ? -3 : 0) - 0.5 * h; };
+      const rec = best(room, name, spots, sp => 2 * fr.v(sp.x, sp.z) / fr.D - (room.fire ? Math.max(0, 2.6 - Math.hypot(sp.x - room.fire.x, sp.z - room.fire.z)) * 2 : 0) + headV(sp), { noise: 0.2, ignore: ['work', 'fire'], tries: 2000, overhang: 0.9 });
       if (rec) { out.push(rec); break; }
     }
   }
@@ -1542,6 +1546,7 @@ function placeStorageRow(room, k, n, o = {}) {
 
 // A station against a wall with its extensions beside it (learned offsets: chopping block 2 m to the side, anvil
 // 1.5 m, bellows and cooler on the other side).
+const HUNG_EXT = new Set(['forge_ext6', 'piece_workbench_ext4']);
 function placeStation(room, k, name, exts, o = {}) {
   if (!ok(name, room.biome)) return null;
   const fr = room.frame();
@@ -1563,6 +1568,9 @@ function placeStation(room, k, name, exts, o = {}) {
   let sgn = room.R() < 0.5 ? 1 : -1;
   for (const e of exts) {
     if (!ok(e, room.biome)) continue;
+    // (an add-on that hangs on a wall goes only on a wall: never on the open edge of a floor; catalog wall-hung,
+    // forge_ext6 71 % of 416 builds, piece_workbench_ext4 73 % of 418)
+    if (HUNG_EXT.has(e) && rec.spot && rec.spot.face && rec.spot.face.edge) continue;
     const [ew] = size(e);
     let done = false;
     for (const sg of [sgn, -sgn]) {

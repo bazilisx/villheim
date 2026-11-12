@@ -100,7 +100,9 @@ function barCounter(b, ctx, zones) {
       const stOf = decorB()._int.standOf;
       const topAt = (x, z) => { let t = null; for (const p of b.pieces) { if (p.decor || PB.piece(p.name).role !== 'floor') continue; const o = Ck.aabb(p); if (x < o.x0 || x > o.x1 || z < o.z0 || z > o.z1) continue; const tt = p.y + stOf(p.name); if (Math.abs(tt - (y + 0.1)) < 0.6 && (t == null || tt > t)) t = tt; } return t == null ? y + 0.1 : t; };
       for (const a of [c - 1.2, c + 1.2]) { const [x, z] = at(a, 0.5 + thick); b.put(barrel, x, topAt(x, z), z, yaw + 180, T); }
-      if (can(ctx.biome, 'itemstandh')) for (const a of [c - 1.1, c + 0.4]) { const [x, z] = at(a, dIn); b.put('itemstandh', x, y + 1.35, z, yaw, T); }
+      // (flat stands on the beam's collider top, 0.2 m over the middle it is put by, as corpus stands on beams: wood_beam
+      // +0.20 over its pivot in 1483 of 2413, darkwood_beam +0.45 in 19 builds)
+      if (can(ctx.biome, 'itemstandh')) for (const a of [c - 1.1, c + 0.4]) { const [x, z] = at(a, dIn); b.put('itemstandh', x, y + 1.3, z, yaw, T); }
       // a seat or table the furnishing left touching the new counter goes too
       const counter = b.pieces.slice(-8).filter(p => p.trim && p.decor).map(p => Ck.aabb(p));
       b.pieces = b.pieces.filter(p => !(movable(p) && !p.trim && (o => counter.some(k => o.x0 < k.x1 - 0.03 && o.x1 > k.x0 + 0.03 && o.z0 < k.z1 - 0.03 && o.z1 > k.z0 + 0.03 && o.y0 < k.y1 && o.y1 > k.y0 + 0.05))(Ck.aabb(p))));
@@ -1061,7 +1063,7 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     return no(13);
   };
   if (flat || bx.pass || !bx.sol || !bx.sol.length) { if (!audited()) return false; for (const q of mine) displace.add(q); return true; }
-  let deepest = 0;
+  let deepest = 0, wallOwn = 0;
   for (const r of nearP(0.2)) {
     const q = r.p, qb = r.b;
     if (!qb.sol || !qb.sol.length || qb.pass || q === p) continue;
@@ -1091,11 +1093,14 @@ function placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fi
     const own = name => (a.pieces[i].n === name || !a.pieces[i].n);
     const allowIJ = own(p.name) && (!a.pieces[j].n || a.pieces[j].n === o.name) ? clipOf(i, j) : 0;
     if (d > Math.max(allowIJ, 0.02) + 0.01) deepest = -1;
-    else deepest = Math.max(deepest, d);
+    else { deepest = Math.max(deepest, d); if (['wall', 'window', 'gable', 'beam', 'pole'].includes(ob2.info && ob2.info.role)) wallOwn = Math.max(wallOwn, d); }
   });
   if (deepest < 0) return no(18);
   if (!audited()) return false;
   if (deepest > 0.01) p.clip = +(deepest + 0.005).toFixed(3);
+  // (into its own set's quarter wall or beam as deep as the source builds: a clip made on purpose into a wall, D-098,
+  // written with the blueprint so the audit allows it; KC-138's signs lean 3 to 5 cm into their quarter walls)
+  if (wallOwn > 0.01) p.wclip = Math.max(p.wclip || 0, +(wallOwn + 0.005).toFixed(3));
   for (const q of mine) displace.add(q);
   return true;
 }

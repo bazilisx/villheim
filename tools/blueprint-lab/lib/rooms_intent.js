@@ -320,7 +320,8 @@ function furnishRoom(room, role, c, H) {
   // lib/details.js), a hearth in a large home as often as the corpus
   const fireKind = () => {
     if (role === 'tavern' || role === 'hall') return 'hearth';
-    if (role === 'home' && room.area >= 60 && R() < 0.74) return 'hearth';
+    // (a home or kitchen past its first stage: the hearth where the room holds one, Tyler 06; a fire pit at d1)
+    if (d >= 2 && room.area >= 30) return 'hearth';
     return 'fire_pit';
   };
   const fire = () => {

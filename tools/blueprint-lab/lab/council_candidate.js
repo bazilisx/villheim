@@ -38,8 +38,8 @@ function requests() {
   for (let i = 0; i < 5; i++) R();
   const type = opt('--type') || KINDS[Math.floor(R() * KINDS.length)];
   const biome = opt('--biome') || BIOMES[Math.floor(R() * BIOMES.length)];
-  const cultures = Object.keys(S.CULTURES);
-  const culture = opt('--culture') || cultures[Math.floor(R() * cultures.length)];
+  // (a culture the biome's villages use, by the culture map's weights, D-001: lib/styles.js BIOME_CULTURE)
+  const culture = opt('--culture') || S.cultureFor(Q.BIOME_CODES[biome] || biome, R);
   const seed = +opt('--seed', 0) || 1 + Math.floor(R() * 999);
   const stage = opt('--stage', 's3d3');
   return [{ type, biome, culture, stage, seed, name: `council-${type}-${biome}-${culture}-${stage}-${seed}` }];

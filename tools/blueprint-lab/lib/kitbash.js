@@ -751,7 +751,8 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       const ceil = m.ceilAt(p.x, p.z);
       const hs = [];
       for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [p.y + d, p.y - d]) if (yy >= stand + 0.9 || mm.y < 0.9) hs.push(+yy.toFixed(3));
-      const r = f && hangB().hang(p.name, { x: f.px(f.t), z: f.pz(f.t), nx: f.nx, nz: f.nz, y: p.y }, hangB().backingOf(b.pieces), { heights: hs.filter(yy => yy < ceil - 0.3), pieces: b.pieces.concat(made.filter(Boolean)) });
+      const own = made.filter(Boolean), Bk = own.length ? hangB().both(hangB().backingOf(b.pieces), hangB().backing(own)) : hangB().backingOf(b.pieces);
+      const r = f && hangB().hang(p.name, { x: f.px(f.t), z: f.pz(f.t), nx: f.nx, nz: f.nz, y: p.y }, Bk, { heights: hs.filter(yy => yy < ceil - 0.3), pieces: b.pieces.concat(made.filter(Boolean)) });
       if (!r) { WHY_B = 34; LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
       p.x = r.x; p.y = r.y; p.z = r.z; p.yaw = r.yaw; p.q = r.q; p.hung = true;
       if (r.wclip) p.wclip = r.wclip;

@@ -34,7 +34,8 @@ const HUNG = {
   wood_dragon1: { kind: 'carving', back: [0, 0, -1], plate: [-0.25, 0.25, 0, 1.2] },
   darkwood_raven: { kind: 'carving', back: [0, 0, -1], plate: [-0.2, 0.2, 0, 1.2] },
   darkwood_wolf: { kind: 'carving', back: [0, 0, -1], plate: [-0.2, 0.2, 0, 1.2] },
-  cauldron_ext1_spice: { kind: 'rack', back: [0, 0, -1] },
+  // (the spice rack's board; the herbs hang a meter under it)
+  cauldron_ext1_spice: { kind: 'rack', back: [0, 0, -1], plate: [-1.0, 1.0, 0.66, 1.3] },
   cauldron_ext4_pots: { kind: 'rack', back: [0, 0, -1] },
 };
 // the banners: rod across local z, cloth down local -y; only the rod rests on the wall
@@ -328,6 +329,8 @@ const quatW = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).to
 // The backing index of a design's piece list, kept while its building pieces stay the same (the furnishing passes ask
 // again and again; walls are all in before any decor).
 const CACHE_W = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+/** Two backing indexes read as one (a set's own pieces not yet in the building, lib/kitbash.js fit). */
+function both(A, B) { return { list: A.list.concat(B.list), near: (x, z, r) => A.near(x, z, r).concat(B.near(x, z, r)), add: A.add }; }
 function backingOf(pieces) {
   let nb = 0;
   for (const p of pieces) if (!p.decor) nb++;
@@ -463,5 +466,5 @@ function row(t, n, w, gap) {
   return out;
 }
 
-const apiWH = { HUNG, isHung, BACKING, backing, backingOf, measure, overlaps, backDir, partBox, sweep, travel, modelBox, faceRect, hang, sinkOf, relOf, plan, spaced, row, restsOn, clashOnWall };
+const apiWH = { HUNG, isHung, BACKING, backing, backingOf, measure, overlaps, backDir, partBox, sweep, travel, modelBox, faceRect, hang, sinkOf, relOf, plan, spaced, row, restsOn, clashOnWall, both };
 if (NODE_W) module.exports = apiWH; else window.VHWallhang = apiWH;

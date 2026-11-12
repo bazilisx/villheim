@@ -516,13 +516,24 @@ function dressStands(b, ctx) {
     return best;
   };
   // the box a flat stand stands on (for the edge test)
+  // (the top is what shows of the piece, from its model: corpus flat stands stand at the model's top, 0.817 m over a
+  // plank table's pivot against its model top 0.820 and its collider top 0.86; on a wall ledge 0.075 to 0.085 m
+  // against its model top 0.07; lab measures of 2026-11-12, track E record)
+  const Ms = (() => { try { return NODE_P ? require('./mesh.js') : window.VHMesh; } catch (e) { return null; } })();
+  // a flat stand's pivot over the pivot of the level piece it stands on, the corpus mode per support (n, cases at the
+  // mode): where the game's placement lands, which is the collider top on a ledge and within 2 cm of the model top on
+  // most tables. Other pieces use the model top.
+  const STAND_ON = { piece_table: 0.82, piece_table_oak: 0.79, piece_table_round: 0.8, piece_blackmarble_table: 0.82, piece_table_runed: 0.79,
+    mountainkit_table: 0.8, dvergrprops_table: 0.74, dvergrprops_crate: 1.02, piece_bench01: 0.56, piece_chest_barrel: 0.9, wood_ledge: 0.03 };
+  // (1194/593, 702/621, 442/410, 121/110, 14/13, 65/65, 10/8, 10/10, 114/35, 79/12; wood_ledge: 17 of 20 on level ledges)
+  const showTop = q => { if (STAND_ON[q.name] != null) return q.y + STAND_ON[q.name]; const md = Ms && Ms.dims ? Ms.dims(q.name) : null; return md && md.show && md.showAt && !P_.piece(q.name).structural ? q.y + md.showAt[1] + md.show[1] / 2 : null; };
   const topOf = (p, near) => {
     let best = null;
     for (const q of near) {
       if (q === p || /^itemstand/.test(q.name)) continue;
-      const o = Ck.aabb(q);
-      if (o.pass || o.x0 > p.x || o.x1 < p.x || o.z0 > p.z || o.z1 < p.z || o.y1 > p.y + 0.3 || o.y1 < p.y - 0.15) continue;
-      if (!best || o.y1 > best.y) best = { x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1, y: o.y1 };
+      const o = Ck.aabb(q), st = showTop(q), y1 = st != null ? st : o.y1;
+      if (o.pass || o.x0 > p.x || o.x1 < p.x || o.z0 > p.z || o.z1 < p.z || y1 > p.y + 0.3 || y1 < p.y - 0.15) continue;
+      if (!best || y1 > best.y) best = { x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1, y: +y1.toFixed(3) };
     }
     return best;
   };
@@ -543,6 +554,7 @@ function dressStands(b, ctx) {
     if (r.q) p.q = r.q;
     if (r.yaw != null) p.yaw = r.yaw;
     if (r.y != null) p.y = +r.y.toFixed(3);
+    else if (flat) { const t = topOf(p, near); if (t) p.y = t.y; }
     delete p.want; delete p.at;
     n++;
   }

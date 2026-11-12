@@ -416,7 +416,7 @@ function noticeWall(b, w, y0) {
 function campDesign(b, K, T, o) {
   const { R, cultureKey, decor, place } = o;
   b.put('fire_pit', 0, 0, 0, 0, { decor: true, hearth: true });
-  b.put('piece_cookingstation', 0, 0.4, 0, 0, { decor: true });
+  b.put('piece_cookingstation', 0, 0.2, 0, 0, { decor: true });
   // lean-tos: three most often, two or four (hub1 s1: three, 113 to 134 degrees apart, 5.4 to 8.8 m out); never on the
   // door side (the roads come in at -z)
   const n = R() < 0.6 ? 3 : R() < 0.5 ? 2 : 4;
@@ -1324,7 +1324,8 @@ function furnish(b, K, C, T, o, F) {
   const form = k >= 2 ? V.hearth : 'pit';
   b.put(form === 'pit' ? 'fire_pit' : 'hearth', 0, 0.125, 0, 0, { decor: true, hearth: true, ds: 1 });
   place.keep(-2.4, 2.4, -2, 2, 0, 3);
-  b.put('piece_cookingstation', 0, 0.55, 0, 0, { decor: true, ds: 1 });
+  // (corpus: a cooking station stands 0.20 over a fire pit, 252 of 256, and 0.583 over a hearth, 116 of 123)
+  b.put('piece_cookingstation', 0, 0.125 + (form === 'pit' ? 0.2 : 0.583), 0, 0, { decor: true, ds: 1 });
   const fires = [{ x: 0, z: 0 }];
   if (form === 'long') for (const x of [-2, 2]) {
     b.put('stone_floor_2x2', x, -0.375, 0, 0, { hearthStone: true });

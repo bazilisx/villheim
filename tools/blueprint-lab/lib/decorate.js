@@ -65,9 +65,9 @@ const F = {
   piece_throne01: { s: [1.4, 2.5, 1.0], at: 'wall', b: 'Swamp', cat: 'seat' },
   fire_pit: { s: [1.4, 0.4, 1.4], at: 'floor', b: 'Meadows', cat: 'fire' },
   hearth: { s: [4.0, 0.6, 3.0], at: 'floor', b: 'Swamp', cat: 'fire' },
-  piece_cookingstation: { s: [2.0, 0.8, 0.5], at: 'fire', b: 'Meadows', cat: 'craft', lift: 0.25 },
-  piece_cookingstation_iron: { s: [3.6, 2.0, 0.73], at: 'fire', b: 'Swamp', cat: 'craft', lift: 0.25 },
-  piece_cauldron: { s: [1.0, 1.4, 1.0], at: 'fire', b: 'Black Forest', cat: 'craft', lift: 0.25 },
+  piece_cookingstation: { s: [2.0, 0.8, 0.5], at: 'fire', b: 'Meadows', cat: 'craft', lift: 0.2 },
+  piece_cookingstation_iron: { s: [3.6, 2.0, 0.73], at: 'fire', b: 'Swamp', cat: 'craft', lift: 0.583 },
+  piece_cauldron: { s: [1.0, 1.4, 1.0], at: 'fire', b: 'Black Forest', cat: 'craft', lift: 0.2 },
   fermenter: { s: [1.6, 2.2, 1.55], at: 'wall', b: 'Black Forest', cat: 'craft', tall: true },
   piece_workbench: { s: [3.01, 1.03, 1.1], at: 'wall', b: 'Meadows', cat: 'craft' },
   piece_workbench_ext1: { s: [0.81, 1.01, 0.8], c: [-0.06, 0.0], at: 'wall', b: 'Meadows', cat: 'craft' },
@@ -177,6 +177,10 @@ function modelSizes() {
     // is what shows, so its head meets the wall as corpus beds do (track B: head at the wall, p50 0 m) and does not go
     // into it
     if (f.cat === 'bed' && md.show[2] > m[2]) m[2] = md.show[2];
+    // a piece whose model starts over its pivot (the stool's legs 7 cm up) stands with its pivot that much under the
+    // floor's top, as corpus builders set it (piece_chair: pivot 0.070 m under the floor top at the median of 1,018
+    // in /work/bp; mesh bottom 0.071 m; lab measure of 2026-11-12, track E record)
+    if (['floor', 'wall'].includes(f.at) && f.base == null && md.showAt) { const bot = md.showAt[1] - md.show[1] / 2; if (bot > 0.02) f.base = -+bot.toFixed(3); }
     if (Math.abs(f.rel || 0) % 180 === 90) [m[0], m[2]] = [m[2], m[0]];
     const old = f.s;
     const body = [0, 1, 2].map(i => (Math.abs(old[i] - m[i]) > 0.1 ? +m[i].toFixed(2) : old[i]));
@@ -1049,6 +1053,7 @@ function placeFire(room, ctx, kind) {
   void R;
   return rec;
 }
+// (corpus: a cooking station or cauldron stands 0.20 over a fire pit's pivot, 252 of 256 and 110 of 112)
 function onFire(room, name, o = {}) {
   const fire = room.fire;
   if (!fire || fire.name !== 'fire_pit') return null;
@@ -2774,7 +2779,8 @@ function furnishPlan(room, role, c) {
     const tavern = role === 'tavern';
     if (isFire) {
       placeFire(room, c, ok('hearth', biome) && !tavern ? 'hearth' : 'fire_pit');
-      if (room.fire && room.fire.name === 'fire_pit') onFire(room, ok('piece_cookingstation_iron', biome) && d >= 3 ? 'piece_cookingstation_iron' : 'piece_cookingstation');
+      // (the iron station spans a hearth: 257 of 259 corpus iron stations stand on one, 2 on a fire pit)
+      if (room.fire && room.fire.name === 'fire_pit') onFire(room, 'piece_cookingstation');
     }
     planPaths(room);
     if (tavern) cookCorner(room, role, c);
@@ -3237,7 +3243,7 @@ function tplFit(room, role, c, fr, ch, needFire) {
           const [x, z] = at(Math.max(-pw / 2 + 0.3, Math.min(pw / 2 - 0.3, lx)), Math.max(-pd / 2 + 0.2, Math.min(pd / 2 - 0.2, lz)));
           // two pots or spits over one hearth keep apart (they cross each other in the game otherwise)
           const [fw, , fd] = size(n);
-          if (!room.placed.some(r => r.onFire && overlap(r.b, obox(x, z, fw, fd, yaw), -0.05))) rec = room.add(n, x, par.y0 + (f.lift || 0.25), z, yaw, { onFire: true });
+          if (!room.placed.some(r => r.onFire && overlap(r.b, obox(x, z, fw, fd, yaw), -0.05))) rec = room.add(n, x, par.y0 + (par.name === 'hearth' ? 0.583 : (f.lift || 0.2)), z, yaw, { onFire: true }); // (corpus: 0.583 over a hearth, 116 of 123 stations, 236 of 257 iron)
         }
       } else {
         // a seat tucked under a table in the build comes out until it is clear

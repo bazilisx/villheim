@@ -635,6 +635,23 @@ const ROOM_ASM = { home: 'home', bedroom: 'bedroom', dormitory: 'bedroom', 'tave
 const ASM_SKIP = /^(bed|piece_bed02|ashwood_bed|piece_chair|piece_chair0\d|piece_bench01|piece_table|piece_table_round|piece_table_oak|piece_throne)/;
 const DBG_ASM = typeof process !== 'undefined' && process.env && process.env.VH_DEBUG_ASM ? {} : null;
 if (DBG_ASM) process.on('exit', () => console.log(JSON.stringify(DBG_ASM)));
+const WH_I = () => { try { return NODE_I ? require('./wallhang.js') : window.VHWallhang; } catch (e) { return null; } };
+// Does every free-standing piece of a placed recipe rest on the room's floor or on another piece of the recipe? Mined
+// recipes can leave out the floor or platform a piece stood on in its build (AC-armor-alcove-16: its armor stand at
+// 0.38 m with the floor under it left out, 38 cm over the floor in showcase 16).
+function asmGrounded(pieces, stand, P) {
+  const WH = WH_I();
+  if (!WH || !WH.modelWorldBox) return true;
+  const boxes = pieces.map(p => WH.modelWorldBox({ ...p, q: p.q || null }, 0));
+  for (let i = 0; i < pieces.length; i++) {
+    const p = pieces[i], b = boxes[i];
+    if (!b || WH.isHung(p.name) || (P && P.piece(p.name).structural)) continue;
+    if (Math.abs(b.y0 - stand) <= 0.05) continue;
+    if (b.y0 < stand - 0.05) return false;
+    if (!boxes.some((o, j) => j !== i && o && Math.abs(o.y1 - b.y0) <= 0.06 && o.x0 < b.x1 && o.x1 > b.x0 && o.z0 < b.z1 && o.z1 > b.z0)) return false;
+  }
+  return true;
+}
 const ASM_P = () => { try { return NODE_I ? require('./assemblies.js') : window.VHAssemblies; } catch (e) { return null; } };
 function builtZone(room, plan, H, I) {
   const AS = ASM_P();
@@ -654,6 +671,8 @@ function builtZone(room, plan, H, I) {
   const anchors = room.placed.filter(r => !r.rug && !r.mount && !r.onTable);
   for (const r of list.slice(0, 8)) {
     const w = r.foot.x[1] - r.foot.x[0], d = Math.max(0.3, r.foot.z[1] - Math.max(0, r.foot.z[0]));
+    // (sized to the room, as every supporting piece: sizedFor)
+    if (w * d > 0.12 * room.area) continue;
     // plain wall stretches the recipe's width, away from what stands already
     const spots = [];
     for (const face of room.faces) for (let t = face.a0 + w / 2; t <= face.a1 - w / 2 + 0.01; t += 0.5) {
@@ -680,7 +699,7 @@ function builtZone(room, plan, H, I) {
     const s = spots[0];
     if (!s) continue;
     const got = AS.place(r, { x: s.x0, y: room.stand, z: s.z0, facing: s.yaw }, { family: plan.suite.table ? (pc(plan.suite.table) || {}).f : null });
-    if (!got) continue;
+    if (!got || !asmGrounded(got.pieces, room.stand, P)) continue;
     plan.asm.used[r.id] = 1;
     const recs = [];
     for (const p of got.pieces) {
@@ -727,15 +746,23 @@ function supportZones(room, I, plan, H, c, k) {
   }
   return n;
 }
+// A supporting piece is sized to its room (D-163, Tyler 2026-11-12: wood stacks "way too large" by an indoor hearth;
+// the principle for every piece): its footprint at most a tenth of the room's floor, and no large or huge piece
+// (catalog size class) in a room under 25 m2 beyond its core set.
+function sizedFor(room, name, H) {
+  const [w, , d] = H.size(name);
+  if (w * d > 0.1 * room.area) return false;
+  return !(room.area < 25 && ['large', 'huge'].includes((pc(name) || {}).sz));
+}
 const putAgainst = (room, plan, H, name, score, o) => {
-  if (!H.F[name] || !canUse(plan, name)) return null;
+  if (!H.F[name] || !canUse(plan, name) || !sizedFor(room, name, H)) return null;
   const r = H.placeAgainst(room, name, score, o);
   if (r) note(plan, name);
   return r;
 };
 // beside an anchor on the same wall: the next free stretch either way
 function beside(room, plan, H, anchor, name, gap = 0.15) {
-  if (!anchor || !anchor.spot || !H.F[name] || !canUse(plan, name)) return null;
+  if (!anchor || !anchor.spot || !H.F[name] || !canUse(plan, name) || !sizedFor(room, name, H)) return null;
   const [w] = H.size(anchor.name), [ew] = H.size(name);
   for (const sg of [1, -1]) for (let g = gap; g < gap + 1.2; g += 0.25) {
     const t = anchor.spot.t + sg * (w / 2 + g + ew / 2);

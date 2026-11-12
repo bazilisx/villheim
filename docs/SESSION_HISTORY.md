@@ -3,7 +3,18 @@
 Current facts only. Read this at the start of a session. Narrative is in `docs/daily-notes/`, goals in
 `docs/ROADMAP.md`, how-to in `docs/DEVELOPMENT.md`.
 
-## Current State (as of 2026-11-11)
+## Current State (as of 2026-11-12)
+
+Showcase review, 2026-11-12 (note, Session 1): Tyler's review of the 16 showcase designs is the work plan
+(`docs/handoffs/2026-11-12-showcase-review/`: TYLER_NOTES.md, README.md, track records, `criteria/`). Merged to main:
+piece catalog (`lib/catalog.js`), corpus room study (`docs/ROOM_STUDY.md`), outside study, furniture assemblies and stand
+items (`lib/assemblies.js`, `lib/standitems.js`), wall-hung placement (`lib/wallhang.js`), building program
+(`lib/program.js`). Running: shell (design/wip-shell), room intent (design/wip-interiors, `lib/rooms_intent.js`). Then a
+council of the tracks scores generated buildings (up to 10) before Tyler. Mod: stand items, sign text and armor stand
+gear from designs (88e10c8, 73ebdb5); in-game generator limit 4 minutes (f70fa23). Tyler saw items on stands in
+1003-88e10c8; nothing else from this session tried in the game.
+
+### As of 2026-11-11
 
 Design, 2026-11-11 (note, Sessions 1 and 2): integration rounds 4 to 7c are on main (last merge 4226ceb, CI build
 995-4226ceb). In the lab now, on top of Session 1: the `hub` type, s1 to s5, different in every village with no roof
@@ -190,6 +201,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-12 (showcase review: eight design tracks, stand and armor stand fixes, council)** - see docs/daily-notes/2026-11/2026-11-12.md
 - **2026-11-11 (design rounds 4 to 7c merged, hub and landscaping, build labels, test channels)** - see docs/daily-notes/2026-11/2026-11-11.md
 - **2026-11-11 (design tracks merged: library first, essentials, hearths, stands, lab page)** - see docs/daily-notes/2026-11/2026-11-11.md
 - **2026-11-10 (design pause: four helper tracks, handoff)** - see docs/daily-notes/2026-11/2026-11-10.md

@@ -1282,18 +1282,29 @@ function generate(req) {
   const stairRun = F >= 0.9 ? 2 * Math.round(Math.min(F, 2)) : 0;
   if (T.field) fieldDesign(b, K, W, D + (C.boardwalk ? { s1: 4, s2: 6, s3: 8 }[stage] + Math.max(2, stairRun) : stairRun), biome, stage, R, doorX);
   if (T.pen) penDesign(b, K, Math.max(...[...cells.values()].map(c => c[0])) + 1, D, stage); // beside the last wing
-  if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1')))
+  // carved heads on the gable ends, in pairs or none (lib/program.js ornament): each hung on what shows of its gable wall
+  // under the ridge (lib/wallhang.js hang); on a ridge beam's end run out past the rake it sat 0.3 to 0.43 m off any
+  // wall (track F's measure)
+  if (roofKind === 'gable' && plan !== 'gables' && ((C.dragons && ['longhouse', 'temple', 'tavern'].includes(type)) || (C.carved && stage !== 's1'))) {
+    const WH = typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang;
+    const ridgeY = roofTop + r * (D - 1) / 2, ends = [];
     for (const sx of [-1, 1]) {
       if (hearth.spot === 'stack' && sx === hearth.sg) continue; // the stack stands there
-      // a lower annex in line at that end: its roof meets the main gable below the ridge, so the ridge beam would have no
-      // gable under it (it fell in the game's support rule, home Black Forest slavic s3 seed 1)
+      // (not over a lower annex in line at that end, whose roof meets the main gable below the ridge)
       if (wings.some(w => w.spec && w.spec.at === 'inline' && !w.spec.ext && w.spec.side === sx)) continue;
-      // the carving rides on the ridge beam's end, run out a metre past the gable (it stood on nothing)
-      const rk = (dctx.rake || 0) + (wings.some(w => w.spec && w.spec.ext && w.spec.side === sx) ? 4 : 0); // past the rake, and past an extension
-      // a 2 m ridge beam from inside the gable to half a metre past the rake, so it rests on the gable wall
-      b.put(rk ? (K.beam || 'wood_beam') : (K.beam1 || 'wood_beam_1'), sx * (rk ? W + rk - 0.5 : W + 0.5), roofTop + r * (D - 1) / 2 - 0.35, 0, 0, { trim: true });
-      b.put('wood_dragon1', sx * (W + rk + 0.6), roofTop + r * (D - 1) / 2 + 0.3, 0, sx > 0 ? 90 : 270);
+      // (the outermost gable wall on the ridge line at that end: an extension in line carries the main ridge further out)
+      const gx = Math.max(-Infinity, ...b.pieces.filter(p => !p.decor && ['wall', 'gable'].includes(P.piece(p.name).role) && Math.abs(p.z) < 1.2 && p.y > ridgeY - 3 && p.y < ridgeY + 0.5 && sx * p.x > 0).map(p => sx * p.x));
+      if (isFinite(gx)) ends.push({ sx, gx });
     }
+    // (the pair at one height: the first under the ridge where both ends take one)
+    let heads = [];
+    const B = WH && ends.length === 2 ? WH.backingOf(b.pieces) : null;
+    if (B) for (const dy of [1.4, 1.0, 1.8, 2.2, 0.6, 2.6]) {
+      const got = ends.map(({ sx, gx }) => WH.hang('wood_dragon1', { x: sx * gx, z: 0, nx: sx, nz: 0, y: ridgeY - dy }, B, { pieces: b.pieces }));
+      if (got.every(Boolean)) { heads = got; break; }
+    }
+    if (heads.length === 2) for (const h of heads) b.put(h.name, h.x, h.y, h.z, h.yaw, { trim: true, ...(h.wclip ? { wclip: h.wclip } : {}) });
+  }
 
   b.outer = edges;
   // the gable end a stone stack may take (a stack hearth's, or the chimney stack on a hall or workshop with a middle fire,
@@ -1471,10 +1482,12 @@ function doorLights(b, o) {
         const yaw = (Math.atan2(ox, oz) * 180 / Math.PI + 270 + 360) % 360;
         const q = name
           ? { name, x: +(e.x + ox * (half + 0.28) + ux * sg * t).toFixed(3), y: +(op.y0 + 1.55).toFixed(3), z: +(e.z + oz * (half + 0.28) + uz * sg * t).toFixed(3), yaw }
-          : { name: ground, x: +(e.x + ox * (half + 0.6) + ux * sg * (t + 0.2)).toFixed(3), y: 0.75, z: +(e.z + oz * (half + 0.6) + uz * sg * (t + 0.2)).toFixed(3), yaw: 0 };
-        if (!name) { // a standing torch stands on the doorstep or floor under it, if any
-          const tops = b.pieces.filter(p => P.piece(p.name).role === 'floor').map(p => Ck.aabb(p)).filter(a => q.x > a.x0 && q.x < a.x1 && q.z > a.z0 && q.z < a.z1 && a.y1 < 1.5).map(a => a.y1);
-          if (tops.length) q.y = +(Math.max(0, ...tops) + 0.75).toFixed(3);
+          : { name: ground, x: +(e.x + ox * (half + 0.6) + ux * sg * (t + 0.2)).toFixed(3), y: 0.653, z: +(e.z + oz * (half + 0.6) + uz * sg * (t + 0.2)).toFixed(3), yaw: 0 };
+        if (!name) { // a standing torch stands on the doorstep or floor under it (lib/wallhang.js settle), else on the
+          // ground, its pivot 0.653 m over its foot (data/piece-models.json; at 0.75 it stood 10 cm over the ground)
+          const WH = typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang;
+          const yy = WH && WH.settle({ ...q, y: 1.2 }, b.pieces, 1.2);
+          if (yy != null && yy > 0.653) q.y = yy;
         }
         const qb = Ck.aabb(q), m = 0.04;
         const hit = b.pieces.some(p => {

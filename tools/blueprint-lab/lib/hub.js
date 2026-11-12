@@ -627,6 +627,21 @@ function cellRects(cells, y, use) {
 
 // Pieces put while fn runs are marked as the crown (a drum, lantern, raised crown or finial), to tell its height from
 // the main roof's (request.mainTop; their proportion follows the corpus spread, ROOF_Q).
+// Carved heads hung on gable walls (lib/wallhang.js hang): ends [{ x, z, nx, nz }] on the wall planes, n outward; one
+// height for all of them under the ridge at yTop, the first that every end takes, or none (a head on a ridge's end
+// past the gable sat 0.3 to 0.43 m off any wall, track F's measure). Returns the number hung.
+function hangHeads(b, ends, yTop) {
+  const WH = WHH();
+  if (!WH) return 0;
+  const B = WH.backingOf(b.pieces);
+  for (const dy of [1.4, 1.0, 1.8, 2.2, 0.6, 2.6]) {
+    const got = ends.map(e => WH.hang('wood_dragon1', { x: e.x, z: e.z, nx: e.nx, nz: e.nz, y: yTop - dy }, B, { pieces: b.pieces }));
+    if (!got.every(Boolean)) continue;
+    for (const h of got) b.put(h.name, h.x, h.y, h.z, h.yaw, { decor: true, ...(h.wclip ? { wclip: h.wclip } : {}) });
+    return got.length;
+  }
+  return 0;
+}
 function asCrown(b, fn) {
   b.put = function (n, x, y, z, yaw, extra) { return Object.getPrototypeOf(b).put.call(b, n, x, y, z, yaw, { ...(extra || {}), crown: true }); };
   try { fn(); } finally { delete b.put; }
@@ -993,7 +1008,7 @@ function roundHall(b, K, C, T, o) {
   if (k >= 4 && V.porch !== 'none') {
     const wy = Math.min(3, top - 1.6);
     coveredEntrance(b, K, C, T, door.x, door.z, wy, ext.porch6 ? 6 : 4);
-    if (ext.dragons) b.put('wood_dragon1', door.x, wy + 1.3, door.z - (ext.porch6 ? 6 : 4) - 0.6, 180, { decor: true });
+    if (ext.dragons) hangHeads(b, [{ x: door.x, z: door.z - (ext.porch6 ? 6 : 4), nx: 0, nz: -1 }], wy + 2.7);
   }
   // (the crown's cap: kept only where the game holds it, checked once the posts are in, lib/hub.js design)
   const cap = capPieces.filter(p => b.pieces.includes(p));
@@ -1139,12 +1154,10 @@ function crossHall(b, K, C, T, o) {
     peak = y0 + th + r + 0.3;
     b.notes.push(`A lantern tower over the crossing, ${ext.highWindows ? 'windows' : 'walls'} at its corners and open bays for the smoke.`);
   }
-  // carved heads at the four gable ends (s4 on, or by the draw)
+  // carved heads at the four gable ends (s4 on, or by the draw): each pair hung on its gable walls under the ridge
   if ((C.dragons && k >= 4) || ext.dragons) {
-    for (const sg of [-1, 1]) {
-      b.put('wood_dragon1', 0, capY - 0.7, sg * (Wz + 0.6), sg > 0 ? 0 : 180, { decor: true });
-      b.put('wood_dragon1', sg * (Wx + 0.6), capY - 0.7, 0, sg > 0 ? 90 : 270, { decor: true });
-    }
+    hangHeads(b, [{ x: 0, z: -Wz, nx: 0, nz: -1 }, { x: 0, z: Wz, nx: 0, nz: 1 }], capY);
+    hangHeads(b, [{ x: -Wx, z: 0, nx: -1, nz: 0 }, { x: Wx, z: 0, nx: 1, nz: 0 }], capY);
   }
   // porch: a row of posts 4 m out from the front arm's end, a lean-to roof against it (corpus: 6 or more columns);
   // else from s4 a covered entrance over the main door

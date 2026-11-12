@@ -185,6 +185,22 @@ well (Tyler, 2026-11-08). The Features tab of the review sheet (`docs/features/b
 - [x] Boardwalks on poles over wet ground in fen-folk and crannog villages (D-038, `Village/Boardwalks.cs`,
       `BoardwalkCultures`). Not tried in the game.
 
+- [x] Items on stands and text on signs from designs show in the game (stand item written as the game's hash;
+      `Designs/StandItems.cs`, `Designs/DesignSpawner.cs`, 88e10c8). Tyler saw items on stands in 1003-88e10c8.
+- [x] Armor stands in designs wear their gear, locked (`Designs/StandItems.cs` ApplyArmor, 73ebdb5). Not tried in the game.
+- [x] Generated designs keep their ground: '#VillheimGround:0' in lab files, applied by `Designs/Blueprints.cs`
+      (fbe5967). Not tried in the game.
+- [x] Showcase review tracks (docs/handoffs/2026-11-12-showcase-review): piece catalog (`lib/catalog.js`), corpus room
+      study (`docs/ROOM_STUDY.md`), outside study, furniture assemblies and stand items (`lib/assemblies.js`,
+      `lib/standitems.js`), wall-hung placement (`lib/wallhang.js`), building program (`lib/program.js`), shell rules
+      (support by the game's rule, two-piece walks, clear stepped doorways, rails, masonry, sill plants that hold;
+      fb5073d). Not tried in the game.
+- [ ] Room intent furnishing (`lib/rooms_intent.js`, design/wip-interiors): in progress.
+- [ ] Council of the tracks scores generated buildings before Tyler sees them; up to 10 approved s3d3 buildings
+      (Tyler, 2026-11-12): in progress.
+- [ ] Building program wired into wall rhythm, window runs and door dressing (`lib/program.js` call sites 2, 3, 6).
+- [ ] In-game generator time: gen-test longhouse 155 s of the 4-minute engine limit on the cloud machine.
+
 ## Milestone 4: villagers with lives
 
 - [ ] Homes and beds by D-077 (answered 2026-11-09, clarified 2026-11-10): beds and houses are set by arrival order,

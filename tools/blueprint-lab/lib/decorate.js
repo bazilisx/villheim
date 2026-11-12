@@ -1598,8 +1598,8 @@ function lightsIn(room, k, n, o) {
   }
   if (k.wallLight && lightOk(k.wallLight, room.biome)) {
     const f = F[k.wallLight] || {};
-    // the household's height for its sconces: 1.6 to 2.0 m, or as the piece hangs
-    const y = f.under != null ? undefined : 1.6 + R() * 0.4;
+    // the household's height for its sconces, one through the house (lib/wallhang.js lightY), or as the piece hangs
+    const y = f.under != null ? undefined : WHD() ? WHD().lightY(P) : 1.6 + R() * 0.4;
     const spots = mountSpots(room, k.wallLight, { pairs: true, y });
     while (done < n) {
       const ranked = spots.map(s => {

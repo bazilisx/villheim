@@ -1543,7 +1543,7 @@ function furnish(b, K, C, T, o, F) {
   for (const [i, sp] of edgeSpots.entries()) {
     if (nt >= 4 + 2 * k) break;
     if (i % tStep !== 1) continue;
-    if (place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + 1.6, sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true })) nt++;
+    if (place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + WHH().lightY(P), sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true })) nt++;
   }
   // (banners as the persona likes them, lib/persona.js wallWeights: none to six)
   const nBan = Math.max(0, Math.min(6, Math.round(4 * ww.banner - 1)));
@@ -1581,7 +1581,7 @@ function furnish(b, K, C, T, o, F) {
     const spots = edgeSpots.filter((sp, i) => i % 2 === 0).concat(edgeSpots.filter((sp, i) => i % 2 === 1));
     let have = edgeSpots.filter(dressed).length, turn = 0;
     const items = [
-      sp => place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + 1.6, sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true, solid: true }),
+      sp => place.put(V.light, sp.x + sp.nx * (highT + 0.17), sp.y + WHH().lightY(P), sp.z + sp.nz * (highT + 0.17), sp.yawIn, ds(2), { inKeep: true, solid: true }),
       sp => place.put('piece_chest_wood', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, { ds: 2, chest: true }, { solid: true }),
       sp => place.put('piece_bench01', sp.x + sp.nx * (lowT + 0.42), sp.y, sp.z + sp.nz * (lowT + 0.42), sp.yawIn, ds(2), { solid: true }),
       sp => place.put('itemstand', sp.x + sp.nx * (highT + 0.12), sp.y + 1.85, sp.z + sp.nz * (highT + 0.12), sp.yawIn, { ds: 2, memento: true }, { inKeep: true, solid: true }),

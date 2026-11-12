@@ -513,6 +513,10 @@ function plan(face, o) {
   out.sort((x, y) => y.rank - x.rank || Math.abs(x.t - (face.a0 + face.a1) / 2) - Math.abs(y.t - (face.a0 + face.a1) / 2));
   return out;
 }
+/** The height of a building's wall lights over their floor: one for the household, 1.55 to 1.95 m (corpus wall torches
+ * p25 1.9, p50 2.3 m over the floor, 71 % of lights on one wall at one height), the same in every room and every pass,
+ * as an architect keeps a feature the same through a house (Tyler, 2026-11-12, on consistency). */
+function lightY(P) { return P && P.salt != null ? 1.55 + ((P.salt >>> 3) % 5) * 0.1 : 1.75; }
 function spaced(taken, t, w, light) {
   const min = light ? 2.0 : w + 0.6;
   return !taken.some(u => Math.abs(u.t - t) < Math.max(min, (u.w + w) / 2 + 0.6));
@@ -524,5 +528,5 @@ function row(t, n, w, gap) {
   return out;
 }
 
-const apiWH = { HUNG, isHung, BACKING, backing, backingOf, measure, overlaps, backDir, partBox, sweep, travel, modelBox, faceRect, hang, sinkOf, relOf, plan, spaced, row, restsOn, clashOnWall, both, attach, modelWorldBox, settle, supportOf, hangFrom };
+const apiWH = { HUNG, isHung, BACKING, backing, backingOf, measure, overlaps, backDir, partBox, sweep, travel, modelBox, faceRect, hang, sinkOf, relOf, plan, spaced, row, restsOn, clashOnWall, both, attach, modelWorldBox, settle, supportOf, hangFrom, lightY };
 if (NODE_W) module.exports = apiWH; else window.VHWallhang = apiWH;

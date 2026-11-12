@@ -1435,6 +1435,8 @@ function dressWallsPlanned(b, ctx, room, idx, zones, byFace, passes, kinds, ww, 
     let cap = pass.per ? Math.max(1, Math.floor(plainLen / pass.per)) : 9;
     // the kinds drawn once per face by the household's weights, so a pair matches and a face reads as one thing
     let kits = pass.kits;
+    // the household's one height for wall lights (lib/wallhang.js lightY)
+    if (pass.light) kits = kits.map(k => ({ ...k, pieces: k.pieces.map(q => (q.rest === 'wall' ? { ...q, y: WH.lightY(P) } : q)) }));
     if (pass.main) {
       const first = PS.pickW(R2, Object.fromEntries(kinds.map(k => [k, ww[k]])));
       kits = [first, ...kinds.filter(k => k !== first).sort((a, c) => ww[c] - ww[a])].flatMap(k => WALL_KITS[k]);

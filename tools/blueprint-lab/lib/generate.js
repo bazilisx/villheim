@@ -804,7 +804,7 @@ function generate(req) {
     !C.stoneWalls && !/stone|marble|grausten/.test(C.wallStyle || '') && rng((lineage * 4099 + strHash(cultureKey) * 13 + 0x57ac) >>> 0)() < 0.6
     ? stackEndFor(wings, form === 'svan' || stage === 's3' ? { cx: W - 3, n: 3 } : null, { may: true }) : 0;
   const hearth = lit && ventAt ? hearthPlan({ T, C, cultureKey, lineage, roofKind, plan, wings, flat, form, M, stoneOK: hearthStoneOK, F, stage, K: KH, cells,
-    doors: [door, backDoor].filter(Boolean), area: cells.size * 4 * storeys, type, midStack: req.hearth === 'middle' ? 0 : midStack }) : { spot: 'middle' };
+    doors: [door, backDoor].filter(Boolean), area: cells.size * 4 * storeys, type, storeys, midStack: req.hearth === 'middle' ? 0 : midStack }) : { spot: 'middle' };
   if (req.hearth === 'middle') hearth.spot = 'middle';
   info.hearth = hearth.spot;
   if (hearth.why) info.hearthWhy = hearth.why;
@@ -951,7 +951,11 @@ function generate(req) {
     const y0 = F + s * SH;
     const up = ladders[s - 1], next = ladders[s], SHw = SHs(s), knee = SHw < SH;
     if (s > 0) {
-      for (const [k, [x, z]] of cells) if (!onLadder(up, x, z, SH) && !(flue && inRect(flue, x, z)) && (!loft || loft.cells.has(k))) b.put(K.floor, x, y0, z);
+      // (over a flight's foot where the wall stands just past it the floor stays open, so the stairwell runs to the wall:
+      // a floor cell there was a 2 m pocket between the well and the wall, a walk one floor piece wide, council tavern
+      // Plains byzantine seed 77)
+      const footOpen = up && up.run && !cells.has(`${up.stand[0] - 2 * up.dir[0]},${up.stand[1] - 2 * up.dir[1]}`) ? `${up.stand[0]},${up.stand[1]}` : null;
+      for (const [k, [x, z]] of cells) if (!onLadder(up, x, z, SH) && k !== footOpen && !(flue && inRect(flue, x, z)) && (!loft || loft.cells.has(k))) b.put(K.floor, x, y0, z);
       if (loft) loftRail(b, K, loft, up, y0, cells);
       if (up && up.run) putStairRun(b, K, up, y0 - SH);
       else if (up) putLadder(b, K, up, y0 - SH, SH);
@@ -2314,7 +2318,13 @@ function hearthPlan(o) {
   const nearDoor = (x, z, d = 2.4) => doors.some(e => Math.hypot(e.x - x, e.z - z) < d);
   const cell = (x, z) => cells.has(`${x},${z}`) && !wings.some(w => w !== w0 && inside(w, x, z, -0.1));
   // an end is free when nothing joins the gable: no wing past it, and the end cell is the main wing's own
+  // (a shaft through an upper floor leaves walks of two floor pieces (4 m) or none beside it: an end hearth's shaft in
+  // the middle of a gable 9 m wide left 3.5 m either side, council tavern Plains byzantine seed 77; a side hearth's
+  // shaft one bay in from the gable left a 2 m pocket. Upper floors take the end hearth on a gable 10 m wide or more,
+  // the side hearth at the corner or 4 m in)
+  const upper = (o.storeys || 1) > 1;
   const endAt = (s1, force) => {
+    if (upper && w0.D - 1.5 < 3.9) return null; // (the shaft's boards and the wall take 1.5 m of the half depth)
     const xW = w0.cx + s1 * w0.W, x = xW - s1, z = w0.cz;
     if (hip || wings.some(w => w !== w0 && (inside(w, xW + s1 * 1.5, z, 0.3) || inside(w, x, z, 0.3)))) return null;
     if (!cell(x, z) || nearDoor(x, z, 2.2)) return null;
@@ -2332,6 +2342,7 @@ function hearthPlan(o) {
   const runsOn = w => w.alpha === w0.alpha && Math.abs(w.cz - w0.cz) < 0.01 && Math.abs(w.D - w0.D) < 0.01;
   const sideAt = (u, sv, loose) => {
     if (Math.abs(u) > w0.W - 1) return null;
+    if (upper && Math.abs(Math.abs(u) - (w0.W - 1)) > 0.01 && Math.abs(u) > w0.W - 5 + 0.01) return null;
     const x = w0.cx + u, z = w0.cz + sv * (w0.D - 1);
     if (!cell(x, z) || nearDoor(x, z, loose ? 2.2 : 2.4)) return null;
     // nothing joins the wall behind it (a back wing, a cross wing), and the cells beside it are this wing's

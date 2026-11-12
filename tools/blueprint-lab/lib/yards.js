@@ -402,7 +402,9 @@ function add(b, ctx) {
   // paving: where the house stands on 1 m stone floors (half in the ground), the ground in front of the door is laid
   // in the same stone, level with the floor inside (outside stone floors are on 39 % of the corpus builds)
   let paved = 0;
-  const gateWay = (() => { const g = Ck.aabb(plan.gate); return g ? { x0: g.x0 - 0.75, x1: g.x1 + 0.75, z0: g.z0 - 0.75, z1: g.z1 + 0.75, y0: g.y0, y1: g.y0 + 2 } : null; })();
+  // (the gate's way: 1.25 m either side of it, the stretch the doorway test steps over, lib/checks.js doorways; at
+  // 0.75 m a paving stone 0.95 m inside the gate made a 0.55 m step there, council tavern Plains byzantine seed 77)
+  const gateWay = (() => { const g = Ck.aabb(plan.gate); return g ? { x0: g.x0 - 1.25, x1: g.x1 + 1.25, z0: g.z0 - 1.25, z1: g.z1 + 1.25, y0: g.y0, y1: g.y0 + 2 } : null; })();
   const stoneIn = b.pieces.find(p => !p.yard && /^(stone_floor_2x2|blackmarble_floor|Piece_grausten_floor_2x2)$/.test(p.name) && Math.abs(p.x - front.x) < 2.1 && Math.abs(p.z - front.z) < 2.1);
   if (stoneIn && X.yardPave !== false) {
     const nOut = front.z <= (S.W.z0 + S.W.z1) / 2 ? -1 : 1;

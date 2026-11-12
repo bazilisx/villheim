@@ -5074,7 +5074,8 @@ function furnishRoom(room, role, c, H) {
   // lib/details.js), a hearth in a large home as often as the corpus
   const fireKind = () => {
     if (role === 'tavern' || role === 'hall') return 'hearth';
-    if (role === 'home' && room.area >= 60 && R() < 0.74) return 'hearth';
+    // (a home or kitchen past its first stage: the hearth where the room holds one, Tyler 06; a fire pit at d1)
+    if (d >= 2 && room.area >= 30) return 'hearth';
     return 'fire_pit';
   };
   const fire = () => {
@@ -22018,7 +22019,9 @@ function settle(b, ctx) {
   if (flatVent && !fire) flatVent.rect = null; // no fire, no chimney
   if (fire && target) {
     // a hearth is 3 m across: in a small room, and against a wall, a fire pit takes its place
-    if (fire.name === 'hearth' && mainRoom && ((mainRoom.x1 - mainRoom.x0) * (mainRoom.z1 - mainRoom.z0) < 40 || target.hood || target === stack)) fire.name = 'fire_pit';
+    // (under a hood the hearth stays: the fit test below falls back to a fire pit where it finds no room; the corpus
+    // lays a hearth in 74 % of buildings with a fire, a fire pit in 36 %)
+    if (fire.name === 'hearth' && mainRoom && ((mainRoom.x1 - mainRoom.x0) * (mainRoom.z1 - mainRoom.z0) < 40 || target === stack)) fire.name = 'fire_pit';
     const dx = target.x - fire.x, dz = target.z - fire.z, ox = fire.x, oz = fire.z;
     const moving = b.pieces.filter(p => p.decor && (p === fire || (/cookingstation|piece_cauldron/.test(p.name) && Math.hypot(p.x - ox, p.z - oz) < 0.4)));
     for (const p of moving) { p.x = +(p.x + dx).toFixed(3); p.z = +(p.z + dz).toFixed(3); }

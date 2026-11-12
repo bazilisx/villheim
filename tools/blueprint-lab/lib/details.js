@@ -36,6 +36,7 @@ function relief(name) {
 }
 
 const normD = a => ((a % 360) + 360) % 360;
+const PRD = NODE_D ? (() => { try { return require('./program.js'); } catch (e) { return null; } })() : (typeof window !== 'undefined' ? window.VHProgram : null);
 const quatD = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_D = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
 const reachesD = (biome, b) => BIOMES_D.indexOf(biome) >= BIOMES_D.indexOf(b);
@@ -218,6 +219,11 @@ function axes(e) {
 function cornerDressed(ctx, edges, x, z) {
   const es = edges.filter(e => { const { ux, uz } = axes(e); return [-1, 1].some(s => Math.abs(e.x + ux * s - x) < 0.01 && Math.abs(e.z + uz * s - z) < 0.01); });
   const a = es.find(e => e.yaw === 0), bb = es.find(e => e.yaw !== 0);
+  // the building program's corner mode (D-167: one treatment for the building): all, none, or the entry side's
+  const mode = ctx.program && ctx.program.corners;
+  if (mode === 'all') return true;
+  if (mode === 'none') return false;
+  if (mode === 'entry' && ctx.door) return es.some(e => e.out[0] === ctx.door.out[0] && e.out[1] === ctx.door.out[1]);
   if (!a || !bb || es.length !== 2) return true;
   const d1 = (a.x - x) * bb.out[0] + (a.z - z) * bb.out[1], d2 = (bb.x - x) * a.out[0] + (bb.z - z) * a.out[1];
   if (d1 > 0.5 && d2 > 0.5) return dressed(ctx, 'icorner', `${x},${z}`);
@@ -496,7 +502,7 @@ function exterior(b, ctx) {
       // outside corners only: each wall lies on the far side of the other's outward direction
       const [a, c] = v.es;
       if ((a.x - x) * c.out[0] + (a.z - z) * c.out[1] > -0.5 || (c.x - x) * a.out[0] + (c.z - z) * a.out[1] > -0.5) continue;
-      if (!dressed(ctx, 'corner', `${x},${z}`)) continue;
+      if (!cornerDressed(ctx, ctx.edges || [], x, z)) continue;
       if (marble && reachesD(ctx.biome, 'Black Forest')) for (let y = F; y + 2 <= top + 0.01; y += 2) put('stone_pillar', x, y + 1, z, 0);
       else for (let y = F; y < top - 0.01;) { const h = top - y >= 2 ? 2 : 1; put(h === 2 ? pole : pole1, x, y + h / 2, z, 0); y += h; }
       added.corners++;
@@ -514,7 +520,10 @@ function exterior(b, ctx) {
     const fronts = openings.filter(o => o.kind === 'window' && !o.storey && !o.bare && o.e.out[0] === ctx.door.out[0] && o.e.out[1] === ctx.door.out[1]);
     const P = ctx.persona || {};
     // (D-167, Tyler: "windows in a row would all have the same feature": the whole front run of the ground storey)
-    const chosen = ctx.planterWindows ? ctx.planterWindows(fronts, ctx) : ((P.hobby || {}).plants || 0) >= 0.5 ? fronts : [];
+    // (the building program decides when there is one: its front ground run holds 'planter', D-165 and D-167)
+    const progRun = ctx.program && PRD ? PRD.run(ctx.program, { side: 'front', storey: 0 }) : null;
+    const chosen = ctx.planterWindows ? ctx.planterWindows(fronts, ctx) : progRun ? (progRun.features.includes('planter') ? fronts : [])
+      : ((P.hobby || {}).plants || 0) >= 0.5 ? fronts : [];
     for (const o of chosen) {
       const got = planter(b, ctx, o);
       if (!got) continue;
@@ -525,7 +534,9 @@ function exterior(b, ctx) {
       if (ctx.plantPlanter) ctx.plantPlanter(b, surf, ctx);
       else for (let k = 0; k < surf.w; k++) {
         const t = k - (surf.w - 1) / 2, x = surf.x + surf.along[0] * t, z = surf.z + surf.along[1] * t;
-        const name = PLANTS_HOLD[(Math.abs(Math.round(x * 7 + z * 13 + surf.y * 3)) + (makeHash({ ...ctx, decor: '' }) >>> 0)) % 3];
+        // (one species on the run, the program's when the game holds it up there)
+        const pp = ctx.program && ctx.program.pieces && ctx.program.pieces.planter;
+        const name = PLANTS_HOLD.includes(pp) ? pp : PLANTS_HOLD[(makeHash({ ...ctx, decor: '' }) >>> 0) % 3];
         b.put(name, x, surf.y, z, Math.round((x * 31 + z * 17) % 4) * 90, { trim: true, decor: true, planter: surf.window });
       }
     }

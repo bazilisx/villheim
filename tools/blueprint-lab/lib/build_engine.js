@@ -5,12 +5,14 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'wallhang.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'stands.js', 'layout.js', 'yards.js', 'landscape.js', 'reach.js', 'hub.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
+const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'wallhang.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'program.js', 'details.js', 'kitbash.js', 'stands.js', 'layout.js', 'yards.js', 'landscape.js', 'reach.js', 'hub.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
 const interior = fs.readFileSync(path.join(dir, '../data/interior-lite.json'), 'utf8').trim();
 const critic = fs.readFileSync(path.join(dir, '../data/critic.json'), 'utf8').trim();
+// the building program's rules (lib/program.js, data/architecture/rules.json)
+const arch = fs.readFileSync(path.join(dir, '../data/architecture/rules.json'), 'utf8').trim();
 // the game's solid colliders per piece (lib/shapes.js), for the checks and the furniture sizes
 const solids = fs.readFileSync(path.join(dir, '../data/piece-solids.json'), 'utf8').trim();
 // room templates (D-058) without what only the lab reads (source, popularity, area, the ID key), and Tyler's weights
@@ -52,6 +54,7 @@ window.VH_ROOMS = ${roomsLite};
 window.VH_ROOM_WEIGHTS = ${roomWeights};
 window.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};
 window.VH_MOTIF_WEIGHTS = ${JSON.stringify(motifLite.weights)};
+window.VH_ARCH = ${arch};
 VHDecorate.setRules(VH_RULES);
 // ---- entry point for the game: one request, best of 'tries' seeds
 function vhMake(type, biome, culture, stage, words, seed, tries) {

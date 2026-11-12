@@ -39,6 +39,7 @@ const Persona = NODE ? require('./persona.js') : window.VHPersona;
 const checksLib = () => (NODE ? require('./checks.js') : window.VHChecks);
 const layoutLib = () => (NODE ? require('./layout.js') : window.VHLayout);
 const shapesLib = () => (NODE ? require('./shapes.js') : window.VHShapes);
+const Program = NODE ? (() => { try { return require('./program.js'); } catch (e) { return null; } })() : (typeof window !== 'undefined' ? window.VHProgram : null);
 
 // Heights (Tyler's in-game review, 2026-11-09). A player is about 1.8 m tall: rooms get walls of 3 m, so doors, beams
 // and roofs clear the head; sunken huts, low by nature, get 2.5 m under a steep roof.
@@ -905,6 +906,9 @@ function generate(req) {
   const dctx = { K, C, cultureKey, T, type, stage, decor, biome, plan, F, SH, storeys, edges, verts, cells, door, wings, flat,
     ladders, flue, fireKeep: stackKeep || flue, hearth, dragonsHere, R: rng(seed * 31337 + 7), persona: household };
   dctx.profile = Details.profile(dctx);
+  // the building program (lib/program.js, track H, D-167): one feature family per facade, storey and run of windows,
+  // a reasoned exception at most per run; the details read it for planters and corners
+  if (Program) { try { dctx.program = Program.plan({ cultureKey, type, stage, decor, biome, seed, storeys, persona: household, village: req.village, kit: K }); } catch (e) { dctx.program = null; } }
   dctx.notes = b.notes;
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
   dctx.profile.overhang = req.details && req.details.overhang != null ? req.details.overhang : true;

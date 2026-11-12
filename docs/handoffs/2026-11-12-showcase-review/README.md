@@ -68,5 +68,6 @@ it until they agree it meets what they learned; then it goes to Tyler. At least 
    earlier still passes. Then the building is saved as a PlanBuild blueprint in Tyler's profile
    (`config/PlanBuild/blueprints/inspiration/generated/ingame/council/`) with its renders and scorecards. After 6 rounds
    without quorum, the lead takes the disagreement to Tyler.
-5. **Target.** Six members (A to F) means 12 approved buildings, different kinds, cultures and biomes, all s3d3, plus
+5. **Target.** 10 approved buildings at most (Tyler, 2026-11-12: "no more than 10 total buildings"), different
+   kinds, cultures and biomes, all s3d3, plus
    the 16 showcase designs regenerated as a regression set. Tyler reviews them in the game.

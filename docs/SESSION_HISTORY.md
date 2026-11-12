@@ -17,7 +17,9 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 - **Mod:** items on stands and sign text from designs (88e10c8, Tyler saw stand items in 1003-88e10c8); armor stand gear
   (73ebdb5) and the design ground line (fbe5967) not tried in the game; in-game generator limit 4 minutes; the memory
   look is on main behind LookMode, default Ghost, until Tyler tests it (D-160).
-- **Branches:** main and `wip/shell-open-edge-rails`.
+- **Session instructions:** tuned 2026-11-12 (CLAUDE.md, `docs/DESIGN_QUALITIES.md`, `docs/HELPER_RULES.md`); the
+  configuration proposal in `docs/handoffs/2026-11-12-tuneup/` waits for Tyler.
+- **Branches:** main, `wip/shell-open-edge-rails` (unfinished), `wip/tuneup` (merged, to delete).
 
 ## Systems in the mod (inventory from 2026-11-09; check the code before relying on a line)
 
@@ -169,6 +171,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-12 (session instructions tune-up, audited)** - see docs/daily-notes/2026-11/2026-11-12.md
 - **2026-11-12 (showcase review: eight design tracks, stand and armor stand fixes, council)** - see docs/daily-notes/2026-11/2026-11-12.md
 - **2026-11-11 (design rounds 4 to 7c merged, hub and landscaping, build labels, test channels)** - see docs/daily-notes/2026-11/2026-11-11.md
 - **2026-11-11 (design tracks merged: library first, essentials, hearths, stands, lab page)** - see docs/daily-notes/2026-11/2026-11-11.md

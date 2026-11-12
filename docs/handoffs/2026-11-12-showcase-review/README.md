@@ -54,6 +54,8 @@ rule, never by a one-off patch for that building.
 
 ## Council (Tyler, 2026-11-12)
 
+The council's current rules are in `docs/HELPER_RULES.md` ("The design council"); the section below is the first plan.
+
 Tyler's plan: the helpers learn their areas, then one generates a building and the others audit, critique and refine
 it until they agree it meets what they learned; then it goes to Tyler. At least two buildings per council member.
 

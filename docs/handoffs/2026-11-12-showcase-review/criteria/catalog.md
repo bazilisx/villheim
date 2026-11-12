@@ -1,5 +1,9 @@
 # Council criteria, track A (piece catalog)
 
+> Since 2026-11-12 this file is a seat's diagnostic notes: what the track measures and how. A design's verdict comes
+> from the qualities in `docs/DESIGN_QUALITIES.md` and Tyler's hard rules there; the pass marks and hard fails below
+> explain shortfalls and do not decide a verdict on their own (`docs/HELPER_RULES.md`, "The design council").
+
 How track A judges a generated s3d3 building: piece fit by look and place, repetition, material families and
 orientation. Numbers come from `tools/blueprint-lab/data/catalog/` (pieces.json, pairs.json, overuse.json) and the
 corpus (909 buildings in the building categories with 40 m2 or more of floor, unless a line says otherwise). Each item
@@ -12,7 +16,7 @@ Scoring: each item scores 0 (fails), 0.5 (partly) or 1 (passes), times its weigh
 
 | # | Check | Test | Source |
 |---|---|---|---|
-| H1 | No outdoor-only piece indoors | No placement under cover at floor level (covered, under 1.5 m above the floor) of a piece whose corpus `covered` share is under 0.3 and `zone` is outdoors, yard and grounds, or roof and gable outside: `wood_fence` away from a porch or loft edge, `darkwood_raven`, `darkwood_wolf`, `wood_dragon1`, `piece_sharpstakes`, `stake_wall`. A fence as a railing at a loft or porch edge passes (corpus: 258 of 2,082 fence placements are over 2 m up, 252 under porch roofs only). | Tyler: wood_fence "never for building fences atop towers, etc. and certainly never indoors"; darkwood animals "outdoor rooftop decor"; catalog placement shares |
+| H1 | No outdoor-only piece indoors | No placement under cover at floor level (covered, under 1.5 m above the floor) of a piece whose corpus `covered` share is under 0.3 and `zone` is outdoors, yard and grounds, or roof and gable outside: `wood_fence` anywhere under cover (D-164), `darkwood_raven`, `darkwood_wolf`, `wood_dragon1`, `piece_sharpstakes`, `stake_wall`. Corpus builders use it as porch and loft railing (258 of 2,082 fence placements over 2 m up, 252 under porch roofs only); Tyler ruled it out there (D-164, 2026-11-12). | Tyler: wood_fence "never for building fences atop towers, etc. and certainly never indoors"; darkwood animals "outdoor rooftop decor"; catalog placement shares |
 | H2 | Large furniture faces the room | Every wardrobe, bed and throne within 2.5 m of a wall has its catalog `back` side to that wall (`facing_check.js`). | Tyler: wardrobe "180 degrees wrong way", bed_02 "facing the wrong direction"; corpus 75 % of wardrobe builds back at +z, mesh headboards at -z |
 | H3 | Wall-hung pieces hang with their back on a wall | Every `mount` wall-hung piece with `facing.sure` high or medium (sconce, item stand, tool shelf, forge tool rack, pots and pans rack) has its back side within 0.3 m of a wall. | Tyler: "signs and item stands sticking out from the wall", "torches oriented the wrong way"; sconce front +x in 86 % of 486 builds |
 
@@ -34,7 +38,7 @@ Scoring: each item scores 0 (fails), 0.5 (partly) or 1 (passes), times its weigh
 | 12 | 5 | Containers in sets | Pots, candles and item stands in groups of one family (green pots with green pots; cracked or red pots together). | 80 % of groups | corpus: green pots stand with green pots in 80 % of builds with both |
 | 13 | 5 | Wall-hung pieces at corpus heights | Sconces 1.7 to 5.6 m above the floor (p10 to p90), item stands and signs within their p10 to p90 height. | 90 % of them | catalog `placement.height_m` |
 | 14 | 4 | Indoor pieces indoors | Pieces with `covered` 0.75 or more stand under a roof (beds 0.89 to 0.92, chests 0.89, wardrobe 1.0). | 95 % | catalog zone |
-| 15 | 4 | Fences where builders put them | `wood_fence` on the ground around yards, pastures and gardens, or as porch and loft railing; never around a tower top or on walls. | yes | Tyler; fence placement shares |
+| 15 | 4 | Fences where builders put them | `wood_fence` on the ground around yards, pastures, gardens and village edges only; never as porch, loft, balcony or tower railing (D-164). | yes | Tyler; fence placement shares |
 | 16 | 5 | Names and families in the record | The build's piece list read through `catalog.name` and `catalog.family` gives a room description that makes sense (no "stool" counted as a table, no chest used as a table). | reviewer's call on the render | Tyler: "two chests side by side next to fire also odd. Are they a table?" |
 
 Total weight 100. Pass: 80, with no hard fail.

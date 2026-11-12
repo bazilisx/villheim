@@ -1,5 +1,9 @@
 # Council criteria, track G (furniture assemblies and stand items)
 
+> Since 2026-11-12 this file is a seat's diagnostic notes: what the track measures and how. A design's verdict comes
+> from the qualities in `docs/DESIGN_QUALITIES.md` and Tyler's hard rules there; the pass marks and hard fails below
+> explain shortfalls and do not decide a verdict on their own (`docs/HELPER_RULES.md`, "The design council").
+
 How track G judges a generated s3d3 building: what stands on item stands, shelves, tables and armor stands, whether
 it means something for the household and the room, how often it repeats, whether it rests the way it would, and
 whether the custom furniture fits the room. The rules and numbers are in `docs/FURNITURE_ASSEMBLIES.md`; the data in

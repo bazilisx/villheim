@@ -1,5 +1,9 @@
 # Council criteria: attached pieces, wall-hung first (track F)
 
+> Since 2026-11-12 this file is a seat's diagnostic notes: what the track measures and how. A design's verdict comes
+> from the qualities in `docs/DESIGN_QUALITIES.md` and Tyler's hard rules there; the pass marks and hard fails below
+> explain shortfalls and do not decide a verdict on their own (`docs/HELPER_RULES.md`, "The design council").
+
 What a generated s3d3 building is judged by for everything hung on a wall: signs, item stands, wall torches, Dvergr
 wall lanterns, banners, wall ledges (shelves), wall carvings and the cauldron's wall racks. Evidence in
 `docs/handoffs/2026-11-12-showcase-review/wallhung.md` (the track record) and `docs/ROOM_STUDY.md` section 7.

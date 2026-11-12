@@ -100,6 +100,18 @@ In game:
     `MemoryFeetLight` (0.5, 0 for no light).
 - What each part is made from: `src/Villheim.Logic/Villagers/MemoryLook.cs` (summary at the top).
 
+## Deleting branches
+
+Cloud sessions cannot delete branches (their git connection answers HTTP 403 on a branch deletion), so cleanup runs on
+Tyler's PC with `scripts/Villheim-DeleteBranches.ps1`. It reads the repo's branches, deletes those main already holds
+plus any named with `-Extra`, never deletes `main` or a branch named with `-Keep`, and asks before deleting unless given
+`-Yes` (`-DryRun` lists only).
+
+1. List the branches to delete and why each can go, and get Tyler's yes in that session.
+2. Copy the script to his Downloads folder (create it there from the repo copy if it is missing).
+3. Run it: through computer use on his PC with `-Yes` when he asks for that, or give him the two lines to run:
+   `cd "$env:USERPROFILE\Downloads"` and `powershell -ExecutionPolicy Bypass -File .\Villheim-DeleteBranches.ps1`
+
 ## Useful commands in game (F5 console, `devcommands` first)
 
 - `villheim_found`: light a hearth in front of you.

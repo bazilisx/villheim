@@ -1,5 +1,9 @@
 # Shell criteria (track D): how a generated s3d3 building is judged
 
+> Since 2026-11-12 this file is a seat's diagnostic notes: what the track measures and how. A design's verdict comes
+> from the qualities in `docs/DESIGN_QUALITIES.md` and Tyler's hard rules there; the pass marks and hard fails below
+> explain shortfalls and do not decide a verdict on their own (`docs/HELPER_RULES.md`, "The design council").
+
 Source: Tyler's showcase notes (TYLER_NOTES.md, quoted below), the game's code (WearNTear, StaticPhysics, decompiled
 from assembly_valheim 2026-11-12), the prefabs read on Tyler's PC, and corpus counts from `lab/shell_mine.js` and
 `data/measures-storeys.json`. Measured items name the `lib/checks.js` result that tests them (`node lab/test_structure.js`

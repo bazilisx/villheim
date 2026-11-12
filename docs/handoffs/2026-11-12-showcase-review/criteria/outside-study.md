@@ -1,5 +1,9 @@
 # Council criteria: outside study (track C)
 
+> Since 2026-11-12 this file is a seat's diagnostic notes: what the track measures and how. A design's verdict comes
+> from the qualities in `docs/DESIGN_QUALITIES.md` and Tyler's hard rules there; the pass marks and hard fails below
+> explain shortfalls and do not decide a verdict on their own (`docs/HELPER_RULES.md`, "The design council").
+
 The checklist track C judges a generated s3d3 building by: does each room read as lived in and intentional. Grounds:
 `docs/INTERIOR_DESIGN.md` section "Room intent: outside study (2026-11-12)", the notes in `../outside/`, Tyler's
 showcase notes (`../TYLER_NOTES.md`) and the corpus measures named per item. Tyler (2026-11-12, through the lead):

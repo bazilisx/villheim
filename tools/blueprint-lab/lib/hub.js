@@ -552,8 +552,20 @@ function polyWalls(b, K, C, T, N, L, ap, y0, SHt, kind, style) {
   }
   return bays;
 }
-// A wood fence as a rail at the edge between two 2 m cells at floor height y (a gallery or walkway edge).
-function rail(b, K, x, y, z, yaw) { b.put(K.fence, x, y + 0.6, z, yaw); }
+// A rail at the edge between two 2 m cells at floor height y (a gallery or walkway edge): a 1 m post at each end and a
+// beam on them at 1 m, as corpus builders rail galleries (lib/generate.js railing). The wood fence it was stood 0.6 m
+// over the floor and touched nothing, so the game let it fall (the Meadows hub, 2026-11-11), and Tyler keeps the wood
+// fence to pastures and gardens.
+function rail(b, K, x, y, z, yaw) {
+  const a = yaw * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a), post = K.pole1 || 'wood_pole', beam = K.beam || 'wood_beam';
+  // a post stands on the floor: an end past the floor's edge (a polygon's corner) moves in along the rail
+  const onFloor = (px, pz) => b.pieces.some(p => !p.decor && PH.piece(p.name).role === 'floor' && (() => { const c = CkH().catBox(p); return px > c.x0 - 0.05 && px < c.x1 + 0.05 && pz > c.z0 - 0.05 && pz < c.z1 + 0.05 && Math.abs(c.y1 - y) < 0.35; })());
+  for (const sg of [-1, 1]) {
+    const t = [1, 0.8, 0.6].find(k => onFloor(x + ux * sg * k, z + uz * sg * k));
+    if (t != null) b.put(post, x + ux * sg * t, y + 0.5, z + uz * sg * t, 0);
+  }
+  b.put(beam, x, y + 1.0, z, yaw);
+}
 // Cells within a rect (x, z on the 2 m grid, even), and rects merged from cells row by row: rooms for the walk test.
 function cellRects(cells, y, use) {
   const rows = new Map();
@@ -968,11 +980,12 @@ function crossHall(b, K, C, T, o) {
   const G = new Map(), stairs = [];
   const addG = (x, z) => { if (has(x, z)) G.set(`${x},${z}`, [x, z]); };
   if (gallery && k === 4) {
-    for (let x = -D + 1; x < D; x += 2) addG(x, -Wz + 1);
+    // (two cells deep everywhere: Tyler's two-piece rule for anything people walk along)
+    for (let x = -D + 1; x < D; x += 2) { addG(x, -Wz + 1); addG(x, -Wz + 3); }
     // (the stair on the side the village drew, the gallery along the other wall)
-    for (let z = -Wz + 3; z <= -D - 1; z += 2) addG(-sS * (D - 1), z);
+    for (let z = -Wz + 3; z <= -D - 1; z += 2) { addG(-sS * (D - 1), z); addG(-sS * (D - 3), z); }
     // (the landing joins the row over the door along the stair's wall)
-    for (let z = -Wz + 3; z <= -D - 7; z += 2) addG(sS * (D - 1), z);
+    for (let z = -Wz + 3; z <= -D - 7; z += 2) { addG(sS * (D - 1), z); addG(sS * (D - 3), z); }
     stairs.push({ run: [[sS * (D - 1), -D - 1], [sS * (D - 1), -D - 3], [sS * (D - 1), -D - 5]], stand: [sS * (D - 1), -D + 1], land: [sS * (D - 1), -D - 7], dir: [0, -1] });
     addG(sS * (D - 1), -D - 7);
   } else if (gallery) {
@@ -1070,6 +1083,84 @@ function crossHall(b, K, C, T, o) {
   b.doorX = 0;
   b.notes.push(`Cross hall ${2 * Wx} x ${2 * Wz} m, arms ${2 * D} m wide, round the fire at the crossing.`);
   return { inSide, Wz, Wx, D, top, SHt, capY, peak, doors, door: { x: 0, z: -Wz }, edges, stairs, G, rooms, porch, hangs, sideX: k >= 4 ? p : null, isRun };
+}
+
+// Posts where the game's support rule (checks.js gameSupport, WearNTear) would let the hall's roof, ridge or tie
+// beams fall. The hubs are the widest roofs the generator makes: on the Meadows s5 cross hall (14 m arms, 6 m walls)
+// the ridge caps and valley pieces over the crossing and along the arms held 7 to 9 support where wood needs 10, and the
+// game took them down when the hall was put up in one go (2026-11-11). A wood piece loses its material's share of
+// support times the distance between pivots at every step, so a 45 degree roof loses about 40 % a row up from the wall
+// top; corpus halls carry their ridges on posts. Each round puts a post column under the weakest falling piece of
+// each 4 m stretch, from the floor under it up into its underside, in core wood where the biome builds it (hard wood
+// loses less per metre), and checks again. A spot on the fire, a stair, a doorway or the opening over the fire is
+// skipped. Returns the number of columns.
+function propUp(b, K, biome, o = {}) {
+  const Ck = CkH(), Sx = SHH(), hard = PH.decorOk('wood_pole_log_4', biome);
+  const p4 = hard ? 'wood_pole_log_4' : (K.poleLong && /4/.test(K.poleLong) ? K.poleLong : null), p2 = hard ? 'wood_pole_log' : (K.pole || 'wood_pole2'), p1 = K.pole1 || 'wood_pole';
+  const ROLES = ['roof', 'roofTop', 'roofCorner', 'beam', 'floor', 'wall', 'gable', 'window'];
+  let n = 0;
+  for (let round = 0; round < 12; round++) {
+    const shell = b.pieces.filter(p => !p.decor);
+    const r = Ck.gameSupport(shell);
+    const fall = r.fall.map(i => shell[i]).filter(p => ROLES.includes(PH.piece(p.name).role));
+    if (!fall.length) break;
+    fall.sort((a, c) => r.support[shell.indexOf(a)] - r.support[shell.indexOf(c)]);
+    const chosen = [];
+    for (const p of fall) if (!chosen.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 4)) chosen.push(p);
+    let added = 0;
+    for (const p of chosen) {
+      const W = Sx.world(p);
+      // the spot: under the piece, or along its length (a ridge cap's ridge) up to 4 m on, where the post stands on the
+      // ground floor clear of galleries and walkways over it
+      const a = (p.yaw || 0) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a);
+      let spot = null;
+      for (const [k, m] of [[0, 0], [2, 0], [-2, 0], [4, 0], [-4, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+        const x = p.x + ux * k + uz * m, z = p.z + uz * k - ux * m;
+        // posts stand in rows: none within 1.9 m of another, and on the line of one in the same row when near it
+        if (b.pieces.some(q => q.prop && Math.hypot(q.x - x, q.z - z) < 1.9)) continue;
+        const top = W && W.length ? Sx.undersideAt(W, x, z) : (k === 0 ? p.y : null);
+        let under = top;
+        if (top == null) {
+          // past the piece's own end: the next piece along (a ridge cap's neighbor) if it falls too
+          const q = fall.find(f2 => f2 !== p && Math.hypot(f2.x - x, f2.z - z) < 0.6);
+          const Wq = q && Sx.world(q);
+          under = Wq && Wq.length ? Sx.undersideAt(Wq, x, z) : null;
+        }
+        if (under == null) continue;
+        let base = 0, raisedFloor = false;
+        for (const q of shell) {
+          if (PH.piece(q.name).role !== 'floor' || q === p) continue;
+          const bq = Ck.catBox(q);
+          if (x < bq.x0 || x > bq.x1 || z < bq.z0 || z > bq.z1 || bq.y1 > under - 1) continue;
+          if (bq.y1 > 0.6) raisedFloor = true; else base = Math.max(base, bq.y1);
+        }
+        if (raisedFloor) continue;
+        const blocked = b.pieces.some(q => {
+          const role = PH.piece(q.name).role;
+          if (role === 'fire' || q.hearth) return Math.hypot(q.x - x, q.z - z) < 2.2;
+          if (role === 'stair') { const bq = Ck.catBox(q); return x > bq.x0 - 0.6 && x < bq.x1 + 0.6 && z > bq.z0 - 0.6 && z < bq.z1 + 0.6; }
+          if (role === 'door') { const op = PH.doorOpening(q); return Math.abs((x - op.x) * op.ux + (z - op.z) * op.uz) < op.w / 2 + 0.5 && Math.abs((x - op.x) * op.nx + (z - op.z) * op.nz) < 2.5; }
+          return false;
+        }) || (o.keepOut && o.keepOut(x, z));
+        if (blocked) continue;
+        spot = { x, z, top: under, base };
+        break;
+      }
+      if (!spot) continue;
+      const { x, z, top, base } = spot;
+      let y = base;
+      while (top - y > 0.15) {
+        const left = top - y, name = left >= 3.5 && p4 ? p4 : left >= 1.5 ? p2 : p1, h = PH.piece(name).size[1];
+        b.put(name, x, y + h / 2, z, 0, { prop: true });
+        y += h;
+      }
+      added++;
+    }
+    n += added;
+    if (!added) break;
+  }
+  if (n) b.notes.push(`${n} post${n > 1 ? 's' : ''} up to the roof where it would not hold by itself.`);
+  return n;
 }
 
 // ---------------------------------------------------------------- the shared furnishing
@@ -1745,6 +1836,8 @@ function generate(req, T) {
       : roundHall(b, Kw, C, T, { stage, variant: line, ext, wallStyle, has, cultureKey, V });
     info.plan = line; info.roof = line === 'cross' ? 'gable' : F.style === 'flat' ? 'flat' : F.drum ? 'drum' : 'conical';
     if (line !== 'cross') b.notes.push(`${line === 'octagon' ? 'Octagonal' : line === 'part' ? 'Part round' : 'Round'} hall of ${F.N} sides, ${(2 * F.ap).toFixed(1)} m across round the fire.`);
+    // posts under what the game would let fall (before the furnishing, so it keeps clear of them)
+    propUp(b, Kw, biome, { keepOut: (x, z) => line === 'cross' ? Math.abs(x) < 1.5 && Math.abs(z) < 1.5 : Math.hypot(x, z) < 2 });
     const place = placer(b, T);
     // the notice board in the hearth area (D-140): freestanding outside the main door, and from s4 signs on a wall by
     // the door inside as well
@@ -1781,6 +1874,8 @@ function generate(req, T) {
   else b.pieces = b.pieces.filter(p => !p.decor || p.hearth || p.notice || p.highSeat || p.spouseSeat);
   // pieces that stand on their pivot in the game go down to their foot (as lib/generate.js finish)
   for (const p of b.pieces) { const pi = PH.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
+  // steps down from the doors to the ground the game sets the hall on (lib/generate.js doorSteps)
+  if (T.doorSteps) T.doorSteps(b);
   const L = b.leader || { x: 0, y: 0, z: 3, yaw: 180 };
   const mk = (m, extra) => ({ kind: 'seat', x: +m.x.toFixed(3), y: +m.y.toFixed(3), z: +m.z.toFixed(3), yaw: Math.round(m.yaw || 0), ...extra });
   const markers = [...b.markers, mk(L, { leader: true })];

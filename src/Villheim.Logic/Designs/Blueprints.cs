@@ -57,6 +57,14 @@ namespace Villheim.Logic.Designs
             /// foundation, for designs whose lowest pieces are meant to sit in the ground ('vh swap' nudges, saved).
             /// </summary>
             public float GroundOffset;
+
+            /// <summary>
+            /// "#VillheimGround:" in the file: the height in the file's own frame that sits on the terrain. The blueprint
+            /// lab writes 0 (its ground). Without it the lowest piece goes on the terrain, so a hearth stone or a plant
+            /// sunk under the floor lifted a whole generated house by up to 0.5 m and left its doorstep in the air
+            /// (showcase 11, 2026-11-12, track D).
+            /// </summary>
+            public float? GroundY;
             public string Creator;
             public string Category;
             public readonly List<Piece> Pieces = new List<Piece>();
@@ -522,6 +530,11 @@ namespace Villheim.Logic.Designs
                         blueprint.GroundOffset = F(line.Substring(14));
                     }
 
+                    if (lower.StartsWith("#villheimground:"))
+                    {
+                        blueprint.GroundY = F(line.Substring(16));
+                    }
+
                     if (lower.StartsWith("#category:"))
                     {
                         blueprint.Category = line.Substring(10).Trim();
@@ -769,7 +782,8 @@ namespace Villheim.Logic.Designs
             };
         }
 
-        /// <summary>Moves the pieces so the middle of the build is at x = z = 0 and its lowest piece at y = 0 (not when keep).</summary>
+        /// <summary>Moves the pieces so the middle of the build is at x = z = 0 and its lowest piece at y = 0, or its stated
+        /// ground (#VillheimGround) at y = 0 (not when keep).</summary>
         private static void Center(Blueprint blueprint, bool keep = false)
         {
             if (blueprint.Pieces.Count == 0)
@@ -782,7 +796,7 @@ namespace Villheim.Logic.Designs
             float minZ = blueprint.Pieces.Min(p => p.Position.z);
             float maxZ = blueprint.Pieces.Max(p => p.Position.z);
             float minY = blueprint.Pieces.Min(p => p.Position.y);
-            Vector3 offset = keep ? Vector3.zero : new Vector3((minX + maxX) * 0.5f, minY, (minZ + maxZ) * 0.5f);
+            Vector3 offset = keep ? Vector3.zero : new Vector3((minX + maxX) * 0.5f, blueprint.GroundY ?? minY, (minZ + maxZ) * 0.5f);
             float radius = 0f;
             for (int i = 0; i < blueprint.Markers.Count; i++)
             {

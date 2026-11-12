@@ -652,6 +652,23 @@ function asmGrounded(pieces, stand, P) {
   }
   return true;
 }
+// Does every wall-hung piece of a placed recipe hang on a wall, beam or post (its own or the building's) as the wall
+// check reads it: within 3 cm, two thirds of its back on it, facing out? (AA-dresser-01's signs as drawer fronts had
+// 5 of 9 parts of their backs on its side panels)
+function asmHung(pieces, room, P) {
+  const WH = WH_I();
+  if (!WH || !WH.measure || !room.out) return true;
+  const hung = pieces.filter(p => WH.isHung(p.name));
+  if (!hung.length) return true;
+  const own = pieces.map(p => ({ ...p, decor: true, trim: !!(P && P.piece(p.name).structural) }));
+  const B = WH.backing(room.out.concat(own));
+  for (const p of own) {
+    if (!WH.isHung(p.name)) continue;
+    const m = WH.measure(p, B);
+    if (!(isFinite(m.gap) && m.gap <= 0.03 && m.gap >= -0.03 && m.cover >= 0.67 && m.facing)) return false;
+  }
+  return true;
+}
 const ASM_P = () => { try { return NODE_I ? require('./assemblies.js') : window.VHAssemblies; } catch (e) { return null; } };
 function builtZone(room, plan, H, I) {
   const AS = ASM_P();
@@ -699,7 +716,7 @@ function builtZone(room, plan, H, I) {
     const s = spots[0];
     if (!s) continue;
     const got = AS.place(r, { x: s.x0, y: room.stand, z: s.z0, facing: s.yaw }, { family: plan.suite.table ? (pc(plan.suite.table) || {}).f : null });
-    if (!got || !asmGrounded(got.pieces, room.stand, P)) continue;
+    if (!got || !asmGrounded(got.pieces, room.stand, P) || !asmHung(got.pieces, room, P)) continue;
     plan.asm.used[r.id] = 1;
     const recs = [];
     for (const p of got.pieces) {

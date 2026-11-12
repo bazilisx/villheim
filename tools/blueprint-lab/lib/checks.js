@@ -238,7 +238,8 @@ function floorPoints(pieces, boxes) {
   const pts = [];
   pieces.forEach((p, n) => {
     const b = boxes[n];
-    if (b.info.role !== 'floor' || tilted(p.q)) return;
+    // (a furnishing's board, a cabinet's shelf or a counter top, is furniture, never a floor people stand on)
+    if (b.info.role !== 'floor' || tilted(p.q) || p.decor) return;
     const s = p.s || [1, 1, 1], w = b.info.size[0] * s[0], d = b.info.size[2] * s[2];
     const a = yawDeg(p) * Math.PI / 180, lx = [Math.cos(a), -Math.sin(a)], lz = [Math.sin(a), Math.cos(a)];
     for (let u = -w / 2 + 0.25; u < w / 2; u += 0.5) for (let v = -d / 2 + 0.25; v < d / 2; v += 0.5)

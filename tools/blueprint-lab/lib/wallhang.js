@@ -158,7 +158,8 @@ function backing(pieces, opts) {
   const addKeep = p => {
     const r = P.piece(p.name).role;
     if (any) { if ((!opts.floors && ['floor', 'stair'].includes(r)) || (!opts.roofs && ['roof', 'roofTop', 'roofCorner'].includes(r)) || ['plant', 'rug'].includes(r)) return; }
-    else if (p.decor || isHung(p.name) || !BACKING[r]) return;
+    // (a beam, post or quarter wall a set or an assembly adds, p.trim, holds what hangs on it as the shell's own do)
+    else if ((p.decor && !(p.trim && P.piece(p.name).structural)) || isHung(p.name) || !BACKING[r]) return;
     let parts = partsOf(p);
     // a floor holds what stands on it by its collider, which can stand over what shows (the ashwood floor's model top
     // 0.077 m over its pivot, its collider 0.097; corpus furniture on it stands 0.099 over the pivot at the median of

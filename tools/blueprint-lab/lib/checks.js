@@ -8,7 +8,7 @@ const SHP = NODE_C ? require('./shapes.js') : window.VHShapes;
 
 // A player is about 1.8 m tall. Walkable rooms need 2.4 m clear under every roof and ceiling piece; a doorway needs its
 // own height, and 2.3 m in front of it and behind it, for a metre each way.
-const HEADROOM = 2.4, DOOR_CLEAR = 2.3, CORRIDOR = 1.0, WALL_MIN = 2.5;
+const HEADROOM = 2.4, DOOR_CLEAR = 2.3, CORRIDOR = 1.0, WALL_MIN = 2.5, ROOF_HOLE = 2.5;
 // A clip the generator means (a piece marked p.clip = depth in metres, set into a fence, a wall or another piece) is
 // allowed up to its mark and never past the median clip of props in the corpus builds (lab/mine_yards.js: 0.36 m).
 const CLIP_MAX = 0.36;
@@ -811,7 +811,7 @@ function check(design, biome, opts = {}) {
   // wall are left out (nobody stands in the wall)
   const walls = wallGrid(pieces, boxes);
   let low = 0, inside = 0;
-  const lowBy = new Set(), where = [], stand = [], lows = [];
+  const lowBy = new Set(), where = [], stand = [], lows = [], open = [];
   for (const pt of pts) {
     // the lowest roof or ceiling over the point; a floor open to the sky (a roof terrace, a yard) is left out
     const col = ptBox(pt.x, pt.y + 0.05, pt.y + 30, pt.z);
@@ -826,7 +826,7 @@ function check(design, biome, opts = {}) {
       if (u != null && pieces[j].decor && u < pt.y + 1.8) continue;
       if (u != null && u > pt.y + (useShapes ? 0.5 : 0.05) && u < lowest) { lowest = u; by = pieces[j].name; }
     }
-    if (!isFinite(lowest)) continue;
+    if (!isFinite(lowest)) { if (walls.inside(pt.x, pt.y, pt.z) && !walls.near(pt.x, pt.y, pt.z, 0.45)) open.push(pt); continue; }
     if (!walls.inside(pt.x, pt.y, pt.z) || walls.near(pt.x, pt.y, pt.z, 0.45)) continue;
     inside++;
     let bad = lowest < pt.y + HEADROOM - 0.01 ? by : null;
@@ -840,6 +840,20 @@ function check(design, biome, opts = {}) {
     const { pt, bad } = L;
     low++; lowBy.add(bad); if (where.length < 6) where.push({ x: +pt.x.toFixed(2), y: +pt.y.toFixed(2), z: +pt.z.toFixed(2), under: bad });
   }
+  // holes in the roof (Tyler, showcase 09: "gaps and holes in the ceiling, roof pieces dont connect"): a floor point
+  // inside walls with nothing over it while roofed points of the same floor lie on all four sides of it within
+  // ROOF_HOLE m. The edge of a court's yard has roof on one side only; a smoke hole over a fire is meant.
+  const roofed = new Set([...stand, ...lows.map(L => L.pt)].map(q => `${Math.round(q.x * 2)},${Math.round(q.y * 20)},${Math.round(q.z * 2)}`));
+  const fires = pieces.filter(p => PC.piece(p.name).role === 'fire' || /fire_pit|hearth|bonfire/.test(p.name));
+  const holes = open.filter(pt => {
+    if (fires.some(f => Math.hypot(f.x - pt.x, f.z - pt.z) < 2.6)) return false;
+    const ky = Math.round(pt.y * 20);
+    return [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dz]) => {
+      for (let t = 0.5; t <= ROOF_HOLE + 1e-6; t += 0.5) if (roofed.has(`${Math.round((pt.x + dx * t) * 2)},${ky},${Math.round((pt.z + dz * t) * 2)}`)) return true;
+      return false;
+    });
+  });
+  results.push({ check: 'roof holes', ok: holes.length === 0, detail: holes.length ? `${holes.length} floor points inside walls open to the sky with roof all round (${holes.slice(0, 3).map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`).join('; ')})` : 'no holes in the roof' });
   results.push({ check: 'headroom', ok: low === 0, where,
     detail: low ? `${low} of ${inside} floor points under ${HEADROOM} m or by low walls (${[...lowBy].slice(0, 4).join(', ')})` : `${inside} floor points inside, all with ${HEADROOM} m or more and walls of ${WALL_MIN} m or more` });
 

@@ -254,6 +254,22 @@ function wingsClear(ws) {
   return true;
 }
 
+// Wings across the main wing from both its sides line up or stand well apart (Tyler, showcase 09: "If its intended to
+// be a cross, its not. Tons of the pieces are misaligned, and one side of the roof is shifted left 5 feet compared to
+// the other side"). An end wing out the front and a middle wing out the back, a bay or two apart along the ridge,
+// read as one cross gone wrong, and their roofs met the main roof in a tangle of valleys with holes between them.
+// Two such wings either share their middle line or leave a full bay of roof between their roofs' edges.
+function crossLined(ws) {
+  const main = ws[0], across = ws.slice(1).filter(w => w.alpha === 270);
+  for (let i = 0; i < across.length; i++) for (let j = i + 1; j < across.length; j++) {
+    const a = across[i], c = across[j];
+    if (Math.sign(a.cz - main.cz) === Math.sign(c.cz - main.cz) || !(a.cz - main.cz) || !(c.cz - main.cz)) continue;
+    const gap = Math.abs(a.cx - c.cx) - (a.D + c.D);
+    if (Math.abs(a.cx - c.cx) > 0.01 && gap < 2) return false;
+  }
+  return true;
+}
+
 // The household's whole path, s1 to s3, from its own random stream: nothing here may depend on the stage asked for,
 // so every stage of the same household agrees. Returns the state at each stage.
 function massingPath(o) {
@@ -339,7 +355,8 @@ function massingPath(o) {
     if (fam.roof === 'hip' && n.specs.filter(x => x.at === 'end').length > 1) return null; // a hip roof takes one wing (an L) and keeps its roof
     // an end wing must not reach the middle: a front one leaves the door a bay of the main wing's front
     if (n.specs.some(x => x.at === 'end' && n.W - wingDepth(x, n.D) < (x.dir === 'front' ? 2 : 1))) return null;
-    return wingsClear(wingsFromSpec(n.specs, n.W, n.D)) ? n : null;
+    const ws = wingsFromSpec(n.specs, n.W, n.D);
+    return wingsClear(ws) && crossLined(ws) ? n : null;
   };
   const cStoreys = C.storeys && C.storeys[type];
   ['s1', 's2', 's3'].forEach((stage, i) => {

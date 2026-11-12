@@ -21,8 +21,8 @@ namespace Villheim.Logic.Villagers
     ///   MemoryPassMaterial (PassKeys), on extra renderers (villheim_memory_pass) under each villager part, with the
     ///   pass material on every sub-mesh. The milk shares the part's mesh and bones. The shells are pushed out along
     ///   the normals: by the material's _VertPush (only the game's weapon glow has it) or, with MemoryShellMode Baked,
-    ///   from a copy of the part's pose made every second frame (SkinnedMeshRenderer.BakeMesh) for villagers within
-    ///   30 m.
+    ///   from a copy of the part's pose in meters made every second frame (SkinnedMeshRenderer.BakeMesh with the
+    ///   part's scale, drawn with that scale undone) for villagers within 30 m.
     /// - Feet: a soft glow card under the sole of each foot, a child of the foot bone so it moves with the foot, with
     ///   white vertex colors and a soft round texture made here, on a copy of a game particle material; and a faint
     ///   point light at the feet.
@@ -72,6 +72,7 @@ namespace Villheim.Logic.Villagers
         private static MaterialPropertyBlock _block;
         private static readonly int VertPush = Shader.PropertyToID("_VertPush");
         private static float _probeAt = -1f;
+        private static int _probeTries;
 
         private static string Solo => LogicConfig.MemoryDebugSolo?.Value ?? "Off";
 
@@ -429,6 +430,10 @@ namespace Villheim.Logic.Villagers
             }
         }
 
+        private static bool _bakeLogged;
+
+        private static float Inverse(float value) => Mathf.Abs(value) > 1e-6f ? 1f / value : 1f;
+
         private static void Bake(SkinnedMeshRenderer skinned, Passes passes)
         {
             if (passes.Pose == null)
@@ -437,7 +442,9 @@ namespace Villheim.Logic.Villagers
                 passes.Pose.MarkDynamic();
             }
 
-            skinned.BakeMesh(passes.Pose, false);
+            // Baked with the part's scale, so the copy is in meters around the part; each shell undoes the part's
+            // scale it would inherit, so it sits exactly on the body (the parts are scaled about 95 times).
+            skinned.BakeMesh(passes.Pose, true);
             passes.Pose.GetVertices(Vertices);
             passes.Pose.GetNormals(Normals);
             if (Normals.Count != Vertices.Count)
@@ -445,7 +452,14 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            float scale = ScaleOf(skinned.transform);
+            Vector3 lossy = skinned.transform.lossyScale;
+            Vector3 undo = new Vector3(Inverse(lossy.x), Inverse(lossy.y), Inverse(lossy.z));
+            if (!_bakeLogged)
+            {
+                _bakeLogged = true;
+                VillheimPlugin.Log.LogInfo($"Memory look: first baked glow shell on '{skinned.name}' ({Vertices.Count} vertices, part scale {lossy}).");
+            }
+
             for (int i = 0; i < passes.Shells.Count; i++)
             {
                 Renderer shell = passes.Shells[i];
@@ -453,6 +467,11 @@ namespace Villheim.Logic.Villagers
                 {
                     continue;
                 }
+
+                Transform place = shell.transform;
+                place.localPosition = Vector3.zero;
+                place.localRotation = Quaternion.identity;
+                place.localScale = undo;
 
                 while (passes.ShellMeshes.Count <= i)
                 {
@@ -462,11 +481,11 @@ namespace Villheim.Logic.Villagers
                 }
 
                 Mesh mesh = passes.ShellMeshes[i];
-                float push = GlowPush[i] / scale;
+                float push = GlowPush[i];
                 Pushed.Clear();
                 for (int v = 0; v < Vertices.Count; v++)
                 {
-                    Pushed.Add(Vertices[v] + Normals[v] * push);
+                    Pushed.Add(Vertices[v] + Normals[v].normalized * push);
                 }
 
                 bool topology = mesh.vertexCount != Vertices.Count || mesh.subMeshCount != passes.Pose.subMeshCount;
@@ -1063,7 +1082,7 @@ namespace Villheim.Logic.Villagers
                     renderer.GetPropertyBlock(block);
                     log.Append($"  {(pass ? "  pass" : "part")} '{renderer.name}' {renderer.GetType().Name} sub-meshes {(mesh != null ? mesh.subMeshCount : 0)} " +
                                $"vertices {(mesh != null ? mesh.vertexCount : 0)} vertex colors {(mesh != null && mesh.isReadable ? (mesh.colors32.Length > 0 ? "yes" : "no") : "?")} " +
-                               $"enabled {renderer.enabled} visible {renderer.isVisible} off {renderer.forceRenderingOff} scale {Scale(renderer):0.####}" +
+                               $"enabled {renderer.enabled} visible {renderer.isVisible} off {renderer.forceRenderingOff} root scale {Scale(renderer):0.####} own scale {renderer.transform.lossyScale}" +
                                (pass ? $" block _VertPush {(block.isEmpty ? "none" : block.GetFloat(VertPush).ToString("0.#####"))}" : got) + "\n");
                     foreach (Material material in renderer.sharedMaterials)
                     {
@@ -1136,6 +1155,7 @@ namespace Villheim.Logic.Villagers
                 LogicConfig.MemoryPassMaterial.Value = PassKeys[(at + 1) % PassKeys.Length];
                 Prepare();
                 _probeAt = Time.time + 1.5f;
+                _probeTries = 4;
                 return $"Villheim: milk and glow now drawn with {LogicConfig.MemoryPassMaterial.Value}.\n" + Sources() +
                        "\nA probe goes to the log in a moment.";
             }
@@ -1173,6 +1193,7 @@ namespace Villheim.Logic.Villagers
             _preview.name = "villheim_kids_rig_memory";
             _previewCharacter = _preview.GetComponent<Character>();
             _probeAt = Time.time + 2.5f;
+            _probeTries = 4;
             string note = Active ? "" : $"\nLookMode is {LogicConfig.LookMode?.Value}: set it to Memory to see this look.";
             if (LogicConfig.GhostLook != null && !LogicConfig.GhostLook.Value)
             {
@@ -1233,8 +1254,18 @@ namespace Villheim.Logic.Villagers
                     BakeShells();
                     if (_probeAt > 0f && Time.time >= _probeAt)
                     {
-                        _probeAt = -1f;
-                        Probe();
+                        // The model gets the look a few seconds after it is put up: wait for its passes (up to 10 s).
+                        bool ready = _previewCharacter == null || !Active ||
+                                     _previewCharacter.GetComponentsInChildren<Renderer>(true).Any(r => Decorated.ContainsKey(r));
+                        if (!ready && _probeTries-- > 0)
+                        {
+                            _probeAt = Time.time + 2f;
+                        }
+                        else
+                        {
+                            _probeAt = -1f;
+                            Probe();
+                        }
                     }
 
                     if (Time.time >= _nextPrune)

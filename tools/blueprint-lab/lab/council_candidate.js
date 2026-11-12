@@ -92,7 +92,7 @@ function render(pieces, dir, title) {
 }
 
 // every audit the council has: track B's corpus-rooms script, the catalog and outside-study checks (lab/council_checks.js)
-function audits(file, dir) {
+function audits(file, dir, kindOf) {
   const out = {};
   const run = (script, a) => { const r = spawnSync(process.execPath, ['--max-old-space-size=2500', path.join(__dirname, script), ...a], { encoding: 'utf8', env: process.env }); return r; };
   if (fs.existsSync(path.join(__dirname, 'rooms_corpus_audit.js'))) {
@@ -100,6 +100,16 @@ function audits(file, dir) {
     const r = run('rooms_corpus_audit.js', [file, '--json', j]);
     out['corpus-rooms'] = fs.existsSync(j) ? JSON.parse(fs.readFileSync(j, 'utf8')) : { error: (r.stderr || '').slice(0, 400) };
     if (out['corpus-rooms'].work) { try { fs.rmSync(out['corpus-rooms'].work, { recursive: true, force: true }); } catch (e) { /* scratch */ } delete out['corpus-rooms'].work; }
+  }
+  // track G's stand item check (criteria/assemblies.md hard fails H1 to H6)
+  if (fs.existsSync(path.join(__dirname, 'audit_stand_items.js'))) {
+    const r = run('audit_stand_items.js', ['--file', file, kindOf]);
+    try {
+      const j = JSON.parse((r.stdout || '').split('\n')[0]);
+      const H = { repeat: 'H1 repeat', run: 'H2 run', head: 'H3 head', edge: 'H4 edge', mixed: 'H5 mixed', 'empty-armor': 'H6 empty armor' };
+      const hard = Object.entries(H).map(([code, id]) => ({ id, fail: (j.fails[code] || 0) > 0, detail: (r.stdout || '').split('\n').slice(1).filter(l => l.trim().startsWith(code + ' ')).slice(0, 4) }));
+      out.assemblies = { pass: !hard.some(h => h.fail), points: null, of: null, hardFails: hard.filter(h => h.fail).map(h => h.id), hard, counts: j.counts, items: [] };
+    } catch (e) { out.assemblies = { error: (r.stderr || r.stdout || '').slice(0, 300) }; }
   }
   if (fs.existsSync(path.join(__dirname, 'council_checks.js'))) {
     const j = path.join(dir, 'audit-checks.json');
@@ -126,7 +136,7 @@ for (const q of requests()) {
   // the parsed pieces carry no decor flag; furniture is what lib/decorate.js knows
   for (const p of pieces) if (D.FURNITURE[p.name] || /^(itemstand|Candle|wood_ledge|piece_pot)/.test(p.name)) p.decor = true;
   const views = flag('--no-render') ? [] : render(pieces, dir, q.name);
-  const A = flag('--no-audit') ? {} : audits(file, dir);
+  const A = flag('--no-audit') ? {} : audits(file, dir, q.type);
   const card = { name: q.name, request: q, design: r.name, pieces: r.pieces, generatorChecks: { passed: r.passed, of: r.checks, failed: r.failed }, views, audits: {} };
   for (const [k, v] of Object.entries(A)) card.audits[k] = { pass: v.pass, points: v.points, of: v.of || 100, mark: v.mark, hardFails: v.hardFails || [], items: v.items, hard: v.hard, error: v.error };
   fs.writeFileSync(path.join(dir, 'scorecard.json'), JSON.stringify(card, null, 1));

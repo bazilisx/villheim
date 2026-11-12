@@ -5,7 +5,7 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'rooms_intent.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'stands.js', 'layout.js', 'yards.js', 'landscape.js', 'reach.js', 'hub.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
+const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'rooms_intent.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'standitems.js', 'stands.js', 'layout.js', 'yards.js', 'landscape.js', 'reach.js', 'hub.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
@@ -13,6 +13,9 @@ const interior = fs.readFileSync(path.join(dir, '../data/interior-lite.json'), '
 const critic = fs.readFileSync(path.join(dir, '../data/critic.json'), 'utf8').trim();
 // the room intent planner's corpus numbers (lib/rooms_intent.js, lab/build_intent_data.js)
 const intent = fs.readFileSync(path.join(dir, '../data/intent.json'), 'utf8').trim();
+// track G's stand items (lib/standitems.js): items, rules and the corpus place weights
+const standItems = JSON.stringify({ items: JSON.parse(fs.readFileSync(path.join(dir, '../data/stand-items/items.json'), 'utf8')).items,
+  rules: JSON.parse(fs.readFileSync(path.join(dir, '../data/stand-items/rules.json'), 'utf8')), corpus: JSON.parse(fs.readFileSync(path.join(dir, '../data/stand-items/corpus.json'), 'utf8')) });
 // the game's solid colliders per piece (lib/shapes.js), for the checks and the furniture sizes
 const solids = fs.readFileSync(path.join(dir, '../data/piece-solids.json'), 'utf8').trim();
 // room templates (D-058) without what only the lab reads (source, popularity, area, the ID key), and Tyler's weights
@@ -40,6 +43,7 @@ const text = `// Villheim blueprint lab, bundled for the game. Made by tools/blu
 var window = this;
 window.VH_STANDS = ${stands};
 window.VH_INTENT = ${intent};
+window.VHStandItemsData = ${standItems};
 ${code}
 // ---- data
 window.VH_RULES = ${rules};

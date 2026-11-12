@@ -481,7 +481,79 @@ function standAt(b, p, near) {
  * the room, or takes the stand out when nothing fits. Each stand draws from a stream seeded by its place, so the same
  * stand holds the same item at every decor stage. Returns how many stands got an item.
  */
+// What stands on every item stand and armor stand, from track G's stand items (lib/standitems.js; docs/
+// FURNITURE_ASSEMBLIES.md "Stand items"): one ledger per building (the household's themes, what is on show), each
+// stand's item by its place, room and neighbours, capped and spread as corpus builders show items, long weapons lying
+// on their side, nothing over an edge; each armor stand dressed (Tyler 2026-11-12: "nothing currently hanging on any
+// of the armorstands"). The older picker below (dressStandsOld) stays for the browser page when the stand item data
+// is not loaded.
+const SIp = () => { try { return NODE_P ? require('./standitems.js') : window.VHStandItems; } catch (e) { return null; } };
+const AT_PLACE = { table: 'table', sidetable: 'table', bench: 'seat', chest: 'chest', workbench: 'station', shelf: 'shelf', rafter: 'shelf', mantel: 'shelf', sill: 'shelf', counter: 'counter' };
+const WANT_SI = { drink: 'drink', food: 'meal', meal: 'meal', herbs: 'herbs', weapon: 'arms', shield: 'shield', rare: 'curio', tool: 'work', trophy: 'trophies', fish: 'fish', farm: 'produce', hat: 'hat', valuable: 'valuable' };
+const ROOM_SI = { home: 'home', sleeping: 'bedroom', guest: 'bedroom', tavern: 'tavern', hall: 'hall', temple: 'temple', smithy: 'smithy', workshop: 'workshop', storage: 'storage', hub: 'hall' };
 function dressStands(b, ctx) {
+  const SI = SIp();
+  if (!SI || !SI.ledger || ctx.legacyStands) return dressStandsOld(b, ctx);
+  const P = ctx.persona;
+  const P_ = NODE_P ? require('./pieces.js') : window.VHPieces, Ck = NODE_P ? require('./checks.js') : window.VHChecks;
+  const floorM2 = (b.rooms || []).reduce((a, r) => a + Math.max(0, (r.x1 - r.x0) * (r.z1 - r.z0)), 0);
+  const L = b.standLedger || (b.standLedger = SI.ledger({ biome: ctx.biome, stage: 3, kind: ctx.type, floorM2, persona: P, seed: ((P ? P.salt : 7) ^ 0x51a7) >>> 0 }));
+  let n = 0;
+  const out = new Set();
+  const nearOf = p => b.pieces.filter(q => Math.abs(q.x - p.x) < 2.5 && Math.abs(q.z - p.z) < 2.5 && Math.abs(q.y - p.y) < 2.5);
+  // what a wall stand hangs over, in the stand pass's words (corpus placeKind wall:<near>)
+  const wallNear = (p, near) => {
+    let best = 'none', d = Infinity;
+    for (const q of near) {
+      if (!q.decor || q === p || q.y > p.y) continue;
+      const dist = Math.hypot(q.x - p.x, q.z - p.z);
+      const k = /^(forge|blackforge|smelter)/.test(q.name) ? 'smith' : /^(piece_workbench|piece_artisanstation|piece_stonecutter|piece_spinningwheel)/.test(q.name) ? 'craft'
+        : STAND_FIRE.test(q.name) ? 'hearth' : /^(piece_cauldron|piece_cookingstation|piece_oven|piece_preptable|cauldron_ext)/.test(q.name) ? 'kitchen' : /^fermenter|MeadCauldron/.test(q.name) ? 'brew'
+          : /^piece_magetable/.test(q.name) ? 'magic' : /throne/.test(q.name) ? 'throne' : /^ArmorStand/.test(q.name) ? 'armor' : P_.piece(q.name).role === 'bed' ? 'sleep' : P_.piece(q.name).role === 'table' ? 'dine' : null;
+      if (k && dist < (k === 'hearth' ? 2.4 : 1.6) && dist < d) { best = k; d = dist; }
+    }
+    return best;
+  };
+  // the box a flat stand stands on (for the edge test)
+  const topOf = (p, near) => {
+    let best = null;
+    for (const q of near) {
+      if (q === p || /^itemstand/.test(q.name)) continue;
+      const o = Ck.aabb(q);
+      if (o.pass || o.x0 > p.x || o.x1 < p.x || o.z0 > p.z || o.z1 < p.z || o.y1 > p.y + 0.3 || o.y1 < p.y - 0.15) continue;
+      if (!best || o.y1 > best.y) best = { x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1, y: o.y1 };
+    }
+    return best;
+  };
+  const stands = b.pieces.filter(p => /^itemstandh?$/.test(p.name) && !p.item).sort((a, c) => a.x - c.x || a.z - c.z || a.y - c.y);
+  for (const p of stands) {
+    const near = nearOf(p);
+    const [want0, at0] = String(p.want || '').split('@');
+    const flat = p.name === 'itemstandh';
+    const at = at0 || p.at || (flat ? standAt(b, p, near) : null);
+    const place = flat ? AT_PLACE[at] || (at === 'floor' ? 'floor' : 'other') : null;
+    let room = ROOM_SI[roleAt(b, p, ctx.type, ctx.use)] || 'home';
+    const wn = flat ? null : wallNear(p, near);
+    if (near.some(q => q.decor && /^(piece_cauldron|piece_cookingstation|piece_oven|piece_preptable)/.test(q.name) && Math.hypot(q.x - p.x, q.z - p.z) < 3) && room === 'home') room = 'kitchen';
+    const yaw = p.yaw != null ? p.yaw : 0;
+    const r = SI.pick(L, { stand: p.name, place, room, near: wn, x: p.x, y: p.y, z: p.z, yaw, top: flat ? topOf(p, near) : null, want: WANT_SI[want0] || null });
+    if (!r) { out.add(p); continue; }
+    p.item = { name: r.item, variant: 0, quality: 1 };
+    if (r.q) p.q = r.q;
+    if (r.yaw != null) p.yaw = r.yaw;
+    if (r.y != null) p.y = +r.y.toFixed(3);
+    delete p.want; delete p.at;
+    n++;
+  }
+  if (out.size) b.pieces = b.pieces.filter(p => !out.has(p));
+  // every armor stand dressed, by the household and the room
+  for (const p of b.pieces.filter(q => /^ArmorStand/.test(q.name) && !q.info)) {
+    const a = SI.armor(L, { room: ROOM_SI[roleAt(b, p, ctx.type, ctx.use)] || 'home' });
+    if (a && a.text) { p.info = a.text; n++; }
+  }
+  return n;
+}
+function dressStandsOld(b, ctx) {
   const P = ctx.persona;
   let n = 0;
   const out = new Set(), seen = {};

@@ -2119,6 +2119,8 @@ function finish(b, info) {
     slots: b.slots || [],
     // what the greenery pass placed (lib/landscape.js)
     landscape: b.landscape || null,
+    // the windows run by run as the details built them (lib/details.js exterior)
+    facade: b.facade || null,
   };
 }
 

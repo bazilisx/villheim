@@ -106,22 +106,55 @@ baseline run in `/home/claude/work/e/baseline`.
   (Jint) and node; the longest took 34 s (s3d2 longhouse).
 - Renders looked at for every showcase design and the candidates (`views.png`, `floor-*.png`).
 
+## Measured disputes (overnight, 2026-11-12)
+
+Each check disagreement was settled against the corpus blueprints (`/work/bp`, 2,657 files) and the fine meshes
+(`/work/models/vhmodels/work/cache`). Scripts in `/home/claude/work/e/meas/` (scratch). By principle:
+
+- **A piece stands where the game's placement lands, which the corpus shows per support.** Flat stands: piece_table
+  +0.82 over its pivot (593 of 1,194), oak table +0.79 (621 of 702, model top 0.809), round table +0.80, level
+  wood_ledge +0.03 (17 of 20; model top 0.0705), darkwood_beam +0.45 (19 builds; model top 0.4625), wood_beam +0.20,
+  floors +0.10 (collider top). Placement fixed: `lib/persona.js` STAND_ON and the collider top for structure. Checks
+  fixed: the float check reads floor colliders and furniture model boxes (`lib/wallhang.js` backing), and mountClip
+  no longer counts what a flat stand stands on (`lib/audit.js`).
+- **An upright item never lifts its stand.** Corpus stands sit at the support height whatever they hold (Carrot
+  n 259, Mushroom n 110, TrophySkeleton n 67, CookedLoxMeat n 47, median -0.003 m). `lib/standitems.js` pose lifted
+  them 5 to 8 cm; placement fixed.
+- **Things on a fire.** Cooking station and cauldron stand +0.20 over a fire pit (252 of 256, 110 of 112) and +0.583
+  over a hearth (116 of 123); the iron station stands on a hearth (257 of 259). Placement fixed in `lib/decorate.js`
+  and `lib/hub.js`.
+- **Stools and chairs.** piece_chair's and forge_ext4's model bottoms sit 7.1 and 4.2 cm over their pivots, as the
+  corpus places them; the decorator lowers them (`lib/decorate.js` modelSizes). A chair tucked under a table edge now
+  comes down onto the floor under it (`lib/persona.js`).
+- **Facing.** Dvergr wall lantern: catalog, wallhang and the corpus agree on its +x side to the wall (69 % of 311
+  builds; 35 % +x by nearest wall over 6,648); catalog H3 passes on every design. Wardrobe: +z to the wall (59 % of
+  109 corpus wardrobes); the creative sets had it -z, fixed in `lab/creative_sets.js` and `data/kitbash-interior.json`.
+  Thrones follow -z (56 % of 316 throne01). A bed standing free turns its head to the nearer wall.
+- **A recipe is used only where it works in place.** Mined and authored assemblies are placed only where each
+  free-standing piece rests on the floor or the recipe (AC-armor-alcove-16 left out the floor under its armor stand)
+  and each wall-hung piece hangs on a wall, beam or post (AA-dresser-01's drawer-front signs had 5 of 9 parts of
+  their backs on its side panels). Recipes with a piece outside the vanilla catalog are never used (AC-shelving-03
+  FletcherTable_ext3_TW, AC-shelving-04 piece_chest_cargo; neither is among the game's 5,936 prefabs).
+- **What holds a hung piece is any wall-like piece, whoever placed it.** Beams, posts and quarter walls added by a
+  set or an assembly count as backing (`lib/wallhang.js`); a set's clip into its own quarter wall is written as a
+  clip made on purpose (`#VillheimClips`, D-098).
+- **A wall-hung station add-on goes on a wall.** forge_ext6 hangs on walls in 71 % of 416 builds and never in a yard;
+  it left the forge yard and the open edge of a floor.
+- **A building with no door is entered over any open edge.** The walk map seeded one cell, so the steppe smithy's
+  forge was read as out of reach and removed; it now seeds every free edge cell (`lib/layout.js`).
+
 ## Open problems
 
-- Hard fails left, by owner: narrow wings and loft walkways in the structure (corpus-rooms H1, 11 showcase designs;
-  track D); wood_fence as railings indoors and on towers (corpus-rooms H5, catalog H1; track D, D-164); floats of
-  3 to 10 cm on stools, flat stands and one bed in track F's measure (`settle` reads them as standing; tracks F and
-  G to agree on the foot height of the stool model and of posed flat stands); a Dvergr wall lantern turned with its
-  side to a corner wall in track A's measure while track F's wallTurn passes it (06); a flat stand over an edge in
-  the tower (14, track G's pose).
-- Hubs are furnished by `lib/hub.js` and the interior library, without room intent; they hold most remaining
-  catalog fails (01 to 03).
-- Built furniture seldom fits homes: generated walls carry a window every bay or two, so plain stretches of 2 to
-  4 m are rare (track D and H facade rhythm).
-- Large homes rarely get a hearth: the 4 by 3 m hearth seldom fits under the vent and the fire pit stands in
-  (catalog item 6).
-- Beds under eaves in lofts face walls the room reader takes from beams (09).
-- The furnishing is sparse in small rooms by design (corpus density); Tyler may want more at d3.
+- Hard fails left are the shell's (track D): game support and passages on the hubs (criteria/shell.md H1, H2),
+  passages on 06 and 08, and 2 m wings that corpus-rooms H1 reads (wings 2 m wide and 6 m or more long in bedrooms,
+  kitchens and lofts of 04, 05, 06, 08, 09, 12, 14).
+- Hubs score under the mark on catalog (01, 02, 03) and outside-study (01, 03) points with no interior hard fail;
+  their interior is `lib/hub.js` and the interior library, without room intent.
+- Built furniture seldom fits homes: plain wall stretches of 2 to 4 m are rare.
+- Large homes rarely get a hearth (the 4 by 3 m hearth seldom fits under the vent).
+- Beds under eaves in lofts (09).
+- AA-dresser-01 (signs as drawer fronts) and AA-weapon-rack-01 are authored recipes; the dresser is now never placed
+  because its signs fail the wall check. The recipe needs its signs on the chest front.
 
 ## Proposed Decisions rows
 
@@ -134,9 +167,8 @@ baseline run in `/home/claude/work/e/baseline`.
 
 ## Next steps
 
-- Council round one: suggested candidates `council-tower-mt-frankish-norman-s3d3-31` (all four scored lists pass;
-  F's float on two stools), `council-smithy-md-steppe-s3d3-614` (passes all but a lantern turn), and
-  `council-home-mt-swamp-s3d3-95` (home; structure H1 only). Make them with
-  `node lab/council_candidate.js --type tower --biome mt --culture frankish-norman --seed 31` and the like.
-- Move the hub's interior onto room intent.
-- Architecture audit (track H's four scripts) into the candidate script.
+- Council candidates, all seven lists pass (`lab/council_candidate.js` now runs corpus-rooms, assemblies, wallhung,
+  catalog, outside-study, shell and architecture): `--type tower --biome mt --culture frankish-norman --seed 31`,
+  `--type smithy --biome md --culture steppe --seed 614`, `--type home --biome mt --culture swamp --seed 95`.
+- Move the hub's interior onto room intent (D-154).
+- Homes: hearths and built furniture on the program's plain wall stretches; the loft bed under the eaves.

@@ -25,6 +25,7 @@ namespace Villheim.Logic.Generator
         {
             "gen <biome> <type> <stage> [culture] [\"request\"] [seed]: make a new building with the blueprint lab and build it in front of you, e.g. gen md home s1d3 \"two stories with a porch\"; saved with a short name (gen-12-norse-home) where PlanBuild finds it, on its Villheim tab ('gen help' lists the codes)",
             "gen list: the last 10 designs made with 'gen', by their short names; 'preview last' or 'place last' builds the newest again",
+            "gen showcase: build 16 picked designs at full decor (d3) in a grid in front of you, four rows going away from you; for a flat test world, it needs about 130 m by 150 m",
             "ask <biome> <type> <stage> [culture] \"request\": write the request to BepInEx/config/Villheim/requests/requests.jsonl for Claude to make with more care; 'asks' lists them, 'place <id>' builds the result",
             "asks: list the requests made with 'ask' and their status",
             "place <id|name> [here]: build a finished request (R-0001) or an in-game generated design in front of you; 'here' builds a request where you stood when you asked",
@@ -34,8 +35,8 @@ namespace Villheim.Logic.Generator
         {
             "vh gen <biome> <type> <stage> [culture] [\"request in plain words\"] [seed]",
             "  biome: md Meadows, bf Black Forest, sw Swamp, mt Mountains, pl Plains, ml Mistlands, al Ashlands, dn Deep North (built with the Mountain kit for now)",
-            "  type: home (house), longhouse (hall), tavern, smithy, sawmill, workshop, barn, farm, storage, tower, dock, stall, temple, well, camp. The lab has no hub or hearth design yet.",
-            "  stage: size s1 to s3 and decor d1 to d3, e.g. s1d3 (small and richly furnished); s2 alone means d2",
+            "  type: home (house), longhouse (hall), tavern, smithy, sawmill, workshop, barn, farm, storage, tower, dock, stall, temple, well, camp, hub (the village hearth; stages s1 to s5).",
+            "  stage: size s1 to s3 (s1 to s5 for the hub) and decor d1 to d3, e.g. s1d3 (small and richly furnished); s2 alone means d2",
             "  culture: optional; without it the biome's cultures are picked by weight",
             "  request words: plan (L-shaped, T-shaped, cross, courtyard, round, long, square), roof (gable, hip, flat, shed roof, steep, low roof),",
             "    walls (plank, half-timber, log, stone, stone base), stories (one, two or three stories), porch (with a porch, no porch), size (small, large), decor (bare, cozy, rich)",
@@ -51,7 +52,7 @@ namespace Villheim.Logic.Generator
         };
 
         private static readonly string[] BiomeCodes = { "md", "bf", "sw", "mt", "pl", "ml", "al", "dn" };
-        private static readonly Regex StagePattern = new Regex(@"^s[123](d[123])?$", RegexOptions.IgnoreCase);
+        private static readonly Regex StagePattern = new Regex(@"^s[1-5](d[123])?$", RegexOptions.IgnoreCase);
         private static readonly Regex RequestId = new Regex(@"^R-\d{4,}$", RegexOptions.IgnoreCase);
 
         // Requests made by Claude ('vh ask') still go where lab/process_requests.js writes them.
@@ -163,7 +164,7 @@ namespace Villheim.Logic.Generator
 
             if (!StagePattern.IsMatch(p.Stage))
             {
-                error = $"Unknown stage '{tokens[2]}'. Use s1 to s3 with d1 to d3, e.g. s1d3.";
+                error = $"Unknown stage '{tokens[2]}'. Use s1 to s3 (s1 to s5 for the hub) with d1 to d3, e.g. s1d3.";
                 return false;
             }
 
@@ -236,6 +237,12 @@ namespace Villheim.Logic.Generator
                 return;
             }
 
+            if (args != null && args.Length > 0 && args[0].Equals("showcase", StringComparison.OrdinalIgnoreCase))
+            {
+                Showcase(context);
+                return;
+            }
+
             if (!Parse(args, out Parsed p, out string error))
             {
                 Say(context, error);
@@ -284,6 +291,119 @@ namespace Villheim.Logic.Generator
             }) { IsBackground = true, Name = "Villheim generator" };
             thread.Start();
             VillheimPlugin.Instance.StartCoroutine(Finish(job, p.Words, standing, yaw, context));
+        }
+
+        // ---------------------------------------------------------------- vh gen showcase
+
+        // 16 designs picked from lab renders (2026-11-11), all at decor d3, each the first try of its seed so the game
+        // makes the same building as the lab page. Right and Forward place the middle of each design, in meters, from
+        // where you stand, facing the way you face: four rows, hubs first, each row as deep as its deepest design plus
+        // 6 m, measured on the pieces with 2 m to spare on each side.
+        private static readonly (string Type, string Biome, string Culture, string Stage, int Seed, float Right, float Forward)[] ShowcaseList =
+        {
+            ("hub", "md", "norse", "s5d3", 2, -47f, 30.2f),
+            ("hub", "pl", "byzantine", "s5d3", 1, -8.7f, 30.2f),
+            ("hub", "bf", "celtic", "s4d3", 2, 26.4f, 30.2f),
+            ("temple", "ml", "byzantine", "s3d3", 1, 54.3f, 30.2f),
+            ("longhouse", "bf", "norse-forest", "s3d3", 3, -46.3f, 71.7f),
+            ("tavern", "pl", "byzantine", "s3d3", 1, -10.4f, 71.7f),
+            ("tavern", "pl", "steppe", "s3d3", 2, 21.4f, 71.7f),
+            ("home", "pl", "middle-eastern", "s3d3", 1, 50.3f, 71.7f),
+            ("home", "sw", "baltic", "s3d3", 2, -43.6f, 103.1f),
+            ("home", "bf", "slavic", "s3d3", 3, -18.2f, 103.1f),
+            ("home", "md", "anglo-saxon", "s2d3", 2, 12.9f, 103.1f),
+            ("home", "ml", "lamari", "s2d3", 2, 43.1f, 103.1f),
+            ("smithy", "mt", "norse-highland", "s2d3", 1, -33.4f, 132f),
+            ("tower", "mt", "norse-highland", "s3d3", 1, -13.5f, 132f),
+            ("workshop", "al", "castle-medieval", "s2d3", 3, 7.1f, 132f),
+            ("home", "al", "castle-medieval", "s3d3", 1, 30.9f, 132f),
+        };
+
+        private static void Showcase(Terminal context)
+        {
+            Player player = Player.m_localPlayer;
+            if (player == null)
+            {
+                Say(context, "Villheim: you need to be in a world to use this.");
+                return;
+            }
+
+            if (_busy)
+            {
+                Say(context, "Villheim: still making the last design. Wait a moment.");
+                return;
+            }
+
+            Say(context, $"Villheim: making {ShowcaseList.Length} designs for the showcase, one at a time, and building each in the grid in front of you as it is ready. Stay near this spot until it is done.");
+            LabEngine.Prepare(Path.GetDirectoryName(typeof(VillheimPlugin).Assembly.Location));
+            _busy = true;
+            VillheimPlugin.Instance.StartCoroutine(ShowcaseRun(player.transform.position, player.transform.eulerAngles.y, context));
+        }
+
+        private static IEnumerator ShowcaseRun(Vector3 standing, float yaw, Terminal context)
+        {
+            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+            float started = Time.realtimeSinceStartup;
+            int built = 0;
+            for (int i = 0; i < ShowcaseList.Length; i++)
+            {
+                var s = ShowcaseList[i];
+                var job = new Job();
+                var thread = new Thread(() =>
+                {
+                    try
+                    {
+                        job.Result = LabEngine.Make(s.Type, s.Biome, s.Culture, s.Stage, "", s.Seed, 1);
+                    }
+                    catch (Exception e)
+                    {
+                        job.Failure = e;
+                    }
+
+                    job.Done = true;
+                }) { IsBackground = true, Name = "Villheim showcase" };
+                thread.Start();
+                while (!job.Done)
+                {
+                    yield return null;
+                }
+
+                try
+                {
+                    if (job.Failure != null || job.Result == null || job.Result.Error != null)
+                    {
+                        string why = job.Failure != null ? job.Failure.GetBaseException().Message : job.Result?.Error ?? "no result";
+                        VillheimPlugin.Log.LogError($"vh gen showcase {s.Type} {s.Biome} {s.Stage}: {job.Failure?.ToString() ?? why}");
+                        Say(context, $"Villheim: {i + 1}/{ShowcaseList.Length} {s.Type} {s.Biome} {s.Stage} failed: {why}");
+                        continue;
+                    }
+
+                    LabResult r = job.Result;
+                    string folder = IngameFolder;
+                    Directory.CreateDirectory(folder);
+                    string shortName = NextShortName(folder, r.Culture, r.Type);
+                    string file = Path.Combine(folder, shortName + ".blueprint");
+                    File.WriteAllText(file, ForPlanBuild(r, shortName, "showcase"), new UTF8Encoding(false));
+                    Blueprints.Forget();
+                    TellPlanBuild(file);
+                    Vector3 at = standing + turn * new Vector3(s.Right, 0f, s.Forward);
+                    int n = BuildAt(file, at, turn, out string problem);
+                    if (n > 0)
+                    {
+                        built++;
+                    }
+
+                    Say(context, $"Villheim: {i + 1}/{ShowcaseList.Length} {shortName} ({r.Name}): {problem?.Trim() ?? $"built {n} of {r.Pieces} pieces"}");
+                }
+                catch (Exception e)
+                {
+                    VillheimPlugin.Log.LogError($"vh gen showcase {s.Type} {s.Biome} {s.Stage}: {e}");
+                    Say(context, $"Villheim: {i + 1}/{ShowcaseList.Length} {s.Type} {s.Biome} {s.Stage} failed: {e.GetBaseException().Message}");
+                }
+            }
+
+            _busy = false;
+            Say(context, $"Villheim: showcase done, {built} of {ShowcaseList.Length} designs built in {Time.realtimeSinceStartup - started:0} s. Front row (left to right): Meadows hub, Plains hub, Black Forest hub, Mistlands temple. Each is saved under its short name ('vh gen list').");
         }
 
         private sealed class Job
@@ -557,6 +677,25 @@ namespace Villheim.Logic.Generator
 
             Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
             Vector3 at = standing + turn * Vector3.forward * (blueprint.Radius + 3f);
+            return Spawn(blueprint, at, turn);
+        }
+
+        /// <summary>Builds a saved design with its middle at a given spot (vh gen showcase).</summary>
+        private static int BuildAt(string file, Vector3 at, Quaternion turn, out string problem)
+        {
+            problem = null;
+            Blueprints.Blueprint blueprint = Blueprints.FromFile(file);
+            if (blueprint == null || blueprint.Pieces.Count == 0)
+            {
+                problem = $"   could not read {file}.";
+                return 0;
+            }
+
+            return Spawn(blueprint, at, turn);
+        }
+
+        private static int Spawn(Blueprints.Blueprint blueprint, Vector3 at, Quaternion turn)
+        {
             if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(at, out float ground))
             {
                 at.y = ground;

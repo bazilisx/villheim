@@ -52,7 +52,7 @@ function themesFrom(P) {
 /**
  * One ledger per building. o: { biome, stage (village stage 1 to 5), tier (overrides biome), kind ('home', 'tavern',
  * 'hall', 'smithy', 'workshop', 'storage', 'temple', 'hub', ...), floorM2, themes ({hunter: 1, cook: 0.6}) or persona
- * (lib/persona.js P), seed }.
+ * (lib/persona.js P), seed, later (weight of items from tiers past the next, default 0.03; D-065 allows any biome) }.
  */
 function ledger(o) {
   o = o || {};
@@ -60,7 +60,7 @@ function ledger(o) {
   return {
     tier: o.tier != null ? o.tier : tierOf(o.biome), stage: o.stage || 3, kind: o.kind || 'home', large,
     themes: o.themes || themesFrom(o.persona), R: rng(o.seed != null ? o.seed : hashStr(JSON.stringify([o.biome, o.kind, o.floorM2]))),
-    count: {}, placed: [], armor: [],
+    later: o.later, count: {}, placed: [], armor: [],
   };
 }
 
@@ -139,7 +139,8 @@ function pick(L, q) {
   const stand = q.stand === 'itemstand' ? 'itemstand' : 'itemstandh';
   const R = L.R;
   // the group this stand joins: stands already placed within 0.9 m and 0.4 m of height
-  const mates = L.placed.filter(p => Math.hypot(p.x - (q.x || 0), p.z - (q.z || 0)) < 0.9 && Math.abs(p.y - (q.y || 0)) < 0.4 && p.stand === stand);
+  // (placed stands keep their final pivot, which a pose may lift; 0.5 m here covers check()'s 0.3 m plus a lift)
+  const mates = L.placed.filter(p => Math.hypot(p.x - (q.x || 0), p.z - (q.z || 0)) < 0.9 && Math.abs(p.y - (q.y || 0)) < 0.5 && p.stand === stand);
   const group = mates.length ? mates[0].group : null;
   // every neighbour's theme must take the kind (a stand between a drink row and a trophy shelf takes neither)
   const groupsAll = [...new Set(mates.map(m => m.group).filter(Boolean))];
@@ -183,10 +184,12 @@ function itemOf(L, kind, stand, q, group) {
     if (it.kind !== kind) continue;
     if (it.fits && !(stand === 'itemstand' ? it.fits.wall : it.fits.flat)) continue;
     if (!it.fits && !it.corpus) continue;
-    // the village has it: its own tier and those before weigh most; one tier on is a rare trade good; later never
+    // any biome's item may be on show (D-065, D-126); the village's own tier and those before weigh most, the next
+    // tier is a rare trade good (0.12), later tiers rarer still (L.later, default 0.03; 0 keeps them out)
     const tr = it.tier == null ? L.tier : it.tier;
-    if (tr > L.tier + 1) continue;
-    let x = (it.corpus ? Math.log(1 + it.corpus.builds) + 0.5 : 0.4) * (tr === L.tier ? 1 : tr < L.tier ? 0.7 : 0.12);
+    const later = L.later == null ? 0.03 : L.later;
+    if (tr > L.tier + 1 && !later) continue;
+    let x = (it.corpus ? Math.log(1 + it.corpus.builds) + 0.5 : 0.4) * (tr === L.tier ? 1 : tr < L.tier ? 0.7 : tr === L.tier + 1 ? 0.12 : later);
     if (prefer.has(n)) x *= 3;
     const used = L.count[n] || 0;
     if (used >= cap) continue;
@@ -219,7 +222,7 @@ function itemOf(L, kind, stand, q, group) {
     const it = D.items[n];
     const g = group || groupOfKind(kind);
     L.count[n] = (L.count[n] || 0) + 1;
-    L.placed.push({ item: n, kind, group: g, stand, x: q.x || 0, y: q.y || 0, z: q.z || 0 });
+    L.placed.push({ item: n, kind, group: g, stand, x: q.x || 0, y: ps.y != null ? ps.y : q.y || 0, z: q.z || 0 });
     return { item: n, text: `${n}:0:1`, kind, group: g, yaw: ((yaw % 360) + 360) % 360, q: ps.q, y: ps.y, tilt: ps.tilt, why: `${kind} at ${stand === 'itemstand' ? 'wall:' + (q.near || 'none') : q.place || 'other'}${q.room ? ' in ' + q.room : ''}${it && it.tier != null ? ', tier ' + it.tier : ''}` };
   }
   return null;
@@ -246,8 +249,10 @@ function armor(L, q) {
     // sets the village has: its tier and the one before, the look's sets first
     const sw = {};
     for (const [k, s] of Object.entries(A.sets)) {
-      if (s.tier > tier || s.tier < tier - 2) continue;
-      sw[k] = (s.corpus || 10) * (s.look === look ? 3 : 1) * (s.tier === tier ? 1.5 : 1);
+      // the village's tier and the two before; later sets rare (D-065: stand items from any biome)
+      const later = L.later == null ? 0.03 : L.later;
+      if (s.tier < tier - 2 || (s.tier > tier && !later)) continue;
+      sw[k] = (s.corpus || 10) * (s.look === look ? 3 : 1) * (s.tier === tier ? 1.5 : s.tier > tier ? later : 1);
     }
     const sk = pickW(R, sw) || 'leather', S = A.sets[sk];
     const items = [];

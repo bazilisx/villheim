@@ -294,13 +294,14 @@ function survey(b, G0) {
   const solid = boxes.filter(x => !['rug'].includes(x.info.role) && !classOf(x.p.name) && !(x.info.role === 'floor' && x.o.y1 < G0 + 0.12)).map(x => x.o);
   // the furnishing's own pieces by their catalog boxes too, as the pool audit's overlap test reads them (a ground torch
   // by a door, whose collider is a thin stick, and a pot set into it; workshop Meadows s3d3 seed 287, round 7c)
-  for (const x of boxes) if (x.p.decor && !x.p.green && !['rug'].includes(x.info.role)) solid.push(Ck.catBox(x.p));
+  // (pots only: they are the greenery the audit reads as furniture; the rest keep to the colliders, as before)
+  const furnBoxes = boxes.filter(x => x.p.decor && !x.p.green && !['rug'].includes(x.info.role)).map(x => Ck.catBox(x.p));
   const roofs = boxes.filter(x => ['roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'floor'].includes(x.info.role) && x.o.y0 > G0 + 1.2).map(x => x.o);
   const fences = boxes.filter(x => x.p.yard && x.info.role === 'fence').map(x => x.o);
   // the gate closes the fence line for 'inside the yard'
   const gates = boxes.filter(x => x.p.yard && /gate/.test(x.p.name)).map(x => x.o);
   const paths = keep.filter(z => z.path);
-  return { boxes, faces, doors, keep, solid, roofs, fences, gates, paths, onFloor };
+  return { boxes, faces, doors, keep, solid, furn: furnBoxes, roofs, fences, gates, paths, onFloor };
 }
 function rectAlong(x, z, ux, uz, nx, nz, a0, a1, b0, b1) {
   const xs = [], zs = [];
@@ -409,6 +410,7 @@ function add(b, ctx) {
     if (inKeep({ ...foot, x0: x - rk, x1: x + rk, z0: z - rk, z1: z + rk })) return false;
     const box = Ck.aabb({ name: e[0], x, y: G0, z, yaw: 0, s: sc !== 1 ? [sc, sc, sc] : undefined });
     if (S.solid.some(o => hit(box, o, 0.08))) return false;
+    if (kind === 'pot' && S.furn.some(o => hit(box, o, -0.06))) return false;
     // the crown of a tree or bush clear of roofs, eaves and floors over it (a low plant passes under the eaves)
     if (kind === 'tree' || kind === 'bush') {
       const crown = { x0: x - r, x1: x + r, z0: z - r, z1: z + r, y0: G0 + top * 0.35, y1: G0 + top };

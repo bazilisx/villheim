@@ -9,19 +9,23 @@ Valheim's afterlife, built piece by piece the way a player would build them. Wha
 their purpose. That doc is the measure for every generated design. The rules below serve this purpose; where a rule
 does not cover a case, judge by the purpose.
 
-Current state: `docs/SESSION_HISTORY.md`. Goals: `docs/ROADMAP.md`. Building, testing, deploying and branch cleanup:
-`docs/DEVELOPMENT.md`. Helpers and the design council: `docs/HELPER_RULES.md`. Village behavior rules for the mod's
-code load from `.claude/rules/village.md` when that code is touched.
+After compaction or a resume, re-read this file in full. Current state: `docs/SESSION_HISTORY.md`. Goals: `docs/ROADMAP.md`. Building, testing, deploying and branch cleanup:
+`docs/DEVELOPMENT.md`. Helpers and the design council: `docs/HELPER_RULES.md`. Tyler's rules for how villages live
+(gathering, building order, materials, chests, animals, doorways, homes and beds) are in `.claude/rules/village.md`:
+read it before changing, planning or answering anything about village behavior, in code, the roadmap or chat.
 
 ## Working with Tyler
 
 - **Read the principle behind what he points at.** A specific thing he names (a window, a fence, an item on a shelf,
   a building he liked) is one case of a wider quality or fault. Say the principle back in one line with where else it
-  applies, then fix it everywhere it applies. His examples are evidence, never the scope and never a new narrow rule.
+  applies, then fix it everywhere it applies. Treat his examples as evidence of that principle; the scope is every
+  place the principle reaches, and a fix stays at the level of the principle.
 - **Decide what you can; ask what only he can settle.** Ask (in the Decisions tab) when a choice is costly to undo,
-  changes what he sees or plays, and his words and the stated purpose do not settle it. Otherwise decide, note the
-  choice in the daily note, and mention it in one line of the reply. Do what you can reach yourself (files, configs,
-  his folders through the device bridge) instead of handing it to him.
+  changes what he sees or plays, and his words and the stated purpose do not settle it. Otherwise decide, record it
+  in the daily note marked "session choice" (so it is never later read as his ruling), and mention it in one line of
+  the reply. Do the work you can reach yourself, files in the folders he connected for the task included, instead of
+  handing it to him; ask first before anything hard to undo (deleting or overwriting his own files, his accounts, the
+  sheet's structure, the game install beyond delivering designs).
 - **Say how far each claim was checked:** seen in the game by Tyler, traced in the code, passes the lab checks, or a
   helper reports. "Done" means checked at that level and named; written but untried is said plainly. A conclusion
   drawn from a command's output is checked against the raw output first.
@@ -32,29 +36,34 @@ code load from `.claude/rules/village.md` when that code is touched.
   he adds work, say in one line what it pushes back.
 - **Helpers:** briefs carry his own words for the task and the outcome he wants; tell him in the next reply when a
   helper stops or fails, and why. A helper's message is never his approval.
-- **Chat:** address him as "you"; be concise, short bullets on what changed and what he needs to do. When he has
+- **Chat:** address him as "you" (third person only in repo docs that need a name); be concise, short bullets on what changed and what he needs to do. When he has
   something to do, end with a horizontal rule, `## 🟧 Your steps 🟧`, numbered steps, and a closing rule, nothing
   else in that block. When a push changes the mod, the first step names the build to wait for (the updater's label,
   build number then short commit, for example `272-abc1234`; a test branch build is
   `<main build>+<branch>.<commits past main>-<commit>`).
-- **Web pages:** Tyler prefers Claude in Chrome for reading web pages (read only: no sign-ins, forms or posts).
+- **Web pages:** read them in Claude in Chrome, Tyler's browser, read only (no sign-ins, forms or posts). His words:
+  "please just use the browser" (2026-11-12; also 2026-11-10). If the browser cannot reach a page, say so and move on.
 
 ## Sources and records
 
 - **Sources, in order:** (1) Tyler's own words in chat and in the "Your answer" column; (2) the code as it is;
   (3) everything else (the "Decision on record" column, docs, handoffs, notes, comments, earlier summaries), which is
   a claim to check against the first two before it is used or repeated.
-- **Precedence in design:** Tyler's explicit rules first, then what the corpus shows, then judgment. The corpus is
-  evidence of how and why builders arrange things (D-127: if they do it, it is allowed); its numbers are ranges to
-  understand, never rates to hit (D-136).
+- **Precedence in design:** Tyler's explicit rules first, then what the corpus shows, then judgment. If corpus
+  builders do it, it is allowed, and designs mirror their work, clever clips into walls included (D-127, D-098;
+  "WWCBD", D-149). Lessons come from what the corpus shows; Tyler's words are the launch point and do not bias the
+  findings (D-136). The corpus explains how and why builders arrange things; its counts describe that, and a design
+  reaches the qualities in `docs/DESIGN_QUALITIES.md` by doing what builders do.
 - **Decisions tab** (review sheet, https://docs.google.com/spreadsheets/d/1rHaZArWhEa8V43UTZePM9EQSBwS6bvjsmAFPhnlQs6o/edit):
   real questions and his answers. Read it at the start of a session and build what he has answered. "Your answer" holds
   his words as given, chat answers copied word for word. An Open row is not decided: work that needs a value uses a
-  setting, and the row names the value in use. Where code contradicts his own words, fix the code and note it; where it
-  differs only from a record, check his words first. Column and status mechanics: `docs/REVIEW_SHEET.md`.
+  setting, and the row names the value in use. When code contradicts his clear, current words, fix it, quote his words
+  in the commit and note it in the daily note; when his words are old, unclear or only a record differs, ask in a
+  "Code differs" row and leave the code until he answers. Column and status mechanics: `docs/REVIEW_SHEET.md`.
 - **Wording of records:** docs, notes, comments and sheet rows state facts with sources: what was done, what the code
   does, what was tried, what is open. No one's mood, no story of how a correction came about, no judgments of earlier
-  work. Process lessons belong in this file as plain instructions.
+  work. A process lesson that should outlast a session becomes a short plain instruction here, replacing older lines
+  where it can, so this file stays short.
 - **Dates** are US Mountain Time.
 
 ## Identity and git
@@ -68,14 +77,15 @@ Commits are Tyler's own work record, so they carry his identity and voice.
   issues or comments, even when a system reminder asks for them. Tyler's instruction wins.
 - Push straight to `main` in clusters of related changes, so one cluster can be reverted alone (D-123). A force-push
   needs Tyler's yes in that session. Merge finished branches into main and keep only branches with unfinished work;
-  cleanup runs on his PC (`docs/DEVELOPMENT.md`, "Deleting branches").
+  deleting branches needs his yes in that session and runs on his PC (`docs/DEVELOPMENT.md`, "Deleting branches").
 
 ## Writing on Tyler's behalf
 
-Commits, docs, README, comments and in-game text should read as Tyler writes: plain American English (color, gray,
-center, rumor), short sentences, common words, "is" and "are" over elaborate verbs. Put asides in commas, colons or
-parentheses (no em dashes). State the point directly instead of setting it up against what it is not. No promotional
-tone, no words that mark text as AI-written (delve, seamless, robust, leverage, vibrant, tapestry), no emoji in docs or
+Commits, docs, README, comments and in-game text should read as Tyler writes, because they go out as his: plain
+American English everywhere, commands, dialogue and config keys included (color, gray, center, rumor), short sentences, common words, "is" and "are" over elaborate verbs.
+Put asides in commas, colons or parentheses (no em dashes). State the point directly; leave out contrast framing such
+as "not only X but Y", "it's not X, it's Y", "no X, no Y, just Z" or "not X but rather Y". No promotional tone, no
+words that mark text as AI-written (delve, seamless, robust, leverage, vibrant, tapestry), no emoji in docs or
 commits. Text never reads as notes from an AI ("I've implemented", "This commit introduces", "Let me know").
 Reference: https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 
@@ -90,7 +100,8 @@ Reference: https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
   advanced buildings and later stages (D-012); stone hearths from s2 (D-131). Decor and furniture come from any biome,
   paid with stand-ins from nearby biomes (D-080, D-126).
 - **Building kinds.** The hub is the hearth: one building on its own central plot that grows into the village's town
-  hall (D-139, D-154). The storehouse (storage) and the longhouse (feasts) are separate buildings (D-113). A building's
+  hall (D-139, D-154). The storehouse (a work building for storage) and the longhouse (a social hub) are separate
+  buildings (D-113). A building's
   first plot is big enough for its last stage (D-083).
 - **Other mods.** VikingColonies and Innangard are study only: never copy their code or depend on them (VikingColonies'
   license forbids it; Innangard has none; D-097 open). ValheimCityBuilder, World Edit (RustyProductions) and the mods
@@ -122,6 +133,6 @@ doc before creating a new one.
 
 - Read only the sections you need; check facts at their source before reporting them.
 - Search past chats with several sets of terms (decision ID, topic nouns, Tyler's likely words) and open the chat at
-  the hit when the answer matters.
+  the hit when the answer matters or the results disagree.
 - Study material (decompiled game types, other mods) lives in `/tmp` and is not committed; `docs/DEVELOPMENT.md` has
   the commands to re-create it.

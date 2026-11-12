@@ -13,7 +13,8 @@ details.
 - **Status:** Open (asked), Answered (Tyler answered), Done (built in the code with the file named in Decision on
   record; for a rule with no code, written into CLAUDE.md, `docs/DESIGN_QUALITIES.md`, `.claude/rules/village.md` or
   the doc named there). A decision that needs no work is Done with "No code". Tyler sets rows to Answered; a session sets
-  Done once the work is built. Whether it works in the game goes in the Tests tab.
+  Done once the work is built. A row with an Open "Code differs" row stays Answered until that row is settled. Whether
+  it works in the game goes in the Tests tab.
 - **Code differs rows:** used when code differs from a record and Tyler's own words do not settle which is right.
   When the code contradicts his words, the code is fixed and the row is not needed.
 

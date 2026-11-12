@@ -5,48 +5,21 @@ Current facts only. Read this at the start of a session. Narrative is in `docs/d
 
 ## Current State (as of 2026-11-12)
 
-Showcase review, 2026-11-12 (note, Session 1): Tyler's review of the 16 showcase designs is the work plan
-(`docs/handoffs/2026-11-12-showcase-review/`: TYLER_NOTES.md, README.md, track records, `criteria/`). Merged to main:
-piece catalog (`lib/catalog.js`), corpus room study (`docs/ROOM_STUDY.md`), outside study, furniture assemblies and stand
-items (`lib/assemblies.js`, `lib/standitems.js`), wall-hung placement (`lib/wallhang.js`), building program
-(`lib/program.js`). Running: shell (design/wip-shell), room intent (design/wip-interiors, `lib/rooms_intent.js`). Then a
-council of the tracks scores generated buildings (up to 10) before Tyler. Mod: stand items, sign text and armor stand
-gear from designs (88e10c8, 73ebdb5); in-game generator limit 4 minutes (f70fa23). Tyler saw items on stands in
-1003-88e10c8; nothing else from this session tried in the game.
+- **Design work:** Tyler's review of the 16 showcase designs is the plan (`docs/handoffs/2026-11-12-showcase-review/`).
+  The measure for designs is `docs/DESIGN_QUALITIES.md`. On main: piece catalog (`lib/catalog.js`), corpus room study
+  (`docs/ROOM_STUDY.md`), outside and architecture studies, furniture assemblies and stand items (`lib/assemblies.js`,
+  `lib/standitems.js`), wall-hung placement (`lib/wallhang.js`), building program (`lib/program.js`), shell rules and
+  room intent furnishing (`lib/rooms_intent.js`). None of it tried in the game.
+- **Council:** round 1 failed all four candidates (judge); its findings are in the showcase-review folder,
+  `council/round-1/`. Open from it: plans undone by later passes, empty and unlit rooms, built furniture never placed,
+  roofs judged per wing, open edges without rails (branch `wip/shell-open-edge-rails`, unfinished). Council rules:
+  `docs/HELPER_RULES.md`.
+- **Mod:** items on stands and sign text from designs (88e10c8, Tyler saw stand items in 1003-88e10c8); armor stand gear
+  (73ebdb5) and the design ground line (fbe5967) not tried in the game; in-game generator limit 4 minutes; the memory
+  look is on main behind LookMode, default Ghost, until Tyler tests it (D-160).
+- **Branches:** main and `wip/shell-open-edge-rails`.
 
-### As of 2026-11-11
-
-Design, 2026-11-11 (note, Sessions 1 and 2): integration rounds 4 to 7c are on main (last merge 4226ceb, CI build
-995-4226ceb). In the lab now, on top of Session 1: the `hub` type, s1 to s5, different in every village with no roof
-cap (D-155, D-156, `lib/hub.js`); landscaping with `#VillheimGreen` marks for use and owner (D-143, D-144, D-147,
-`lib/landscape.js`); finer piece models; window kinds and wide doors; clip limits from the 3D-shape recount; the
-decor-set library rebuilt (143 sets); a trophy size limit outside the hub. None of it tried in the game. The lab page
-is republished from 4226ceb. Builds are labeled count-hash (995-4226ceb) and the updater follows test channels and
-replaces the core only when it changes. Corpus, meshes and game assemblies are in the private repo
-bazilisx/villheim-corpus (D-157). The villager memory look is on branch `look/memory`
-(`docs/handoffs/look-memory.md` there). Open misses, rules and next work: `docs/handoffs/2026-11-10-design/README.md`.
-
-### As of 2026-11-10
-
-Latest build: the newest commit on main (CI publishes every push; `vh version` shows the hash). Work of 2026-11-10 (note, Sessions 1 to 5), in clusters that can be reverted one at a time: A the
-overnight branch (plots by real footprints, set-aside projects, tool churn, `vh plot`), B lag (PieceIndex,
-background blueprint reads, `Lag summary`, `vh lag`), C fixes (churn, decor reach, loose items, signs, bedtime),
-D `Village status` line and `vh snapshot`, E plots cleared by hand and full refunds (D-087, D-088), F Shaper Tool plot
-mode (D-090 to D-093), G decor paid in local stand-ins (D-080), H no swimming for rocks and helpers making essentials,
-I guards and the night watch (D-076), J overnight hunting trips and children's colors (D-078), K elders mend and
-help with crops, healers use remedies (D-078) (L roster and M home sizing reverted, 6014028), N fish by biome, O walkable banks round pads on slopes; then full refunds for everything broken down (69f8b65, D-088), the walker going round to a goal's door (6ef4364), piece health as Repair reads it (74111a7) and no harm from falling trees (5b054da), both from ValheimVillages (CC0). New on/off settings in "9 - Test villages": PieceIndex, BlueprintsInBackground,
-ClearPlotsByHand, DecorPaidWithAnalogs, HuntTrips;
-LagSummarySeconds and StatusLineSeconds. Nothing from 2026-11-10 tried in the game. The building generator is worked
-on in its own session on branch `design/kitbash`: merged 2026-11-10 as 6bf75ae (room layout planner, from feat/layout),
-558604b (pool audit gate, round 6 defects fixed in the lab), 4496d51 (piece sizes from the game's models, hung pieces
-held by the wall's collider), d40b648 (decor reach for D-080), c8c63f0 (Interiors tab, households arrange homes their own way). The lab page is
-republished. Creative sets merged 2026-11-10 (8f3cb45). `vh testpool make` now audits the pool before it
-replaces the old one ('force' to skip). Design helper (note, Session 9): 148 creative interior sets (KC-, combined and clipped objects by
-role and household trait), 56 of them mined from the full corpus (1,536 builds); the interior library holds 201
-distinct prefabs (was 109). Design helper (note, Session 10): `lab/richness.js` measures how much of the corpus and the library reaches designs; room ceilings read from the game's solids (77452c3); the library's sets come before the decorator's extras (1545946); clips made on purpose marked in the file for the pool audit (e44db1e, D-098); richness floors in the pool gate and `make_testpool.js --sample` for Black Forest and Plains pools (d9103bf). Prefabs per sample 95 to 105, mined sets placed 43 to 78, decorator's own share 55.9 to 47 %; engine time per design up about a third. Old design branches feat/* are all in main and can be deleted. Next: Tyler's test (Tests tab T-631 on), rafts (D-078),
-walkable pads, preloading from the lag summaries.
-
-### As of 2026-11-09
+## Systems in the mod (inventory from 2026-11-09; check the code before relying on a line)
 
 Latest build fb15f86 (evening test fixes, see the 2026-11-09 note, Session 3): test pool only with TestPool on,
 hearth kept clear (11 m then; since 2026-11-10 walls stay 14.5 m from the hearth, `HearthKeep`, D-084), rings widen per stage and overflow outward, zone collider no longer blocks plots, generated
@@ -189,15 +162,10 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Outstanding work
 
-- Test the latest build in game (nothing from 2026-11-10 or 2026-11-11 tried yet). Watch: hammer animation, villagers in beds, cooking on the hearth station
-  (`IsFireLit`), bed and workbench spots ("No covered room for" in the log), `interact` and `eat` triggers, jitter.
-- Put blueprints in the blueprints folder (house-cabin-1, house-cabin-2...) to give villages curated buildings and
-  upgrade chains; `vh savebp` can capture any build.
-- Placement reachability and cliff rule; hearth upgrades (core change).
-- Gear by biome and village level beyond the protector weapons.
-- Dialogue lines as a data file; two-villager chats with conditions.
-- Inspiration.zip on main: Innangard's license is open (D-097).
-- Use PlanBuild blueprints and prefabs as design sources; interior and exterior upgrades; biome cultures.
+- Council round 1 changes (see Current State), then council rounds to at most 10 approved s3d3 buildings.
+- In-game test of everything since 2026-11-10 (Tests tab).
+- In-game generator time on large designs (gen-test longhouse about 95 to 160 s of the 4-minute limit).
+- Open Decisions rows (read the tab).
 
 ## Recent milestones
 
@@ -213,52 +181,5 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 - **2026-11-10 (status line, snapshot, D-080 to D-094, guards, hunting trips)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-10 (overnight merge, lag cluster, immediate fixes)** - see docs/daily-notes/2026-11/2026-11-10.md
 - **2026-11-09 (plot search audit and overnight fixes, handed over as a bundle)** - see docs/daily-notes/2026-11/2026-11-09.md
-- **2026-11-09 (first test pool test)** - see docs/daily-notes/2026-11/2026-11-09.md
-- **2026-11-09 (overhangs, decisions D-059 to D-066, kitbash helpers in stages)** - see docs/daily-notes/2026-11/2026-11-09.md
 
-- **2026-11-09 (building details, motifs, game colliders, component bench, new parts)** - see docs/daily-notes/2026-11/2026-11-08.md
-
-- **2026-11-08 (test rounds 4 and 5)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-08 (test round 3 fixes merged)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-08 (test round 2 fixes merged)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-08 (test round 1 fixes merged)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-08 (knowledge, cultures, biome defenders and Tyler's decisions merged)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-08 (culture styles in the blueprint lab)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-08 (Millénaire translation pilot)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-08 (CityBuilder study, CC0; feature checklist in the review sheet; living village merged)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-08 (blueprint repair tab; 2,134 designs learned; minds and world code hardened)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-08 (blueprint lab, villager minds, world growth; helper branches merged)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-08 (BiomeBlueprints blacklisted; access checks; decisions on generated designs and outposts)** - see docs/daily-notes/2026-11/2026-11-08.md
-- **2026-11-07 (world life: visitors, hermits, news, personalities, relations, watching, smith, outposts, trails; research survey)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (board plots stay standing on save, lost plot signs restored, roads relaid on rebuild, vh shaper/repair/weather)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (board ground copy reworked, still open; pieces placed as saved; vh snow)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (board: drafts, ground, compass grid, swap fixes, path markers wired into paths)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (slotting board `vh slot` with PlanBuild picture tab and Slots tab)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (phases A, B and B2 finished; sort knife B2, paging and sheet sending fixes)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (sorting phases A to E, sort knives, Pass 2 tab rebuilt, Millénaire reference)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (Shaper Tool: new key layout, Reset, design turning with axis ring, one click one action)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (Shaper Tool: pick a tool and click, mouse wheel turning, small teal lightning)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (design review tools: keepers gallery, hand swaps, nudging, pass 3 saves, guide)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (every design listed, one stage each)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (design report on command, no gallery message backlog)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-07 (gallery lists builds of any size without freezing)** - see docs/daily-notes/2026-11/2026-11-07.md
-- **2026-11-06 (session 15: queued paths, door check, foundation height, flat gallery)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-06 (session 14: seated villagers attached, design beds counted, vh act)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-06 (session 13: pose restart loop fixed, notice board blueprint, design gallery)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-06 (session 12: jitter causes found in traces and fixed, flat building pads)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-06 (session 11: build order, replanting, motion trace)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-06 (session 10: settling in before growing, jitter fixes from mod research, chest kept)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-06 (session 9: flat pads, bronze axes, trading off, Jarl, echo look settings)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-06 (fifth session: chronicle, raids, night watch, village types, children)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-06 (third session: moods, social layer, fence, dialogue doubled)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-06 (second overnight: dialogue library, blueprints, growth and upgrades, hunting, repairs, A* paths)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-06 (overnight: beds, sleep, cooking, roles, placement, paths, dialogue)** - see docs/daily-notes/2026-11/2026-11-06.md
-- **2026-11-05 (test notes and new requests: placement, repairs, roles, dialogue)** - see docs/daily-notes/2026-11/2026-11-05.md
-- **2026-11-05 (test of 2108f23, gathering loop fixes)** - see docs/daily-notes/2026-11/2026-11-05.md
-- **2026-11-05 (updater for the PC)** - see docs/daily-notes/2026-11/2026-11-05.md
-- **2026-11-05 (villager AI rework after a second study of VikingColonies)** - see docs/daily-notes/2026-11/2026-11-05.md
-- **2026-11-05 (fixes for the six test issues)** - see docs/daily-notes/2026-11/2026-11-05.md
-- **2026-11-05 (first test of the site chest build)** - see docs/daily-notes/2026-11/2026-11-05.md
-- **2026-11-05 (site chest, biome materials, movement, handoff docs)** - see docs/daily-notes/2026-11/2026-11-05.md
-- **2026-11-05 (hot reload, first in-game tests, work and materials)** - see docs/daily-notes/2026-11/2026-11-05.md
-- **2026-11-04 (project start, 0.1.0)** - see docs/daily-notes/2026-11/2026-11-04.md
+Older milestones: the daily notes in `docs/daily-notes/`.

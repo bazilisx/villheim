@@ -26,14 +26,15 @@ for it, the outcome he wants, the files the helper owns, and the files it must l
   delivers designs there.
 - The cloud machine has 2 cores and 7 GB shared by every helper, and helpers share one usage limit. Keep runs short and
   one at a time; stream large files.
-- Web pages: Claude in Chrome (CLAUDE.md, "Working with Tyler").
+- Web pages: Claude in Chrome (CLAUDE.md, "Working with Tyler"). When it cannot reach a page and a fetch tool asks for
+  permission with nobody there to answer, skip the page and say so in the report.
 
 ## Git and reporting
 
 - Commit as Baz with no attribution lines (CLAUDE.md). Push your branch about every 30 minutes; never push main or
   another helper's branch; never force-push. Bring main in with `git fetch origin main && git merge origin/main`. On
   HTTP 429 wait 5 s and retry once.
-- Coordinate with other helpers through files they push, never by waiting on them.
+- Coordinate with other helpers through the files they push, and keep working while they work.
 - Finish with a track record in the folder your brief names (what was done with commits, findings by principle with
   numbers and sources, checks run and their level, open problems), then a short report to the lead that says how far
   each claim was checked (CLAUDE.md, "Working with Tyler").
@@ -49,14 +50,18 @@ they agree it meets what they learned, then it goes to him. At most 10 buildings
    each from 0 to 1 with a sentence of evidence from the blueprint and the renders, and give one verdict: would Tyler
    accept this building into his world as it is? A quality fails for too little as much as for too much (a bare room
    fails "lived in" as surely as random clutter).
-3. **Hard rules.** Only Tyler's hard rules (the list in `docs/DESIGN_QUALITIES.md`) fail a building on their own, each
-   measured once by the lab's shared checks (`lib/checks.js`: passages, doorways, support, open edges, wall tops).
+3. **Hard rules.** Only Tyler's hard rules fail a building on their own, each measured as the table in
+   `docs/DESIGN_QUALITIES.md` says.
 4. **Seat notes are diagnostics.** Each seat's file in `docs/handoffs/2026-11-12-showcase-review/criteria/` lists what
    its track measures and the scripts that measure it. Those measures explain why a quality falls short; they carry no
    pass mark of their own, and a corpus count outside its range is a question to answer with a reason.
-5. **Calibrate first.** Before a round of new candidates, the council scores buildings Tyler has already judged (the
-   16 showcase designs, which he failed) and must reach his verdict for his reasons.
+5. **Calibrate.** Whenever the measure or the seats change, the council first scores buildings Tyler has already
+   judged (the 16 showcase designs) and must reach his verdicts for his reasons, on both sides: he failed every one,
+   and he praised parts of some (the smithy "charming, small, cozy", a "cute yard", "nice use of fence gate"). A
+   council that fails what he praised is miscalibrated as surely as one that passes what he failed.
 6. **Quorum:** every seat and the judge say yes, no hard rule is broken, and every building approved earlier still
    passes. After 6 rounds without quorum on a building, the lead takes the disagreement to Tyler.
-7. **Delivery:** approved buildings go to the game install's
-   `BepInEx/config/PlanBuild/blueprints/inspiration/generated/ingame/council` with renders and scorecards.
+7. **Delivery:** the lead (never a helper) copies approved buildings with renders and scorecards to
+   `BepInEx/config/PlanBuild/blueprints/inspiration/generated/ingame/council` under the game install
+   (`Z:\SteamLibrary\steamapps\common\Valheim`), the folder PlanBuild reads and `vh gen` writes (its search and save
+   directories are relative to valheim.exe).

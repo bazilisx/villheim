@@ -2,6 +2,8 @@
 paths:
   - "src/Villheim.Logic/**"
   - "src/Villheim/**"
+  - "tools/blueprint-lab/**"
+  - "docs/ROADMAP.md"
 ---
 
 # Village rules (Tyler's rulings for how villages live)

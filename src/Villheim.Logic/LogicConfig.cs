@@ -1264,7 +1264,9 @@ namespace Villheim.Logic
 
             AcceptableValueRange<float> Range(float min, float max) => new AcceptableValueRange<float>(min, max);
 
-            LookMode = Dial("LookMode", "Memory",
+            // Ghost by default: the memory look is on main for Tyler to test with this dial before it becomes the
+            // default (D-160: tested by Tyler before it goes live).
+            LookMode = Dial("LookMode", "Ghost",
                 "Which look villagers and village animals have while GhostLook ('3c - Villager looks') is on. Ghost: the " +
                 "first look. Memory: see-through in their own colors with a teal tint, a soft teal glow around them and a " +
                 "glow at their feet. 'vh memory' puts up a still model in front of you to tune these against.",

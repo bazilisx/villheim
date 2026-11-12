@@ -30,6 +30,7 @@ to, and is placed with intent. Measured for every attached kind, not only the on
 | ed8e6cb | Pool audit measures wallOff, wallHalf, wallTurn, wallStack, gated (`lib/audit.js`); `lab/test_structure.js` wall checks; motif props (`lib/motifs.js`) and the vignette torch (`lib/kitbash.js`) through hang() |
 | a418715 | Notice board as a column of notices per face; `lab/render_walls.js` (wall views and close-ups) |
 | 080cfc5 | A set's own pieces count as wall when its hung pieces go up; the spice rack's back plate |
+| 849e422 | One wall light height through a house (`lightY`), for the library's torch kit, the hub and the decorator (Tyler's note on consistency) |
 | a5b8a10 | Standing and hanging pieces: `attach`, `settle`, `hangFrom` in `lib/wallhang.js`; standing torch base; hub torches and braziers; `lab/attach_measure.js`; the audit's watched floats measure; test_structure checks |
 
 ## How it works
@@ -133,7 +134,7 @@ apart, 71 % at one height; stands 59 % alone, rows at one height 49 %; signs 68 
   s5d3 (notice board, catalog back sides, hang on a plinth wall).
 - `node lab/test_hub.js`: on 3266467 the notice board test failed for the Plains middle-eastern part hall (signs did
   not go up against the board's posts); a418715 lays the notices in a column, and all hub tests pass on 080cfc5 (main
-  at 0d22c7d passes too). The rerun on a5b8a10 is in the report.
+  at 0d22c7d passes too); all hub tests pass on a5b8a10 and on 849e422.
 - Pool audit on the showcase after: wallOff 1 (a BK-drawers ledge), wallTurn, wallHalf, wallStack 0, floats 33
   (watched).
 - The game bundle (`lib/build_engine.js` to /tmp) runs vhMake for the Meadows hub in a plain VM context.
@@ -165,6 +166,8 @@ apart, 71 % at one height; stands 59 % alone, rows at one height 49 %; signs 68 
 5. The corpus pass with fine wall parts (`/tmp/wallhung-scripts/corpus_cells.js`) ran out of memory three times on the
    liked builds (2 cores, 7 GB shared); the table above is from the coarse pass. Stone walls' coarse box sits at the
    outermost stone, so the corpus depths into stone are a few cm deeper than shown.
+8. Door torches outside (`lib/generate.js` doorLights, track D) hang at 1.55 m over the door's floor, apart from the
+   household's light height inside.
 7. Hub furniture stands at 0.125 m over the floor pivot against the corpus 0.097 to 0.10 m (benches and chests 3 to 4 cm
    up); a mead cauldron on a gallery 1.9 m over the floor under it; flat stands over their shelves (`lab/attach_measure.js`
    lists them). Tracks E and G.

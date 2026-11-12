@@ -109,8 +109,9 @@ https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing
 
 - **Examples are symptoms.** When Tyler points at a specific thing (a window, a fence, an item on a shelf), it is one
   case of a wider fault. Find the principle it breaks, look for every other place the same principle is broken, and
-  fix the principle; report by principle, not by echoing his example (Tyler, 2026-11-12). Briefs to helpers say the
-  same.
+  fix the principle; report by principle, not by echoing his example (Tyler, 2026-11-12). Praise works the same way:
+  "charming, small, cozy" names a quality to reproduce in every building (complete, warm, intimate, well scaled), not
+  a rule for that building kind or its size. Briefs to helpers say the same.
 - Address Tyler as "you" in chat. Third person only inside repo docs where a name is needed.
 - Be concise in chat: short bullets on what changed and what he needs to do.
 - When Tyler has something to do (restart the game, test, install a mod), end the reply with a horizontal rule, then

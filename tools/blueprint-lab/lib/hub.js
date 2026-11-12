@@ -588,8 +588,20 @@ function polyWalls(b, K, C, T, N, L, ap, y0, SHt, kind, style) {
   }
   return bays;
 }
-// A wood fence as a rail at the edge between two 2 m cells at floor height y (a gallery or walkway edge).
-function rail(b, K, x, y, z, yaw) { b.put(K.fence, x, y + 0.6, z, yaw); }
+// A rail at the edge between two 2 m cells at floor height y (a gallery or walkway edge): a 1 m post at each end and a
+// beam on them at 1 m, as corpus builders rail galleries (lib/generate.js railing). The wood fence it was stood 0.6 m
+// over the floor and touched nothing, so the game let it fall (the Meadows hub, 2026-11-11), and Tyler keeps the wood
+// fence to pastures and gardens.
+function rail(b, K, x, y, z, yaw) {
+  const a = yaw * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a), post = K.pole1 || 'wood_pole', beam = K.beam || 'wood_beam';
+  // a post stands on the floor: an end past the floor's edge (a polygon's corner) moves in along the rail
+  const onFloor = (px, pz) => b.pieces.some(p => !p.decor && PH.piece(p.name).role === 'floor' && (() => { const c = CkH().catBox(p); return px > c.x0 - 0.05 && px < c.x1 + 0.05 && pz > c.z0 - 0.05 && pz < c.z1 + 0.05 && Math.abs(c.y1 - y) < 0.35; })());
+  for (const sg of [-1, 1]) {
+    const t = [1, 0.8, 0.6].find(k => onFloor(x + ux * sg * k, z + uz * sg * k));
+    if (t != null) b.put(post, x + ux * sg * t, y + 0.5, z + uz * sg * t, 0);
+  }
+  b.put(beam, x, y + 1.0, z, yaw);
+}
 // Cells within a rect (x, z on the 2 m grid, even), and rects merged from cells row by row: rooms for the walk test.
 function cellRects(cells, y, use) {
   const rows = new Map();
@@ -1004,11 +1016,12 @@ function crossHall(b, K, C, T, o) {
   const G = new Map(), stairs = [];
   const addG = (x, z) => { if (has(x, z)) G.set(`${x},${z}`, [x, z]); };
   if (gallery && k === 4) {
-    for (let x = -D + 1; x < D; x += 2) addG(x, -Wz + 1);
+    // (two cells deep everywhere: Tyler's two-piece rule for anything people walk along)
+    for (let x = -D + 1; x < D; x += 2) { addG(x, -Wz + 1); addG(x, -Wz + 3); }
     // (the stair on the side the village drew, the gallery along the other wall)
-    for (let z = -Wz + 3; z <= -D - 1; z += 2) addG(-sS * (D - 1), z);
+    for (let z = -Wz + 3; z <= -D - 1; z += 2) { addG(-sS * (D - 1), z); addG(-sS * (D - 3), z); }
     // (the landing joins the row over the door along the stair's wall)
-    for (let z = -Wz + 3; z <= -D - 7; z += 2) addG(sS * (D - 1), z);
+    for (let z = -Wz + 3; z <= -D - 7; z += 2) { addG(sS * (D - 1), z); addG(sS * (D - 3), z); }
     stairs.push({ run: [[sS * (D - 1), -D - 1], [sS * (D - 1), -D - 3], [sS * (D - 1), -D - 5]], stand: [sS * (D - 1), -D + 1], land: [sS * (D - 1), -D - 7], dir: [0, -1] });
     addG(sS * (D - 1), -D - 7);
   } else if (gallery) {
@@ -1784,6 +1797,10 @@ function generate(req, T) {
       : roundHall(b, Kw, C, T, { stage, variant: line, ext, wallStyle, has, cultureKey, V });
     info.plan = line; info.roof = line === 'cross' ? 'gable' : F.style === 'flat' ? 'flat' : F.drum ? 'drum' : 'conical';
     if (line !== 'cross') b.notes.push(`${line === 'octagon' ? 'Octagonal' : line === 'part' ? 'Part round' : 'Round'} hall of ${F.N} sides, ${(2 * F.ap).toFixed(1)} m across round the fire.`);
+    // posts under what the game would let fall (before the furnishing, so it keeps clear of them)
+    // (clear of the fire and of the high seat's place: the back arm's end in a cross hall, the axis behind the fire
+    // in a round one)
+    T.propUp(b, Kw, biome, { keepOut: (x, z) => line === 'cross' ? (Math.abs(x) < 1.5 && Math.abs(z) < 1.5) || (z > F.Wz - 3.5 && Math.abs(x) < 2.5) : Math.hypot(x, z) < 2.2 || (z > 0 && z < 6 && Math.abs(x) < 2.2) });
     const place = placer(b, T);
     // the notice board in the hearth area (D-140): freestanding outside the main door, and from s4 signs on a wall by
     // the door inside as well
@@ -1820,6 +1837,8 @@ function generate(req, T) {
   else b.pieces = b.pieces.filter(p => !p.decor || p.hearth || p.notice || p.highSeat || p.spouseSeat);
   // pieces that stand on their pivot in the game go down to their foot (as lib/generate.js finish)
   for (const p of b.pieces) { const pi = PH.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
+  // steps down from the doors to the ground the game sets the hall on (lib/generate.js doorSteps)
+  if (T.doorSteps) T.doorSteps(b);
   const L = b.leader || { x: 0, y: 0, z: 3, yaw: 180 };
   const mk = (m, extra) => ({ kind: 'seat', x: +m.x.toFixed(3), y: +m.y.toFixed(3), z: +m.z.toFixed(3), yaw: Math.round(m.yaw || 0), ...extra });
   const markers = [...b.markers, mk(L, { leader: true })];

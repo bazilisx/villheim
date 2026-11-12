@@ -36,7 +36,6 @@ function relief(name) {
 }
 
 const normD = a => ((a % 360) + 360) % 360;
-const SILL_PLANTS = ['Pickable_Dandelion', 'Pickable_Thistle', 'Pickable_Mushroom', 'Pickable_Mushroom_yellow', 'Pickable_Fiddlehead', 'Pickable_Carrot', 'Pickable_Onion', 'Pickable_Turnip', 'Pickable_Dandelion', 'Pickable_Mushroom_blue'];
 const quatD = yaw => { const a = yaw * Math.PI / 360; return [0, +Math.sin(a).toFixed(6), 0, +Math.cos(a).toFixed(6)]; };
 const BIOMES_D = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistlands', 'Ashlands'];
 const reachesD = (biome, b) => BIOMES_D.indexOf(biome) >= BIOMES_D.indexOf(b);
@@ -237,6 +236,77 @@ function clear(b, cand, roles, pad = 0.05) {
   });
 }
 
+// ---------------------------------------------------------------- window planters
+
+// Plants that stay up on a planter in the game (read from the prefabs on Tyler's PC, 2026-11-12). A pickable or bush
+// with the game's StaticPhysics and m_checkSolids off drops to the terrain under it 20 s after it loads, whatever it
+// stands on: Pickable_Dandelion, Pickable_Onion, Pickable_Thistle, Pickable_Carrot, Pickable_Turnip, Pickable_Mushroom,
+// Vineberry and the berry and heath bushes (Bush01, Bush02_en, RaspberryBush, BlueberryBush, CloudberryBush,
+// shrub_2_heath). That is why the onion and dandelion on the showcase 05 sills fell to the ground. Pickable_Fiddlehead
+// checks solids and settles on the planter's floor; vines, shrub_2, Pickable_Mushroom_yellow, Pickable_Mushroom_blue,
+// FirTree_small and Beech_small1 have no StaticPhysics and stay where they are put. Which of them go in a planter, and
+// how many, is the furnishing's (track E); this list is what the game holds.
+const PLANTS_HOLD = ['Pickable_Fiddlehead', 'Pickable_Mushroom_yellow', 'Pickable_Mushroom_blue', 'vines', 'shrub_2', 'FirTree_small', 'Beech_small1'];
+const PLANTS_FALL = ['Pickable_Dandelion', 'Pickable_Onion', 'Pickable_Thistle', 'Pickable_Carrot', 'Pickable_Turnip', 'Pickable_Mushroom', 'Vineberry',
+  'Bush01', 'Bush02_en', 'RaspberryBush', 'BlueberryBush', 'CloudberryBush', 'shrub_2_heath'];
+
+// One planter under a window, as Tyler's mockup: a box a metre deep under the light, its floor of 1 m floor pieces (the
+// surface plants stand on), a 1 m beam along its front and down each side at the box's top edge, a sill beam under
+// the light against the wall, and a 1 m post up each side of the light. Lined up on the light itself, never on the
+// 2 m bay (the boxes stood under the bay's middle while the light sat in one half of it). Returns the pieces, marked
+// planter with the window's key; planterSurfaces(b) gives where plants go.
+function planter(b, ctx, o) {
+  const { K } = ctx, e = o.e, { ux, uz, ox, oz } = axes(e);
+  const Ck = checksD();
+  // the light: its middle and width along the wall (generate.js wallSegment's lastLight), else the bay
+  const L = o.light || { x: e.x, z: e.z, w: 2, h: 1 };
+  const lu = (L.x - e.x) * ux + (L.z - e.z) * uz, lw = Math.max(1, Math.round(L.w || 2)), lh = L.h || 1, y0 = o.y0;
+  // the wall's outer face at this bay
+  const wall = b.pieces.filter(p => !p.decor && ['wall', 'window'].includes(PD.piece(p.name).role) && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 1.01 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.6 && p.y > y0 - 0.5 && p.y < y0 + 1.5);
+  let face = 0.15;
+  for (const p of wall) { const a = Ck.aabb(p); face = Math.max(face, ...[[a.x0, a.z0], [a.x1, a.z1], [a.x0, a.z1], [a.x1, a.z0]].map(([x, z]) => (x - e.x) * ox + (z - e.z) * oz).filter(v => v < 0.8)); }
+  // nothing out there: a deck, a stair, a porch post, a floor at sill height
+  const zone = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
+  for (const [u, v] of [[lu - lw / 2 - 0.2, face], [lu + lw / 2 + 0.2, face + 1.1]]) { const x = e.x + ux * u + ox * v, z = e.z + uz * u + oz * v; zone.x0 = Math.min(zone.x0, x); zone.x1 = Math.max(zone.x1, x); zone.z0 = Math.min(zone.z0, z); zone.z1 = Math.max(zone.z1, z); }
+  if (b.pieces.some(p => { if (wall.includes(p)) return false; const a = Ck.aabb(p); return a.x0 < zone.x1 && a.x1 > zone.x0 && a.z0 < zone.z1 && a.z1 > zone.z0 && a.y1 > y0 + 0.1 && a.y0 < y0 + 1 + lh; })) return null;
+  const key = `${e.x},${e.z},${y0}`, T = { trim: true, planter: key };
+  const at = (u, v) => [e.x + ux * u + ox * v, e.z + uz * u + oz * v];
+  const yawAlong = e.yaw, yawAcross = (e.yaw + 90) % 360;
+  const floor1 = K.floor1 || 'wood_floor_1x1', beam1 = K.beam1 || 'wood_beam_1', pole1 = K.pole1 || 'wood_pole';
+  const n0 = b.pieces.length;
+  // the box's floor: its top 0.35 m under the light, a metre out from the face
+  const yFloor = y0 + 1 - 0.45;
+  for (let k = 0; k < lw; k++) { const [x, z] = at(lu - lw / 2 + 0.5 + k, face + 0.5); b.put(floor1, x, yFloor, z, yawAlong, { ...T, soil: true }); }
+  // the box's front and sides at its top edge, a 1 m beam each metre
+  const yEdge = yFloor + 0.25;
+  for (let k = 0; k < lw; k++) { const [x, z] = at(lu - lw / 2 + 0.5 + k, face + 0.95); b.put(beam1, x, yEdge, z, yawAlong, T); }
+  for (const sg of [-1, 1]) { const [x, z] = at(lu + sg * (lw / 2 + 0.05), face + 0.5); b.put(beam1, x, yEdge, z, yawAcross, T); }
+  // the sill under the light, against the wall
+  for (let k = 0; k < lw; k++) { const [x, z] = at(lu - lw / 2 + 0.5 + k, face + 0.15); b.put(beam1, x, y0 + 1 - 0.15, z, yawAlong, T); }
+  // a post up each side of the light
+  for (const sg of [-1, 1]) { const [x, z] = at(lu + sg * (lw / 2 + 0.1), face + 0.1); for (let y = y0 + 1; y < y0 + 1 + lh - 0.01; y += 1) b.put(pole1, x, y + 0.5, z, 0, T); }
+  return b.pieces.slice(n0);
+}
+
+/** Where plants go on a building's window planters: one entry per planter, its soil top (x, y, z at the middle),
+ * width along the wall, depth out (1 m), the wall's yaw and outward normal, and the window's key. For the furnishing
+ * (track E) to plant in clusters; PLANTS_HOLD lists what the game keeps up there. */
+function planterSurfaces(b) {
+  const by = new Map();
+  for (const p of b.pieces) {
+    if (!p.soil || !p.planter) continue;
+    if (!by.has(p.planter)) by.set(p.planter, []);
+    by.get(p.planter).push(p);
+  }
+  const Ck = checksD();
+  return [...by.entries()].map(([key, list]) => {
+    const tops = list.map(p => Ck.catBox(p).y1), y = Math.max(...tops);
+    const cx = list.reduce((a, p) => a + p.x, 0) / list.length, cz = list.reduce((a, p) => a + p.z, 0) / list.length;
+    const yaw = list[0].yaw || 0, a = yaw * Math.PI / 180;
+    return { window: key, x: +cx.toFixed(3), y: +y.toFixed(3), z: +cz.toFixed(3), w: list.length, d: 1, yaw, along: [+Math.cos(a).toFixed(3), +(-Math.sin(a)).toFixed(3)], pieces: list };
+  });
+}
+
 // ---------------------------------------------------------------- exterior
 
 function exterior(b, ctx) {
@@ -433,23 +503,32 @@ function exterior(b, ctx) {
     }
   }
 
-  // ---- window boxes under the ground-floor front windows: two 1 m boards on the wall under the sill, a lip in front,
-  // flowers in them (a motif of its own so it is tested the same way)
-  if (X.windowBoxes && ctx.door) for (const o of openings) {
-    if (o.kind !== 'window' || o.storey || o.bare) continue;
-    const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
-    if (e.out[0] !== ctx.door.out[0] || e.out[1] !== ctx.door.out[1]) continue;
-    if (b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.hypot(p.x - (e.x + ox), p.z - (e.z + oz)) < 1.1 && Math.abs(p.y - y0) < 0.6)) continue;
-    const quarter = K.wallQuarter && b.pieces.find(p => p.name === K.wallQuarter && Math.abs(p.y - (y0 + 1.5)) < 0.3 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.2 && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 0.8);
-    const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
-    const as = quarter ? [-sd * 0.5] : [-0.5, 0.5], lip = K.beam1 || 'wood_beam_1';
-    const kept = [];
-    // what grows in each box: any flower, herb or vegetable (Tyler, 2026-11-10: no one plant per sill), by the box's
-    // place so it is the same at every decor stage
-    for (const a of as) kept.push(['wood_floor_1x1', a, 0.6, -0.3, 0, 'floor1', 0], [lip, a, 1.05, -0.2, 0, 'beam1', 0], [SILL_PLANTS[(Math.abs(Math.round((e.x + ux * a) * 7 + (e.z + uz * a) * 13 + y0 * 3)) + (makeHash({ ...ctx, decor: '' }) >>> 0)) % SILL_PLANTS.length], a, 0.6, -0.25, 0, 'flower', 0]);
-    const c = { m: { id: 'window-box', kind: 'box', fit: {} }, kept };
-    const placed = MotifsD.place(b, c, { x: e.x, y: y0 + 1, z: e.z, nx: ox, nz: oz }, null, { ground: 0, dry: true, minShare: 1 });
-    if (placed.length) { hold(b, placed); added.boxes = (added.boxes || 0) + 1; }
+  // ---- window planters (D-165, Tyler 2026-11-12: "Families that like plants can have planters. But not, not every
+  // single window should have planters"; at most about 10 % of a village's windows). Which windows get one is the
+  // household's: ctx.planterWindows(openings, ctx) when the furnishing gives it (track E), else the whole front run of
+  // the ground storey of a household fond of plants (lib/persona.js hobby plants 0.5 or more; D-167: one feature on a
+  // whole run of windows). The planter is Tyler's mockup
+  // (frames/shot-c-sill-mockup.jpg): "the sill is under the window. Theres additional 1x1 beams outlining the window,
+  // and outling the other two sides of the planter" (planter()).
+  if (X.windowBoxes && ctx.door) {
+    const fronts = openings.filter(o => o.kind === 'window' && !o.storey && !o.bare && o.e.out[0] === ctx.door.out[0] && o.e.out[1] === ctx.door.out[1]);
+    const P = ctx.persona || {};
+    // (D-167, Tyler: "windows in a row would all have the same feature": the whole front run of the ground storey)
+    const chosen = ctx.planterWindows ? ctx.planterWindows(fronts, ctx) : ((P.hobby || {}).plants || 0) >= 0.5 ? fronts : [];
+    for (const o of chosen) {
+      const got = planter(b, ctx, o);
+      if (!got) continue;
+      added.boxes = (added.boxes || 0) + 1;
+      // what grows in it: the furnishing's (ctx.plantPlanter, track E); until then one plant the game holds up per
+      // metre, by the box's place so it is the same at every decor stage
+      const surf = planterSurfaces({ pieces: got })[0];
+      if (ctx.plantPlanter) ctx.plantPlanter(b, surf, ctx);
+      else for (let k = 0; k < surf.w; k++) {
+        const t = k - (surf.w - 1) / 2, x = surf.x + surf.along[0] * t, z = surf.z + surf.along[1] * t;
+        const name = PLANTS_HOLD[(Math.abs(Math.round(x * 7 + z * 13 + surf.y * 3)) + (makeHash({ ...ctx, decor: '' }) >>> 0)) % 3];
+        b.put(name, x, surf.y, z, Math.round((x * 31 + z * 17) % 4) * 90, { trim: true, decor: true, planter: surf.window });
+      }
+    }
   }
 
   // ---- bands: a beam at the foot of the walls and along the floor line of each upper storey; a rail at 1 m on
@@ -960,7 +1039,7 @@ function gablePorch(b, ctx) {
     b.put(slopeBeam(K, 45), x + s, yR - 1, zf - 2.08, s > 0 ? 180 : 0, T); // bargeboard on the open front
   }
   b.put(K.roofTop45, x, yR, zf - 1, 90, T);
-  if (ctx.profile.crossed) b.put('wood_wall_roof_top_45', x, yR - 1, zf - 2, 0, T); // crossed boards over the porch gable, crossing on its apex
+  if (ctx.profile.crossed) b.put('wood_wall_roof_top_45', x, yR - 1, zf - 2, 0, T); // crossed boards over the porch gable, crossing where the bargeboards' lines meet (this roof's rows sit a metre closer to the ridge than a house's)
   if (!b.pieces.some(p => p.name === K.floor && Math.abs(p.x - x) < 0.1 && Math.abs(p.z - (zf - 1)) < 0.1)) b.put(K.floor, x, F, zf - 1, 0, T);
   b.notes.push('A gabled porch over the front door.');
   return true;
@@ -1100,10 +1179,12 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
       else add(name, u, pivot(rows) - r / 2, sv * (2 + 2 * rows + 1), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
     }
     // crossed boards over the apex: the game's Wood Roof Cross (the piece is the pair of crossed boards that Norwegian
-    // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it
-    // the piece's boards cross 1 m (26 degrees: 0.5 m) over its pivot, so the crossing sits on the apex (it stood a
-    // metre too high, its arms 2 m over the ridge)
-    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * (w.W + rk), capY - (r === 2 ? 1 : 0.5), 0, 90, 'trim', capY + 1);
+    // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it. Corpus
+    // builds set its pivot at the ridge cap's height (958 of the crosses beside a 45 degree cap, the next most common
+    // 142 at 2 m) and its boards run on in line with the 45 degree bargeboards (1,881 of 5,042 in-plane beams on a
+    // board's line, the rest 2 m or more off it: lab/shell_mine.js), so the boards carry the bargeboards on past the
+    // apex and cross over the ridge (showcase 13: set a metre lower, they ran a metre under the bargeboards' line)
+    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * (w.W + rk), capY, 0, 90, 'trim', capY + (r === 2 ? 2 : 1));
   });
 }
 
@@ -1129,7 +1210,9 @@ function partition(b, ctx, wallSegment) {
     const blocked = (ladders || []).some(L => [L.stand, L.hole, L.land, ...(L.run || [])].some(c => Math.abs(c[0] - xp) < 1.01));
     if (blocked) continue;
     const mid = zs.slice().sort((a, c) => Math.abs(a - w0.cz) - Math.abs(c - w0.cz))[0];
-    for (const z of zs) wallSegment(b, K, C, xp, F, z, 90, SH, z === mid ? 'door' : 'wall');
+    // (an inside wall is timber: masonry on a timber floor takes no support from it and falls, an Ashlands stone-base
+    // tavern's grausten partition on its ash floor)
+    for (const z of zs) wallSegment(b, K, C, xp, F, z, 90, SH, z === mid ? 'door' : 'wall', F > 0.01 || !/stone|marble|grausten/.test(C.wallStyle || '') || C.wallStyle === 'stone-base' ? 'plank' : null);
     b.pieces.push(...[]);
     b.notes.push('A back room behind a wall with a door.');
     b.partitionX = xp;
@@ -1278,5 +1361,5 @@ function interior(b, ctx) {
   }
 }
 
-const apiD = { profile, exterior, bargeboards, partition, interior, slopeBeam, commitMotifs, roundTrim };
+const apiD = { profile, exterior, bargeboards, partition, interior, slopeBeam, commitMotifs, roundTrim, planter, planterSurfaces, PLANTS_HOLD, PLANTS_FALL };
 if (NODE_D) module.exports = apiD; else window.VHDetails = apiD;

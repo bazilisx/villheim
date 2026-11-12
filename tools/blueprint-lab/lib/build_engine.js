@@ -16,7 +16,9 @@ const intent = fs.readFileSync(path.join(dir, '../data/intent.json'), 'utf8').tr
 // track H's building program rules (lib/program.js)
 const arch = fs.readFileSync(path.join(dir, '../data/architecture/rules.json'), 'utf8').trim();
 // track G's furniture recipes (lib/assemblies.js): authored and corpus recipes
-const assemblies = JSON.stringify(['authored.json', 'corpus.json'].flatMap(f => JSON.parse(fs.readFileSync(path.join(dir, '../data/assemblies', f), 'utf8')).recipes));
+// (vanilla pieces only: recipes with a piece outside the catalog are left out, as lib/assemblies.js find leaves them out)
+const CAT_B = require('./catalog.js');
+const assemblies = JSON.stringify(['authored.json', 'corpus.json'].flatMap(f => JSON.parse(fs.readFileSync(path.join(dir, '../data/assemblies', f), 'utf8')).recipes).filter(r => (r.pieces || []).every(p => !!CAT_B.get(p.n))));
 // track G's stand items (lib/standitems.js): items, rules and the corpus place weights
 const standItems = JSON.stringify({ items: JSON.parse(fs.readFileSync(path.join(dir, '../data/stand-items/items.json'), 'utf8')).items,
   rules: JSON.parse(fs.readFileSync(path.join(dir, '../data/stand-items/rules.json'), 'utf8')), corpus: JSON.parse(fs.readFileSync(path.join(dir, '../data/stand-items/corpus.json'), 'utf8')) });

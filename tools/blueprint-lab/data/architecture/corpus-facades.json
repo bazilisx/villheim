@@ -1,0 +1,941 @@
+{
+ "meta": {
+  "made": "2026-11-12",
+  "source": "lab/arch_facades.js",
+  "set": "corpus",
+  "builds": 1288,
+  "buildsWithRuns": 656,
+  "windows": 22755
+ },
+ "fields": {
+  "runs": "runs of 2 or more windows on one wall line and level: count, share whose windows all carry the same treatment (feature classes and light fill), by run length; shuffle: the same with each build's windows dealt to its runs at random",
+  "feat": "per feature: windows with it, builds, runs holding it, of those the share where every window of the run has it (fullRun), exactly one (loneInRun), some (partial), fullRun after the shuffle, and the share of builds whose windows with the feature all use one piece for it",
+  "sides": "levels with windows on 2 or more sides: share where every side's lead treatment is the same; on the lowest level, the front (side with the most outer doors) against the other sides",
+  "stacks": "sides with windows on 2 or more levels: upper windows over a lower run (a window of the level below on a wall line within 1 m), with a window right under them (middles within 0.35 m) or within 1 m, and of the aligned pairs the share with the same architectural treatment",
+  "archUniform": "runs whose windows all carry the same architectural treatment (shutter, sill, head, posts, arch, brace, planter, vine, hood, fill; lights and hung decor left out)",
+  "odd": "runs of 3 or more where one treatment holds most windows: the windows that differ, what room is behind them and where they sit, against all windows of those runs (base)",
+  "lone": "runs of 3 or more where one window alone has a feature: the feature, the room behind, where it sits",
+  "bands": "outer faces 3 m or longer, by side and level: beams at the foot proud of the face along half the side or more; builds (3 or more sides read) with all, none or some sides banded, and the share of sides banded",
+  "corners": "outside corners of the lowest level: a post within 0.55 m; builds with all, none or some corners posted, and the share of posted builds with one post piece at every corner"
+ },
+ "runs": {
+  "n": 4199,
+  "uniform": 0.648,
+  "archUniform": 0.668,
+  "archUniformIfShuffled": 0.285,
+  "onePieceInFullRun": {
+   "posts": {
+    "runs": 1174,
+    "onePiece": 0.954
+   },
+   "hood": {
+    "runs": 277,
+    "onePiece": 0.989
+   },
+   "shutter": {
+    "runs": 18,
+    "onePiece": 1
+   },
+   "vine": {
+    "runs": 39,
+    "onePiece": 1
+   },
+   "brace": {
+    "runs": 476,
+    "onePiece": 0.987
+   },
+   "arch": {
+    "runs": 168,
+    "onePiece": 0.976
+   },
+   "sill": {
+    "runs": 491,
+    "onePiece": 0.951
+   },
+   "head": {
+    "runs": 252,
+    "onePiece": 0.956
+   },
+   "planter": {
+    "runs": 3,
+    "onePiece": 0.667
+   }
+  },
+  "byLen": {
+   "2": {
+    "n": 3238,
+    "uniform": 0.698
+   },
+   "3": {
+    "n": 510,
+    "uniform": 0.455
+   },
+   "4": {
+    "n": 235,
+    "uniform": 0.506
+   },
+   "5+": {
+    "n": 216,
+    "uniform": 0.519
+   }
+  },
+  "shuffleUniform": 0.268
+ },
+ "feat": {
+  "shutter": {
+   "windows": 151,
+   "windowShare": 0.007,
+   "builds": 49,
+   "runsWith": 36,
+   "fullRun": 0.5,
+   "loneInRun": 0.361,
+   "partial": 0.139,
+   "fullRunIfShuffled": 0.121,
+   "onePieceInBuild": 0.592
+  },
+  "sill": {
+   "windows": 3652,
+   "windowShare": 0.16,
+   "builds": 491,
+   "runsWith": 799,
+   "fullRun": 0.615,
+   "loneInRun": 0.29,
+   "partial": 0.095,
+   "fullRunIfShuffled": 0.165,
+   "onePieceInBuild": 0.36
+  },
+  "head": {
+   "windows": 1926,
+   "windowShare": 0.085,
+   "builds": 398,
+   "runsWith": 582,
+   "fullRun": 0.433,
+   "loneInRun": 0.464,
+   "partial": 0.103,
+   "fullRunIfShuffled": 0.1,
+   "onePieceInBuild": 0.405
+  },
+  "posts": {
+   "windows": 7509,
+   "windowShare": 0.33,
+   "builds": 688,
+   "runsWith": 1723,
+   "fullRun": 0.681,
+   "loneInRun": 0.246,
+   "partial": 0.073,
+   "fullRunIfShuffled": 0.294,
+   "onePieceInBuild": 0.411
+  },
+  "arch": {
+   "windows": 1373,
+   "windowShare": 0.06,
+   "builds": 214,
+   "runsWith": 368,
+   "fullRun": 0.457,
+   "loneInRun": 0.405,
+   "partial": 0.139,
+   "fullRunIfShuffled": 0.102,
+   "onePieceInBuild": 0.486
+  },
+  "brace": {
+   "windows": 2901,
+   "windowShare": 0.127,
+   "builds": 437,
+   "runsWith": 760,
+   "fullRun": 0.626,
+   "loneInRun": 0.309,
+   "partial": 0.064,
+   "fullRunIfShuffled": 0.191,
+   "onePieceInBuild": 0.435
+  },
+  "planter": {
+   "windows": 31,
+   "windowShare": 0.001,
+   "builds": 15,
+   "runsWith": 11,
+   "fullRun": 0.273,
+   "loneInRun": 0.636,
+   "partial": 0.091,
+   "fullRunIfShuffled": 0,
+   "onePieceInBuild": 0.2
+  },
+  "vine": {
+   "windows": 380,
+   "windowShare": 0.017,
+   "builds": 65,
+   "runsWith": 96,
+   "fullRun": 0.406,
+   "loneInRun": 0.521,
+   "partial": 0.073,
+   "fullRunIfShuffled": 0.106,
+   "onePieceInBuild": 0.692
+  },
+  "hood": {
+   "windows": 1959,
+   "windowShare": 0.086,
+   "builds": 409,
+   "runsWith": 491,
+   "fullRun": 0.564,
+   "loneInRun": 0.385,
+   "partial": 0.051,
+   "fullRunIfShuffled": 0.108,
+   "onePieceInBuild": 0.457
+  },
+  "light": {
+   "windows": 1106,
+   "windowShare": 0.049,
+   "builds": 267,
+   "runsWith": 259,
+   "fullRun": 0.456,
+   "loneInRun": 0.417,
+   "partial": 0.127,
+   "fullRunIfShuffled": 0.066,
+   "onePieceInBuild": 0.412
+  },
+  "hung": {
+   "windows": 1030,
+   "windowShare": 0.045,
+   "builds": 229,
+   "runsWith": 199,
+   "fullRun": 0.442,
+   "loneInRun": 0.472,
+   "partial": 0.085,
+   "fullRunIfShuffled": 0.089,
+   "onePieceInBuild": 0.358
+  },
+  "fill:open": {
+   "windows": 19319,
+   "windowShare": 0.849,
+   "builds": 867,
+   "runsWith": 3592,
+   "fullRun": 0.928,
+   "loneInRun": 0.045,
+   "partial": 0.027,
+   "fullRunIfShuffled": 0.774,
+   "onePieceInBuild": null
+  },
+  "fill:glass": {
+   "windows": 1025,
+   "windowShare": 0.045,
+   "builds": 132,
+   "runsWith": 272,
+   "fullRun": 0.702,
+   "loneInRun": 0.213,
+   "partial": 0.085,
+   "fullRunIfShuffled": 0.153,
+   "onePieceInBuild": null
+  },
+  "fill:bars": {
+   "windows": 2159,
+   "windowShare": 0.095,
+   "builds": 208,
+   "runsWith": 545,
+   "fullRun": 0.688,
+   "loneInRun": 0.189,
+   "partial": 0.123,
+   "fullRunIfShuffled": 0.193,
+   "onePieceInBuild": null
+  },
+  "fill:mesh": {
+   "windows": 192,
+   "windowShare": 0.008,
+   "builds": 54,
+   "runsWith": 42,
+   "fullRun": 0.476,
+   "loneInRun": 0.429,
+   "partial": 0.095,
+   "fullRunIfShuffled": 0.06,
+   "onePieceInBuild": null
+  },
+  "fill:closed": {
+   "windows": 60,
+   "windowShare": 0.003,
+   "builds": 24,
+   "runsWith": 18,
+   "fullRun": 0.833,
+   "loneInRun": 0.111,
+   "partial": 0.056,
+   "fullRunIfShuffled": 0.391,
+   "onePieceInBuild": null
+  }
+ },
+ "sides": {
+  "levels": 2356,
+  "allSidesSame": 0.325,
+  "frontLevels": 149,
+  "frontDiffers": 0.53,
+  "frontRicher": 0.369,
+  "frontPoorer": 0.275,
+  "featureShareFront": {
+   "shutter": 0.017,
+   "sill": 0.162,
+   "head": 0.102,
+   "posts": 0.51,
+   "arch": 0.032,
+   "brace": 0.117,
+   "planter": 0,
+   "vine": 0.023,
+   "hood": 0.128,
+   "light": 0.062,
+   "hung": 0.05
+  },
+  "featureShareOther": {
+   "shutter": 0.023,
+   "sill": 0.138,
+   "head": 0.065,
+   "posts": 0.422,
+   "arch": 0.027,
+   "brace": 0.171,
+   "planter": 0.001,
+   "vine": 0.009,
+   "hood": 0.124,
+   "light": 0.032,
+   "hung": 0.039
+  }
+ },
+ "stacks": {
+  "sides": 2165,
+  "upperWindows": 13066,
+  "overLowerRun": 0.316,
+  "aligned": 0.094,
+  "alignedOfOverRun": 0.298,
+  "within1mOfOverRun": 0.43,
+  "sameTreatmentWhenAligned": 0.524
+ },
+ "odd": {
+  "runs": 763,
+  "windows": 3258,
+  "oddShare": 0.109,
+  "behind": {
+   "plain": {
+    "n": 104,
+    "share": 0.294,
+    "base": 0.355
+   },
+   "kitchen": {
+    "n": 82,
+    "share": 0.232,
+    "base": 0.16
+   },
+   "workshop": {
+    "n": 43,
+    "share": 0.121,
+    "base": 0.165
+   },
+   "storage": {
+    "n": 39,
+    "share": 0.11,
+    "base": 0.08
+   },
+   "bedroom": {
+    "n": 33,
+    "share": 0.093,
+    "base": 0.093
+   },
+   "small": {
+    "n": 23,
+    "share": 0.065,
+    "base": 0.072
+   },
+   "living": {
+    "n": 15,
+    "share": 0.042,
+    "base": 0.042
+   },
+   "hall": {
+    "n": 15,
+    "share": 0.042,
+    "base": 0.034
+   }
+  },
+  "where": {
+   "run end": {
+    "n": 178,
+    "share": 0.503,
+    "base": 0.458
+   },
+   "middle": {
+    "n": 165,
+    "share": 0.466,
+    "base": 0.523
+   },
+   "by a door": {
+    "n": 11,
+    "share": 0.031,
+    "base": 0.019
+   }
+  },
+  "how": {
+   "adds posts": {
+    "n": 44,
+    "share": 0.124,
+    "base": null
+   },
+   "swaps": {
+    "n": 42,
+    "share": 0.119,
+    "base": null
+   },
+   "lacks posts": {
+    "n": 41,
+    "share": 0.116,
+    "base": null
+   },
+   "other fill": {
+    "n": 39,
+    "share": 0.11,
+    "base": null
+   },
+   "lacks sill": {
+    "n": 19,
+    "share": 0.054,
+    "base": null
+   },
+   "adds sill": {
+    "n": 17,
+    "share": 0.048,
+    "base": null
+   },
+   "adds brace": {
+    "n": 14,
+    "share": 0.04,
+    "base": null
+   },
+   "adds light": {
+    "n": 10,
+    "share": 0.028,
+    "base": null
+   },
+   "lacks arch": {
+    "n": 10,
+    "share": 0.028,
+    "base": null
+   },
+   "adds head": {
+    "n": 9,
+    "share": 0.025,
+    "base": null
+   },
+   "adds hood": {
+    "n": 9,
+    "share": 0.025,
+    "base": null
+   },
+   "lacks brace": {
+    "n": 9,
+    "share": 0.025,
+    "base": null
+   },
+   "lacks head": {
+    "n": 8,
+    "share": 0.023,
+    "base": null
+   },
+   "adds arch": {
+    "n": 8,
+    "share": 0.023,
+    "base": null
+   },
+   "lacks light": {
+    "n": 6,
+    "share": 0.017,
+    "base": null
+   },
+   "adds hung": {
+    "n": 5,
+    "share": 0.014,
+    "base": null
+   },
+   "adds sill+hung": {
+    "n": 5,
+    "share": 0.014,
+    "base": null
+   },
+   "lacks hood": {
+    "n": 4,
+    "share": 0.011,
+    "base": null
+   },
+   "adds posts+brace": {
+    "n": 4,
+    "share": 0.011,
+    "base": null
+   },
+   "adds vine": {
+    "n": 4,
+    "share": 0.011,
+    "base": null
+   },
+   "adds posts+arch": {
+    "n": 3,
+    "share": 0.008,
+    "base": null
+   },
+   "adds head+brace": {
+    "n": 2,
+    "share": 0.006,
+    "base": null
+   },
+   "lacks hung": {
+    "n": 2,
+    "share": 0.006,
+    "base": null
+   },
+   "adds sill+head": {
+    "n": 2,
+    "share": 0.006,
+    "base": null
+   },
+   "adds sill+posts": {
+    "n": 2,
+    "share": 0.006,
+    "base": null
+   },
+   "adds head+posts+arch+light": {
+    "n": 2,
+    "share": 0.006,
+    "base": null
+   },
+   "adds brace+hood": {
+    "n": 2,
+    "share": 0.006,
+    "base": null
+   },
+   "adds head+arch": {
+    "n": 2,
+    "share": 0.006,
+    "base": null
+   },
+   "lacks arch+light": {
+    "n": 2,
+    "share": 0.006,
+    "base": null
+   },
+   "lacks posts+arch": {
+    "n": 2,
+    "share": 0.006,
+    "base": null
+   },
+   "lacks posts+light": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds sill+posts+arch": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds sill+head+posts": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds sill+head+hood": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks head+posts": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds brace+hung": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks vine": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks head+arch": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds arch+hood": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks sill+head": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks head+brace": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds head+arch+brace": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds head+hood": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks sill+posts+brace": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks sill+posts": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds vine+light": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks sill+hood+hung": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds sill+posts+hood": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds brace+light": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds head+posts": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks head+arch+light": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks posts+brace": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "lacks sill+head+posts": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds sill+head+brace+hood": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds sill+hood": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   },
+   "adds posts+hood": {
+    "n": 1,
+    "share": 0.003,
+    "base": null
+   }
+  }
+ },
+ "lone": {
+  "n": 366,
+  "feat": {
+   "posts": {
+    "n": 80,
+    "share": 0.219,
+    "base": null
+   },
+   "head": {
+    "n": 55,
+    "share": 0.15,
+    "base": null
+   },
+   "sill": {
+    "n": 46,
+    "share": 0.126,
+    "base": null
+   },
+   "brace": {
+    "n": 43,
+    "share": 0.117,
+    "base": null
+   },
+   "arch": {
+    "n": 40,
+    "share": 0.109,
+    "base": null
+   },
+   "hood": {
+    "n": 35,
+    "share": 0.096,
+    "base": null
+   },
+   "light": {
+    "n": 32,
+    "share": 0.087,
+    "base": null
+   },
+   "hung": {
+    "n": 13,
+    "share": 0.036,
+    "base": null
+   },
+   "vine": {
+    "n": 13,
+    "share": 0.036,
+    "base": null
+   },
+   "shutter": {
+    "n": 6,
+    "share": 0.016,
+    "base": null
+   },
+   "planter": {
+    "n": 3,
+    "share": 0.008,
+    "base": null
+   }
+  },
+  "behind": {
+   "plain": {
+    "n": 98,
+    "share": 0.268,
+    "base": 0.355
+   },
+   "kitchen": {
+    "n": 96,
+    "share": 0.262,
+    "base": 0.16
+   },
+   "workshop": {
+    "n": 50,
+    "share": 0.137,
+    "base": 0.165
+   },
+   "bedroom": {
+    "n": 42,
+    "share": 0.115,
+    "base": 0.093
+   },
+   "hall": {
+    "n": 27,
+    "share": 0.074,
+    "base": 0.034
+   },
+   "small": {
+    "n": 26,
+    "share": 0.071,
+    "base": 0.072
+   },
+   "storage": {
+    "n": 19,
+    "share": 0.052,
+    "base": 0.08
+   },
+   "living": {
+    "n": 8,
+    "share": 0.022,
+    "base": 0.042
+   }
+  },
+  "where": {
+   "other": {
+    "n": 325,
+    "share": 0.888,
+    "base": null
+   },
+   "top level": {
+    "n": 26,
+    "share": 0.071,
+    "base": null
+   },
+   "by a door": {
+    "n": 15,
+    "share": 0.041,
+    "base": null
+   }
+  }
+ },
+ "bands": {
+  "builds": 785,
+  "all": 0.004,
+  "none": 0.707,
+  "mixed": 0.289,
+  "faceShare": 0.051
+ },
+ "corners": {
+  "builds": 461,
+  "all": 0.284,
+  "none": 0.232,
+  "mixed": 0.484,
+  "cornerShare": 0.526,
+  "onePieceWhenPosted": 0.563
+ },
+ "byCulture": {
+  "unsorted": {
+   "builds": 338,
+   "runs": 2536,
+   "uniform": 1701,
+   "uniformShare": 0.671
+  },
+  "norse": {
+   "builds": 52,
+   "runs": 433,
+   "uniform": 248,
+   "uniformShare": 0.573
+  },
+  "castle": {
+   "builds": 34,
+   "runs": 428,
+   "uniform": 289,
+   "uniformShare": 0.675
+  },
+  "mistlands": {
+   "builds": 2,
+   "runs": 10,
+   "uniform": 2,
+   "uniformShare": 0.2
+  },
+  "fantasy": {
+   "builds": 11,
+   "runs": 86,
+   "uniform": 36,
+   "uniformShare": 0.419
+  },
+  "east-asian": {
+   "builds": 8,
+   "runs": 83,
+   "uniform": 50,
+   "uniformShare": 0.602
+  },
+  "medieval-timber": {
+   "builds": 16,
+   "runs": 104,
+   "uniform": 57,
+   "uniformShare": 0.548
+  },
+  "modern": {
+   "builds": 4,
+   "runs": 34,
+   "uniform": 19,
+   "uniformShare": 0.559
+  },
+  "ashlands": {
+   "builds": 31,
+   "runs": 199,
+   "uniform": 136,
+   "uniformShare": 0.683
+  },
+  "greco-roman": {
+   "builds": 4,
+   "runs": 31,
+   "uniform": 18,
+   "uniformShare": 0.581
+  },
+  "fen-folk": {
+   "builds": 4,
+   "runs": 16,
+   "uniform": 10,
+   "uniformShare": 0.625
+  },
+  "norse-forest": {
+   "builds": 12,
+   "runs": 60,
+   "uniform": 32,
+   "uniformShare": 0.533
+  },
+  "celtic": {
+   "builds": 1,
+   "runs": 2,
+   "uniform": 2,
+   "uniformShare": 1
+  },
+  "norse-highland": {
+   "builds": 4,
+   "runs": 22,
+   "uniform": 15,
+   "uniformShare": 0.682
+  },
+  "celtic-crannog": {
+   "builds": 2,
+   "runs": 11,
+   "uniform": 8,
+   "uniformShare": 0.727
+  },
+  "tree-house": {
+   "builds": 2,
+   "runs": 13,
+   "uniform": 6,
+   "uniformShare": 0.462
+  }
+ },
+ "byKind": {
+  "other": {
+   "builds": 180,
+   "runs": 1272,
+   "uniform": 836,
+   "uniformShare": 0.657
+  },
+  "home": {
+   "builds": 156,
+   "runs": 890,
+   "uniform": 532,
+   "uniformShare": 0.598
+  },
+  "castle": {
+   "builds": 61,
+   "runs": 893,
+   "uniform": 643,
+   "uniformShare": 0.72
+  },
+  "longhouse": {
+   "builds": 44,
+   "runs": 339,
+   "uniform": 198,
+   "uniformShare": 0.584
+  },
+  "temple": {
+   "builds": 17,
+   "runs": 150,
+   "uniform": 99,
+   "uniformShare": 0.66
+  },
+  "tavern": {
+   "builds": 30,
+   "runs": 245,
+   "uniform": 128,
+   "uniformShare": 0.522
+  },
+  "farm": {
+   "builds": 6,
+   "runs": 30,
+   "uniform": 19,
+   "uniformShare": 0.633
+  },
+  "tower": {
+   "builds": 31,
+   "runs": 249,
+   "uniform": 174,
+   "uniformShare": 0.699
+  }
+ },
+ "perBuildUniform": {
+  "n": 525,
+  "p10": 0.25,
+  "p25": 0.44,
+  "p50": 0.67,
+  "p75": 1,
+  "p90": 1
+ }
+}

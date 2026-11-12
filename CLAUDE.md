@@ -17,6 +17,13 @@ This is non-negotiable and has no exceptions.
 - Commit messages, README, docs, in-game text and comments are written in Tyler's own plain voice. They never read
   as notes written by an AI ("I've implemented", "This commit introduces", "Let me know").
 - Push straight to `main` for normal work. A force-push needs Tyler's explicit yes in that session.
+- **Branches.** Merge finished branches into main and keep only branches with unfinished work. Cloud sessions cannot
+  delete branches (their git connection answers HTTP 403), so deletion runs on Tyler's PC with
+  `scripts/Villheim-DeleteBranches.ps1`: it deletes branches main already holds, plus any named with `-Extra`, and never
+  `main` or a `-Keep` branch. Steps: list the branches and why each can go, get Tyler's yes in that session, copy the
+  script to his Downloads folder (create it there from the repo copy if it is missing), then run it: with
+  `-Yes` through computer use on his PC when he asks for that, otherwise give him the two PowerShell lines to run
+  (`cd "$env:USERPROFILE\Downloads"` and `powershell -ExecutionPolicy Bypass -File .\Villheim-DeleteBranches.ps1`).
 
 ## Writing rules for everything written on Tyler's behalf
 

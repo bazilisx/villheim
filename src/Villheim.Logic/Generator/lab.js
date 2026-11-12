@@ -2622,7 +2622,10 @@ function standText(p) {
 function write(bp) {
   const m = bp.meta || {};
   const out = [`#Name:${m.Name || 'Villheim design'}`, `#Creator:${m.Creator || 'Villheim generator'}`,
-    `#Description:"${(m.Description || '').replace(/"/g, "'")}"`, `#Category:${m.Category || 'Villheim'}`];
+    `#Description:"${(m.Description || '').replace(/"/g, "'")}"`, `#Category:${m.Category || 'Villheim'}`,
+    // y = 0 is the ground in the lab's frame; the mod sets this height on the terrain in place of the lowest piece
+    // (src/Villheim.Logic/Designs/Blueprints.cs GroundY), so pieces sunk under the floor stay under it
+    '#VillheimGround:0'];
   if (bp.snaps && bp.snaps.length) { out.push('#SnapPoints'); for (const s of bp.snaps) out.push(s.map(f).join(';')); }
   // Clips made on purpose (D-098): a kit set's piece that goes into what shows of a wall as deep as its source builds
   // put it carries the depth, so lib/audit.js lets it pass up to that mark. A section of its own, before the pieces:

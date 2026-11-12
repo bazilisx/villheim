@@ -543,16 +543,18 @@ function doorways(pieces, opts = {}) {
 // maybe village perimeter fencing. Never for building fences atop towers, etc. and certainly never indoors." A
 // wood_fence whose foot is 0.6 m or more over the ground, or that stands under a roof or floor, fails.
 function pastureFences(pieces, opts = {}) {
-  const boxes = pieces.map(catBox), near = index(boxes), out = [];
+  const boxes = pieces.map(catBox), near = index(boxes), out = [], walls = wallGrid(pieces, boxes);
   // (the lab's ground: a design lifted by a piece sunk under it is the ground check's matter, lab/shell_ground.js)
   const ground = opts.ground != null ? opts.ground : 0;
   pieces.forEach((p, i) => {
     if (p.name !== 'wood_fence') return;
     if (boxes[i].y0 > ground + 0.6) { out.push(`${p.name} ${(boxes[i].y0 - ground).toFixed(1)} m up`); return; }
+    // indoors: under a roof or floor and between walls (an eave over a yard fence is outdoors)
+    if (!walls.inside(p.x, boxes[i].y0 + 0.1, p.z)) return;
     const col = ptBox(p.x, boxes[i].y1 + 0.3, boxes[i].y1 + 12, p.z, 0.05);
     for (const j of near(col, 0)) {
       const r = boxes[j].info.role;
-      if (['roof', 'roofTop', 'roofCorner', 'floor'].includes(r) && !pieces[j].decor && touch(col, boxes[j], 0)) { out.push(`${p.name} under a ${r}`); break; }
+      if (['roof', 'roofTop', 'roofCorner', 'floor'].includes(r) && !pieces[j].decor && touch(col, boxes[j], 0)) { out.push(`${p.name} indoors`); break; }
     }
   });
   return out;

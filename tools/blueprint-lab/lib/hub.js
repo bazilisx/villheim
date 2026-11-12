@@ -1085,84 +1085,6 @@ function crossHall(b, K, C, T, o) {
   return { inSide, Wz, Wx, D, top, SHt, capY, peak, doors, door: { x: 0, z: -Wz }, edges, stairs, G, rooms, porch, hangs, sideX: k >= 4 ? p : null, isRun };
 }
 
-// Posts where the game's support rule (checks.js gameSupport, WearNTear) would let the hall's roof, ridge or tie
-// beams fall. The hubs are the widest roofs the generator makes: on the Meadows s5 cross hall (14 m arms, 6 m walls)
-// the ridge caps and valley pieces over the crossing and along the arms held 7 to 9 support where wood needs 10, and the
-// game took them down when the hall was put up in one go (2026-11-11). A wood piece loses its material's share of
-// support times the distance between pivots at every step, so a 45 degree roof loses about 40 % a row up from the wall
-// top; corpus halls carry their ridges on posts. Each round puts a post column under the weakest falling piece of
-// each 4 m stretch, from the floor under it up into its underside, in core wood where the biome builds it (hard wood
-// loses less per metre), and checks again. A spot on the fire, a stair, a doorway or the opening over the fire is
-// skipped. Returns the number of columns.
-function propUp(b, K, biome, o = {}) {
-  const Ck = CkH(), Sx = SHH(), hard = PH.decorOk('wood_pole_log_4', biome);
-  const p4 = hard ? 'wood_pole_log_4' : (K.poleLong && /4/.test(K.poleLong) ? K.poleLong : null), p2 = hard ? 'wood_pole_log' : (K.pole || 'wood_pole2'), p1 = K.pole1 || 'wood_pole';
-  const ROLES = ['roof', 'roofTop', 'roofCorner', 'beam', 'floor', 'wall', 'gable', 'window'];
-  let n = 0;
-  for (let round = 0; round < 12; round++) {
-    const shell = b.pieces.filter(p => !p.decor);
-    const r = Ck.gameSupport(shell);
-    const fall = r.fall.map(i => shell[i]).filter(p => ROLES.includes(PH.piece(p.name).role));
-    if (!fall.length) break;
-    fall.sort((a, c) => r.support[shell.indexOf(a)] - r.support[shell.indexOf(c)]);
-    const chosen = [];
-    for (const p of fall) if (!chosen.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 4)) chosen.push(p);
-    let added = 0;
-    for (const p of chosen) {
-      const W = Sx.world(p);
-      // the spot: under the piece, or along its length (a ridge cap's ridge) up to 4 m on, where the post stands on the
-      // ground floor clear of galleries and walkways over it
-      const a = (p.yaw || 0) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a);
-      let spot = null;
-      for (const [k, m] of [[0, 0], [2, 0], [-2, 0], [4, 0], [-4, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
-        const x = p.x + ux * k + uz * m, z = p.z + uz * k - ux * m;
-        // posts stand in rows: none within 1.9 m of another, and on the line of one in the same row when near it
-        if (b.pieces.some(q => q.prop && Math.hypot(q.x - x, q.z - z) < 1.9)) continue;
-        const top = W && W.length ? Sx.undersideAt(W, x, z) : (k === 0 ? p.y : null);
-        let under = top;
-        if (top == null) {
-          // past the piece's own end: the next piece along (a ridge cap's neighbor) if it falls too
-          const q = fall.find(f2 => f2 !== p && Math.hypot(f2.x - x, f2.z - z) < 0.6);
-          const Wq = q && Sx.world(q);
-          under = Wq && Wq.length ? Sx.undersideAt(Wq, x, z) : null;
-        }
-        if (under == null) continue;
-        let base = 0, raisedFloor = false;
-        for (const q of shell) {
-          if (PH.piece(q.name).role !== 'floor' || q === p) continue;
-          const bq = Ck.catBox(q);
-          if (x < bq.x0 || x > bq.x1 || z < bq.z0 || z > bq.z1 || bq.y1 > under - 1) continue;
-          if (bq.y1 > 0.6) raisedFloor = true; else base = Math.max(base, bq.y1);
-        }
-        if (raisedFloor) continue;
-        const blocked = b.pieces.some(q => {
-          const role = PH.piece(q.name).role;
-          if (role === 'fire' || q.hearth) return Math.hypot(q.x - x, q.z - z) < 2.2;
-          if (role === 'stair') { const bq = Ck.catBox(q); return x > bq.x0 - 0.6 && x < bq.x1 + 0.6 && z > bq.z0 - 0.6 && z < bq.z1 + 0.6; }
-          if (role === 'door') { const op = PH.doorOpening(q); return Math.abs((x - op.x) * op.ux + (z - op.z) * op.uz) < op.w / 2 + 0.5 && Math.abs((x - op.x) * op.nx + (z - op.z) * op.nz) < 2.5; }
-          return false;
-        }) || (o.keepOut && o.keepOut(x, z));
-        if (blocked) continue;
-        spot = { x, z, top: under, base };
-        break;
-      }
-      if (!spot) continue;
-      const { x, z, top, base } = spot;
-      let y = base;
-      while (top - y > 0.15) {
-        const left = top - y, name = left >= 3.5 && p4 ? p4 : left >= 1.5 ? p2 : p1, h = PH.piece(name).size[1];
-        b.put(name, x, y + h / 2, z, 0, { prop: true });
-        y += h;
-      }
-      added++;
-    }
-    n += added;
-    if (!added) break;
-  }
-  if (n) b.notes.push(`${n} post${n > 1 ? 's' : ''} up to the roof where it would not hold by itself.`);
-  return n;
-}
-
 // ---------------------------------------------------------------- the shared furnishing
 
 // How much of rug p would lie on the rugs among pieces, and they on it (8 x 8 points over each rug's area).
@@ -1837,7 +1759,9 @@ function generate(req, T) {
     info.plan = line; info.roof = line === 'cross' ? 'gable' : F.style === 'flat' ? 'flat' : F.drum ? 'drum' : 'conical';
     if (line !== 'cross') b.notes.push(`${line === 'octagon' ? 'Octagonal' : line === 'part' ? 'Part round' : 'Round'} hall of ${F.N} sides, ${(2 * F.ap).toFixed(1)} m across round the fire.`);
     // posts under what the game would let fall (before the furnishing, so it keeps clear of them)
-    propUp(b, Kw, biome, { keepOut: (x, z) => line === 'cross' ? Math.abs(x) < 1.5 && Math.abs(z) < 1.5 : Math.hypot(x, z) < 2 });
+    // (clear of the fire and of the high seat's place: the back arm's end in a cross hall, the axis behind the fire
+    // in a round one)
+    T.propUp(b, Kw, biome, { keepOut: (x, z) => line === 'cross' ? (Math.abs(x) < 1.5 && Math.abs(z) < 1.5) || (z > F.Wz - 3.5 && Math.abs(x) < 2.5) : Math.hypot(x, z) < 2.2 || (z > 0 && z < 6 && Math.abs(x) < 2.2) });
     const place = placer(b, T);
     // the notice board in the hearth area (D-140): freestanding outside the main door, and from s4 signs on a wall by
     // the door inside as well

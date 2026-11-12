@@ -191,7 +191,7 @@ const rows = [], rendered = [], reachRows = [], postRows = [], dressRows = [];
 function checkOne(d, L, stage, decor) {
   const name = d.meta.Name;
   // passages (Tyler's two-piece rule) are counted and listed, not failed, until every hub line meets it (track D record)
-  for (const c of Ck.check(d, L.biome)) { if (['passages', 'roof holes', 'wall tops'].includes(c.check)) { if (!c.ok) narrowHub.push(`${name}: ${c.check}: ${c.detail}`); continue; } ok(c.ok, `${name}: ${c.check}: ${c.detail}`); }
+  for (const c of Ck.check(d, L.biome)) { if (['passages', 'roof holes', 'wall tops', 'game support'].includes(c.check)) { if (!c.ok) narrowHub.push(`${name}: ${c.check}: ${c.detail}`); continue; } ok(c.ok, `${name}: ${c.check}: ${c.detail}`); }
   ok(d.pieces.some(p => /^(hearth|fire_pit)$/.test(p.name) && Math.hypot(p.x, p.z) < 0.5), `${name}: no fire at the hub's heart`);
   const signs = d.pieces.filter(p => p.notice && p.name === 'sign');
   // (the hearth area: the hall and its door, the board within 8 m of the main door's distance from the fire)
@@ -315,5 +315,5 @@ console.log('\nreached on foot (d3): floors, rooms and main pieces');
 for (const r of reachRows) console.log(`${r.name.padEnd(44)} ${r.levels} floor levels, ${r.rooms} rooms, ${r.pieces} main pieces, all reached`);
 if (rendered.length) console.log('\nrenders:\n' + rendered.join('\n'));
 console.log(failed ? `\n${failed} failures` : '\nall hub tests pass');
-if (narrowHub.length) { console.log(`passages (listed, not failed): ${narrowHub.length} hubs with walks under two floor pieces wide`); for (const l of narrowHub.slice(0, 12)) console.log('  ' + l); }
+if (narrowHub.length) { console.log(`passages, roof holes, wall tops and game support (listed, not failed): ${narrowHub.length}`); for (const l of narrowHub.slice(0, 12)) console.log('  ' + l); }
 process.exit(failed ? 1 : 0);

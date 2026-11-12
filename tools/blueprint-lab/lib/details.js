@@ -1194,7 +1194,9 @@ function partition(b, ctx, wallSegment) {
     const blocked = (ladders || []).some(L => [L.stand, L.hole, L.land, ...(L.run || [])].some(c => Math.abs(c[0] - xp) < 1.01));
     if (blocked) continue;
     const mid = zs.slice().sort((a, c) => Math.abs(a - w0.cz) - Math.abs(c - w0.cz))[0];
-    for (const z of zs) wallSegment(b, K, C, xp, F, z, 90, SH, z === mid ? 'door' : 'wall');
+    // (an inside wall is timber: masonry on a timber floor takes no support from it and falls, an Ashlands stone-base
+    // tavern's grausten partition on its ash floor)
+    for (const z of zs) wallSegment(b, K, C, xp, F, z, 90, SH, z === mid ? 'door' : 'wall', F > 0.01 || !/stone|marble|grausten/.test(C.wallStyle || '') || C.wallStyle === 'stone-base' ? 'plank' : null);
     b.pieces.push(...[]);
     b.notes.push('A back room behind a wall with a door.');
     b.partitionX = xp;

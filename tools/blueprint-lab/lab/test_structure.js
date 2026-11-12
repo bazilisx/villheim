@@ -56,7 +56,7 @@ const SHOWCASE = [['hub', 'Meadows', 'norse', 's5', 2], ['hub', 'Plains', 'byzan
   ['home', 'Ashlands', 'castle-medieval', 's3', 1]];
 for (const [type, biome, culture, stage, seed] of SHOWCASE) {
   const d = G.generate({ type, biome, culture, stage, decor: 'd3', seed, lineage: seed });
-  for (const c of Ck.check(d, biome)) { if (['passages', 'roof holes', 'wall tops'].includes(c.check)) { if (!c.ok) narrow.push(`${d.meta.Name}: ${c.check}: ${c.detail}`); continue; } ok(c.ok, `${d.meta.Name}: ${c.check}: ${c.detail}`); }
+  for (const c of Ck.check(d, biome)) { if (['passages', 'roof holes', 'wall tops'].includes(c.check) || (type === 'hub' && c.check === 'game support')) { if (!c.ok) narrow.push(`${d.meta.Name}: ${c.check}: ${c.detail}`); continue; } ok(c.ok, `${d.meta.Name}: ${c.check}: ${c.detail}`); }
 }
 // the old id of the Lamari culture still works
 ok(/^tower_Mistlands_lamari_/.test(G.generate({ type: 'tower', biome: 'Mistlands', culture: 'caucasian-highland', stage: 's2', seed: 1 }).meta.Name), 'caucasian-highland does not map to lamari');

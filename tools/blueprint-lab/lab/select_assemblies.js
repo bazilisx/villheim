@@ -10,6 +10,7 @@ const CAT = require('../lib/catalog.js');
 const src = process.argv[2] || '/tmp/assemblies-work/clusters.json', out = process.argv[3] || path.join(__dirname, '../data/assemblies/corpus.json');
 const { builds, clusters } = JSON.parse(fs.readFileSync(src, 'utf8'));
 const SIK = require('../data/stand-items/items.json').items;
+const SIK2 = require('../lib/standitems.js');
 
 const BUILT = /(_beam|_pole|_wall_half|_wall_quarter|halfwall|quarterwall|_ledge|_floor_1x1|_log|_arch|_wall_1x1|_wall_2x1|2x1x1|blackmarble_1x1|_decowall|wood_window|wood_wall_roof_top|dvergrprops_wood|dvergrprops_shelf|_stair|_fence|roof_top|roof_icorner|Piece_grausten_wall|wood_dragon1)/;
 const isBuilt = n => BUILT.test(n);
@@ -128,6 +129,10 @@ for (const [kind, list] of Object.entries(byKind)) {
     const pieces = r.mem.map(m => {
       const p = { n: m[0], x: m[1], y: m[2], z: m[3], yaw: m[4] };
       for (const v of m.slice(5)) { if (Array.isArray(v)) p.q = v; else if (v && v.info) p.info = v.info; }
+      // the builder's own items are not copied: a stand keeps the kind of thing it held (want) and lib/standitems.js
+      // picks the item for the household; the source item stays as 'was' for reference
+      if (p.info && /^itemstand/.test(p.n)) { const it = p.info.split(':')[0]; p.want = SIK2.kindOf(it); p.was = it; delete p.info; }
+      if (p.info && p.n === 'ArmorStand') { const its = p.info.split(':').filter(x => /^[A-Z]/.test(x)); p.want = its.length >= 3 ? 'full' : 'part'; p.was = its.join(','); delete p.info; }
       if (hidden(m[0])) p.hidden = true;
       return p;
     });

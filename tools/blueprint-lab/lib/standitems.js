@@ -141,6 +141,8 @@ function pick(L, q) {
   // the group this stand joins: stands already placed within 0.9 m and 0.4 m of height
   const mates = L.placed.filter(p => Math.hypot(p.x - (q.x || 0), p.z - (q.z || 0)) < 0.9 && Math.abs(p.y - (q.y || 0)) < 0.4 && p.stand === stand);
   const group = mates.length ? mates[0].group : null;
+  // every neighbour's theme must take the kind (a stand between a drink row and a trophy shelf takes neither)
+  const groupsAll = [...new Set(mates.map(m => m.group).filter(Boolean))];
   let kw = placeWeights(stand, q.place, q.near);
   const room = RU.rooms[q.room] || null;
   const themes = L.themes || {};
@@ -153,8 +155,10 @@ function pick(L, q) {
     let tw = 0.25;
     for (const [t, tv] of Object.entries(themes)) tw += tv * ((RU.themes[t] && RU.themes[t].kinds[k]) || 0);
     x *= tw;
-    if (group && !RU.groups[group].includes(k)) continue;
-    if (q.want) { if (q.want === k) x *= 6; else if (RU.kindGroups[q.want] && RU.kindGroups[q.want].includes(k)) x *= 3; else if (RU.groups[q.want] && RU.groups[q.want].includes && RU.groups[q.want].includes(k)) x *= 3; else if (RU.themes[q.want] && RU.themes[q.want].kinds[k]) x *= 3; else x *= 0.15; }
+    if (groupsAll.some(g => !RU.groups[g].includes(k))) continue;
+    // what the set asked for, or nothing: a stand whose kind the house cannot show (its cap reached, no fitting item)
+    // is left out, never filled with something unrelated
+    if (q.want) { if (q.want === k) x *= 6; else if (RU.kindGroups[q.want] && RU.kindGroups[q.want].includes(k)) x *= 3; else if (RU.groups[q.want] && RU.groups[q.want].includes && RU.groups[q.want].includes(k)) x *= 3; else if (RU.themes[q.want] && RU.themes[q.want].kinds[k]) x *= 3; else if (groupOfKind(q.want) && RU.groups[groupOfKind(q.want)].includes(k)) x *= 0.5; else continue; }
     // a big trophy goes only at the hub's or the hall's central place (D-134 in lib/persona.js)
     if (k === 'boss' && !(L.large && (q.room === 'hall' || q.room === 'hearth' || q.room === 'temple'))) continue;
     if (x > 0) w[k] = x;
@@ -311,7 +315,7 @@ function check(pieces, o) {
     const A = st[i];
     const same = st.filter((B, j) => j !== i && B.n === A.n && Math.hypot(B.p.x - A.p.x, B.p.z - A.p.z) < 0.6 && Math.abs(B.p.y - A.p.y) < 0.6);
     if (same.length && SHOW.has(A.it.kind) && same.some(B => st.indexOf(B) > i)) fails.push({ code: 'run', msg: `${A.n} side by side with the same item`, at: [A.p.x, A.p.y, A.p.z] });
-    const mates = st.filter((B, j) => j > i && B.p.name === A.p.name && Math.hypot(B.p.x - A.p.x, B.p.z - A.p.z) < 0.9 && Math.abs(B.p.y - A.p.y) < 0.4);
+    const mates = st.filter((B, j) => j > i && B.p.name === A.p.name && Math.hypot(B.p.x - A.p.x, B.p.z - A.p.z) < 0.9 && Math.abs(B.p.y - A.p.y) < 0.3);
     for (const B of mates) {
       const ga = Object.keys(RU.groups).filter(g => g[0] !== '_' && RU.groups[g].includes(A.it.kind)), gb = Object.keys(RU.groups).filter(g => g[0] !== '_' && RU.groups[g].includes(B.it.kind));
       if (!ga.some(g => gb.includes(g))) fails.push({ code: 'mixed', msg: `${A.n} (${A.it.kind}) and ${B.n} (${B.it.kind}) on one surface share no theme`, at: [A.p.x, A.p.y, A.p.z] });

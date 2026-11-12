@@ -26,9 +26,9 @@ ok(codes(r).includes('edge'), 'a lox saddle at the end of a table: edge');
 // "there is nothing currently hanging on any of the armorstands"
 r = SI.check([{ name: 'ArmorStand', x: 0, y: 0, z: 0, info: '' }]);
 ok(codes(r).includes('empty-armor'), 'an empty armor stand: empty-armor');
-// the same serpent shield on three walls side by side
-r = SI.check([W(0, 2, 0, 'ShieldSerpentscale'), W(0.5, 2, 0, 'ShieldSerpentscale'), W(1.0, 2, 0, 'ShieldSerpentscale')]);
-ok(codes(r).includes('repeat') && codes(r).includes('run'), 'three serpent shields side by side: repeat, run');
+// the same serpent shield side by side, and four times in a home (corpus home median 3, kept 1.5 m apart)
+r = SI.check([W(0, 2, 0, 'ShieldSerpentscale'), W(0.5, 2, 0, 'ShieldSerpentscale'), W(3.0, 2, 0, 'ShieldSerpentscale'), W(6.0, 2, 0, 'ShieldSerpentscale')]);
+ok(codes(r).includes('repeat') && codes(r).includes('run'), 'four serpent shields, two side by side: repeat, run');
 
 // a house dressed by pick() passes its own check, over many seeds and biomes
 let worst = 0;

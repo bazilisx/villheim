@@ -15,7 +15,9 @@ const SIK2 = require('../lib/standitems.js');
 const BUILT = /(_beam|_pole|_wall_half|_wall_quarter|halfwall|quarterwall|_ledge|_floor_1x1|_log|_arch|_wall_1x1|_wall_2x1|2x1x1|blackmarble_1x1|_decowall|wood_window|wood_wall_roof_top|dvergrprops_wood|dvergrprops_shelf|_stair|_fence|roof_top|roof_icorner|Piece_grausten_wall|wood_dragon1)/;
 const isBuilt = n => BUILT.test(n);
 const HIDDEN_EXTRA = new Set(['wood_ledge']); // Tyler D-166: hidden from the build menu; the catalog's 'buildable' marks the rest
-const hidden = n => HIDDEN_EXTRA.has(n) || (CAT.get(n) ? CAT.get(n).buildable === false : false);
+// a loose item set down as decor (food, a mead) is no building piece: it is marked loose, not hidden
+const isItem = n => !!SIK[n] || /^(Mead|Cooked|Bread|Honey|Carrot|Turnip|Onion|Blueberries|Raspberry|Cloudberry|Fish|Trophy)/.test(n) || (CAT.get(n) && /^(food|item)$/.test(CAT.get(n).kind));
+const hidden = n => !isItem(n) && (HIDDEN_EXTRA.has(n) || (CAT.get(n) ? CAT.get(n).buildable === false : false));
 const itemOf = m => { const o = m.find(v => v && typeof v === 'object' && !Array.isArray(v)); return o && o.info ? o.info.split(':')[0] : null; };
 const sikind = n => (SIK[n] ? SIK[n].kind : null);
 
@@ -108,7 +110,7 @@ const byKind = {};
 for (const r of sig.values()) (byKind[r.kind] = byKind[r.kind] || []).push(r);
 const LIMIT = { 'kitchen-stove': 28, 'prep-counter': 10, 'brew-corner': 14, 'keg-rack': 8, 'forge-corner': 16, 'work-corner': 16, 'spinning-corner': 5, 'mason-corner': 5, 'artisan-corner': 5,
   'galdr-corner': 10, 'canopy-bed': 14, 'bed-nook': 18, 'bunk': 6, 'bedside': 10, 'armor-alcove': 16, 'armor-row': 6, 'wardrobe-nook': 6, 'potion-shelf': 14, 'pantry-shelf': 14, 'herb-shelf': 8,
-  'drink-shelf': 10, 'display-shelf': 14, 'tool-shelf': 8, 'shelving': 12, 'bar-counter': 14, counter: 12, 'labeled-storage': 12, dresser: 10, cabinet: 16, 'chest-shelf': 12 };
+  'drink-shelf': 10, 'display-shelf': 14, 'tool-shelf': 8, 'shelving': 8, 'bar-counter': 14, counter: 12, 'labeled-storage': 12, dresser: 10, cabinet: 16, 'chest-shelf': 12 };
 const ROOMS = { 'kitchen-stove': ['kitchen', 'home', 'tavern'], 'prep-counter': ['kitchen', 'tavern'], 'brew-corner': ['tavern', 'kitchen', 'storage', 'brewery'], 'keg-rack': ['tavern', 'storage', 'brewery'],
   'forge-corner': ['smithy'], 'work-corner': ['workshop', 'home', 'smithy'], 'spinning-corner': ['workshop', 'home'], 'mason-corner': ['workshop'], 'artisan-corner': ['workshop'], 'galdr-corner': ['study', 'temple'],
   'canopy-bed': ['bedroom'], 'bed-nook': ['bedroom', 'home'], bunk: ['bedroom', 'dormitory'], bedside: ['bedroom', 'home'], 'armor-alcove': ['hall', 'armory', 'bedroom', 'entry'], 'armor-row': ['hall', 'armory'],
@@ -134,6 +136,7 @@ for (const [kind, list] of Object.entries(byKind)) {
       if (p.info && /^itemstand/.test(p.n)) { const it = p.info.split(':')[0]; p.want = SIK2.kindOf(it); p.was = it; delete p.info; }
       if (p.info && p.n === 'ArmorStand') { const its = p.info.split(':').filter(x => /^[A-Z]/.test(x)); p.want = its.length >= 3 ? 'full' : 'part'; p.was = its.join(','); delete p.info; }
       if (hidden(m[0])) p.hidden = true;
+      if (isItem(m[0])) p.loose = true;
       return p;
     });
     const rec = {

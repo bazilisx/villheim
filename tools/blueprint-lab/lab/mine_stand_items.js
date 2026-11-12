@@ -168,6 +168,12 @@ const sum = {
 // per kind: among builds that show the kind, the largest count of one item of that kind (p50, p75, p90, max)
 const kinds = new Set(pb.flatMap(x => Object.keys(x.kindMax)));
 for (const k of kinds) { const v = pb.filter(x => x.kindMax[k]).map(x => x.kindMax[k]); sum.kindMax[k] = { builds: v.length, p50: q(v, 0.5), p75: q(v, 0.75), p90: q(v, 0.9), max: Math.max(...v) }; }
+// the same for house-sized builds (starter homes, buildings, longhouses, interiors, tree houses; 5 to 60 dressed stands)
+const HOMEY = /^(starter-home|building|longhouse|interior-design|tree-house|farming|blacksmith|tavern)$/;
+sum.kindMaxHomes = {};
+const hb = pb.filter(x => HOMEY.test(x.cat) && x.stands >= 5 && x.stands <= 60);
+sum.homes = { n: hb.length, stands: [0.25, 0.5, 0.75].map(f => q(hb.map(x => x.stands), f)), distinctPerStand: [0.25, 0.5, 0.75].map(f => +q(hb.map(x => x.distinct / x.stands), f).toFixed(2)) };
+for (const k of kinds) { const v = hb.filter(x => x.kindMax[k]).map(x => x.kindMax[k]); if (v.length) sum.kindMaxHomes[k] = { builds: v.length, p50: q(v, 0.5), p75: q(v, 0.75), p90: q(v, 0.9), max: Math.max(...v) }; }
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, JSON.stringify(sum, null, 1));
 console.log(`builds ${S.builds}, with stands ${S.withStands}, armor stands ${S.armor.stands} -> ${out}`);

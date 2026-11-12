@@ -297,6 +297,9 @@ namespace Villheim.Logic
         public static ConfigEntry<float> MemoryFeetSize;
         public static ConfigEntry<UnityEngine.Color> MemoryFeetColor;
         public static ConfigEntry<float> MemoryFeetLight;
+        public static ConfigEntry<string> MemoryDebugSolo;
+        public static ConfigEntry<string> MemoryPassMaterial;
+        public static ConfigEntry<string> MemoryShellMode;
         // Hair review and the kids rig (Villagers/HairReview.cs), section "3d - Hair review".
         public static ConfigEntry<string> RigCulture;
         public static ConfigEntry<string> RigHairMan;
@@ -1223,7 +1226,8 @@ namespace Villheim.Logic
                          LookMode, MemoryAlpha, MemoryAlphaDay, MemoryTint, MemoryTintDay, MemoryTintColor, MemoryBrightness, MemoryGlow,
                          MemoryMilk, MemoryMilkDay, MemoryMilkColor,
                          MemoryGlowDay, MemoryGlowColor, MemoryGlowSpread, MemoryGlowSoftness, MemoryGlowLayers, MemoryGlowEdge, MemoryFeetGlow,
-                         MemoryFeetStrength, MemoryFeetSize, MemoryFeetColor, MemoryFeetLight,
+                         MemoryFeetStrength, MemoryFeetSize, MemoryFeetColor, MemoryFeetLight, MemoryDebugSolo, MemoryPassMaterial,
+                         MemoryShellMode,
                      })
             {
                 if (entry is ConfigEntry<float> f) Hook(f, apply);
@@ -1295,12 +1299,25 @@ namespace Villheim.Logic
                 "Glow around them: the game glow shader's own edge fading numbers (_EdgeFading). The default is what the " +
                 "game's still lightning glow uses. Try other numbers only if the glow looks wrong at its edges.");
             MemoryFeetGlow = Dial("MemoryFeetGlow", true,
-                "Feet: a soft teal glow on the ground under each foot and a faint light at the feet. Off: none.");
+                "Feet: a soft teal glow under the sole of each foot, moving with the foot, and a faint light at the feet. Off: none.");
             MemoryFeetStrength = Dial("MemoryFeetStrength", 0.6f, "Feet: how strong the glow on the ground is.", Range(0f, 1f));
             MemoryFeetSize = Dial("MemoryFeetSize", 0.35f,
-                "Feet: how wide the glow under each foot is, in meters (the softer pool under the whole villager is about twice this).",
+                "Feet: how wide the glow under each foot is, in meters.",
                 Range(0.05f, 1.5f));
             MemoryFeetColor = Dial("MemoryFeetColor", new UnityEngine.Color(0.35f, 1f, 0.85f), "Feet: the glow's color.");
+            MemoryPassMaterial = Dial("MemoryPassMaterial", "FallenWarrior",
+                "Which game material the milk and the glow at the outline are drawn with ('vh memory pass next' steps " +
+                "through them). FallenWarrior: the shader that already draws villagers see-through, adding its color. " +
+                "WeaponGlow: the game's glow on weapons. The others are the game's particle materials.",
+                new AcceptableValueList<string>(Villagers.MemoryLook.PassKeys));
+            MemoryShellMode = Dial("MemoryShellMode", "Auto",
+                "How the glow at the outline is pushed out from the body. Push: by the material's own _VertPush (only " +
+                "WeaponGlow has it). Baked: the villager's pose is copied every second frame and pushed out here, for " +
+                "villagers within 30 m (costs more). Auto: Push when the material has it, else Baked.",
+                new AcceptableValueList<string>("Auto", "Push", "Baked"));
+            MemoryDebugSolo = Dial("MemoryDebugSolo", "Off",
+                "Testing: show only one part of the look, in bright magenta at full strength, to see whether it draws at " +
+                "all. Off for the normal look.", new AcceptableValueList<string>("Off", "Milk", "Glow", "Feet"));
             MemoryFeetLight = Dial("MemoryFeetLight", 0.5f,
                 "Feet: how bright the faint light at the feet is (it lights the ground and things close by), 0 for no light.",
                 Range(0f, 3f));

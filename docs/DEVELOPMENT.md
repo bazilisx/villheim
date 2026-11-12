@@ -87,9 +87,11 @@ branch is copied into the profile by hand.
 In game:
 
 - `vh memory` puts a still villager in a T-pose (the model's rest pose, animator off) 3 m in front of you, facing
-  you, with the look. `vh memory woman` for a woman, `vh memory clear` takes it away, `vh memory shaders` lists which
-  game materials each part copies and the values in use now, `vh memory probe` writes each part of the model and of
-  the nearest villagers to the log (shader, render queue, keywords, the values the look sets, passes per part).
+  you, with the look, and writes a probe of it to the log 2.5 s later (each part's shader, render queue, keywords, the
+  values the look sets, its passes). `vh memory woman` for a woman, `vh memory clear` takes it away, `vh memory
+  shaders` lists which game materials each part copies, `vh memory probe` writes the probe again (the model and the
+  three nearest villagers), `vh memory pass next` draws the milk and glow with the next game material
+  (MemoryPassMaterial) and probes again.
   GhostLook ('3c - Villager looks') must be on.
 - F1, section `3e - Look: memory`. Every dial shows on villagers and the model as you drag it.
   - `LookMode`: Memory (default on this branch) or Ghost (the first look, with its `Ghost*` dials in '3c').
@@ -100,7 +102,10 @@ In game:
   - Glow around them: `MemoryGlow` (night, 0.35), `MemoryGlowDay` (0.18), `MemoryGlowColor` (teal),
     `MemoryGlowSpread` (0.015 m), `MemoryGlowSoftness` (0.6), `MemoryGlowLayers` (2, 0
     for no glow), `MemoryGlowEdge` (the game glow shader's edge fading numbers; leave as is unless the edges look wrong).
-  - Feet: `MemoryFeetGlow` (on), `MemoryFeetStrength` (0.6), `MemoryFeetSize` (0.35 m), `MemoryFeetColor` (teal),
+  - Testing: `MemoryDebugSolo` (Off, Milk, Glow, Feet: that part alone in magenta at full strength),
+    `MemoryPassMaterial` (FallenWarrior, WeaponGlow, LitParticles, SurfaceParticles, LuxParticles), `MemoryShellMode`
+    (Auto, Push, Baked; Baked copies each part's pose every second frame for villagers within 30 m).
+  - Feet (a card under each sole, on the foot bone): `MemoryFeetGlow` (on), `MemoryFeetStrength` (0.6), `MemoryFeetSize` (0.35 m), `MemoryFeetColor` (teal),
     `MemoryFeetLight` (0.5, 0 for no light).
 - What each part is made from: `src/Villheim.Logic/Villagers/MemoryLook.cs` (summary at the top).
 

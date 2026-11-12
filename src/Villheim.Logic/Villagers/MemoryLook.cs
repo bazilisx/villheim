@@ -11,43 +11,56 @@ namespace Villheim.Logic.Villagers
     /// <summary>
     /// The memory look (D-160), a second look next to the ghost look, picked with LookMode. Villagers read as people
     /// remembered: milky like frosted glass, their own colors showing through tinted teal, a soft glow at the edge of
-    /// their outline, and a soft glow at and under their feet. Every value is a dial in "3e - Look: memory".
+    /// their outline, and a soft glow under each foot. Every value is a dial in "3e - Look: memory".
     ///
     /// Parts, all from what the game ships (nothing is compiled or loaded from outside):
     /// - Colors: GhostLook's swap to the game's "Custom/Fallen Warrior" shader, which draws the player body with its
-    ///   skin, chest and legs textures and adds its colors over what is behind (screen blend). Here its _TintColor is
-    ///   the tint color times MemoryBrightness times MemoryAlpha.
-    /// - Milk: drawn just before the colors (render queue 2999), an unlit copy of the game's weapon glow material
-    ///   ("Unlit/WeaponGlow", alpha blend) in MemoryMilkColor with alpha MemoryMilk, pushed out by nothing. It covers
-    ///   what is behind the villager, like frosted glass, and the colors are added over it.
-    /// - Glow at the outline: MemoryGlowLayers more copies of that material, each pushed out along the mesh normals
-    ///   by its share of MemoryGlowSpread (_VertPush, given per renderer in meters over the renderer's scale) and
-    ///   fainter further out. Noise and scrolling are off, so it is an even soft glow.
-    /// - Feet: a flat card under each foot and a wider, fainter one under the villager with a soft round texture made
-    ///   here (white, alpha fading from the middle), on a copy of a game particle material, and a faint point light.
-    ///
-    /// The milk and glow passes are extra renderers (children named villheim_memory_pass) that share the villager
-    /// part's mesh and bones, one per pass, with the pass material on every sub-mesh. GhostLook and GhostDeath leave
-    /// them alone (IsPass).
+    ///   skin, chest and legs textures and adds its colors over what is behind. Its _TintColor is the tint color times
+    ///   MemoryBrightness times MemoryAlpha.
+    /// - Milk (render queue 2999) and the glow shells (3001 and up): copies of the game material picked by
+    ///   MemoryPassMaterial (PassKeys), on extra renderers (villheim_memory_pass) under each villager part, with the
+    ///   pass material on every sub-mesh. The milk shares the part's mesh and bones. The shells are pushed out along
+    ///   the normals: by the material's _VertPush (only the game's weapon glow has it) or, with MemoryShellMode Baked,
+    ///   from a copy of the part's pose made every second frame (SkinnedMeshRenderer.BakeMesh) for villagers within
+    ///   30 m.
+    /// - Feet: a soft glow card under the sole of each foot, a child of the foot bone so it moves with the foot, with
+    ///   white vertex colors and a soft round texture made here, on a copy of a game particle material; and a faint
+    ///   point light at the feet.
+    /// MemoryDebugSolo shows one part alone in magenta, and 'vh memory' writes a probe of the model to the log.
     /// </summary>
     internal static class MemoryLook
     {
         public static bool Active => LogicConfig.LookMode != null &&
                                      string.Equals(LogicConfig.LookMode.Value, "Memory", StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>The game materials the milk and glow can be drawn with (MemoryPassMaterial).</summary>
+        public static readonly string[] PassKeys = { "FallenWarrior", "WeaponGlow", "LitParticles", "SurfaceParticles", "LuxParticles" };
+
+        private static readonly (string Key, string Shader, string Preferred, string Keyword)[] Candidates =
+        {
+            ("FallenWarrior", "Custom/Fallen Warrior", "FallenWarrior", null),
+            ("WeaponGlow", "Unlit/WeaponGlow", "Berzerkr_LightningGlow_Static_Mat", null),
+            ("LitParticles", "Custom/LitParticles", "distant_fog", null),
+            ("SurfaceParticles", "Particles/Standard Surface2", "feather_white", "_ALPHABLEND_ON"),
+            ("LuxParticles", "Lux Lit Particles/ Bumped", null, null),
+        };
+
         private const string PassName = "villheim_memory_pass";
         private const int MilkQueue = 2999;
         private const int GlowQueue = 3001;
         private const int MaxLayers = 4;
+        private const float BakeRange = 30f;
+        private const int MaxBakedParts = 48;
+        private static readonly Color Magenta = new Color(1f, 0f, 1f, 1f);
 
         private static readonly HashSet<Material> Own = new HashSet<Material>();
         private static readonly HashSet<Renderer> PassRenderers = new HashSet<Renderer>();
         private static Material _milk;
         private static readonly Material[] Glow = new Material[MaxLayers];
         private static readonly float[] GlowPush = new float[MaxLayers];
-        private static Material _footBlob;
-        private static Material _pool;
-        private static Material _glowSource, _blobSource;
+        private static Material _foot;
+        private static Material _passSource, _footSource;
+        private static string _passKey;
         private static Mesh _card;
         private static Texture2D _radial;
         private static bool _searched;
@@ -55,12 +68,21 @@ namespace Villheim.Logic.Villagers
         private static bool _dirty = true;
         private static int _layers;
         private static bool _milkOn;
+        private static bool _baked;
         private static MaterialPropertyBlock _block;
         private static readonly int VertPush = Shader.PropertyToID("_VertPush");
+        private static float _probeAt = -1f;
+
+        private static string Solo => LogicConfig.MemoryDebugSolo?.Value ?? "Off";
 
         private sealed class Passes
         {
-            public readonly List<Renderer> Children = new List<Renderer>();
+            public Renderer Milk;
+            public readonly List<Renderer> Shells = new List<Renderer>();
+            public bool Baked;
+            public Mesh Pose;
+            public readonly List<Mesh> ShellMeshes = new List<Mesh>();
+            public int Parity;
         }
 
         private static readonly Dictionary<Renderer, Passes> Decorated = new Dictionary<Renderer, Passes>();
@@ -82,14 +104,22 @@ namespace Villheim.Logic.Villagers
             alpha = Mathf.Clamp(Mathf.Lerp(LogicConfig.MemoryAlphaDay.Value, LogicConfig.MemoryAlpha.Value, dark), 0.02f, 1f);
         }
 
-        /// <summary>The body's _TintColor on the Fallen Warrior shader: its own colors, tinted, scaled by alpha.</summary>
+        /// <summary>
+        /// The body's _TintColor on the Fallen Warrior shader: its own colors, tinted, scaled by alpha. Black (nothing
+        /// added) while MemoryDebugSolo shows one part alone.
+        /// </summary>
         public static Color BodyTint(float tint, float alpha)
         {
+            if (Solo != "Off")
+            {
+                return new Color(0f, 0f, 0f, alpha);
+            }
+
             Color color = Color.Lerp(Color.white, LogicConfig.MemoryTintColor.Value, tint) * LogicConfig.MemoryBrightness.Value * alpha;
             return new Color(color.r, color.g, color.b, alpha);
         }
 
-        // ---------------------------------------------------------------- the passes on each renderer
+        // ---------------------------------------------------------------- the passes on each part
 
         /// <summary>
         /// Gives a villager part its milk and glow passes (want), or takes them away. Called by GhostLook for each of
@@ -115,70 +145,103 @@ namespace Villheim.Logic.Villagers
             }
 
             Prepare();
-            var wanted = new List<(Material Material, float Push)>(MaxLayers + 1);
-            if (_milkOn && _milk != null)
+            if (passes == null)
             {
-                wanted.Add((_milk, 0f));
+                passes = new Passes { Parity = Decorated.Count & 1 };
+                Decorated[renderer] = passes;
             }
 
+            int subMeshes = Mathf.Max(1, mesh.subMeshCount);
+
+            // The milk: the part's own mesh and bones.
+            if (_milkOn && _milk != null)
+            {
+                if (passes.Milk == null)
+                {
+                    passes.Milk = MakePass(renderer, false);
+                }
+
+                Sync(renderer, passes.Milk);
+                SetMaterials(passes.Milk, _milk, subMeshes);
+                SetPush(passes.Milk, 0f);
+            }
+            else if (passes.Milk != null)
+            {
+                Drop(passes.Milk);
+                passes.Milk = null;
+            }
+
+            // The shells: pushed by the shader, or baked (plain mesh renderers fed in LateUpdate).
+            bool baked = _baked && renderer is SkinnedMeshRenderer;
+            if (passes.Baked != baked)
+            {
+                ClearShells(passes);
+                passes.Baked = baked;
+            }
+
+            int wanted = 0;
             for (int i = 0; i < _layers; i++)
             {
                 if (Glow[i] != null)
                 {
-                    wanted.Add((Glow[i], GlowPush[i]));
+                    wanted++;
                 }
             }
 
-            if (passes == null)
+            while (passes.Shells.Count > wanted)
             {
-                passes = new Passes();
-                Decorated[renderer] = passes;
+                Drop(passes.Shells[passes.Shells.Count - 1]);
+                passes.Shells.RemoveAt(passes.Shells.Count - 1);
             }
 
-            while (passes.Children.Count > wanted.Count)
+            while (passes.Shells.Count < wanted)
             {
-                Renderer last = passes.Children[passes.Children.Count - 1];
-                passes.Children.RemoveAt(passes.Children.Count - 1);
-                Drop(last);
-            }
-
-            while (passes.Children.Count < wanted.Count)
-            {
-                Renderer child = MakePass(renderer);
-                if (child == null)
-                {
-                    return;
-                }
-
-                passes.Children.Add(child);
+                passes.Shells.Add(MakePass(renderer, baked));
             }
 
             float scale = Scale(renderer);
-            int subMeshes = Mathf.Max(1, mesh.subMeshCount);
-            for (int i = 0; i < wanted.Count; i++)
+            for (int i = 0; i < passes.Shells.Count; i++)
             {
-                Renderer child = passes.Children[i];
-                if (child == null)
+                Renderer shell = passes.Shells[i];
+                if (shell == null)
                 {
                     continue;
                 }
 
-                Sync(renderer, child);
-                Material[] current = child.sharedMaterials;
-                if (current.Length != subMeshes || current.Any(m => m != wanted[i].Material))
+                if (!baked)
                 {
-                    child.sharedMaterials = Enumerable.Repeat(wanted[i].Material, subMeshes).ToArray();
+                    Sync(renderer, shell);
+                    SetPush(shell, GlowPush[i] / scale);
+                }
+                else
+                {
+                    shell.enabled = renderer.enabled;
+                    shell.forceRenderingOff = renderer.forceRenderingOff;
                 }
 
-                if (_block == null)
-                {
-                    _block = new MaterialPropertyBlock();
-                }
-
-                child.GetPropertyBlock(_block);
-                _block.SetFloat(VertPush, wanted[i].Push / scale);
-                child.SetPropertyBlock(_block);
+                SetMaterials(shell, Glow[i], subMeshes);
             }
+        }
+
+        private static void SetMaterials(Renderer pass, Material material, int subMeshes)
+        {
+            Material[] current = pass.sharedMaterials;
+            if (current.Length != subMeshes || current.Any(m => m != material))
+            {
+                pass.sharedMaterials = Enumerable.Repeat(material, subMeshes).ToArray();
+            }
+        }
+
+        private static void SetPush(Renderer pass, float push)
+        {
+            if (_block == null)
+            {
+                _block = new MaterialPropertyBlock();
+            }
+
+            pass.GetPropertyBlock(_block);
+            _block.SetFloat(VertPush, push);
+            pass.SetPropertyBlock(_block);
         }
 
         private static Mesh MeshOf(Renderer renderer)
@@ -199,17 +262,23 @@ namespace Villheim.Logic.Villagers
         private static float Scale(Renderer renderer)
         {
             Transform space = renderer is SkinnedMeshRenderer skinned && skinned.rootBone != null ? skinned.rootBone : renderer.transform;
+            return ScaleOf(space);
+        }
+
+        private static float ScaleOf(Transform space)
+        {
             Vector3 lossy = space.lossyScale;
             float scale = (Mathf.Abs(lossy.x) + Mathf.Abs(lossy.y) + Mathf.Abs(lossy.z)) / 3f;
             return scale > 1e-5f ? scale : 1f;
         }
 
-        private static Renderer MakePass(Renderer source)
+        /// <summary>A pass renderer under the part: a skinned copy sharing its bones, or (baked) a plain mesh renderer.</summary>
+        private static Renderer MakePass(Renderer source, bool baked)
         {
             var go = new GameObject(PassName);
             go.transform.SetParent(source.transform, false);
             Renderer made;
-            if (source is SkinnedMeshRenderer skinned)
+            if (source is SkinnedMeshRenderer skinned && !baked)
             {
                 var copy = go.AddComponent<SkinnedMeshRenderer>();
                 copy.updateWhenOffscreen = skinned.updateWhenOffscreen;
@@ -224,7 +293,11 @@ namespace Villheim.Logic.Villagers
             made.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             made.receiveShadows = false;
             PassRenderers.Add(made);
-            Sync(source, made);
+            if (!baked)
+            {
+                Sync(source, made);
+            }
+
             return made;
         }
 
@@ -270,15 +343,157 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        private static void Strip(Renderer renderer, Passes passes)
+        private static void ClearShells(Passes passes)
         {
-            foreach (Renderer child in passes.Children)
+            foreach (Renderer shell in passes.Shells)
             {
-                Drop(child);
+                Drop(shell);
             }
 
-            passes.Children.Clear();
+            passes.Shells.Clear();
+            foreach (Mesh mesh in passes.ShellMeshes)
+            {
+                Object.Destroy(mesh);
+            }
+
+            passes.ShellMeshes.Clear();
+            if (passes.Pose != null)
+            {
+                Object.Destroy(passes.Pose);
+                passes.Pose = null;
+            }
+        }
+
+        private static void Strip(Renderer renderer, Passes passes)
+        {
+            Drop(passes.Milk);
+            passes.Milk = null;
+            ClearShells(passes);
             Decorated.Remove(renderer);
+        }
+
+        // ---------------------------------------------------------------- baked shells
+
+        private static readonly List<Vector3> Vertices = new List<Vector3>(8192);
+        private static readonly List<Vector3> Normals = new List<Vector3>(8192);
+        private static readonly List<Vector3> Pushed = new List<Vector3>(8192);
+        private static readonly List<int> Triangles = new List<int>(16384);
+
+        /// <summary>
+        /// Every frame, half the baked parts: the part's pose is copied (BakeMesh, in the part's own space) and each
+        /// shell gets it pushed out along the normals by its share of the spread. Only parts within 30 m of the camera
+        /// and at most MaxBakedParts of them a frame.
+        /// </summary>
+        private static void BakeShells()
+        {
+            if (!_baked || Decorated.Count == 0)
+            {
+                return;
+            }
+
+            Camera camera = Utils.GetMainCamera();
+            if (camera == null)
+            {
+                return;
+            }
+
+            Vector3 eye = camera.transform.position;
+            int parity = Time.frameCount & 1;
+            int done = 0;
+            foreach (KeyValuePair<Renderer, Passes> pair in Decorated)
+            {
+                Passes passes = pair.Value;
+                if (!passes.Baked || passes.Shells.Count == 0 || passes.Parity != parity || !(pair.Key is SkinnedMeshRenderer skinned) ||
+                    skinned == null || skinned.sharedMesh == null)
+                {
+                    continue;
+                }
+
+                bool near = (skinned.transform.position - eye).sqrMagnitude < BakeRange * BakeRange;
+                foreach (Renderer shell in passes.Shells)
+                {
+                    if (shell != null)
+                    {
+                        shell.enabled = near && skinned.enabled;
+                        shell.forceRenderingOff = skinned.forceRenderingOff;
+                    }
+                }
+
+                if (!near || done >= MaxBakedParts)
+                {
+                    continue;
+                }
+
+                done++;
+                Bake(skinned, passes);
+            }
+        }
+
+        private static void Bake(SkinnedMeshRenderer skinned, Passes passes)
+        {
+            if (passes.Pose == null)
+            {
+                passes.Pose = new Mesh { name = "villheim_memory_pose" };
+                passes.Pose.MarkDynamic();
+            }
+
+            skinned.BakeMesh(passes.Pose, false);
+            passes.Pose.GetVertices(Vertices);
+            passes.Pose.GetNormals(Normals);
+            if (Normals.Count != Vertices.Count)
+            {
+                return;
+            }
+
+            float scale = ScaleOf(skinned.transform);
+            for (int i = 0; i < passes.Shells.Count; i++)
+            {
+                Renderer shell = passes.Shells[i];
+                if (shell == null)
+                {
+                    continue;
+                }
+
+                while (passes.ShellMeshes.Count <= i)
+                {
+                    var created = new Mesh { name = "villheim_memory_shell" };
+                    created.MarkDynamic();
+                    passes.ShellMeshes.Add(created);
+                }
+
+                Mesh mesh = passes.ShellMeshes[i];
+                float push = GlowPush[i] / scale;
+                Pushed.Clear();
+                for (int v = 0; v < Vertices.Count; v++)
+                {
+                    Pushed.Add(Vertices[v] + Normals[v] * push);
+                }
+
+                bool topology = mesh.vertexCount != Vertices.Count || mesh.subMeshCount != passes.Pose.subMeshCount;
+                if (topology)
+                {
+                    mesh.Clear();
+                }
+
+                mesh.SetVertices(Pushed);
+                if (topology)
+                {
+                    mesh.SetNormals(Normals);
+                    mesh.subMeshCount = passes.Pose.subMeshCount;
+                    for (int s = 0; s < passes.Pose.subMeshCount; s++)
+                    {
+                        passes.Pose.GetTriangles(Triangles, s);
+                        mesh.SetTriangles(Triangles, s);
+                    }
+                }
+
+                mesh.RecalculateBounds();
+                MeshFilter filter = shell.GetComponent<MeshFilter>();
+                if (filter != null && filter.sharedMesh != mesh)
+                {
+                    filter.sharedMesh = mesh;
+                }
+            }
         }
 
         // ---------------------------------------------------------------- the feet
@@ -286,13 +501,13 @@ namespace Villheim.Logic.Villagers
         private sealed class Feet
         {
             public GameObject Holder;
-            public Transform Pool;
-            public Transform LeftBlob;
-            public Transform RightBlob;
-            public Transform LeftFoot;
-            public Transform RightFoot;
+            public readonly List<Transform> Cards = new List<Transform>();
             public Light Light;
         }
+
+        // The foot bone names the game itself looks for (FootStep, CharacterAnimEvent).
+        private static readonly string[] LeftFeet = { "LeftFoot", "LeftFootFront", "LeftFootBack", "l_foot", "Foot.l", "foot.l" };
+        private static readonly string[] RightFeet = { "RightFoot", "RightFootFront", "RightFootBack", "r_foot", "Foot.r", "foot.r" };
 
         /// <summary>
         /// The feet glow for one villager or animal: made, refreshed or taken away. Called by GhostLook after the
@@ -305,7 +520,7 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
-            bool feetOn = want && LogicConfig.MemoryFeetGlow != null && LogicConfig.MemoryFeetGlow.Value;
+            bool feetOn = want && LogicConfig.MemoryFeetGlow != null && LogicConfig.MemoryFeetGlow.Value && Solo != "Milk" && Solo != "Glow";
             FeetRigs.TryGetValue(character, out Feet feet);
             if (!feetOn)
             {
@@ -320,19 +535,27 @@ namespace Villheim.Logic.Villagers
             Prepare();
             if (feet == null || feet.Holder == null)
             {
+                if (feet != null)
+                {
+                    Remove(character, feet);
+                }
+
                 feet = Make(character);
                 FeetRigs[character] = feet;
             }
 
             float size = LogicConfig.MemoryFeetSize.Value;
-            if (feet.Pool != null)
+            foreach (Transform card in feet.Cards)
             {
-                feet.Pool.localScale = Vector3.one * size * 2.2f;
+                if (card != null && card.parent != null)
+                {
+                    card.localScale = Vector3.one * size / ScaleOf(card.parent);
+                }
             }
 
             if (feet.Light != null)
             {
-                float light = LogicConfig.MemoryFeetLight.Value;
+                float light = Solo == "Feet" ? 0f : LogicConfig.MemoryFeetLight.Value;
                 feet.Light.enabled = light > 0.001f;
                 feet.Light.color = LogicConfig.MemoryFeetColor.Value;
                 feet.Light.intensity = light;
@@ -344,17 +567,16 @@ namespace Villheim.Logic.Villagers
         {
             var feet = new Feet { Holder = new GameObject("villheim_memory_feet") };
             feet.Holder.transform.SetParent(character.transform, false);
-            if (_card != null && _footBlob != null)
+            if (_card != null && _foot != null)
             {
-                feet.Pool = Card("pool", feet.Holder.transform, _pool);
-                feet.Pool.localPosition = new Vector3(0f, 0.04f, 0f);
                 Transform[] all = character.GetComponentsInChildren<Transform>(true);
-                feet.LeftFoot = all.FirstOrDefault(t => t.name == "LeftFoot");
-                feet.RightFoot = all.FirstOrDefault(t => t.name == "RightFoot");
-                if (feet.LeftFoot != null && feet.RightFoot != null)
+                foreach (string[] names in new[] { LeftFeet, RightFeet })
                 {
-                    feet.LeftBlob = Card("left", feet.Holder.transform, _footBlob);
-                    feet.RightBlob = Card("right", feet.Holder.transform, _footBlob);
+                    Transform foot = names.Select(n => all.FirstOrDefault(t => t.name == n)).FirstOrDefault(t => t != null);
+                    if (foot != null)
+                    {
+                        feet.Cards.Add(SoleCard(character, foot));
+                    }
                 }
             }
 
@@ -367,14 +589,28 @@ namespace Villheim.Logic.Villagers
             return feet;
         }
 
-        /// <summary>A flat card lying face up, with white vertex colors (the particle shaders multiply by them).</summary>
-        private static Transform Card(string name, Transform parent, Material material)
+        /// <summary>
+        /// A glow card under the sole of one foot, a child of the foot bone. Placed between the ankle and the toe
+        /// (the foot's first child), at the sole: the ankle's height over the character's feet when that is a
+        /// standing height, else 8 cm below the ankle. Lies flat as the foot stands now and tilts with the foot after.
+        /// </summary>
+        private static Transform SoleCard(Character character, Transform foot)
         {
-            var card = new GameObject(name);
-            card.transform.SetParent(parent, false);
+            Vector3 ankle = foot.position;
+            Transform toe = foot.childCount > 0 ? foot.GetChild(0) : null;
+            Vector3 middle = toe != null ? (ankle + toe.position) * 0.5f : ankle;
+            float height = ankle.y - character.transform.position.y;
+            float drop = height > 0.02f && height < 0.2f ? height : 0.08f;
+            Vector3 sole = new Vector3(middle.x, ankle.y - drop + 0.01f, middle.z);
+            Vector3 facing = Vector3.ProjectOnPlane(character.transform.forward, Vector3.up);
+
+            var card = new GameObject("villheim_memory_sole");
+            card.transform.SetParent(foot, false);
+            card.transform.position = sole;
+            card.transform.rotation = Quaternion.LookRotation(facing.sqrMagnitude > 1e-4f ? facing.normalized : Vector3.forward, Vector3.up);
             card.AddComponent<MeshFilter>().sharedMesh = _card;
             MeshRenderer renderer = card.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = material;
+            renderer.sharedMaterial = _foot;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             PassRenderers.Add(renderer);
@@ -383,78 +619,40 @@ namespace Villheim.Logic.Villagers
 
         private static void Remove(Character character, Feet feet)
         {
+            foreach (Transform card in feet.Cards)
+            {
+                if (card != null)
+                {
+                    PassRenderers.Remove(card.GetComponent<Renderer>());
+                    Object.Destroy(card.gameObject);
+                }
+            }
+
             if (feet.Holder != null)
             {
-                foreach (Renderer renderer in feet.Holder.GetComponentsInChildren<Renderer>(true))
-                {
-                    PassRenderers.Remove(renderer);
-                }
-
                 Object.Destroy(feet.Holder);
             }
 
             FeetRigs.Remove(character);
         }
 
-        /// <summary>Every frame: each foot's glow stays on the ground under the foot, a little smaller as it lifts.</summary>
-        private static void FollowFeet()
+        private static void PruneFeet()
         {
-            if (FeetRigs.Count == 0)
+            foreach (Character gone in FeetRigs.Keys.Where(c => c == null || c.IsDead()).ToList())
             {
-                return;
+                Remove(gone, FeetRigs[gone]);
             }
-
-            List<Character> gone = null;
-            float size = LogicConfig.MemoryFeetSize.Value;
-            foreach (KeyValuePair<Character, Feet> pair in FeetRigs)
-            {
-                Feet feet = pair.Value;
-                if (pair.Key == null || feet.Holder == null || pair.Key.IsDead())
-                {
-                    (gone ?? (gone = new List<Character>())).Add(pair.Key);
-                    continue;
-                }
-
-                float ground = pair.Key.transform.position.y;
-                Place(feet.LeftBlob, feet.LeftFoot, ground, size);
-                Place(feet.RightBlob, feet.RightFoot, ground, size);
-            }
-
-            if (gone != null)
-            {
-                foreach (Character character in gone)
-                {
-                    if (FeetRigs.TryGetValue(character, out Feet feet))
-                    {
-                        Remove(character, feet);
-                    }
-
-                    FeetRigs.Remove(character);
-                }
-            }
-        }
-
-        private static void Place(Transform blob, Transform foot, float ground, float size)
-        {
-            if (blob == null || foot == null)
-            {
-                return;
-            }
-
-            Vector3 at = foot.position;
-            float lift = Mathf.Clamp01((at.y - ground) / 0.35f);
-            blob.position = new Vector3(at.x, ground + 0.05f, at.z);
-            blob.localScale = Vector3.one * size * Mathf.Lerp(1f, 0.55f, lift);
         }
 
         // ---------------------------------------------------------------- shared materials
 
-        /// <summary>Finds the game materials to copy (once), makes the shared materials and keeps their values current.</summary>
+        /// <summary>Finds the game materials to copy, makes the shared materials and keeps their values current.</summary>
         private static void Prepare()
         {
-            if (!_searched)
+            string key = LogicConfig.MemoryPassMaterial?.Value ?? PassKeys[0];
+            if (!_searched || key != _passKey)
             {
-                Search();
+                Search(key);
             }
 
             if (_dirty || Time.time >= _nextValues)
@@ -463,55 +661,142 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        private static void Search()
+        private static void Search(string key)
         {
             if (ZNetScene.instance == null)
             {
                 return;
             }
 
-            _searched = true;
             Material[] all = Resources.FindObjectsOfTypeAll<Material>();
-            _glowSource = Pick(all, "Unlit/WeaponGlow", null, "Berzerkr_LightningGlow_Static_Mat");
-            // The feet: the distant fog's lit particle material (it has an emission color, so it glows after dark), else
-            // an unlit see-through particle material (the glows on the Draugr Fang and other weapons; the game log has
-            // warnings about that shader's data). Either way its texture is replaced by the soft round one below.
-            _blobSource = Pick(all, "Custom/LitParticles", null, "distant_fog")
-                          ?? Pick(all, "Particles/Standard Unlit2", m => m.IsKeywordEnabled("_ALPHABLEND_ON"), "DraugrFangGlow");
-            _card = MakeCard();
-            _radial = MakeRadial();
-
-            if (_glowSource != null)
+            if (!_searched)
             {
-                _milk = GlowCopy("villheim_memory_milk", MilkQueue);
-                for (int i = 0; i < MaxLayers; i++)
+                _searched = true;
+                _card = MakeCard();
+                _radial = MakeRadial();
+                _footSource = Pick(all, "Custom/LitParticles", null, "distant_fog")
+                              ?? Pick(all, "Particles/Standard Unlit2", m => m.IsKeywordEnabled("_ALPHABLEND_ON"), "DraugrFangGlow");
+                if (_footSource != null)
                 {
-                    Glow[i] = GlowCopy("villheim_memory_glow" + i, GlowQueue + i);
+                    _foot = Ground(Copy(_footSource, "villheim_memory_foot"));
                 }
             }
 
-            if (_blobSource != null)
+            // The pass materials, from the candidate picked now (made again when MemoryPassMaterial changes).
+            foreach (Material old in new[] { _milk }.Concat(Glow))
             {
-                _footBlob = Ground(Copy(_blobSource, "villheim_memory_foot"));
-                _pool = Ground(Copy(_blobSource, "villheim_memory_pool"));
+                if (old != null)
+                {
+                    Own.Remove(old);
+                    Object.Destroy(old);
+                }
             }
 
-            VillheimPlugin.Log.LogInfo("Memory look: " + Sources());
+            _milk = null;
+            Array.Clear(Glow, 0, Glow.Length);
+            _passKey = key;
+            var candidate = Candidates.FirstOrDefault(c => c.Key == key);
+            if (candidate.Key == null)
+            {
+                candidate = Candidates[0];
+            }
+
+            string keyword = candidate.Keyword;
+            _passSource = Pick(all, candidate.Shader, keyword == null ? null : (Func<Material, bool>)(m => m.IsKeywordEnabled(keyword)), candidate.Preferred);
+            if (_passSource != null)
+            {
+                _milk = PassCopy("villheim_memory_milk", MilkQueue);
+                for (int i = 0; i < MaxLayers; i++)
+                {
+                    Glow[i] = PassCopy("villheim_memory_glow" + i, GlowQueue + i);
+                }
+            }
+
+            _dirty = true;
+            VillheimPlugin.Log.LogInfo($"Memory look: pass material {key}: " + Sources());
         }
 
-        /// <summary>A copy of the game's weapon glow material made even: plain white, no noise, no curl, no scrolling.</summary>
-        private static Material GlowCopy(string name, int queue)
+        /// <summary>A copy of the pass material made even: plain white textures, no noise, no curl, no scrolling, no fading.</summary>
+        private static Material PassCopy(string name, int queue)
         {
-            Material glow = Copy(_glowSource, name);
-            glow.SetTexture("_MainTex", Texture2D.whiteTexture);
+            Material copy = Copy(_passSource, name);
+            foreach (string texture in new[] { "_MainTex", "_ChestTex", "_LegsTex", "_EmissionMap", "_AlbedoMap" })
+            {
+                if (copy.HasProperty(texture))
+                {
+                    copy.SetTexture(texture, Texture2D.whiteTexture);
+                }
+            }
+
+            void Set(string property, float value)
+            {
+                if (copy.HasProperty(property))
+                {
+                    copy.SetFloat(property, value);
+                }
+            }
+
             // _CurlTex is a 3D texture: left as it is, with its strength at 0.
-            glow.SetFloat("_CurlStrength", 0f);
-            glow.SetFloat("_ScrollSpeed", 0f);
-            glow.SetFloat("_ScrollSpeedX", 0f);
-            glow.SetFloat("_DomainWarp", 0f);
-            glow.SetFloat("_VertPush", 0f);
-            glow.renderQueue = queue;
-            return glow;
+            Set("_CurlStrength", 0f);
+            Set("_ScrollSpeed", 0f);
+            Set("_ScrollSpeedX", 0f);
+            Set("_DomainWarp", 0f);
+            Set("_VertPush", 0f);
+            Set("_Billboard", 0f);
+            Set("_ZFadeDistance", 0.001f);
+            Set("_CameraFadeDistanceMin", 0f);
+            Set("_CameraFadeDistanceMax", 0.01f);
+            Set("_CameraYFadeDistance", 0f);
+            Set("_SkyMask", 0f);
+            Set("_Cull", (float)UnityEngine.Rendering.CullMode.Back);
+            if (copy.HasProperty("_SoftParticleFadeParams"))
+            {
+                copy.SetVector("_SoftParticleFadeParams", new Vector4(0f, 1000f, 0f, 0f));
+            }
+
+            if (copy.HasProperty("_CameraFadeParams"))
+            {
+                copy.SetVector("_CameraFadeParams", new Vector4(0f, float.PositiveInfinity, 0f, 0f));
+            }
+
+            if (copy.HasProperty("_SkinColor"))
+            {
+                copy.SetColor("_SkinColor", Color.white);
+            }
+
+            copy.renderQueue = queue;
+            return copy;
+        }
+
+        /// <summary>A color and strength on a pass material, in whatever way its shader takes them.</summary>
+        private static void Paint(Material material, Color color, float strength)
+        {
+            if (material == null)
+            {
+                return;
+            }
+
+            if (material.shader.name == "Custom/Fallen Warrior")
+            {
+                // It adds its color over what is behind: the strength is how much it adds.
+                material.SetColor("_TintColor", new Color(color.r * strength, color.g * strength, color.b * strength, strength));
+                return;
+            }
+
+            if (material.HasProperty("_Color"))
+            {
+                material.SetColor("_Color", new Color(color.r, color.g, color.b, strength));
+            }
+
+            if (material.HasProperty("_TintColor"))
+            {
+                material.SetColor("_TintColor", new Color(color.r, color.g, color.b, strength));
+            }
+
+            if (material.HasProperty("_EmissionColor") && material.shader.name == "Custom/LitParticles")
+            {
+                material.SetColor("_EmissionColor", color * strength);
+            }
         }
 
         private static Material Copy(Material source, string name)
@@ -523,8 +808,8 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>
-        /// A glow card a few centimeters over the ground: the soft round texture, its fading into what is behind it and
-        /// near the camera cut down (so it does not fade away against the ground), and nothing facing the camera.
+        /// The foot card's material: the soft round texture, its fading into what is behind it and near the camera
+        /// cut down, and nothing facing the camera.
         /// </summary>
         private static Material Ground(Material material)
         {
@@ -638,22 +923,32 @@ namespace Villheim.Logic.Villagers
                 return;
             }
 
+            string solo = Solo;
             float dark = GhostLook.Darkness();
             float milk = Mathf.Clamp01(Mathf.Lerp(LogicConfig.MemoryMilkDay.Value, LogicConfig.MemoryMilk.Value, dark));
-            _milkOn = milk > 0.001f;
-            if (_milk != null)
+            _milkOn = solo == "Milk" || (solo == "Off" && milk > 0.001f);
+            Paint(_milk, solo == "Milk" ? Magenta : LogicConfig.MemoryMilkColor.Value, solo == "Milk" ? 1f : milk);
+            if (_milk != null && _milk.HasProperty("_EdgeFading"))
             {
-                Color milkColor = LogicConfig.MemoryMilkColor.Value;
-                _milk.SetColor("_Color", new Color(milkColor.r, milkColor.g, milkColor.b, milk));
                 _milk.SetVector("_EdgeFading", LogicConfig.MemoryGlowEdge.Value);
             }
 
             float strength = Mathf.Clamp01(Mathf.Lerp(LogicConfig.MemoryGlowDay.Value, LogicConfig.MemoryGlow.Value, dark));
             int layers = Mathf.Clamp(LogicConfig.MemoryGlowLayers.Value, 0, MaxLayers);
             float spread = LogicConfig.MemoryGlowSpread.Value;
-            _layers = strength > 0.001f && spread > 0.0001f ? layers : 0;
+            if (solo == "Glow")
+            {
+                strength = 1f;
+                layers = Mathf.Max(1, layers);
+                spread = Mathf.Max(0.01f, spread);
+            }
+
+            _layers = (solo == "Off" || solo == "Glow") && strength > 0.001f && spread > 0.0001f ? layers : 0;
+            string mode = LogicConfig.MemoryShellMode?.Value ?? "Auto";
+            bool push = _passSource != null && _passSource.HasProperty("_VertPush");
+            _baked = mode == "Baked" || (mode == "Auto" && !push);
             float softness = LogicConfig.MemoryGlowSoftness.Value;
-            Color glowColor = LogicConfig.MemoryGlowColor.Value;
+            Color glowColor = solo == "Glow" ? Magenta : LogicConfig.MemoryGlowColor.Value;
             for (int i = 0; i < MaxLayers; i++)
             {
                 GlowPush[i] = layers > 0 ? spread * (i + 1) / layers : 0f;
@@ -664,28 +959,23 @@ namespace Villheim.Logic.Villagers
 
                 // Shell i reaches (i + 1) / n of the spread. Softness 0: every shell as strong; 1: the outer ones much fainter.
                 float t = layers <= 1 ? 0f : (float)i / (layers - 1);
-                float weight = Mathf.Lerp(1f, Mathf.Pow(1f - 0.85f * t, 3f), softness);
-                Glow[i].SetColor("_Color", new Color(glowColor.r, glowColor.g, glowColor.b, Mathf.Clamp01(strength * weight)));
-                Glow[i].SetVector("_EdgeFading", LogicConfig.MemoryGlowEdge.Value);
+                float weight = solo == "Glow" ? 1f : Mathf.Lerp(1f, Mathf.Pow(1f - 0.85f * t, 3f), softness);
+                Paint(Glow[i], glowColor, Mathf.Clamp01(strength * weight));
+                if (Glow[i].HasProperty("_EdgeFading"))
+                {
+                    Glow[i].SetVector("_EdgeFading", LogicConfig.MemoryGlowEdge.Value);
+                }
             }
 
-            Color feet = LogicConfig.MemoryFeetColor.Value;
-            float feetStrength = LogicConfig.MemoryFeetStrength.Value;
-            FeetValues(_footBlob, feet, feetStrength);
-            FeetValues(_pool, feet, feetStrength * 0.45f);
-        }
-
-        private static void FeetValues(Material material, Color color, float strength)
-        {
-            if (material == null)
+            if (_foot != null)
             {
-                return;
-            }
-
-            material.SetColor("_Color", new Color(color.r, color.g, color.b, strength));
-            if (material.HasProperty("_EmissionColor") && material.shader.name == "Custom/LitParticles")
-            {
-                material.SetColor("_EmissionColor", color * strength);
+                Color feet = solo == "Feet" ? Magenta : LogicConfig.MemoryFeetColor.Value;
+                float feetStrength = solo == "Feet" ? 1f : LogicConfig.MemoryFeetStrength.Value;
+                _foot.SetColor("_Color", new Color(feet.r, feet.g, feet.b, feetStrength));
+                if (_foot.HasProperty("_EmissionColor") && _foot.shader.name == "Custom/LitParticles")
+                {
+                    _foot.SetColor("_EmissionColor", feet * feetStrength);
+                }
             }
         }
 
@@ -694,23 +984,20 @@ namespace Villheim.Logic.Villagers
         {
             string Name(Material m) => m == null ? "none found" : $"'{m.name}' ({m.shader.name})";
             Shader ghost = GhostLook.SeeThroughShader();
-            return $"colors: GhostLook's '{(ghost != null ? ghost.name : "none found")}'; milk and glow from {Name(_glowSource)}; " +
-                   $"feet from {Name(_blobSource)} with a soft round texture made here.";
+            return $"colors: GhostLook's '{(ghost != null ? ghost.name : "none found")}'; milk and glow ({_passKey}) from {Name(_passSource)}" +
+                   $"{(_passSource != null ? (_passSource.HasProperty("_VertPush") ? ", pushes vertices" : ", no vertex push") : "")}; " +
+                   $"feet from {Name(_footSource)} with a soft round texture made here.";
         }
 
         public static string Report()
         {
-            if (!_searched)
-            {
-                Search();
-            }
-
+            Prepare();
             float dark = GhostLook.Darkness();
             BodyValues(dark, out float tint, out float alpha);
             return $"Villheim: memory look {(Active ? "on" : "off (LookMode is " + LogicConfig.LookMode?.Value + ")")}, " +
-                   $"GhostLook {(LogicConfig.GhostLook != null && LogicConfig.GhostLook.Value ? "on" : "off")}.\n" + Sources() +
-                   $"\nnow (darkness {dark:0.##}): alpha {alpha:0.##}, tint {tint:0.##}, milk {(_milkOn ? "on" : "off")}, glow shells {_layers}; " +
-                   $"{Decorated.Count} villager parts carry passes, {FeetRigs.Count} feet glows.";
+                   $"GhostLook {(LogicConfig.GhostLook != null && LogicConfig.GhostLook.Value ? "on" : "off")}, solo {Solo}.\n" + Sources() +
+                   $"\nnow (darkness {dark:0.##}): alpha {alpha:0.##}, tint {tint:0.##}, milk {(_milkOn ? "on" : "off")}, glow shells {_layers} " +
+                   $"({(_baked ? "baked" : "pushed by the shader")}); {Decorated.Count} villager parts carry passes, {FeetRigs.Count} feet glows.";
         }
 
         // ---------------------------------------------------------------- the probe
@@ -721,8 +1008,8 @@ namespace Villheim.Logic.Villagers
         };
 
         /// <summary>
-        /// 'vh memory probe': every renderer of the 'vh memory' model and the villagers within 30 m, into the log: its
-        /// shader, render queue, keywords and the values this look sets, and how many passes it got.
+        /// Every renderer of the 'vh memory' model and the villagers within 30 m, into the log: its shader, render
+        /// queue, keywords and the values this look sets, and its passes.
         /// </summary>
         private static string Probe()
         {
@@ -740,7 +1027,7 @@ namespace Villheim.Logic.Villagers
                     .Where(c => c != null && !c.IsPlayer() && (c is Villager || Animals.IsVillageAnimal(c)) &&
                                 Vector3.Distance(c.transform.position, player.transform.position) < 30f)
                     .OrderBy(c => Vector3.Distance(c.transform.position, player.transform.position))
-                    .Take(4));
+                    .Take(3));
             }
 
             var log = new StringBuilder("Memory look probe:\n" + Report() + "\n");
@@ -757,22 +1044,27 @@ namespace Villheim.Logic.Villagers
                     }
 
                     bool pass = IsPass(renderer);
-                    Mesh mesh = MeshOf(renderer);
-                    if (!pass)
-                    {
-                        parts++;
-                    }
-                    else
+                    Mesh mesh = renderer is SkinnedMeshRenderer || renderer.GetComponent<MeshFilter>() != null ? MeshOf(renderer) : null;
+                    if (pass)
                     {
                         passes++;
                     }
+                    else
+                    {
+                        parts++;
+                    }
 
-                    int count = !pass && Decorated.TryGetValue(renderer, out Passes p) ? p.Children.Count : 0;
+                    string got = "";
+                    if (!pass && Decorated.TryGetValue(renderer, out Passes p))
+                    {
+                        got = $" milk {(p.Milk != null ? "yes" : "no")}, shells {p.Shells.Count} {(p.Baked ? "baked" : "pushed")}";
+                    }
+
                     renderer.GetPropertyBlock(block);
                     log.Append($"  {(pass ? "  pass" : "part")} '{renderer.name}' {renderer.GetType().Name} sub-meshes {(mesh != null ? mesh.subMeshCount : 0)} " +
-                               $"vertex colors {(mesh != null && mesh.isReadable ? (mesh.colors32.Length > 0 ? "yes" : "no") : "?")} enabled {renderer.enabled} " +
-                               $"off {renderer.forceRenderingOff} scale {Scale(renderer):0.####}" +
-                               (pass ? $" block _VertPush {(block.isEmpty ? "none" : block.GetFloat(VertPush).ToString("0.#####"))}" : $" passes {count}") + "\n");
+                               $"vertices {(mesh != null ? mesh.vertexCount : 0)} vertex colors {(mesh != null && mesh.isReadable ? (mesh.colors32.Length > 0 ? "yes" : "no") : "?")} " +
+                               $"enabled {renderer.enabled} visible {renderer.isVisible} off {renderer.forceRenderingOff} scale {Scale(renderer):0.####}" +
+                               (pass ? $" block _VertPush {(block.isEmpty ? "none" : block.GetFloat(VertPush).ToString("0.#####"))}" : got) + "\n");
                     foreach (Material material in renderer.sharedMaterials)
                     {
                         if (material == null)
@@ -804,22 +1096,22 @@ namespace Villheim.Logic.Villagers
                             values.Add(property + " " + value);
                         }
 
-                        log.Append($"      '{material.name}' shader '{material.shader?.name}' queue {material.renderQueue} keywords [" +
-                                   string.Join(" ", material.shaderKeywords) + "] " + string.Join(", ", values) + "\n");
+                        log.Append($"      '{material.name}' shader '{material.shader?.name}' supported {material.shader?.isSupported} queue {material.renderQueue} " +
+                                   "keywords [" + string.Join(" ", material.shaderKeywords) + "] " + string.Join(", ", values) + "\n");
                     }
                 }
             }
 
             VillheimPlugin.Log.LogInfo(log.ToString());
-            return $"Villheim: memory look probe written to the log ({characters.Count} models, {parts} parts, {passes} passes and feet cards).\n" + Report();
+            return $"Villheim: memory look probe written to the log ({characters.Count} models, {parts} parts, {passes} passes and feet cards).";
         }
 
-        // ---------------------------------------------------------------- the preview model
+        // ---------------------------------------------------------------- the preview model and the command
 
         private static GameObject _preview;
         private static Character _previewCharacter;
 
-        /// <summary>'vh memory [woman|clear|shaders|probe]': a still model in front of you with the look, to tune the dials against.</summary>
+        /// <summary>'vh memory [woman|clear|shaders|probe|pass next]': a still model with the look, to tune the dials against.</summary>
         public static string Command(string[] args)
         {
             string first = args != null && args.Length > 0 ? args[0].ToLowerInvariant() : "";
@@ -831,6 +1123,21 @@ namespace Villheim.Logic.Villagers
             if (first == "probe")
             {
                 return Probe();
+            }
+
+            if (first == "pass")
+            {
+                if (LogicConfig.MemoryPassMaterial == null)
+                {
+                    return "Villheim: settings not loaded.";
+                }
+
+                int at = Array.IndexOf(PassKeys, LogicConfig.MemoryPassMaterial.Value);
+                LogicConfig.MemoryPassMaterial.Value = PassKeys[(at + 1) % PassKeys.Length];
+                Prepare();
+                _probeAt = Time.time + 1.5f;
+                return $"Villheim: milk and glow now drawn with {LogicConfig.MemoryPassMaterial.Value}.\n" + Sources() +
+                       "\nA probe goes to the log in a moment.";
             }
 
             ClearPreview();
@@ -848,15 +1155,15 @@ namespace Villheim.Logic.Villagers
             Vector3 forward = player.transform.forward;
             forward.y = 0f;
             forward = forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.forward;
-            Vector3 at = player.transform.position + forward * 3f;
-            if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(at, out float y))
+            Vector3 spot = player.transform.position + forward * 3f;
+            if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(spot, out float y))
             {
-                at.y = y;
+                spot.y = y;
             }
 
             bool female = first == "woman" || first == "female";
             HairReview.RigColors(out Vector3 skin, out Vector3 hairColor);
-            _preview = ChildBody.Model(at, Quaternion.LookRotation(-forward), female, female ? "Hair12" : "Hair3", female ? "none" : "Beard5",
+            _preview = ChildBody.Model(spot, Quaternion.LookRotation(-forward), female, female ? "Hair12" : "Hair3", female ? "none" : "Beard5",
                 skin, hairColor);
             if (_preview == null)
             {
@@ -865,15 +1172,16 @@ namespace Villheim.Logic.Villagers
 
             _preview.name = "villheim_kids_rig_memory";
             _previewCharacter = _preview.GetComponent<Character>();
+            _probeAt = Time.time + 2.5f;
             string note = Active ? "" : $"\nLookMode is {LogicConfig.LookMode?.Value}: set it to Memory to see this look.";
             if (LogicConfig.GhostLook != null && !LogicConfig.GhostLook.Value)
             {
                 note += "\nGhostLook ('3c - Villager looks') is off: turn it on to see any look.";
             }
 
-            return $"Villheim: a still {(female ? "woman" : "man")} stands 3 m in front of you with the memory look. The dials in F1, " +
-                   "'3e - Look: memory', change it as you drag them. 'vh memory woman' for a woman, 'vh memory clear' takes it away, " +
-                   "'vh memory shaders' shows what the look is made from, 'vh memory probe' writes what is on each part to the log." + note;
+            return $"Villheim: a still {(female ? "woman" : "man")} stands 3 m in front of you with the memory look; a probe of it goes to the log " +
+                   "in a moment. F1, '3e - Look: memory', changes it as you drag. 'vh memory woman' for a woman, 'vh memory clear' takes it " +
+                   "away, 'vh memory pass next' tries the next game material for the milk and glow, 'vh memory probe' writes the probe again." + note;
         }
 
         private static void ClearPreview()
@@ -882,11 +1190,15 @@ namespace Villheim.Logic.Villagers
             {
                 foreach (Renderer renderer in _preview.GetComponentsInChildren<Renderer>(true))
                 {
+                    if (Decorated.TryGetValue(renderer, out Passes passes))
+                    {
+                        Strip(renderer, passes);
+                    }
+
                     PassRenderers.Remove(renderer);
-                    Decorated.Remove(renderer);
                 }
 
-                if (FeetRigs.TryGetValue(_previewCharacter, out Feet feet))
+                if (_previewCharacter != null && FeetRigs.TryGetValue(_previewCharacter, out Feet feet))
                 {
                     Remove(_previewCharacter, feet);
                 }
@@ -918,7 +1230,13 @@ namespace Villheim.Logic.Villagers
                         Prepare();
                     }
 
-                    FollowFeet();
+                    BakeShells();
+                    if (_probeAt > 0f && Time.time >= _probeAt)
+                    {
+                        _probeAt = -1f;
+                        Probe();
+                    }
+
                     if (Time.time >= _nextPrune)
                     {
                         _nextPrune = Time.time + 10f;
@@ -936,39 +1254,33 @@ namespace Villheim.Logic.Villagers
             }
         }
 
-        /// <summary>Forgets parts that are gone (their passes went with them, as children).</summary>
+        /// <summary>Forgets parts that are gone (their passes went with them, as children) and their baked meshes.</summary>
         private static void Prune()
         {
-            foreach (Renderer gone in Decorated.Keys.Where(r => r == null).ToList())
+            foreach (KeyValuePair<Renderer, Passes> gone in Decorated.Where(p => p.Key == null).ToList())
             {
-                Decorated.Remove(gone);
+                ClearShells(gone.Value);
+                Decorated.Remove(gone.Key);
             }
 
             PassRenderers.RemoveWhere(r => r == null);
+            PruneFeet();
         }
 
         /// <summary>Logic unload: the passes, feet glows and model go (they belong to this build).</summary>
         public static void Unload()
         {
             ClearPreview();
-            foreach (Passes passes in Decorated.Values)
+            foreach (KeyValuePair<Renderer, Passes> pair in Decorated.ToList())
             {
-                foreach (Renderer child in passes.Children)
-                {
-                    if (child != null)
-                    {
-                        Object.Destroy(child.gameObject);
-                    }
-                }
+                Drop(pair.Value.Milk);
+                ClearShells(pair.Value);
             }
 
             Decorated.Clear();
-            foreach (Feet feet in FeetRigs.Values.ToList())
+            foreach (KeyValuePair<Character, Feet> pair in FeetRigs.ToList())
             {
-                if (feet.Holder != null)
-                {
-                    Object.Destroy(feet.Holder);
-                }
+                Remove(pair.Key, pair.Value);
             }
 
             FeetRigs.Clear();

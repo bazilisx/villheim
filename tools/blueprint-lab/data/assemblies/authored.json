@@ -1,0 +1,2565 @@
+{
+ "about": "Furniture assembly recipes written from Tyler's album, his collage and builders' pictures and tips (lab/author_assemblies.js). Same form as corpus.json; from: album, collage, web or corpus-rule. want on an item stand: the kind, group or theme lib/standitems.js pick() should fill it with; row: the stands of one shelf hold one thing in a row; want on an armor stand: full (a whole outfit).",
+ "recipes": [
+  {
+   "id": "AA-potion-cabinet-01",
+   "kind": "potion-shelf",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -1.25,
+     1.25
+    ],
+    "z": [
+     0,
+     0.45
+    ],
+    "h": 3.2
+   },
+   "rooms": [
+    "study",
+    "bedroom",
+    "kitchen",
+    "temple"
+   ],
+   "families": [
+    "rustic_furniture",
+    "darkwood",
+    "ceramic"
+   ],
+   "built": "darkwood",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's album 157, 175, 176; Versaugh 'Over 20 interior ideas' (Mead cabinet)"
+   },
+   "note": "potions in pairs with a gap, one curio, herbs on the top shelf (album 176)",
+   "pieces": [
+    {
+     "n": "darkwood_decowall",
+     "x": -0.5,
+     "y": 0,
+     "z": 0.06,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_decowall",
+     "x": 0.5,
+     "y": 0,
+     "z": 0.06,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_pole",
+     "x": -1.05,
+     "y": 1,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_pole",
+     "x": 1.05,
+     "y": 1,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_beam",
+     "x": 0,
+     "y": 0.3,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_beam",
+     "x": 0,
+     "y": 0.85,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_beam",
+     "x": 0,
+     "y": 1.4,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_beam",
+     "x": 0,
+     "y": 1.95,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.65,
+     "y": 0.75,
+     "z": 0.25,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.3,
+     "y": 0.75,
+     "z": 0.25,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.35,
+     "y": 0.75,
+     "z": 0.25,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.7,
+     "y": 0.75,
+     "z": 0.25,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.55,
+     "y": 1.3,
+     "z": 0.25,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.15,
+     "y": 1.3,
+     "z": 0.25,
+     "yaw": 90,
+     "want": "herbs",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.5,
+     "y": 1.3,
+     "z": 0.25,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.4,
+     "y": 1.85,
+     "z": 0.25,
+     "yaw": 0,
+     "want": "herbs",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.1,
+     "y": 1.85,
+     "z": 0.25,
+     "yaw": 0,
+     "want": "curio",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.6,
+     "y": 1.85,
+     "z": 0.25,
+     "yaw": 0,
+     "want": "herbs",
+     "place": "shelf"
+    },
+    {
+     "n": "piece_pot3",
+     "x": -0.55,
+     "y": 2.402,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "Candle_resin",
+     "x": 0.6,
+     "y": 2.4,
+     "z": 0.25,
+     "yaw": 0
+    }
+   ]
+  },
+  {
+   "id": "AA-potion-cabinet-02",
+   "kind": "potion-shelf",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -0.8,
+     0.8
+    ],
+    "z": [
+     0,
+     0.45
+    ],
+    "h": 2.25
+   },
+   "rooms": [
+    "study",
+    "bedroom",
+    "kitchen",
+    "home"
+   ],
+   "families": [
+    "plank",
+    "rustic_furniture"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Versaugh 'Over 20 interior ideas' (small cabinet with shelf); album 157"
+   },
+   "pieces": [
+    {
+     "n": "wood_pole2",
+     "x": -0.6,
+     "y": 1,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole2",
+     "x": 0.6,
+     "y": 1,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam_1",
+     "x": 0,
+     "y": 0.5,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam_1",
+     "x": 0,
+     "y": 1,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam_1",
+     "x": 0,
+     "y": 1.5,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam_1",
+     "x": 0,
+     "y": 2,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.22,
+     "y": 0.7,
+     "z": 0.25,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.2,
+     "y": 0.7,
+     "z": 0.25,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.2,
+     "y": 1.2,
+     "z": 0.25,
+     "yaw": 0,
+     "want": "herbs",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.22,
+     "y": 1.2,
+     "z": 0.25,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0,
+     "y": 1.7,
+     "z": 0.25,
+     "yaw": 0,
+     "want": "curio",
+     "place": "shelf"
+    }
+   ]
+  },
+  {
+   "id": "AA-kitchen-hutch-01",
+   "kind": "kitchen-hutch",
+   "from": "collage",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -2,
+     2
+    ],
+    "z": [
+     0,
+     1
+    ],
+    "h": 3.2
+   },
+   "rooms": [
+    "kitchen",
+    "home",
+    "tavern"
+   ],
+   "families": [
+    "plank",
+    "rustic_furniture",
+    "kitchen_set",
+    "ceramic"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's collage (Versaugh '100 Valheim Decoration Ideas'), kitchen hutch; album 124, 180"
+   },
+   "note": "food where it is made: raw at one end, cooked at the other",
+   "pieces": [
+    {
+     "n": "wood_wall_half",
+     "x": -1,
+     "y": 0.5,
+     "z": 0.85,
+     "yaw": 0
+    },
+    {
+     "n": "wood_wall_half",
+     "x": 1,
+     "y": 0.5,
+     "z": 0.85,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": -1.5,
+     "y": 1.033,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": -0.5,
+     "y": 1.033,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": 0.5,
+     "y": 1.033,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": 1.5,
+     "y": 1.033,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "cauldron_ext4_pots",
+     "x": 0,
+     "y": 2.241,
+     "z": 0.02,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam_1",
+     "x": -1.55,
+     "y": 1.95,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam_1",
+     "x": 1.55,
+     "y": 1.95,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "piece_pot3",
+     "x": -1.55,
+     "y": 2.152,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": 1.35,
+     "y": 2.15,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": 1.75,
+     "y": 2.15,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf"
+    },
+    {
+     "n": "itemstandh",
+     "x": -1.6,
+     "y": 1.13,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "food",
+     "place": "counter"
+    },
+    {
+     "n": "itemstandh",
+     "x": -1.15,
+     "y": 1.13,
+     "z": 0.5,
+     "yaw": 45,
+     "want": "food",
+     "place": "counter"
+    },
+    {
+     "n": "itemstandh",
+     "x": 1.2,
+     "y": 1.13,
+     "z": 0.5,
+     "yaw": 0,
+     "want": "produce",
+     "place": "counter",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 1.6,
+     "y": 1.13,
+     "z": 0.5,
+     "yaw": 0,
+     "want": "produce",
+     "place": "counter",
+     "row": true
+    }
+   ]
+  },
+  {
+   "id": "AA-pantry-cabinet-01",
+   "kind": "pantry-shelf",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -1.25,
+     1.25
+    ],
+    "z": [
+     0,
+     0.8
+    ],
+    "h": 3
+   },
+   "rooms": [
+    "kitchen",
+    "storage",
+    "tavern"
+   ],
+   "families": [
+    "rustic_furniture",
+    "plank"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "saphonette 'Valheim Ashwood Pantries / Kitchen Storages' (thumbnail); album 124"
+   },
+   "note": "one kind per shelf, in a row (corpus runs: drink and food come in rows)",
+   "pieces": [
+    {
+     "n": "piece_chest_wood",
+     "x": 0,
+     "y": 0,
+     "z": 0.4,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole2",
+     "x": -1.05,
+     "y": 1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole2",
+     "x": 1.05,
+     "y": 1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole",
+     "x": -1.05,
+     "y": 2.5,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole",
+     "x": 1.05,
+     "y": 2.5,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 1.05,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 1.55,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 2.05,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 2.8,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.7,
+     "y": 1.25,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "produce",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.35,
+     "y": 1.25,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "produce",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0,
+     "y": 1.25,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "produce",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.35,
+     "y": 1.25,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "produce",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.7,
+     "y": 1.25,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "produce",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.7,
+     "y": 1.75,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "food",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.35,
+     "y": 1.75,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "food",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0,
+     "y": 1.75,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "food",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.35,
+     "y": 1.75,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "food",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.7,
+     "y": 1.75,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "food",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.7,
+     "y": 2.25,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.35,
+     "y": 2.25,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0,
+     "y": 2.25,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.35,
+     "y": 2.25,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.7,
+     "y": 2.25,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "mead",
+     "place": "shelf",
+     "row": true
+    }
+   ]
+  },
+  {
+   "id": "AA-bar-01",
+   "kind": "bar-counter",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -2,
+     2
+    ],
+    "z": [
+     0,
+     2.6
+    ],
+    "h": 2.3
+   },
+   "rooms": [
+    "tavern",
+    "hall"
+   ],
+   "families": [
+    "rustic_furniture",
+    "plank"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's album 128, 169"
+   },
+   "note": "clear strip behind the counter 0.85 m (corpus p50 0.83 m); one seat kind",
+   "pieces": [
+    {
+     "n": "wood_beam",
+     "x": -1,
+     "y": 1.5,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 1,
+     "y": 1.5,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": -1,
+     "y": 2.1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 1,
+     "y": 2.1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": -1.6,
+     "y": 1.7,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "drink",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -1.2,
+     "y": 1.7,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "drink",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.8,
+     "y": 1.7,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "drink",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.4,
+     "y": 1.7,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "drink",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.5,
+     "y": 2.3,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "drink",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.9,
+     "y": 2.3,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "drink",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 1.3,
+     "y": 2.3,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "drink",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "wood_wall_half",
+     "x": -1,
+     "y": 0.5,
+     "z": 1.65,
+     "yaw": 0
+    },
+    {
+     "n": "wood_wall_half",
+     "x": 1,
+     "y": 0.5,
+     "z": 1.65,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": -1.5,
+     "y": 1.033,
+     "z": 1.35,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": -0.5,
+     "y": 1.033,
+     "z": 1.35,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": 0.5,
+     "y": 1.033,
+     "z": 1.35,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": 1.5,
+     "y": 1.033,
+     "z": 1.35,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.6,
+     "y": 1.13,
+     "z": 1.45,
+     "yaw": 30,
+     "want": "tankard",
+     "place": "counter"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.45,
+     "y": 1.13,
+     "z": 1.4,
+     "yaw": 200,
+     "want": "tankard",
+     "place": "counter"
+    },
+    {
+     "n": "Candle_resin",
+     "x": 1.7,
+     "y": 1.13,
+     "z": 1.4,
+     "yaw": 0
+    },
+    {
+     "n": "piece_chair",
+     "x": -1.2,
+     "y": -0.07,
+     "z": 2.35,
+     "yaw": 0
+    },
+    {
+     "n": "piece_chair",
+     "x": -0.1,
+     "y": -0.07,
+     "z": 2.35,
+     "yaw": 0
+    },
+    {
+     "n": "piece_chair",
+     "x": 1,
+     "y": -0.07,
+     "z": 2.35,
+     "yaw": 0
+    }
+   ]
+  },
+  {
+   "id": "AA-keg-rack-01",
+   "kind": "keg-rack",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -2,
+     2
+    ],
+    "z": [
+     0,
+     1.1
+    ],
+    "h": 2.2
+   },
+   "rooms": [
+    "tavern",
+    "storage",
+    "brewery",
+    "hall"
+   ],
+   "families": [
+    "rustic_furniture",
+    "plank"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [
+    "barrell"
+   ],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's album 168"
+   },
+   "note": "barrell is hidden from the build menu (D-166): kegs have a purpose here",
+   "pieces": [
+    {
+     "n": "wood_beam",
+     "x": -1,
+     "y": 0.2,
+     "z": 0.3,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 1,
+     "y": 0.2,
+     "z": 0.3,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": -1,
+     "y": 0.2,
+     "z": 0.9,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 1,
+     "y": 0.2,
+     "z": 0.9,
+     "yaw": 0
+    },
+    {
+     "n": "barrell",
+     "x": -1.3,
+     "y": 0.927,
+     "z": 0.6,
+     "yaw": 0,
+     "hidden": true
+    },
+    {
+     "n": "barrell",
+     "x": 0,
+     "y": 0.927,
+     "z": 0.6,
+     "yaw": 0,
+     "hidden": true
+    },
+    {
+     "n": "barrell",
+     "x": 1.3,
+     "y": 0.927,
+     "z": 0.6,
+     "yaw": 0,
+     "hidden": true
+    },
+    {
+     "n": "wood_beam",
+     "x": -1,
+     "y": 1.95,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 1,
+     "y": 1.95,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": -1.5,
+     "y": 2.15,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "tankard",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -1.1,
+     "y": 2.15,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "tankard",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.7,
+     "y": 2.15,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "tankard",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.6,
+     "y": 2.15,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "tankard",
+     "place": "shelf",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 1,
+     "y": 2.15,
+     "z": 0.2,
+     "yaw": 90,
+     "want": "tankard",
+     "place": "shelf",
+     "row": true
+    }
+   ]
+  },
+  {
+   "id": "AA-canopy-bed-01",
+   "kind": "canopy-bed",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -2.3,
+     2.3
+    ],
+    "z": [
+     0,
+     3.7300000000000004
+    ],
+    "h": 2.5
+   },
+   "rooms": [
+    "bedroom"
+   ],
+   "families": [
+    "darkwood",
+    "rustic_furniture",
+    "hide"
+   ],
+   "built": "darkwood",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's album 174"
+   },
+   "note": "head to a solid wall; a different piece each side",
+   "pieces": [
+    {
+     "n": "piece_bed02",
+     "x": 0,
+     "y": 0.045,
+     "z": 1.65,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_pole",
+     "x": -1.3,
+     "y": 1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_pole",
+     "x": -1.3,
+     "y": 1,
+     "z": 3.48,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_pole",
+     "x": 1.3,
+     "y": 1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_pole",
+     "x": 1.3,
+     "y": 1,
+     "z": 3.48,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_beam",
+     "x": 0,
+     "y": 1.95,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_beam",
+     "x": 0,
+     "y": 1.95,
+     "z": 3.48,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_beam",
+     "x": -1.3,
+     "y": 1.95,
+     "z": 1.086,
+     "yaw": 90
+    },
+    {
+     "n": "darkwood_beam",
+     "x": -1.3,
+     "y": 1.95,
+     "z": 2.594,
+     "yaw": 90
+    },
+    {
+     "n": "darkwood_beam",
+     "x": 1.3,
+     "y": 1.95,
+     "z": 1.086,
+     "yaw": 90
+    },
+    {
+     "n": "darkwood_beam",
+     "x": 1.3,
+     "y": 1.95,
+     "z": 2.594,
+     "yaw": 90
+    },
+    {
+     "n": "piece_chest_barrel",
+     "x": -1.9,
+     "y": 0.004,
+     "z": 0.45,
+     "yaw": 0
+    },
+    {
+     "n": "piece_chest_barrel",
+     "x": 1.9,
+     "y": 0.004,
+     "z": 0.45,
+     "yaw": 0
+    },
+    {
+     "n": "Candle_resin",
+     "x": -1.9,
+     "y": 0.899,
+     "z": 0.45,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": 1.9,
+     "y": 0.899,
+     "z": 0.45,
+     "yaw": 0,
+     "want": "mead",
+     "place": "sidetable"
+    },
+    {
+     "n": "itemstand",
+     "x": 0,
+     "y": 1.7,
+     "z": 0.045,
+     "yaw": 0,
+     "want": "trophies",
+     "place": "wall",
+     "near": "sleep"
+    }
+   ]
+  },
+  {
+   "id": "AA-canopy-bed-02",
+   "kind": "canopy-bed",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -1.75,
+     1.75
+    ],
+    "z": [
+     0,
+     3.0999999999999996
+    ],
+    "h": 2.5
+   },
+   "rooms": [
+    "bedroom"
+   ],
+   "families": [
+    "plank",
+    "rustic_furniture"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's album 174 (plank and straw bed for early stages)"
+   },
+   "note": "head to a solid wall; a different piece each side",
+   "pieces": [
+    {
+     "n": "bed",
+     "x": 0,
+     "y": 0.02,
+     "z": 1.45,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole2",
+     "x": -0.75,
+     "y": 1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole2",
+     "x": -0.75,
+     "y": 1,
+     "z": 2.85,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole2",
+     "x": 0.75,
+     "y": 1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole2",
+     "x": 0.75,
+     "y": 1,
+     "z": 2.85,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 2.2,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 2.2,
+     "z": 2.85,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": -0.75,
+     "y": 2.2,
+     "z": 0.916,
+     "yaw": 90
+    },
+    {
+     "n": "wood_beam",
+     "x": -0.75,
+     "y": 2.2,
+     "z": 2.134,
+     "yaw": 90
+    },
+    {
+     "n": "wood_beam",
+     "x": 0.75,
+     "y": 2.2,
+     "z": 0.916,
+     "yaw": 90
+    },
+    {
+     "n": "wood_beam",
+     "x": 0.75,
+     "y": 2.2,
+     "z": 2.134,
+     "yaw": 90
+    },
+    {
+     "n": "piece_chest_barrel",
+     "x": -1.35,
+     "y": 0.004,
+     "z": 0.45,
+     "yaw": 0
+    },
+    {
+     "n": "piece_chest_barrel",
+     "x": 1.35,
+     "y": 0.004,
+     "z": 0.45,
+     "yaw": 0
+    },
+    {
+     "n": "Candle_resin",
+     "x": -1.35,
+     "y": 0.899,
+     "z": 0.45,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": 1.35,
+     "y": 0.899,
+     "z": 0.45,
+     "yaw": 0,
+     "want": "mead",
+     "place": "sidetable"
+    },
+    {
+     "n": "itemstand",
+     "x": 0,
+     "y": 1.7,
+     "z": 0.045,
+     "yaw": 0,
+     "want": "trophies",
+     "place": "wall",
+     "near": "sleep"
+    }
+   ]
+  },
+  {
+   "id": "AA-dresser-01",
+   "kind": "dresser",
+   "from": "web",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -1.15,
+     1.15
+    ],
+    "z": [
+     0,
+     1.1
+    ],
+    "h": 2.1
+   },
+   "rooms": [
+    "bedroom",
+    "home"
+   ],
+   "families": [
+    "rustic_furniture",
+    "plank"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "SozAI transcript '50+ building tips in Valheim 2026' (signs as drawer fronts); Versaugh small cabinet; Tyler's collage (dresser)"
+   },
+   "pieces": [
+    {
+     "n": "piece_chest_wood",
+     "x": 0,
+     "y": 0,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_wall_quarter",
+     "x": -0.97,
+     "y": 0,
+     "z": 0.5,
+     "yaw": 90
+    },
+    {
+     "n": "wood_wall_quarter",
+     "x": 0.97,
+     "y": 0,
+     "z": 0.5,
+     "yaw": 90
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": -0.5,
+     "y": 1.033,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": 0.5,
+     "y": 1.033,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.55,
+     "y": 1.13,
+     "z": 0.5,
+     "yaw": 0,
+     "want": "curios",
+     "place": "sidetable"
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.2,
+     "y": 1.13,
+     "z": 0.45,
+     "yaw": 30,
+     "want": "curios",
+     "place": "sidetable"
+    },
+    {
+     "n": "Candle_resin",
+     "x": 0.55,
+     "y": 1.13,
+     "z": 0.4,
+     "yaw": 0
+    },
+    {
+     "n": "sign",
+     "x": -0.97,
+     "y": 0.5,
+     "z": 1.05,
+     "yaw": 0,
+     "info": "-"
+    },
+    {
+     "n": "sign",
+     "x": 0.97,
+     "y": 0.5,
+     "z": 1.05,
+     "yaw": 0,
+     "info": "-"
+    },
+    {
+     "n": "itemstand",
+     "x": 0,
+     "y": 1.75,
+     "z": 0.045,
+     "yaw": 0,
+     "want": "arms",
+     "place": "wall",
+     "near": "sleep"
+    }
+   ]
+  },
+  {
+   "id": "AA-wardrobe-01",
+   "kind": "wardrobe-nook",
+   "from": "web",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -1.3,
+     2.5
+    ],
+    "z": [
+     0,
+     0.9
+    ],
+    "h": 2.45
+   },
+   "rooms": [
+    "bedroom"
+   ],
+   "families": [
+    "plank",
+    "rustic_furniture",
+    "fine_furniture"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Versaugh 'Over 20 interior ideas' (Wardrobe Closet)"
+   },
+   "pieces": [
+    {
+     "n": "piece_chest_warderobe",
+     "x": -0.2,
+     "y": -0.008,
+     "z": 0.45,
+     "yaw": 180
+    },
+    {
+     "n": "wood_pole2",
+     "x": -1.05,
+     "y": 1,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole2",
+     "x": 0.65,
+     "y": 1,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": -0.2,
+     "y": 2.2,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "piece_chest_wood",
+     "x": 1.65,
+     "y": 0,
+     "z": 0.45,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": 1.4,
+     "y": 0.753,
+     "z": 0.45,
+     "yaw": 0,
+     "want": "hat",
+     "place": "chest"
+    }
+   ]
+  },
+  {
+   "id": "AA-armor-alcove-01",
+   "kind": "armor-alcove",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -1.1,
+     1.1
+    ],
+    "z": [
+     0,
+     0.9
+    ],
+    "h": 2.45
+   },
+   "rooms": [
+    "hall",
+    "armory",
+    "bedroom",
+    "entry"
+   ],
+   "families": [
+    "darkwood",
+    "rustic_furniture",
+    "iron_props"
+   ],
+   "built": "darkwood",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's album 61"
+   },
+   "pieces": [
+    {
+     "n": "darkwood_pole",
+     "x": -0.9,
+     "y": 1,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_pole",
+     "x": 0.9,
+     "y": 1,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "darkwood_beam",
+     "x": 0,
+     "y": 1.95,
+     "z": 0.25,
+     "yaw": 0
+    },
+    {
+     "n": "ArmorStand",
+     "x": 0,
+     "y": 0.007,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "full"
+    },
+    {
+     "n": "piece_walltorch",
+     "x": 0,
+     "y": 2.284,
+     "z": 0.2,
+     "yaw": 270
+    }
+   ]
+  },
+  {
+   "id": "AA-armor-alcove-02",
+   "kind": "armor-alcove",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -1.5,
+     1.5
+    ],
+    "z": [
+     0,
+     1.1
+    ],
+    "h": 3
+   },
+   "rooms": [
+    "hall",
+    "armory",
+    "entry"
+   ],
+   "families": [
+    "stone",
+    "rustic_furniture"
+   ],
+   "built": "stone",
+   "cultures": [
+    "stone"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's album 61 (stone)"
+   },
+   "pieces": [
+    {
+     "n": "stone_wall_1x1",
+     "x": -1,
+     "y": 0.5,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "stone_wall_1x1",
+     "x": -1,
+     "y": 1.5,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "stone_wall_1x1",
+     "x": 1,
+     "y": 0.5,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "stone_wall_1x1",
+     "x": 1,
+     "y": 1.5,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "stone_wall_2x1",
+     "x": 0,
+     "y": 2.5,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "ArmorStand",
+     "x": 0,
+     "y": 0.007,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "full"
+    },
+    {
+     "n": "itemstand",
+     "x": -1,
+     "y": 1.6,
+     "z": 1.045,
+     "yaw": 0,
+     "want": "shield",
+     "place": "wall"
+    }
+   ]
+  },
+  {
+   "id": "AA-weapon-rack-01",
+   "kind": "weapon-rack",
+   "from": "web",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -1.25,
+     1.25
+    ],
+    "z": [
+     0,
+     1.15
+    ],
+    "h": 2
+   },
+   "rooms": [
+    "hall",
+    "armory",
+    "entry",
+    "bedroom"
+   ],
+   "families": [
+    "plank",
+    "rustic_furniture"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Versaugh 'Over 20 interior ideas' (Weapons cabinet); Tyler's album 126"
+   },
+   "note": "one weapon of each kind, never the same weapon twice side by side",
+   "pieces": [
+    {
+     "n": "wood_pole2",
+     "x": -1.05,
+     "y": 1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole2",
+     "x": 1.05,
+     "y": 1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 1.7,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 0.5,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "itemstand",
+     "x": 0,
+     "y": 1.75,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "shield",
+     "place": "wall"
+    },
+    {
+     "n": "itemstand",
+     "x": -0.6,
+     "y": 1.65,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "arms",
+     "place": "wall"
+    },
+    {
+     "n": "itemstand",
+     "x": 0.6,
+     "y": 1.65,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "arms",
+     "place": "wall"
+    },
+    {
+     "n": "piece_chest_wood",
+     "x": 0,
+     "y": 0,
+     "z": 0.75,
+     "yaw": 0
+    }
+   ]
+  },
+  {
+   "id": "AA-tool-wall-01",
+   "kind": "tool-shelf",
+   "from": "corpus-rule",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -1,
+     1
+    ],
+    "z": [
+     0,
+     0.85
+    ],
+    "h": 2.5
+   },
+   "rooms": [
+    "workshop",
+    "smithy",
+    "storage"
+   ],
+   "families": [
+    "rustic_furniture",
+    "plank"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "corpus wall stands over workbenches (data/stands-corpus.json); docs/ROOM_STUDY.md work corners"
+   },
+   "pieces": [
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 1.65,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 2.3,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "itemstand",
+     "x": -0.7,
+     "y": 1.7,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "work",
+     "place": "wall",
+     "near": "craft"
+    },
+    {
+     "n": "itemstand",
+     "x": -0.25,
+     "y": 1.7,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "work",
+     "place": "wall",
+     "near": "craft"
+    },
+    {
+     "n": "itemstand",
+     "x": 0.25,
+     "y": 1.7,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "work",
+     "place": "wall",
+     "near": "craft"
+    },
+    {
+     "n": "itemstand",
+     "x": 0.7,
+     "y": 1.7,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "work",
+     "place": "wall",
+     "near": "craft"
+    },
+    {
+     "n": "piece_chest_wood",
+     "x": 0,
+     "y": 0,
+     "z": 0.45,
+     "yaw": 0
+    },
+    {
+     "n": "sign",
+     "x": 0,
+     "y": 1.0030000000000001,
+     "z": 0.06,
+     "yaw": 0,
+     "info": ""
+    }
+   ]
+  },
+  {
+   "id": "AA-sitting-nook-01",
+   "kind": "sitting-nook",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -2.05,
+     2.05
+    ],
+    "z": [
+     0,
+     2.65
+    ],
+    "h": 0.65
+   },
+   "rooms": [
+    "hall",
+    "tavern",
+    "hearth",
+    "home"
+   ],
+   "families": [
+    "plank",
+    "rustic_furniture",
+    "hide"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's album 183"
+   },
+   "note": "needs a room 4 m wide; the open side faces the walking line",
+   "pieces": [
+    {
+     "n": "wood_wall_half",
+     "x": -1,
+     "y": 0,
+     "z": 0.15,
+     "yaw": 0
+    },
+    {
+     "n": "wood_wall_half",
+     "x": -1,
+     "y": 0,
+     "z": 0.45,
+     "yaw": 0
+    },
+    {
+     "n": "wood_wall_half",
+     "x": 1,
+     "y": 0,
+     "z": 0.15,
+     "yaw": 0
+    },
+    {
+     "n": "wood_wall_half",
+     "x": 1,
+     "y": 0,
+     "z": 0.45,
+     "yaw": 0
+    },
+    {
+     "n": "wood_wall_half",
+     "x": -1.85,
+     "y": 0,
+     "z": 1.6,
+     "yaw": 90
+    },
+    {
+     "n": "wood_wall_half",
+     "x": -1.55,
+     "y": 0,
+     "z": 1.6,
+     "yaw": 90
+    },
+    {
+     "n": "wood_wall_half",
+     "x": 1.85,
+     "y": 0,
+     "z": 1.6,
+     "yaw": 90
+    },
+    {
+     "n": "wood_wall_half",
+     "x": 1.55,
+     "y": 0,
+     "z": 1.6,
+     "yaw": 90
+    },
+    {
+     "n": "wood_pole",
+     "x": -0.6,
+     "y": 0,
+     "z": 1.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole",
+     "x": 0.6,
+     "y": 0,
+     "z": 1.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": -0.5,
+     "y": 0.533,
+     "z": 1.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": 0.5,
+     "y": 0.533,
+     "z": 1.5,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.5,
+     "y": 0.63,
+     "z": 1.4,
+     "yaw": 20,
+     "want": "tankard",
+     "place": "table"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.1,
+     "y": 0.63,
+     "z": 1.6,
+     "yaw": 0,
+     "want": "food",
+     "place": "table"
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.55,
+     "y": 0.63,
+     "z": 1.35,
+     "yaw": 250,
+     "want": "tankard",
+     "place": "table"
+    },
+    {
+     "n": "rug_deer",
+     "x": 0,
+     "y": -0.059,
+     "z": 1.5,
+     "yaw": 0
+    }
+   ]
+  },
+  {
+   "id": "AA-display-counter-01",
+   "kind": "display-counter",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -2,
+     2
+    ],
+    "z": [
+     0,
+     1
+    ],
+    "h": 2.5
+   },
+   "rooms": [
+    "tavern",
+    "storage",
+    "hall",
+    "kitchen"
+   ],
+   "families": [
+    "rustic_furniture",
+    "plank"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's album 173, 179, 189"
+   },
+   "note": "one kind per row; the sign takes a label the building sets (FRESH DAILY in album 189)",
+   "pieces": [
+    {
+     "n": "wood_wall_half",
+     "x": -1,
+     "y": 0.5,
+     "z": 0.85,
+     "yaw": 0
+    },
+    {
+     "n": "wood_wall_half",
+     "x": 1,
+     "y": 0.5,
+     "z": 0.85,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": -1.5,
+     "y": 1.033,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": -0.5,
+     "y": 1.033,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": 0.5,
+     "y": 1.033,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "wood_floor_1x1",
+     "x": 1.5,
+     "y": 1.033,
+     "z": 0.5,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": -1.6,
+     "y": 1.13,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "produce",
+     "place": "counter",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -1.25,
+     "y": 1.13,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "produce",
+     "place": "counter",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.9,
+     "y": 1.13,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "produce",
+     "place": "counter",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": -0.3,
+     "y": 1.13,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "food",
+     "place": "counter",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.05,
+     "y": 1.13,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "food",
+     "place": "counter",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 0.4,
+     "y": 1.13,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "food",
+     "place": "counter",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 1,
+     "y": 1.13,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "pantry",
+     "place": "counter",
+     "row": true
+    },
+    {
+     "n": "itemstandh",
+     "x": 1.4,
+     "y": 1.13,
+     "z": 0.55,
+     "yaw": 0,
+     "want": "pantry",
+     "place": "counter",
+     "row": true
+    },
+    {
+     "n": "itemstand",
+     "x": -1.2,
+     "y": 1.9,
+     "z": 0.045,
+     "yaw": 0,
+     "want": "herbs",
+     "place": "wall"
+    },
+    {
+     "n": "itemstand",
+     "x": 1.2,
+     "y": 1.9,
+     "z": 0.045,
+     "yaw": 0,
+     "want": "fish",
+     "place": "wall"
+    },
+    {
+     "n": "sign",
+     "x": 0,
+     "y": 2.2,
+     "z": 0.06,
+     "yaw": 0,
+     "info": ""
+    }
+   ]
+  },
+  {
+   "id": "AA-round-side-table-01",
+   "kind": "side-table",
+   "from": "web",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -0.35,
+     0.35
+    ],
+    "z": [
+     0,
+     0.75
+    ],
+    "h": 0.75
+   },
+   "rooms": [
+    "bedroom",
+    "home",
+    "hall"
+   ],
+   "families": [
+    "rustic_furniture"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "SozAI transcript '50+ building tips in Valheim 2026' (round bedside table)"
+   },
+   "note": "the stand holds a wooden shield lying flat as the table top",
+   "pieces": [
+    {
+     "n": "piece_chair",
+     "x": 0,
+     "y": -0.07,
+     "z": 0.4,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": 0,
+     "y": 0.6,
+     "z": 0.4,
+     "yaw": 0,
+     "want": "shield",
+     "place": "sidetable",
+     "info": "ShieldWood:0:1"
+    }
+   ]
+  },
+  {
+   "id": "AA-trophy-plinth-01",
+   "kind": "display-plinth",
+   "from": "corpus-rule",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -0.6,
+     0.6
+    ],
+    "z": [
+     0,
+     1.2
+    ],
+    "h": 2.2
+   },
+   "rooms": [
+    "hall",
+    "temple",
+    "study",
+    "home"
+   ],
+   "families": [
+    "stone",
+    "rustic_furniture"
+   ],
+   "built": "stone",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "docs/ROOM_STUDY.md custom furniture (display plinths); album 172, 178"
+   },
+   "pieces": [
+    {
+     "n": "stone_wall_1x1",
+     "x": 0,
+     "y": 0.5,
+     "z": 0.6,
+     "yaw": 0
+    },
+    {
+     "n": "itemstandh",
+     "x": 0,
+     "y": 1,
+     "z": 0.6,
+     "yaw": 0,
+     "want": "trophy",
+     "place": "counter"
+    }
+   ]
+  },
+  {
+   "id": "AA-drying-rack-01",
+   "kind": "drying-rack",
+   "from": "album",
+   "wall": "back",
+   "foot": {
+    "x": [
+     -1.25,
+     1.25
+    ],
+    "z": [
+     0,
+     1
+    ],
+    "h": 2.3
+   },
+   "rooms": [
+    "kitchen",
+    "storage",
+    "home"
+   ],
+   "families": [
+    "rustic_furniture",
+    "plank"
+   ],
+   "built": "plank",
+   "cultures": [
+    "any"
+   ],
+   "hidden": [],
+   "builds": 1,
+   "src": {
+    "title": "Tyler's album 180"
+   },
+   "pieces": [
+    {
+     "n": "wood_pole2",
+     "x": -1.05,
+     "y": 1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_pole2",
+     "x": 1.05,
+     "y": 1,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "wood_beam",
+     "x": 0,
+     "y": 2.05,
+     "z": 0.2,
+     "yaw": 0
+    },
+    {
+     "n": "itemstand",
+     "x": -0.7,
+     "y": 1.7,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "herbs",
+     "place": "wall",
+     "near": "kitchen"
+    },
+    {
+     "n": "itemstand",
+     "x": -0.25,
+     "y": 1.7,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "herbs",
+     "place": "wall",
+     "near": "kitchen"
+    },
+    {
+     "n": "itemstand",
+     "x": 0.25,
+     "y": 1.7,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "fish",
+     "place": "wall",
+     "near": "kitchen"
+    },
+    {
+     "n": "itemstand",
+     "x": 0.7,
+     "y": 1.7,
+     "z": 0.445,
+     "yaw": 0,
+     "want": "herbs",
+     "place": "wall",
+     "near": "kitchen"
+    },
+    {
+     "n": "piece_chest_barrel",
+     "x": 0.6,
+     "y": 0.004,
+     "z": 0.6,
+     "yaw": 0
+    }
+   ]
+  }
+ ]
+}

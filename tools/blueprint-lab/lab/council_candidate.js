@@ -47,6 +47,45 @@ function requests() {
 
 // the decorator's own record of the building plan and each room's intent, kept as the request is made
 let lastIntent = null;
+// the generated design and its building program, by design name, for track D's shell list and track H's program
+// hard fails (the checks read the design itself: the blueprint keeps neither the program nor what each window carries)
+const G = require(lab + '/lib/generate.js'), Det = require(lab + '/lib/details.js'), Ck = require(lab + '/lib/checks.js'), Pr = require(lab + '/lib/program.js');
+const made = new Map();
+let archNow = null;
+{
+  const gen0 = G.generate, ext0 = Det.exterior;
+  Det.exterior = function (b, ctx) { const r = ext0.call(this, b, ctx); archNow = { prog: ctx && ctx.program, openings: b.openings || [] }; return r; };
+  G.generate = function (...a) { archNow = null; const d = gen0.apply(this, a); if (d && d.meta) made.set(d.meta.Name, { d, req: a[0], arch: archNow }); return d; };
+}
+// track D's shell criteria (criteria/shell.md): hard fails H1 to H5 and the measured weighted items, from lib/checks.js
+function shellList(m) {
+  const res = Ck.check(m.d, (m.req && m.req.biome) || 'Meadows');
+  const by = Object.fromEntries(res.map(x => [x.check, x]));
+  const H = [['H1 every piece holds by the game\'s rule', 'game support'], ['H2 no walk under two floor pieces wide', 'passages'], ['H3 every doorway clear and stepped', 'doorways'],
+    ['H4 no pasture fence raised or indoors', 'railings'], ['H5 one masonry family', 'masonry']];
+  const hard = H.map(([id, c]) => ({ id, fail: !!by[c] && !by[c].ok, detail: by[c] && !by[c].ok ? [by[c].detail] : [] }));
+  // measured items (the rest are read from the views): 1 wall tops 10, 2 roof holes 8, 4 crossed boards 4, 5 plants held 6
+  const M = [[1, 10, 'wall tops'], [2, 8, 'roof holes'], [4, 4, 'crossed boards'], [5, 6, 'plants held']];
+  const items = M.map(([id, weight, c]) => ({ id, weight, points: by[c] && by[c].ok ? weight : 0, detail: by[c] && !by[c].ok ? [by[c].detail] : [] }));
+  const of = M.reduce((a, x) => a + x[1], 0), points = items.reduce((a, x) => a + x.points, 0);
+  return { pass: !hard.some(h => h.fail) && points >= 0.75 * of, points, of, mark: '75 % of the measured weight', hardFails: hard.filter(h => h.fail).map(h => h.id), hard, items };
+}
+// track H's architecture hard fails (criteria/architecture.md H1 to H3), read from the program record: lone features
+// without a reason, mixed treatments in a run, planters past the household rule
+function archList(m) {
+  const A = m.arch;
+  if (!A || !A.prog) return { pass: true, points: null, of: null, hardFails: [], hard: [], items: [], note: 'no program record' };
+  const ws = A.openings.filter(o => o.kind === 'window' && o.run).map(o => ({ side: o.run.side, line: o.run.line, storey: o.run.storey, byDoor: o.run.byDoor,
+    features: (o.features || []).filter(f => !f.startsWith('fill:')), fill: ((o.features || []).find(f => f.startsWith('fill:')) || 'fill:open').slice(5) }));
+  const faults = Pr.check(A.prog, ws);
+  const lone = faults.filter(f => f.kind === 'lone feature without a reason'), mixed = faults.filter(f => f.kind === 'mixed treatments in one run' || f.kind === 'more than one exception in a run');
+  const runsP = new Set(ws.filter(w => w.features.includes('planter')).map(w => `${w.side}|${w.line}|${w.storey}`));
+  const planterBad = (runsP.size > 0 && !A.prog.planters) || runsP.size > 2;
+  const hard = [{ id: 'H1 lone feature without a reason', fail: lone.length > 0, detail: lone.map(f => f.run) },
+    { id: 'H2 mixed treatments in one run', fail: mixed.length > 0, detail: mixed.map(f => `${f.kind}: ${f.run}`) },
+    { id: 'H3 planters past the household rule', fail: planterBad, detail: planterBad ? [`${runsP.size} runs with planters, household planters ${!!A.prog.planters}`] : [] }];
+  return { pass: !hard.some(h => h.fail), points: null, of: null, hardFails: hard.filter(h => h.fail).map(h => h.id), hard, items: [], windows: ws.length, runs: new Set(ws.map(w => `${w.side}|${w.line}|${w.storey}`)).size };
+}
 {
   const dec0 = D.decorate;
   D.decorate = function (b, ctx) {
@@ -151,8 +190,11 @@ for (const q of requests()) {
   for (const p of pieces) if (D.FURNITURE[p.name] || /^(itemstand|Candle|wood_ledge|piece_pot)/.test(p.name)) p.decor = true;
   const views = flag('--no-render') ? [] : render(pieces, dir, q.name);
   const A = flag('--no-audit') ? {} : audits(file, dir, q.type);
+  const mm = made.get(r.name);
+  if (!flag('--no-audit') && mm) { try { A.shell = shellList(mm); } catch (e) { A.shell = { error: String(e.message || e).slice(0, 300) }; } try { A.architecture = archList(mm); } catch (e) { A.architecture = { error: String(e.message || e).slice(0, 300) }; } }
+  made.clear();
   const card = { name: q.name, request: q, design: r.name, pieces: r.pieces, generatorChecks: { passed: r.passed, of: r.checks, failed: r.failed }, views, audits: {} };
-  for (const [k, v] of Object.entries(A)) card.audits[k] = { pass: v.pass, points: v.points, of: v.of || 100, mark: v.mark, hardFails: v.hardFails || [], items: v.items, hard: v.hard, error: v.error };
+  for (const [k, v] of Object.entries(A)) card.audits[k] = { pass: v.pass, points: v.points, of: v.of || 100, mark: v.mark, hardFails: v.hardFails || [], items: v.items, hard: v.hard, error: v.error, ...(v.windows != null ? { windows: v.windows, runs: v.runs } : {}), ...(v.note ? { note: v.note } : {}) };
   fs.writeFileSync(path.join(dir, 'scorecard.json'), JSON.stringify(card, null, 1));
   const md = [`# ${q.name}`, '', `Request: ${q.type} ${q.biome} ${q.culture} ${q.stage} seed ${q.seed}. Design: ${r.name}, ${r.pieces} pieces.`,
     `Generator checks: ${r.passed} of ${r.checks}${r.failed.length ? ' (failed: ' + r.failed.join('; ') + ')' : ''}.`, '', '| Audit | Pass | Points | Hard fails |', '|---|---|---|---|',

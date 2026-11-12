@@ -10926,6 +10926,8 @@ function windowRuns(b, ctx, openings) {
       if (o.light && o.light.fill === 'shutter' && !(C.winKit && C.winKit.closed) && !feats.includes('shutter')) feats.push('shutter');
       o.features = feats;
       o.bare = !feats.some(f => !f.startsWith('fill:'));
+      // (the run it belongs to, for the program check of the council's candidate script)
+      o.run = { side: R.side, line: R.line, storey: R.storey, byDoor };
     }
   }
   // what a run cannot carry on every window it carries on none

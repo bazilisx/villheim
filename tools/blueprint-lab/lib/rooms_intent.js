@@ -645,6 +645,9 @@ function builtZone(room, plan, H, I) {
   // (narrow ones first: generated walls have a window every bay or two, so a plain stretch is rarely over 3 m)
   const list = AS.find({ kinds, room: ROOM_ASM[I.kind], wall: 'back', maxW: 4.2, maxD: 2, culture: plan.culture }).sort((a, b) => (a.foot.x[1] - a.foot.x[0]) - (b.foot.x[1] - b.foot.x[0]))
     // (no beam overhead out in the room: headroom 2.4 m, lab/test_structure.js)
+    // (and no recipe that clads a counter in signs: thirty signs over one another read as a pile on the wall, track F's
+    // wallStack and wallOff)
+    .filter(r => r.pieces.filter(p => /^sign/.test(p.n)).length <= 3)
     .filter(r => !r.pieces.some(p => ASM_SKIP.test(p.n) || (/beam|floor/.test(p.n) && p.y > 1.2 && p.y < 2.6 && (p.z > 0.7 || p.y >= 1.9))) && !plan.asm.used[r.id]);
   if (!list.length) return null;
   const P = (H.PIECES || null);

@@ -3126,6 +3126,14 @@ function dressStands(b, ctx) {
     n++;
   }
   if (out.size) b.pieces = b.pieces.filter(p => !out.has(p));
+  // what stands on a floor, a table or a chest sits on it (track F's float check: flat stands, stools and chests 3 to
+  // 10 cm over what holds them): set down onto the first thing under its foot within 15 cm (lib/wallhang.js settle)
+  const WHs = (() => { try { return NODE_P ? require('./wallhang.js') : window.VHWallhang; } catch (e) { return null; } })();
+  if (WHs && WHs.settle) for (const p of b.pieces) {
+    if (!p.decor || p.stacked || p.rest === 'wall' || p.rest === 'hang' || p.wclip || !/^(itemstandh|piece_chair|piece_chair0\d|piece_chest_barrel|piece_chest_wood|piece_chest|piece_chest_blackmetal|dvergrprops_stool)$/.test(p.name)) continue;
+    const yy = WHs.settle(p, b.pieces, 0.15);
+    if (yy != null && p.y - yy > 0.02 && p.y - yy < 0.16) p.y = yy;
+  }
   // every armor stand dressed, by the household and the room
   for (const p of b.pieces.filter(q => /^ArmorStand/.test(q.name) && !q.info)) {
     const a = SI.armor(L, { room: ROOM_SI[roleAt(b, p, ctx.type, ctx.use)] || 'home' });
@@ -4931,6 +4939,9 @@ function builtZone(room, plan, H, I) {
   // (narrow ones first: generated walls have a window every bay or two, so a plain stretch is rarely over 3 m)
   const list = AS.find({ kinds, room: ROOM_ASM[I.kind], wall: 'back', maxW: 4.2, maxD: 2, culture: plan.culture }).sort((a, b) => (a.foot.x[1] - a.foot.x[0]) - (b.foot.x[1] - b.foot.x[0]))
     // (no beam overhead out in the room: headroom 2.4 m, lab/test_structure.js)
+    // (and no recipe that clads a counter in signs: thirty signs over one another read as a pile on the wall, track F's
+    // wallStack and wallOff)
+    .filter(r => r.pieces.filter(p => /^sign/.test(p.n)).length <= 3)
     .filter(r => !r.pieces.some(p => ASM_SKIP.test(p.n) || (/beam|floor/.test(p.n) && p.y > 1.2 && p.y < 2.6 && (p.z > 0.7 || p.y >= 1.9))) && !plan.asm.used[r.id]);
   if (!list.length) return null;
   const P = (H.PIECES || null);

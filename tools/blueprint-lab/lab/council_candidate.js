@@ -111,6 +111,20 @@ function audits(file, dir, kindOf) {
       out.assemblies = { pass: !hard.some(h => h.fail), points: null, of: null, hardFails: hard.filter(h => h.fail).map(h => h.id), hard, counts: j.counts, items: [] };
     } catch (e) { out.assemblies = { error: (r.stderr || r.stdout || '').slice(0, 300) }; }
   }
+  // track F's wall-hung checks (criteria/wallhung.md hard fails), read from the pool audit on this design alone
+  if (fs.existsSync(path.join(__dirname, 'audit_pool.js'))) {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'cand-pool-'));
+    fs.copyFileSync(file, path.join(tmp, path.basename(file)));
+    const r = run('audit_pool.js', [tmp, '--list']);
+    try {
+      const t = JSON.parse(((r.stdout || '').match(/totals: (\{.*\})/) || [])[1]);
+      const H = { wallOff: 'H1/H2 off or away from its wall', wallTurn: 'H3 turned wrong', wallStack: 'H4 over one another', mountClip: 'H5 sunk too deep', floats: 'H6 floats' };
+      const lines = (r.stdout || '').split('\n');
+      const hard = Object.entries(H).map(([k, id]) => ({ id, fail: (t[k] || 0) > 0, detail: lines.filter(l => l.includes(' ' + k + ':')).slice(0, 4).map(l => l.trim()) }));
+      out.wallhung = { pass: !hard.some(h => h.fail), points: null, of: null, hardFails: hard.filter(h => h.fail).map(h => h.id), hard, counts: t, items: [] };
+    } catch (e) { out.wallhung = { error: (r.stderr || r.stdout || '').slice(0, 300) }; }
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* scratch */ }
+  }
   if (fs.existsSync(path.join(__dirname, 'council_checks.js'))) {
     const j = path.join(dir, 'audit-checks.json');
     const r = run('council_checks.js', [file, '--json', j, '--intent', path.join(dir, 'intent.json')]);

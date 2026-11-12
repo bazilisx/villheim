@@ -547,6 +547,14 @@ function dressStands(b, ctx) {
     n++;
   }
   if (out.size) b.pieces = b.pieces.filter(p => !out.has(p));
+  // what stands on a floor, a table or a chest sits on it (track F's float check: flat stands, stools and chests 3 to
+  // 10 cm over what holds them): set down onto the first thing under its foot within 15 cm (lib/wallhang.js settle)
+  const WHs = (() => { try { return NODE_P ? require('./wallhang.js') : window.VHWallhang; } catch (e) { return null; } })();
+  if (WHs && WHs.settle) for (const p of b.pieces) {
+    if (!p.decor || p.stacked || p.rest === 'wall' || p.rest === 'hang' || p.wclip || !/^(itemstandh|piece_chair|piece_chair0\d|piece_chest_barrel|piece_chest_wood|piece_chest|piece_chest_blackmetal|dvergrprops_stool)$/.test(p.name)) continue;
+    const yy = WHs.settle(p, b.pieces, 0.15);
+    if (yy != null && p.y - yy > 0.02 && p.y - yy < 0.16) p.y = yy;
+  }
   // every armor stand dressed, by the household and the room
   for (const p of b.pieces.filter(q => /^ArmorStand/.test(q.name) && !q.info)) {
     const a = SI.armor(L, { room: ROOM_SI[roleAt(b, p, ctx.type, ctx.use)] || 'home' });

@@ -370,27 +370,30 @@ function leanTo(b, K, bearing, d0) {
 }
 
 // The notice board (D-140): two posts, a board of planks, a cap, and notices as signs on both faces. A sign's info is
-// its heading in the game (the mod reads it). The three notices on each face are laid out as builders tile signs
-// (corpus: neighboring signs edge to edge, docs/handoffs/2026-11-12-showcase-review/wallhung.md): two side by side
-// over the board's lower half and the third centered over them, each flat on the planks (lib/wallhang.js). Three 1 m
-// signs 0.55 m apart on a 2 m board overlapped each other by 45 % (showcase 01 and 02, Tyler: "stacked and layered").
+// its heading in the game (the mod reads it). Builders tile signs edge to edge, side by side or in a column stepping
+// half a meter (docs/ROOM_STUDY.md section 7: neighbors 0.03 m apart, 0.48 m apart in height); the board's posts leave
+// 1.96 m, too little for two 1 m signs side by side, so each face carries a column of two, flat on the planks
+// (lib/wallhang.js). Three 1 m signs 0.55 m apart on a 2 m board overlapped each other by 45 % (showcase 01 and 02,
+// Tyler: "stacked and layered and smushed randomly together").
 const NOTICE_HEADS = ['Village notices', 'Work wanted', 'Trades'];
-// sign places on a 2 m by 1 m board: along the board, up from its middle
-const NOTICE_LAYOUT = [[-0.51, -0.24], [0.51, -0.24], [0, 0.27]];
+// sign places on a face: along it, up from the board's middle; and the headings of each face of the board
+const NOTICE_WALL = [[-0.51, -0.24], [0.51, -0.24], [0, 0.27]];
+const NOTICE_BOARD = [[0, 0.255], [0, -0.255]];
 function noticeBoard(b, K, x, z, yaw) {
   const ux = Math.cos(rad(yaw)), uz = -Math.sin(rad(yaw)), nx = Math.sin(rad(yaw)), nz = Math.cos(rad(yaw));
   for (const s of [-1.1, 1.1]) b.put(K.pole, x + ux * s, 1, z + uz * s, yaw, { notice: true });
   b.put(K.wallHalf || 'wood_wall_half', x, 1.5, z, yaw, { notice: true });
   b.put(K.beam, x, 2.1, z, yaw, { notice: true });
-  noticeSigns(b, x, 1.5, z, ux, uz, nx, nz);
-  noticeSigns(b, x, 1.5, z, ux, uz, -nx, -nz);
+  noticeSigns(b, x, 1.5, z, ux, uz, nx, nz, NOTICE_BOARD, [0, 1]);
+  noticeSigns(b, x, 1.5, z, ux, uz, -nx, -nz, NOTICE_BOARD, [2, 0]);
 }
-// The three notices on one face of a board or a wall: (x, y, z) the board's middle, n out of that face.
-function noticeSigns(b, x, y, z, ux, uz, nx, nz) {
+// Notices on one face of a board or a wall: (x, y, z) the board's middle, n out of that face, the places, the headings.
+function noticeSigns(b, x, y, z, ux, uz, nx, nz, layout, heads) {
   const WH = WHH(), B = WH ? WH.backingOf(b.pieces) : null;
-  NOTICE_LAYOUT.forEach(([s, dy], i) => {
-    const r = WH && WH.hang('sign', { x: x + ux * s, z: z + uz * s, nx, nz, y: y + dy }, B, { cover: 1, pieces: b.pieces, gapOk: 0 });
-    if (r) b.put('sign', r.x, r.y, r.z, r.yaw, { decor: true, notice: true, info: NOTICE_HEADS[i], ...(r.wclip ? { wclip: r.wclip } : {}) });
+  layout.forEach(([s, dy], i) => {
+    // (the 2x2 and half walls carry a rail on one face: a sign that meets it goes over it instead, or stays off)
+    const r = WH && WH.hang('sign', { x: x + ux * s, z: z + uz * s, nx, nz, y: y + dy }, B, { cover: 1, pieces: b.pieces, gapOk: 0, heights: [y + 0.23, y + dy + 0.1, y + dy - 0.1] });
+    if (r) b.put('sign', r.x, r.y, r.z, r.yaw, { decor: true, notice: true, info: NOTICE_HEADS[heads[i]], ...(r.wclip ? { wclip: r.wclip } : {}) });
   });
 }
 
@@ -398,7 +401,7 @@ function noticeSigns(b, x, y, z, ux, uz, nx, nz) {
 // the room; laid out as on the board.
 function noticeWall(b, w, y0) {
   const ux = Math.cos(rad(w.yaw)), uz = -Math.sin(rad(w.yaw));
-  noticeSigns(b, w.x, y0 + 1.75, w.z, ux, uz, w.nx, w.nz);
+  noticeSigns(b, w.x, y0 + 1.75, w.z, ux, uz, w.nx, w.nz, NOTICE_WALL, [0, 1, 2]);
 }
 
 function campDesign(b, K, T, o) {

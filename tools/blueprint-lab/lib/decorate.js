@@ -1165,7 +1165,13 @@ function placeBeds(room, k, n, d, row = 1.5) {
       // head against a wall 62 to 76 %): with room intent a window behind the head weighs as much as the door side
       if (s.win) v -= room.intent ? 2.5 : 0.3;
       // nor against the side of a stair (the room reader takes a stair for a wall)
-      if (room.intent && s.face) { const bk = size(name)[2] / 2 + s.face.ht + 0.3, hx = s.x - s.face.nx * bk, hz = s.z - s.face.nz * bk; if (room.stairs.some(st => ptDist(st.b, hx, hz) < 0.5)) v -= 6; }
+      // and against a wall piece at all: a face the reader closes with a beam under the eaves or a stair side is no
+      // wall to sleep against (feng shui command position; the catalog's and the room study's bed checks read walls)
+      if (room.intent && s.face) {
+        const bk = size(name)[2] / 2 + s.face.ht + 0.15, hx = s.x - s.face.nx * bk, hz = s.z - s.face.nz * bk;
+        if (room.stairs.some(st => ptDist(st.b, hx, hz) < 0.5)) v -= 6;
+        if (!room.near(hx, hz, 0.6).some(sb => sb.role === 'wall' && sb.y0 < room.stand + 1.0 && sb.y1 > room.stand + 0.6 && ptDist(sb.b, hx, hz) < 0.45)) v -= 6;
+      }
       return v + pb(room, 'bed', s, name);
     }, { noise: 0.25 });
     if (!rec) break;

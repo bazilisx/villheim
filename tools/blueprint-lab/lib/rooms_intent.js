@@ -113,7 +113,9 @@ function planBuilding(ctx) {
   const table = pickI(R, SUITE_TABLES.filter(t => D.tables[t] && pc(t)).map(t => [t, D.tables[t].n * fit(t) * flavor(t) * tilt(ctx.culture, 'tables', t)]));
   const ts = D.tables[table] || { seats: {} };
   const seatsAt = Object.entries(ts.seats).filter(([n]) => !/throne/.test(n) && pc(n));
-  const chairs = seatsAt.filter(([n]) => !/bench/.test(n)), benches = seatsAt.filter(([n]) => /bench/.test(n) && n !== 'piece_logbench01');
+  // (a bench only where builders bench that table: 10 % of its seats or more, bench01 17 % at piece_table, 6 % at the
+  // oak table)
+  const chairs = seatsAt.filter(([n]) => !/bench/.test(n)), benches = seatsAt.filter(([n, sh]) => /bench/.test(n) && n !== 'piece_logbench01' && sh >= 0.1);
   // how many seats the building needs against how many builders put up of each seat (caps.json p90 per build when
   // used: chair02 3, chair03 8, stool 9.6, bench01 4 benches): a hall seats a dozen on chairs or benches that come
   // in numbers
@@ -388,7 +390,7 @@ function furnishRoom(room, role, c, H) {
     const lt = !tavern && d >= 2 && nt >= 2 ? longTable(room, plan, H, k, c, nt) : null;
     if (lt) { tables.push(...lt.run); if (lt.head) { throne = throne || lt.head; zone('high seat', lt.head); } }
     for (let i = tables.length ? nt : 0; i < nt; i++) {
-      const t = tableSet({ head: !tavern && d >= 3 && i === 0, depth: tavern ? 0.5 : 0.55, nearFire: tavern ? 0.5 : 0, sideBias: 0.3, wallBias: tavern ? 0.6 : -0.3, spread: tavern ? 4.5 : 6, axis: tavern ? 0.4 : 1.5 });
+      const t = tableSet({ head: !tavern && d >= 3 && i === 0, headSeat: plan.suite.seat === plan.suite.chair ? plan.suite.chair : plan.suite.throne, depth: tavern ? 0.5 : 0.55, nearFire: tavern ? 0.5 : 0, sideBias: 0.3, wallBias: tavern ? 0.6 : -0.3, spread: tavern ? 4.5 : 6, axis: tavern ? 0.4 : 1.5 });
       if (!t) break;
       tables.push(t);
     }
@@ -566,7 +568,8 @@ function longTable(room, plan, H, k, c, n) {
   let head = null;
   for (const sg of order) {
     const [x, z] = endPt(sg);
-    for (const name of [plan.suite.throne, plan.suite.chair]) {
+    // (the high seat, or the suite's own seat where it is a chair: never a second seat kind at the table)
+    for (const name of [plan.suite.throne, plan.suite.seat === plan.suite.chair ? plan.suite.chair : null].filter(Boolean)) {
       if (!H.F[name] || !canUse(plan, name)) continue;
       head = room.put(name, x, z, H.norm(H.yawOfDir(-bx * sg, -bz * sg)), { tight: true });
       if (head) { note(plan, name); break; }

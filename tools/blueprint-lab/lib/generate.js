@@ -909,6 +909,9 @@ function generate(req) {
   // the building program (lib/program.js, track H, D-167): one feature family per facade, storey and run of windows,
   // a reasoned exception at most per run; the details read it for planters and corners
   if (Program) { try { dctx.program = Program.plan({ cultureKey, type, stage, decor, biome, seed, storeys, persona: household, village: req.village, kit: K }); } catch (e) { dctx.program = null; } }
+  // the program's arch: an open light of the window kit becomes an arched one (its motif from the arched corpus windows,
+  // lib/details.js motifWindow)
+  if (dctx.program && dctx.program.front.features.includes('arch') && C.winKit && C.winKit.fill === 'open' && !(req.style && req.style.winKit)) C.winKit = { ...C.winKit, fill: 'arch' };
   dctx.notes = b.notes;
   // wall dormers: Frankish, English, Slavic and medieval cultures, from stage 2 (bench: req.details.dormers)
   dctx.profile.overhang = req.details && req.details.overhang != null ? req.details.overhang : true;
@@ -2056,7 +2059,9 @@ function propUp(b, K, biome, o = {}) {
       // ground floor clear of galleries and walkways over it
       const a = (p.yaw || 0) * Math.PI / 180, ux = Math.cos(a), uz = -Math.sin(a);
       let spot = null;
-      for (const [k, m] of [[0, 0], [2, 0], [-2, 0], [4, 0], [-4, 0], [1, 0], [-1, 0], [3, 0], [-3, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      // (the corners 0.9 m out last: a valley's inner corner over the crossing of a cross hall is carried from the
+      // crossing's corner, clear of the middle)
+      for (const [k, m] of [[0, 0], [2, 0], [-2, 0], [4, 0], [-4, 0], [1, 0], [-1, 0], [3, 0], [-3, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1], [0.9, 0.9], [-0.9, 0.9], [0.9, -0.9], [-0.9, -0.9]]) {
         const x = p.x + ux * k + uz * m, z = p.z + uz * k - ux * m;
         // posts stand in rows: none within 1.9 m of another, and on the line of one in the same row when near it
         if (b.pieces.some(q => q.prop && Math.hypot(q.x - x, q.z - z) < 1.9)) continue;
@@ -2092,9 +2097,13 @@ function propUp(b, K, biome, o = {}) {
       const { x, z, top, base } = spot;
       // the longest pieces first; the last one ends at the underside, reaching down into the one below it (no metre of
       // post poking up through the roof, no short soft-wood piece at the top where the load is)
+      // a post over 8 m: wood and iron where the village's biomes allow iron (D-125), else core wood in 2 m pieces (the
+      // game takes a tenth of the support per metre of pivot distance plus 0.1 m, so two 2 m logs hold more than one
+      // 4 m log); lib/checks.js gameSupport
       let y = base;
+      const tall = top - base > 8, iron = tall && P.decorOk('woodiron_pole', biome);
       while (top - y > 0.15) {
-        const left = top - y, name = left >= 3.5 && p4 ? p4 : p2, h = P.piece(name).size[1];
+        const left = top - y, name = iron ? 'woodiron_pole' : left >= 3.5 && p4 && !tall ? p4 : p2, h = P.piece(name).size[1];
         const y0 = Math.min(y, top - h);
         b.put(name, x, Math.max(base, y0) + h / 2, z, 0, { prop: true });
         y = Math.max(base, y0) + h;

@@ -384,13 +384,17 @@ const NOTICE_HEADS = ['Village notices', 'Work wanted', 'Trades'];
 // sign places on a face: along it, up from the board's middle; and the headings of each face of the board
 const NOTICE_WALL = [[-0.51, -0.24], [0.51, -0.24], [0, 0.27]];
 const NOTICE_BOARD = [[0, 0.255], [0, -0.255]];
+// the half wall's back face carries its rail at the middle: a sign lies flat there only over the rail's lower edge
+// (0.35 m up the board) or above it (0.7 m up and higher), so that face's column sits 0.15 m lower and 0.13 m higher,
+// 0.03 m apart as builders tile them
+const NOTICE_BOARD_BACK = [[0, 0.38], [0, -0.15]];
 function noticeBoard(b, K, x, z, yaw) {
   const ux = Math.cos(rad(yaw)), uz = -Math.sin(rad(yaw)), nx = Math.sin(rad(yaw)), nz = Math.cos(rad(yaw));
   for (const s of [-1.1, 1.1]) b.put(K.pole, x + ux * s, 1, z + uz * s, yaw, { notice: true });
   b.put(K.wallHalf || 'wood_wall_half', x, 1.5, z, yaw, { notice: true });
   b.put(K.beam, x, 2.1, z, yaw, { notice: true });
   noticeSigns(b, x, 1.5, z, ux, uz, nx, nz, NOTICE_BOARD, [0, 1]);
-  noticeSigns(b, x, 1.5, z, ux, uz, -nx, -nz, NOTICE_BOARD, [2, 0]);
+  noticeSigns(b, x, 1.5, z, ux, uz, -nx, -nz, NOTICE_BOARD_BACK, [2, 0]);
 }
 // Notices on one face of a board or a wall: (x, y, z) the board's middle, n out of that face, the places, the headings.
 function noticeSigns(b, x, y, z, ux, uz, nx, nz, layout, heads) {
@@ -543,6 +547,7 @@ function polyFloor(b, K, N, ap, y, o = {}) {
 // inner edge would pass inside 'stop' (a drum) or the crown (the smoke hole over the fire). Rings of pieces on a
 // circle; with o.N of 12 or fewer (an octagon) rows of pieces along each straight side and a piece along each hip.
 // Returns the rings.
+const WOOD_TOP = 13;
 function ringRoofH(b, K, ap, top, rs, o = {}) {
   const out = o.eave === false ? 0 : 0.75;
   let low = top - rs[0] * out / 2;
@@ -551,6 +556,7 @@ function ringRoofH(b, K, ap, top, rs, o = {}) {
     const rho = ap + out - 1 - 2 * i;
     if (rho < (o.crown || 1.2) || rho < (o.stop || 0)) break;
     const r = rs[Math.min(i, rs.length - 1)], roof = r === 2 ? K.roof45 : K.roof26, y = low + (r === 2 ? 1 : 0);
+    if (o.dry) { rings.push({ rho, low, r }); low += r; continue; }
     if (o.N && o.N <= 12) {
       // each side's row stops inside its hips (a piece past a hip stands up over the next side); a piece turned along
       // each hip and set a little lower closes the wedge between two rows, a hip line like a ridge
@@ -647,6 +653,17 @@ function lantern(b, K, C, T, y0, h, o = {}) {
 // over the fire from s4), flat (a flat roof with a raised lantern over the fire)
 const roundStyle = C => (C.roof === 'flat' ? 'flat' : C.roof === 'conical' ? 'posts' : 'drum');
 
+// A post that carries what stands high on it (the game's support rule, lib/checks.js gameSupport): the kit's pole up
+// to 8 m; higher, wood and iron where the village's biomes allow iron, else core wood (the log poles, the most a wood
+// frame holds: 140 at the ground against 100, a tenth lost per metre up), by the biome rule (D-125, lib/pieces.js
+// decorOk)
+function tallPole(K, biome, h) {
+  if (h <= 8) return K.pole;
+  if (PH.decorOk('woodiron_pole', biome)) return 'woodiron_pole';
+  if (PH.decorOk('wood_pole_log', biome)) return 'wood_pole_log';
+  return K.pole;
+}
+
 function roundHall(b, K, C, T, o) {
   const { stage, variant, ext } = o;
   const V = o.V;
@@ -657,11 +674,18 @@ function roundHall(b, K, C, T, o) {
   const gallery = k >= 4 && V.gallery !== 'none';
   const SHt = gallery ? 3 : style === 'posts' ? 3 : 4, storeys = gallery ? 2 : 1, top = SHt * storeys;
   const doorSide = N / 2, doorK = Math.floor(L / 4);
-  const drum = style === 'drum' && k >= 4;
   const Nd = k === 5 ? 18 : 16, apD = ringPoly(Nd, 2);
+  // a timber drum stays within what wood holds in the game: with no iron in the village's biomes (D-125) its low cone
+  // starts no higher than WOOD_TOP (the game drops wood roofs higher than that, even on core wood posts from the
+  // ground); the outer roof's steep rings give way to low ones until the drum's foot is low enough, and a hall too
+  // wide for that keeps the smoke cap of the drum style in place of a drum
+  const woodOnly = !PH.decorOk('woodiron_pole', C.biome), crown = 2.4;
+  const drumFoot = list => { const rg = ringRoofH(null, K, ap, top, list, { stop: apD, crown, N, dry: true }).rings, last = rg[rg.length - 1]; return last ? Math.floor(last.low + last.r * Math.min(1, (last.rho + 1 - apD) / 2) - 0.2) : top; };
+  const nrD = Math.max(1, Math.floor((ap + 0.75 - 1 - Math.max(crown, apD)) / 2) + 1);
+  const drum = style === 'drum' && k >= 4 && !(woodOnly && drumFoot(Array(nrD).fill(1)) + 2.2 > WOOD_TOP);
   // (at s4 under a drum the gallery's inner edge is the drum's ring, so one ring of posts carries both)
   const vR0 = ringPoly(k === 5 ? 18 : 16, 2) / Math.cos(Math.PI / (k === 5 ? 18 : 16));
-  const drumOnGallery = gallery && k === 4 && style === 'drum';
+  const drumOnGallery = gallery && k === 4 && drum;
   // (the gallery 3.5 m deep, 4.5 m at s5, or deeper where a 2 m stair cell on the floor grid must fit between its inner
   // edge and the wall)
   let rIn = 0;
@@ -739,11 +763,14 @@ function roundHall(b, K, C, T, o) {
   let door = bays.find(bb => bb.kind === 'door' && bb.i === doorSide) || { x: 0, z: -ap };
   // outer roof (D-156: as tall as the design calls for): the village's drawn rise against the hall's width
   // (V.rise, corpus spread), the outer rings low (26 degrees) and as many inner rings steep (45) as reach it
-  const crown = 2.4;
   const nr = Math.max(1, Math.floor((ap + 0.75 - 1 - Math.max(crown, drum ? apD : 0)) / 2) + 1);
   // (the eave ring stays low, so the roof's edge stands clear of the doors)
   const steep = Math.max(0, Math.min(nr - 1, Math.round(V.rise * 2 * ap - nr)));
   let rs = [...Array(nr - steep).fill(1), ...Array(steep).fill(2)];
+  // (a timber roof: low rings in place of steep ones until the drum's foot is low enough, or the roof's top stays
+  // under WOOD_TOP with room for the crown's cap)
+  const roofTop = list => ringRoofH(null, K, ap, top, list, { stop: drum ? apD : 0, crown, N, dry: true }).top;
+  if (woodOnly && style !== 'flat') for (let st = steep; st > 0 && (drum ? drumFoot(rs) + 2.2 > WOOD_TOP : roofTop(rs) > WOOD_TOP - 1); ) { st--; rs = [...Array(nr - st).fill(1), ...Array(st).fill(2)]; }
   let outer = { rings: [], top }, peak = top;
   if (style === 'flat') {
     // a flat roof, open over the fire, and over the opening a raised lantern: walls at its corners, the middle bays
@@ -751,7 +778,9 @@ function roundHall(b, K, C, T, o) {
     polyFloor(b, K, N, ap, top, { skip: (x, z) => Math.hypot(x, z) < 3.5 });
     const lh = Math.max(2, Math.min(4, Math.round(V.crown * 3 + 2)));
     {
-      asCrown(b, () => lantern(b, K, C, T, top, lh, { flat: true, windows: !!ext.highWindows }));
+      // (on four posts from the floor at its corners, as over the cross hall's crossing: on the flat roof alone its
+      // flat top dropped its middle in the game)
+      asCrown(b, () => { for (const sx of [-3, 3]) for (const sz of [-3, 3]) T.posts(b, K, sx, sz, top, tallPole(K, C.biome, top)); lantern(b, K, C, T, top, lh, { flat: true, windows: !!ext.highWindows }); });
       peak = top + lh + 0.4;
       b.notes.push('A flat roof, open over the fire, with a raised lantern over the opening: walls at its corners, the middle bays open, a flat top.');
     }
@@ -761,14 +790,15 @@ function roundHall(b, K, C, T, o) {
   }
   const roofAt = rho => { if (style === 'flat') return top; let y = top; for (const rg of outer.rings) if (rg.rho - 1 >= rho) y = rg.low + rg.r; else if (rg.rho + 1 > rho) { y = rg.low + rg.r * (rg.rho + 1 - rho) / 2; break; } return y; };
   // the drum's walls as tall as the village's crown draw (2 to 4 m)
-  const hd = Math.max(2, Math.min(4, Math.round(2 + V.crown * 4)));
+  let hd = Math.max(2, Math.min(4, Math.round(2 + V.crown * 4)));
+  if (drum && woodOnly) hd = Math.max(2, Math.min(hd, Math.floor(WOOD_TOP - 0.2 - drumFoot(rs))));
   if (drum) asCrown(b, () => {
     const last = outer.rings[outer.rings.length - 1];
     const yd = Math.floor(last.low + last.r * Math.min(1, (last.rho + 1 - apD) / 2) - 0.2);
     const vR = apD / Math.cos(Math.PI / Nd);
     // the drum stands on posts at every second to fourth corner (corpus inner posts, below)
     const every = Nd === 18 ? 3 : variant === 'part' ? 4 : 2;
-    for (let i = 0; i < Nd; i += every) { const a = (i + 0.5) * 360 / Nd; T.posts(b, K, Math.sin(rad(a)) * vR, Math.cos(rad(a)) * vR, yd); }
+    for (let i = 0; i < Nd; i += every) { const a = (i + 0.5) * 360 / Nd; T.posts(b, K, Math.sin(rad(a)) * vR, Math.cos(rad(a)) * vR, yd, tallPole(K, C.biome, yd)); }
     for (let i = 0; i < Nd; i++) {
       const a = i * 360 / Nd, x = Math.sin(rad(a)) * apD, z = Math.cos(rad(a)) * apD;
       b.put(K.beam, x, yd + 0.1, z, a);
@@ -797,7 +827,7 @@ function roundHall(b, K, C, T, o) {
       if (inCells(stairCells, x, z, 0.3) || inCells(bridge, x, z, 0.3)) continue;
       // (clear of the side rooms' doors)
       if (k >= 4 && roomDoors.some(([dx, dz]) => Math.hypot(x - dx, z - dz) < 2.2)) continue;
-      T.posts(b, K, x, z, h);
+      T.posts(b, K, x, z, h, tallPole(K, C.biome, h));
       postsOf.push({ x, z, h });
     }
   }
@@ -834,11 +864,14 @@ function roundHall(b, K, C, T, o) {
   // draw against the main roof (corpus spread, V.crown), none when that is under a metre and a half
   const crownY = outer.top;
   const crownH = V.crown * (outer.top - top);
-  if (style !== 'flat' && !drum && (style === 'drum' || (k >= 4 && crownH >= 1.5))) {
+  let capPieces = [];
+  // (a timber roof whose top is over WOOD_TOP less a metre keeps its crown open for the smoke: the cap would fall)
+  if (style !== 'flat' && !drum && (style === 'drum' || (k >= 4 && crownH >= 1.5)) && !(woodOnly && crownY > WOOD_TOP - 1)) {
     const big = style === 'posts', rp = big ? 2.6 : 1.4, np = big ? 8 : 4;
     const rr = big && rs[rs.length - 1] === 2 ? 2 : 1, rise = big ? 2 * rr - rr * 0.375 : 0.625;
     const hp = !big ? 1 : Math.max(1, Math.min(3, Math.round(crownH - rise))), finial = big && crownH - rise - hp >= 1;
     if (hp) {
+      const capFrom = b.pieces.length;
       asCrown(b, () => {
         for (let i = 0; i < np; i++) { const a = (i + 0.5) * 360 / np; for (let y = crownY - 0.6; y < crownY - 0.6 + hp - 0.01; y += 1) b.put(K.pole1, Math.sin(rad(a)) * rp, y + 0.5, Math.cos(rad(a)) * rp); }
         const cap = ringRoofH(b, K, big ? 3.4 : 1.9, crownY - 0.6 + hp, [rr], { eave: true, crown: 0.4 });
@@ -846,6 +879,7 @@ function roundHall(b, K, C, T, o) {
         if (finial) { for (let y = cap.top - 0.5; y < cap.top + 1.5; y += 1) b.put(K.pole1, 0, y + 0.5, 0); peak = cap.top + 1.5; }
         else if (!big) b.put(K.roofTop26 || 'wood_roof_top', 0, cap.top, 0, 0);
       });
+      capPieces = b.pieces.slice(capFrom);
       b.notes.push(big ? `A raised roof on a ring of ${hp} m posts over the open crown${finial ? ', a finial post on top' : ''}.` : 'A smoke cap on four posts over the crown.');
     }
   }
@@ -878,9 +912,24 @@ function roundHall(b, K, C, T, o) {
       b.put(stone ? K.stoneBlock : (K.wallQuarter || 'wood_wall_quarter'), sx * x, yy + 0.5, zc, 0);
     }
     for (const sx of [-1, 1]) T.posts(b, K, sx * (2 * mm + 1), zc, top);
-    if (style !== 'flat') for (let x = -2 * mm; x <= 2 * mm; x += 2) {
-      const h = Math.floor(roofAt(Math.hypot(Math.abs(x) + 1, zc)) - top - 0.3);
-      if (h >= 1) T.wallSegment(b, K, C, x, top, zc, 0, h, 'wall', 'plank');
+    // the front above the wall top, up to the roof: a column of 1 m wall pieces per metre along it, as tall as the roof
+    // over the column's middle (whole 2 m bays to a metre under the roof left gaps up to 1.3 m under it, showcase 03)
+    // the column's last piece goes up into the roof where the roof is more than WALL_GAP (lib/checks.js wallTops) over it
+    if (style !== 'flat') {
+      const q1 = K.wallQuarter || 'wood_wall_quarter', cols = [];
+      for (let c = -Math.floor(w) + 0.5; c < w; c += 1) {
+        const n = Math.max(0, Math.floor(roofAt(Math.hypot(Math.abs(c), zc)) - top));
+        for (let j = 0; j < n; j++) b.put(q1, c, top + j + 0.5, zc, 0);
+        cols.push({ c, y: top + n });
+      }
+      for (let round = 0; round < 2; round++) {
+        // (as the game has them: the pieces that stand on their pivot at their foot, as lib/generate.js finish sets them)
+        const local = b.pieces.filter(p => !p.decor && Math.abs(p.z - zc) < 3.5).map(p => { const pi = PH.piece(p.name); return pi.onPivot && !p.footed ? { ...p, y: p.y - pi.size[1] / 2 } : p; });
+        const gaps = CkH().wallTops(local).filter(g => Math.abs(g.z - zc) < 0.3 && g.y >= top - 0.05);
+        let more = 0;
+        for (const col of cols) if (gaps.some(g => Math.abs(g.x - col.c) < 0.6 && Math.abs(g.y - col.y) < 0.05)) { b.put(q1, col.c, col.y + 0.5, zc, 0); col.y += 1; more++; }
+        if (!more) break;
+      }
     }
     door = { x: 0, z: zc };
     for (let x = -2 * mm; x <= 2 * mm; x += 2) if (Math.abs(x) >= 3) frontBays.push({ x, z: zc, yaw: 0, nx: 0, nz: 1, kind: 'wall' });
@@ -946,7 +995,9 @@ function roundHall(b, K, C, T, o) {
     coveredEntrance(b, K, C, T, door.x, door.z, wy, ext.porch6 ? 6 : 4);
     if (ext.dragons) b.put('wood_dragon1', door.x, wy + 1.3, door.z - (ext.porch6 ? 6 : 4) - 0.6, 180, { decor: true });
   }
-  return { groundBays: [...bays.slice(0, N * L / 2), ...frontBays], ap, N, L, top, peak, door, doors, rings, postsOf, gallery, rIn, St, bridge, drum, apD, SHt, zc, style, roofAt, rooms, sideX: k >= 4 ? Math.abs(sR * (xmP)) : null, sideS: sR, inSide: (x, m = 0) => k >= 4 && sR * x > xmP - m };
+  // (the crown's cap: kept only where the game holds it, checked once the posts are in, lib/hub.js design)
+  const cap = capPieces.filter(p => b.pieces.includes(p));
+  return { groundBays: [...bays.slice(0, N * L / 2), ...frontBays], ap, N, L, top, peak, door, doors, rings, postsOf, gallery, rIn, St, bridge, drum, apD, SHt, zc, style, roofAt, rooms, cap, sideX: k >= 4 ? Math.abs(sR * (xmP)) : null, sideS: sR, inSide: (x, m = 0) => k >= 4 && sR * x > xmP - m };
 }
 
 // ---------------------------------------------------------------- cross hall
@@ -1110,6 +1161,12 @@ function crossHall(b, K, C, T, o) {
   const tie = k < 3 ? { z: [], x: [] } : { z: tieAt(Wz).flatMap(z => [z, -z]), x: tieAt(Wx).flatMap(x => [x, -x]).filter(x => !inSide(x, 0.5)) };
   for (const z of tie.z) for (let x = -D + 1; x < D; x += 2) b.put(K.beam, x, top + 0.1, z, 0);
   for (const x of tie.x) for (let z = -D + 1; z < D; z += 2) b.put(K.beam, x, top + 0.1, z, 90);
+  // a post against the wall under each end of a tie beam, as a timber frame carries its ties: a 6 m tie of wood beams
+  // on the wall tops alone dropped its middle beam in the game (lib/checks.js gameSupport); core wood where the biome
+  // allows it, set in against the wall's inner face
+  const tiePole = PH.decorOk('wood_pole_log', C.biome) ? 'wood_pole_log' : K.pole;
+  for (const z of tie.z) for (const sx of [-1, 1]) T.posts(b, K, sx * (D - 0.2), z, top, tiePole);
+  for (const x of tie.x) for (const sz of [-1, 1]) T.posts(b, K, x, sz * (D - 0.2), top, tiePole);
   const hangs = [...tie.z.map(z => [0, z]), ...tie.x.map(x => [x, 0])].map(([x, z]) => ({ x, z, y: top - 1.97 }));
   // rooms: the two arms, the gallery's cells, the side rooms
   b.rooms.push({ x0: -D, x1: D, z0: -Wz, z1: Wz, y: 0, h: top, use: 'hall', main: true, door: { x: 0, z: -Wz } });
@@ -1800,7 +1857,18 @@ function generate(req, T) {
     // posts under what the game would let fall (before the furnishing, so it keeps clear of them)
     // (clear of the fire and of the high seat's place: the back arm's end in a cross hall, the axis behind the fire
     // in a round one)
-    T.propUp(b, Kw, biome, { keepOut: (x, z) => line === 'cross' ? (Math.abs(x) < 1.5 && Math.abs(z) < 1.5) || (z > F.Wz - 3.5 && Math.abs(x) < 2.5) : Math.hypot(x, z) < 2.2 || (z > 0 && z < 6 && Math.abs(x) < 2.2) });
+    // (and the corpus's clear radius round the middle: 2.9 m in halls, 2.6 m in round buildings, lab/hub_posts.py)
+    T.propUp(b, Kw, biome, { keepOut: (x, z) => line === 'cross' ? Math.hypot(x, z) < 3 || (z > F.Wz - 3.5 && Math.abs(x) < 2.5) : Math.hypot(x, z) < 2.7 || (z > 0 && z < 6 && Math.abs(x) < 2.2) });
+    // a crown's cap the game would drop is left off: the crown stays open for the smoke (a cap on short posts over the
+    // top ring of a tall timber cone, Meadows octagon s3)
+    if (F.cap && F.cap.length) {
+      const shell = b.pieces.filter(p => !p.decor), r = CkH().gameSupport(shell), capSet = new Set(F.cap);
+      if (r.fall.some(i => capSet.has(shell[i]))) {
+        b.pieces = b.pieces.filter(p => !capSet.has(p));
+        b.notes = b.notes.filter(n => !/over the open crown|smoke cap on four posts/.test(n));
+        b.notes.push('The crown left open for the smoke (a cap there would not hold).');
+      }
+    }
     const place = placer(b, T);
     // the notice board in the hearth area (D-140): freestanding outside the main door, and from s4 signs on a wall by
     // the door inside as well

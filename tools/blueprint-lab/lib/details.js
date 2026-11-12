@@ -788,6 +788,21 @@ function bannerPieces(X, as, h, o) { return as.map(a => [X.banner.name, a, o, h,
 // hang them on a frame at the plan's height, else a little lower or higher (the corpus rods 2.9 to 3.6 m over the
 // floor: the cloth's foot 0 to 0.7 m up), 0.3 m out from the wall's middle (0.1 m off a stone wall's face) or, past a
 // timber at the wall's head, 0.15 m further
+// The banners' rods against what shows of the wall (lib/wallhang.js), the cloth on it; false when one does not take
+// (a banner set out by the wall's relief stood 20 to 29 cm off a log or a 2x2 wall, showcase 06 and 10)
+function bannersOnWall(b, placed, fr) {
+  const WH = typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang;
+  if (!WH) return true;
+  const l = Math.hypot(fr.nx, fr.nz) || 1, nx = fr.nx / l, nz = fr.nz / l;
+  for (const p of placed) {
+    if (!WH.isHung(p.name)) continue;
+    const r = WH.hang(p.name, { x: p.x - nx * 0.5, z: p.z - nz * 0.5, nx, nz, y: p.y }, WH.backingOf(b.pieces), { pieces: b.pieces.concat(placed.filter(q => q !== p)) });
+    if (!r) return false;
+    p.x = r.x; p.z = r.z; p.yaw = r.yaw; p.q = r.q;
+    if (r.wclip) p.wclip = r.wclip;
+  }
+  return true;
+}
 function hangBanners(b, X, fr, as, id, wall) {
   const o0 = Math.max(0.3, (wall ? relief(wall) : 0.15) + 0.1);
   const pref = 2.98 + X.banner.lift, hs = [pref];
@@ -802,6 +817,7 @@ function hangBanners(b, X, fr, as, id, wall) {
     const placed = MotifsD.place(b, c, fr, null, { ground: 0, dry: true, minShare: 1, keepOut });
     if (!placed.length) continue;
     if (!placed.every(p => wallBehind(b, p, fr) && mountClearD(b, p))) return false; // an open bay, a window: no other height helps
+    if (!bannersOnWall(b, placed, fr)) continue;
     hold(b, placed); return true;
   }
   return false;

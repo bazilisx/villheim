@@ -23,6 +23,9 @@
 //             cross bars, T-606, T-612)
 //   hang      banners whose cloth goes into the floor or up into the roof, or whose foot hangs more than 1 m over the
 //             floor or ground under it (T-606 "banners too high"); signs and wall item stands outside a sensible height
+//   wallOff   things hung on walls more than 3 cm off what shows of the wall behind them, or with no wall behind
+//             (lib/wallhang.js measure); wallHalf less than two thirds of the back on the wall; wallTurn back away from
+//             the wall or along it; wallStack two hung on one wall over one another or one in front of the other
 //   loose     food and drink set down loose (not on an item stand): the game drops them and a player picks them up
 //             by walking past (T-626)
 //   doorway   anything solid in the middle 0.9 m of a door's way, 0.35 to 1.95 m over its floor, 0.7 m either side of
@@ -44,6 +47,7 @@ const C = NODE_A ? require('./checks.js') : window.VHChecks;
 const D = NODE_A ? require('./decorate.js') : window.VHDecorate;
 const M = NODE_A ? require('./mesh.js') : window.VHMesh;
 const SH = NODE_A ? require('./shapes.js') : window.VHShapes;
+const WHA = () => (NODE_A ? require('./wallhang.js') : window.VHWallhang);
 // The gated measures: a pool fails when any of them is above zero.
 // Floors for the richness measures (pool below): a little under what the generator reaches on the Norse Meadows pool
 // and the second sample (lab/make_testpool.js --sample: Norse Meadows 12.2, 0.443, 1.07; norse-forest Black Forest 14,
@@ -62,9 +66,9 @@ function indoorDecor(pieces, decor) {
   const h = hull(pts);
   return decor.filter(p => !BANNER.test(p.name) || inHull(h, p.x, p.z, 0.05));
 }
-const GATE = ['richness', 'homeAlike', 'shapeChange', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall'];
+const GATE = ['richness', 'homeAlike', 'shapeChange', 'furnClip', 'stacked', 'overWin', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall', 'wallOff', 'wallTurn', 'wallHalf', 'wallStack'];
 // Watched only: printed with the totals; to be gated once the generator clears them.
-const WATCH = ['outside', 'intoWallSoft'];
+const WATCH = ['outside', 'intoWallSoft', 'floats'];
 // Reported only, never gated (D-132): decor stages that do not nest.
 const REPORTED = ['nestBroken'];
 const MOUNT = /^(piece_banner\d+|sign|sign_notext|itemstand|piece_shieldgeneric|cloth_hanging_|fenrirhide_hanging|Trophy|wood_dragon)/;
@@ -149,12 +153,54 @@ function inHull(h, x, z, pad) {
   return true;
 }
 
+const WALL_TOL = 0.03;
+function wallHung(pieces, r) {
+  const WH = WHA();
+  if (!WH || !pieces.some(p => WH.isHung(p.name))) return;
+  const B = WH.backing(pieces);
+  let A = null;
+  const loose = new Set();
+  const at = p => `${p.name} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`;
+  pieces.forEach((p, i) => {
+    if (!WH.isHung(p.name)) return;
+    const m = WH.measure(p, B);
+    const ok = isFinite(m.gap) && m.gap <= WALL_TOL && m.gap >= -Math.max(WALL_TOL, (p.wclip || 0) + 0.01) && m.cover >= 0.67 && m.facing;
+    if (ok) return;
+    if (!A) A = WH.backing(pieces, { any: true, floors: true });
+    if (WH.restsOn(p, A) || (m.kind === 'carving' && !isFinite(m.gap) || m.kind === 'carving' && p.y > 6)) { loose.add(i); return; }
+    if (!isFinite(m.gap)) r.wallOff.push(`${at(p)}: no wall behind it`);
+    else if (m.gap > WALL_TOL) r.wallOff.push(`${at(p)}: ${Math.round(m.gap * 100)} cm off the wall`);
+    if (!m.facing) r.wallTurn.push(`${at(p)}: turned ${m.turn} degrees from its wall`);
+    else if (isFinite(m.gap) && m.gap <= WALL_TOL && m.cover < 0.67) r.wallHalf.push(`${at(p)}: ${Math.round(m.cover * 9)} of 9 parts of its back on the wall`);
+  });
+  for (const o of WH.overlaps(pieces)) if (o.share >= 0.1 && !loose.has(o.i) && !loose.has(o.j)) r.wallStack.push(`${o.names[0]} and ${o.names[1]} over one another (${Math.round(o.share * 100)} %)`);
+}
+
+const HANGS_A = /^(piece_brazierceiling01|piece_dvergr_lantern_pole|piece_chain|cloth_hanging_|piece_cloth_hanging|fenrirhide_hanging|piece_banner)/;
+function floats(pieces, r) {
+  const WH = WHA();
+  if (!WH || !WH.attach) return;
+  let A = null, AR = null;
+  for (const p of pieces) {
+    if (WH.isHung(p.name) || p.green || p.yard || p.outside) continue;
+    const role = PC.piece(p.name).role;
+    if (PC.piece(p.name).structural || !['deco', 'light', 'storage', 'seat', 'table', 'bed', 'craft', 'clutter', 'fire'].includes(role)) continue;
+    const hang = HANGS_A.test(p.name);
+    if (hang ? !AR : !A) { if (hang) AR = WH.backing(pieces, { any: true, floors: true, roofs: true }); else A = WH.backing(pieces, { any: true, floors: true }); }
+    const m = WH.attach(p, hang ? AR : A);
+    const gap = hang ? Math.min(m.above, m.below) : m.below;
+    // (outside on the terrain the ground holds it: nothing under it at all and its foot near the ground)
+    if (!isFinite(gap) || gap <= WALL_TOL) continue;
+    r.floats.push(`${p.name} at ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}: ${Math.round(gap * 100)} cm ${hang ? 'under what holds it' : 'over what holds it'}`);
+  }
+}
+
 // shell: keys of the building's own pieces (its d1 file at the same stage); built furniture added at d2 and d3 (a
 // cabinet whose back is a half wall, shelves on posts) is part of its set and is left out of the wall measures.
 function audit(pieces, shell) {
   const boxes = pieces.map(p => C.catBox(p));
   const r = { pieces: pieces.length, furnClip: [], stacked: [], overWin: [], outside: [], stairFoot: [], stations: [],
-    mountClip: [], hang: [], loose: [], doorway: [], onStation: [], intoWall: [], intoWallSoft: [] };
+    mountClip: [], hang: [], loose: [], doorway: [], onStation: [], intoWall: [], intoWallSoft: [], wallOff: [], wallTurn: [], wallHalf: [], wallStack: [], floats: [] };
   const vis = pieces.map(p => M.world(p) || []), visBox = vis.map(M.aabbOf);
   const sol = pieces.map(p => SH.world(p) || []), solBox = pieces.map(p => SH.aabb(p));
   const furn = pieces.map((p, i) => i).filter(i => FURN.includes(role(pieces[i])));
@@ -261,6 +307,16 @@ function audit(pieces, shell) {
       if (h < lo || h > hi) r.hang.push(`${p.name} middle ${h.toFixed(1)} m over the floor`);
     }
   });
+  // things hung on walls against what shows of the wall behind them (lib/wallhang.js measure; track F, showcase
+  // 2026-11-12, Tyler: "Signs and stands and sometimes lights that werent touching walls and were a foot or more away"):
+  // wallOff more than 3 cm off the wall or no wall within 1.5 m behind; wallHalf less than two thirds of the back on the
+  // wall; wallTurn its back away from the wall or along it; wallStack two on one wall one over the other or in front of it.
+  // A piece standing on a floor or furniture, or set on something that is no wall (a label on a chest's front), is
+  // read where it stands, as corpus builders set them (D-127). The roof carvings on gable ends are roof trim, left out.
+  wallHung(pieces, r);
+  // decor that neither stands on anything nor hangs from anything within 3 cm (lib/wallhang.js attach): a standing
+  // torch's foot over the floor, a hanging brazier under no beam, a flat stand over its shelf; watched
+  floats(pieces, r);
   // food and drink set down loose
   for (const p of pieces) if (isLooseItem(p.name)) r.loose.push(p.name);
   // door ways
@@ -334,7 +390,7 @@ function pool(input, name) {
   }
   const dir = name || '';
   const report = { pool: dir, designs: Object.values(designs).reduce((s, d) => s + Object.keys(d).length, 0), lines: {}, totals: {} };
-  const MEASURES = ['furnClip', 'stacked', 'overWin', 'outside', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall', 'intoWallSoft'];
+  const MEASURES = ['furnClip', 'stacked', 'overWin', 'outside', 'stairFoot', 'stations', 'mountClip', 'hang', 'loose', 'doorway', 'onStation', 'intoWall', 'intoWallSoft', 'wallOff', 'wallTurn', 'wallHalf', 'wallStack', 'floats'];
   const tot = Object.fromEntries([...MEASURES, 'nestBroken', 'shapeChange'].map(k => [k, 0]));
   for (const [line, d] of Object.entries(designs)) {
     const L = report.lines[line] = { nest: {}, lineage: {}, shape: {}, issues: {} };
@@ -476,5 +532,5 @@ function group(files, parse) {
   return out;
 }
 
-const apiA = { STAND_HI, MID, floorSign, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
+const apiA = { STAND_HI, MID, floorSign, wallHung, floats, audit, pool, summary, group, likeness, signature, shapeOf, GATE, WATCH, REPORTED };
 if (NODE_A) module.exports = apiA; else window.VHAudit = apiA;

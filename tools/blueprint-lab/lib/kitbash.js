@@ -308,7 +308,9 @@ function vignettes(b, ctx, zones) {
       const n0 = b.pieces.length;
       if (kind === 'bench') {
         const [x, z] = at(0.4); b.put('piece_bench01', x, top, z, yaw, T);
-        const [tx, tz] = at(0.28); b.put('piece_walltorch', tx, top + 1.55, tz, (Math.atan2(nx, nz) * 180 / Math.PI + 270 + 360) % 360, { decor: true });
+        // the torch against what shows of the wall (lib/wallhang.js: a log wall shows 5 cm past its collider)
+        const [tx, tz] = at(0.0), r = hangB().hang('piece_walltorch', { x: tx, z: tz, nx, nz, y: top + 1.55 }, hangB().backingOf(b.pieces), { pieces: b.pieces });
+        if (r) b.put('piece_walltorch', r.x, r.y, r.z, r.yaw, r.wclip ? { decor: true, wclip: r.wclip } : { decor: true });
       } else if (kind === 'store') {
         const [x, z] = at(0.42, -0.45); b.put('piece_chest_wood', x, top, z, yaw, T);
         const [x2, z2] = at(0.4, 0.75); b.put('piece_chest_barrel', x2, top, z2, yaw, T);
@@ -333,6 +335,7 @@ function vignettes(b, ctx, zones) {
 // own assembly no deeper than its source builds did (marked p.clip, which lib/checks.js and the audit allow).
 const decorB = () => (NODE_B ? require('./decorate.js') : window.VHDecorate);
 const meshB = () => (NODE_B ? require('./mesh.js') : window.VHMesh);
+const hangB = () => (NODE_B ? require('./wallhang.js') : window.VHWallhang);
 // an item (food, drink) rather than a piece: what the game drops when it is placed loose
 function looseItem(name) {
   const Me = meshB();
@@ -740,7 +743,20 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
     }
     // what hangs on the wall goes back to it: its solid back against the nearest wall face's collider (what holds it up
     // in the game), whatever depth the source build gave a piece of another size (a tool shelf stood 0.25 m off)
-    if (mm.rest === 'wall' && m.faces) {
+    // (what lib/wallhang.js knows: against what shows of the wall at its own height, turned with its back to it, as
+    // deep as corpus builders hang it; a plinth and the thinner wall over it have different faces, and a stand put at
+    // the plinth's face hung 35 cm out from the wall over it, showcase 01)
+    if (mm.rest === 'wall' && m.faces && hangB().isHung(p.name)) {
+      const f = wallFaceAt(m, p);
+      const ceil = m.ceilAt(p.x, p.z);
+      const hs = [];
+      for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [p.y + d, p.y - d]) if (yy >= stand + 0.9 || mm.y < 0.9) hs.push(+yy.toFixed(3));
+      const own = made.filter(Boolean), Bk = own.length ? hangB().both(hangB().backingOf(b.pieces), hangB().backing(own)) : hangB().backingOf(b.pieces);
+      const r = f && hangB().hang(p.name, { x: f.px(f.t), z: f.pz(f.t), nx: f.nx, nz: f.nz, y: p.y }, Bk, { heights: hs.filter(yy => yy < ceil - 0.3), pieces: b.pieces.concat(made.filter(Boolean)) });
+      if (!r) { WHY_B = 34; LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
+      p.x = r.x; p.y = r.y; p.z = r.z; p.yaw = r.yaw; p.q = r.q; p.hung = true;
+      if (r.wclip) p.wclip = r.wclip;
+    } else if (mm.rest === 'wall' && m.faces) {
       const V = SH.world(p);
       if (V && V.length) {
         let best = null;
@@ -779,13 +795,15 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
       const y0 = p.y, top = bx.y1, why0 = WHY_B;
       const ceil = Math.min(...[[0, 0], [-0.3, 0], [0.3, 0]].map(([u, v]) => m.ceilAt(p.x + u * c + v * s, p.z - u * s + v * c)));
       const tries = [slide, why0 === 4 ? ceil - 0.1 - top : null, -0.1, 0.1, -0.2, 0.2, -0.3, 0.3, -0.4, 0.4].filter((d, k, l) => d != null && d !== 0 && l.indexOf(d) === k);
+      const x0 = p.x, z0 = p.z, f0 = p.hung ? wallFaceAt(m, p) : null;
       for (const d of tries) {
         p.y = +(y0 + d).toFixed(3);
+        if (f0) { const r = hangB().hang(p.name, { x: f0.px(f0.t), z: f0.pz(f0.t), nx: f0.nx, nz: f0.nz, y: p.y }, hangB().backingOf(b.pieces), { pieces: b.pieces.concat(made.filter(Boolean)) }); if (!r) continue; p.x = r.x; p.z = r.z; if (r.wclip) p.wclip = r.wclip; else delete p.wclip; }
         bx = Ck.aabbShapes(p);
         if (bx.y0 < stand + 0.9 || bx.y1 > ceil - 0.08) continue;
         if (placeable(p, bx, mm, i, b, ctx, room, idx, zones, made, clipOf, anc, fires, displace, a, showOf)) { okP = true; slide = d; break; }
       }
-      if (!okP) { p.y = y0; bx = Ck.aabbShapes(p); WHY_B = why0; }
+      if (!okP) { p.y = y0; p.x = x0; p.z = z0; bx = Ck.aabbShapes(p); WHY_B = why0; }
     }
     if (!okP) { LAST_B = `${i} ${p.name}`; if (fail()) return null; continue; }
     // the pool audit's height for a sign or a wall stand (lib/audit.js MID, by the middle of what shows over the
@@ -853,6 +871,21 @@ function fit(b, ctx, room, idx, zones, anc, a, mirror, fires) {
   }
   got.displace = displace ? [...displace] : [];
   return got;
+}
+
+// The wall face a hung piece goes on: the room's face nearest its middle whose stretch it lies along, with t, the
+// place along the face (lib/wallhang.js hang moves it onto what shows of the wall from there)
+function wallFaceAt(m, p) {
+  let best = null;
+  for (const f of m.faces) {
+    if (f.edge) continue;
+    const t = p.x * f.ux + p.z * f.uz;
+    if (t < f.a0 - 0.1 || t > f.a1 + 0.1) continue;
+    const off = (p.x - f.px(t)) * f.nx + (p.z - f.pz(t)) * f.nz - f.ht;
+    if (off < -0.4 || off > 0.9) continue;
+    if (!best || Math.abs(off) < Math.abs(best.off)) best = { f, t, off };
+  }
+  return best ? { px: best.f.px, pz: best.f.pz, nx: best.f.nx, nz: best.f.nz, t: best.t } : null;
 }
 
 // Whether a sign or a wall stand would fail the pool audit's height test (lib/audit.js MID and its label rule)
@@ -1352,47 +1385,105 @@ function dressWalls(b, ctx, room, idx, zones, anchors, fires, R2, used) {
   const byFace = new Map();
   for (const an of anchors) if (an.anchor === 'wall') { if (!byFace.has(an.face)) byFace.set(an.face, []); byFace.get(an.face).push(an); }
   const d3 = ctx.decor === 'd3';
-  const gap = PS.wallGap(P), skip = PS.wallSkip(P);
+  const skip = PS.wallSkip(P);
   const ww = PS.wallWeights(P, room.role);
   const kinds = Object.keys(WALL_KITS).filter(k => ww[k] > 0);
-  const passes = [{ main: true, step: (d3 ? 2.5 : 3.2) * gap, y0: 1.3, y1: 2.4, reach: 0.9 }];
-  if (d3 && (!P || R2() < 0.2 + 0.5 * P.clutter * P.likes.shelves)) passes.push({ kits: [WALL_HIGH], step: 3 * gap, y0: 2.0, y1: 2.7, reach: 0.9 });
-  passes.push({ kits: [WALL_LIGHT], step: PS.torchGap(P), y0: 0, y1: 4, reach: 2, light: true });
-  let n = 0;
-  for (const pass of passes) for (const list of byFace.values()) {
-    list.sort((p, q) => p.t - q.t);
-    let next = -Infinity, kc = 0;
-    for (const an of list) {
-      if (an.t < next) continue;
-      const f = an.face, ux = f.ux, uz = f.uz, R = pass.reach;
-      const box = { x0: Math.min(an.x - ux * R, an.x + ux * R, an.x + f.nx * 0.7) - 0.05, x1: Math.max(an.x - ux * R, an.x + ux * R, an.x + f.nx * 0.7) + 0.05,
-        z0: Math.min(an.z - uz * R, an.z + uz * R, an.z + f.nz * 0.7) - 0.05, z1: Math.max(an.z - uz * R, an.z + uz * R, an.z + f.nz * 0.7) + 0.05 };
-      const busy = idx.near(box, 0).some(r => r.p.decor && PB.piece(r.p.name).role !== 'rug' && (!pass.light || PB.piece(r.p.name).role === 'light') &&
-        r.b.y1 > m.stand + pass.y0 && r.b.y0 < m.stand + pass.y1 && r.b.x0 < box.x1 && r.b.x1 > box.x0 && r.b.z0 < box.z1 && r.b.z1 > box.z0);
-      const jit = 0.7 + 0.8 * R2();
-      if (busy) { next = an.t + pass.step * 0.6 * jit; continue; }
-      if (pass.light && wallLightsFull(b, an.x, m.stand + 1.5, an.z)) { next = an.t + pass.step * jit; continue; }
-      // a neat household leaves some of the wall bare
-      if (!pass.light && R2() < skip) { next = an.t + pass.step * 0.5 * jit; continue; }
-      let kits = pass.kits;
-      if (pass.main) {
-        // the kind drawn by the household's weights first, the others after it by weight
-        const first = PS.pickW(R2, Object.fromEntries(kinds.map(k => [k, ww[k]])));
-        kits = [first, ...kinds.filter(k => k !== first).sort((a, c) => ww[c] - ww[a])].flatMap(k => WALL_KITS[k]);
+  // per: wall length per kit (the household's wallGap), per light (its torchGap, never under the corpus 2.7 m)
+  const passes = [{ main: true, per: (d3 ? 2.5 : 3.2) * PS.wallGap(P), y0: 1.3, y1: 2.4, reach: 0.9 }];
+  if (d3 && (!P || R2() < 0.2 + 0.5 * P.clutter * P.likes.shelves)) passes.push({ kits: [WALL_HIGH], y0: 2.0, y1: 2.7, reach: 0.9 });
+  passes.push({ kits: [WALL_LIGHT], per: Math.max(2.7, PS.torchGap(P)), y0: 0, y1: 4, reach: 2, light: true });
+  return dressWallsPlanned(b, ctx, room, idx, zones, byFace, passes, kinds, ww, skip, fires, R2, used);
+}
+
+// The wall dressing by intent (lib/wallhang.js plan): on each wall face, a kit centered over what stands against the
+// wall, a mirrored pair either side of a window or a door, or one in the middle of a plain stretch; never closer than
+// its width and 0.6 m to the next; lights alone on a stretch, 2 m apart or more, beside the door first; the high shelf
+// only over a ledge the main pass put up, as a second tier. It replaced a walk along each face that put a kit every
+// 2.5 to 3.2 m with a random jitter and random gaps (Tyler on wood_ledge: "like throwing spaghetti at a wall").
+// A neat household leaves whole walls bare (persona wallSkip), not random stretches of them.
+function dressWallsPlanned(b, ctx, room, idx, zones, byFace, passes, kinds, ww, skip, fires, R2, used) {
+  const m = room.m, P = ctx.persona, PS = personaB(), WH = hangB();
+  const yawOfN = (nx, nz) => normB(Math.atan2(nx, nz) * 180 / Math.PI);
+  const kitW = k => 2 * Math.max(0.3, ...k.pieces.filter(q => q.rest === 'wall').map(q => Math.abs(q.x))) + 0.5;
+  // what stands against a face, along it (beds, tables, chests, seats, stations)
+  const underOf = f => {
+    const out = [];
+    for (const q of b.pieces) {
+      if (!q.decor || Math.abs(q.y - m.stand) > 0.6) continue;
+      const role = PB.piece(q.name).role;
+      if (!['bed', 'table', 'storage', 'seat', 'craft'].includes(role)) continue;
+      const o = checksB().aabbShapes(q);
+      if (!o || o.pass) continue;
+      let lo = Infinity, hi = -Infinity, near = Infinity;
+      for (const [x, z] of [[o.x0, o.z0], [o.x1, o.z0], [o.x0, o.z1], [o.x1, o.z1]]) {
+        const t = x * f.ux + z * f.uz;
+        lo = Math.min(lo, t); hi = Math.max(hi, t);
+        near = Math.min(near, (x - f.px(t)) * f.nx + (z - f.pz(t)) * f.nz - f.ht);
       }
+      if (near > -0.1 && near < 0.5 && lo > f.a0 - 0.2 && hi < f.a1 + 0.2) out.push({ t0: lo, t1: hi, kind: role });
+    }
+    return out;
+  };
+  const taken = new Map();
+  const ledges = new Map();
+  let n = 0;
+  for (const pass of passes) for (const f of byFace.keys()) {
+    const plainLen = f.runs.filter(r => r.kind === 'wall').reduce((s0, r) => s0 + r.a1 - r.a0, 0);
+    if (!pass.light && pass.main && R2() < skip) continue;
+    const used0 = taken.get(f) || [];
+    taken.set(f, used0);
+    let cap = pass.per ? Math.max(1, Math.floor(plainLen / pass.per)) : 9;
+    // the kinds drawn once per face by the household's weights, so a pair matches and a face reads as one thing
+    let kits = pass.kits;
+    // the household's one height for wall lights (lib/wallhang.js lightY)
+    if (pass.light) kits = kits.map(k => ({ ...k, pieces: k.pieces.map(q => (q.rest === 'wall' ? { ...q, y: WH.lightY(P) } : q)) }));
+    if (pass.main) {
+      const first = PS.pickW(R2, Object.fromEntries(kinds.map(k => [k, ww[k]])));
+      kits = [first, ...kinds.filter(k => k !== first).sort((a, c) => ww[c] - ww[a])].flatMap(k => WALL_KITS[k]);
+    }
+    const w = Math.max(...kits.map(kitW));
+    let slots = WH.plan(f, { w, light: pass.light, under: pass.main ? underOf(f) : [] });
+    // the high shelf: a second tier over a ledge of the main pass
+    if (!pass.main && !pass.light) slots = (ledges.get(f) || []).map(t => ({ t, why: 'second tier', rank: 1 }));
+    const tried = new Set();
+    for (const sl of slots) {
+      if (cap <= 0) break;
+      if (tried.has(sl) || !WH.spaced(used0, sl.t, w, pass.light) || (sl.mate && !WH.spaced(used0, sl.mate.t, w, pass.light))) continue;
+      tried.add(sl); if (sl.mate) tried.add(sl.mate);
+      const group = sl.mate ? [sl, sl.mate] : [sl];
+      if (group.some(g => busyAt(idx, m, f, g.t, pass))) continue;
+      if (pass.light && group.some(g => wallLightsFull(b, f.px(g.t), m.stand + 1.5, f.pz(g.t)))) continue;
+      const anOf = g => ({ anchor: 'wall', x: f.px(g.t) + f.nx * f.ht, z: f.pz(g.t) + f.nz * f.ht, yaw: yawOfN(f.nx, f.nz), face: f, t: g.t });
       for (const k of kits) {
-        const got = fit(b, ctx, room, idx, zones, an, k, false, fires);
-        if (!got) continue;
-        // every other piece on a wall goes up at the third stage, and the high shelf (D-071)
-        const ds = pass.light ? 2 : pass.main ? (kc++ % 2 ? 3 : 2) : 3;
-        for (const p of got) { p.ds = ds; b.pieces.push(p); idx.add(p); }
-        used[k.id] = (used[k.id] || 0) + 1;
-        next = an.t + pass.step * jit; n++;
+        // ledges as shelves with things on them, and in a building no more than LEDGE_KITS of them (D-166, Tyler:
+        // "fine to use provided you have use for them and dont use them randomly, or all the time")
+        const isLedge = k.pieces.some(q => q.n === 'wood_ledge' && q.rest === 'wall');
+        if (isLedge && ((b._ledgeKits || 0) + group.length > LEDGE_KITS || !k.pieces.some(q => q.rest === 'on'))) continue;
+        const gots = [];
+        for (const g of group) { const got = fit(b, ctx, room, idx, zones, anOf(g), k, false, fires); if (!got) break; gots.push(got); }
+        if (gots.length !== group.length) continue;
+        const ds = pass.light ? 2 : pass.main ? (n % 2 ? 3 : 2) : 3;
+        for (const got of gots) for (const p of got) { p.ds = ds; b.pieces.push(p); idx.add(p); }
+        for (const g of group) used0.push({ t: g.t, w });
+        if (isLedge) b._ledgeKits = (b._ledgeKits || 0) + group.length;
+        if (pass.main && k.pieces.some(q => q.n === 'wood_ledge' && q.rest === 'wall')) for (const g of group) { if (!ledges.has(f)) ledges.set(f, []); ledges.get(f).push(g.t); }
+        used[k.id] = (used[k.id] || 0) + group.length;
+        n += group.length; cap -= group.length;
         break;
       }
     }
   }
   return n;
+}
+// Wall ledge kits in one building (the main pass and the high shelf together)
+const LEDGE_KITS = 2;
+// Whether decor stands or hangs at a wall slot already (the busy test of the walk it replaced)
+function busyAt(idx, m, f, t, pass) {
+  const x = f.px(t) + f.nx * f.ht, z = f.pz(t) + f.nz * f.ht, R = pass.reach;
+  const box = { x0: Math.min(x - f.ux * R, x + f.ux * R, x + f.nx * 0.7) - 0.05, x1: Math.max(x - f.ux * R, x + f.ux * R, x + f.nx * 0.7) + 0.05,
+    z0: Math.min(z - f.uz * R, z + f.uz * R, z + f.nz * 0.7) - 0.05, z1: Math.max(z - f.uz * R, z + f.uz * R, z + f.nz * 0.7) + 0.05 };
+  return idx.near(box, 0).some(r => r.p.decor && PB.piece(r.p.name).role !== 'rug' && (!pass.light || PB.piece(r.p.name).role === 'light') &&
+    r.b.y1 > m.stand + pass.y0 && r.b.y0 < m.stand + pass.y1 && r.b.x0 < box.x1 && r.b.x1 > box.x0 && r.b.z0 < box.z1 && r.b.z1 > box.z0);
 }
 
 // Whether the room at a point has its budget of wall lights already (lib/decorate.js lightBudget), so the wall torch

@@ -1349,6 +1349,16 @@ function balcony(b, K, C, w, edges, o) {
   return false;
 }
 
+// A door torch against what shows of the wall at its height (lib/wallhang.js: a log wall shows 5 cm past its collider,
+// and a torch at the collider's face stood 4 cm off it, showcase 05), or none when the wall does not take it there.
+function doorTorchOnWall(b, q, e, ox, oz, half) {
+  const WH = typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang;
+  if (!WH) return q;
+  const t = (q.x - e.x) * (1 - Math.abs(ox)) + (q.z - e.z) * (1 - Math.abs(oz));
+  const r = WH.hang(q.name, { x: e.x + ox * half + (1 - Math.abs(ox)) * t, z: e.z + oz * half + (1 - Math.abs(oz)) * t, nx: ox, nz: oz, y: q.y }, WH.backingOf(b.pieces), { pieces: b.pieces });
+  return r ? { ...q, x: r.x, z: r.z, yaw: r.yaw, wclip: r.wclip } : null;
+}
+
 // Lights by the doors (coverage audit 2026-11-09: wall torches by the door on 47 % of the best-liked builds, 5 % of
 // ours). From d2 the front door gets a wall torch on each side on the outside face, from d3 the back door too; where
 // the biome has no wall torch yet (Meadows) a standing torch beside a door at ground level. A side that would touch
@@ -1395,7 +1405,8 @@ function doorLights(b, o) {
           const bx = q.x - ox * 0.35, bz = q.z - oz * 0.35; return bx > pb.x0 - 0.02 && bx < pb.x1 + 0.02 && bz > pb.z0 - 0.02 && bz < pb.z1 + 0.02 && q.y > pb.y0 && q.y < pb.y1; });
         if (!hit && back) { put = q; break; }
       }
-      if (put) { b.put(put.name, put.x, put.y, put.z, put.yaw, { decor: true, ds: op.back ? 3 : 2 }); n++; }
+      if (put && name) put = doorTorchOnWall(b, put, e, ox, oz, half);
+      if (put) { b.put(put.name, put.x, put.y, put.z, put.yaw, { decor: true, ds: op.back ? 3 : 2, ...(put.wclip ? { wclip: put.wclip } : {}) }); n++; }
     }
   }
   if (n) b.notes.push(`${n} lights by the doors.`);

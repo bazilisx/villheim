@@ -12,6 +12,7 @@
 const NODE_M = typeof module !== 'undefined';
 const PM = NODE_M ? require('./pieces.js') : window.VHPieces;
 const checksM = () => (NODE_M ? require('./checks.js') : window.VHChecks);
+const hangMo = () => (typeof module !== 'undefined' ? require('./wallhang.js') : window.VHWallhang);
 const meshMo = () => (NODE_M ? require('./mesh.js') : window.VHMesh);
 
 const normM = a => ((a % 360) + 360) % 360;
@@ -387,6 +388,20 @@ const BLOCKING = ['door', 'stair', 'storage', 'craft', 'seat', 'table', 'bed', '
 // put a motif on a feature; returns the number of pieces placed, or 0 when it would lose too much (nothing placed)
 //   fr: { x, y, z, nx, nz } the feature frame; g: the motif's own fit; f: the feature's size (windows, doors);
 //   opts: { mirror, ground, minH (lowest h kept), noInfill (glass in the opening), keepOut: [boxes], minShare }
+// A motif piece of the hung kinds whose back is to the motif's wall (fr's normal points out of it): moved onto what
+// shows of that wall at its height, its back to it, and refused where the wall does not take it or something hangs
+// there already (a sign of MA-0219 sat 21 cm into the beam over a door, showcase 06). Anything else as it is.
+function onWallM(b, p, fr, there) {
+  const WH = hangMo();
+  if (!WH || !WH.isHung(p.name)) return p;
+  const u = WH.backDir(p), l = Math.hypot(fr.nx, fr.nz) || 1, nx = fr.nx / l, nz = fr.nz / l;
+  if (u[0] * -nx + u[2] * -nz < 0.9) return p;
+  const r = WH.hang(p.name, { x: p.x - nx * 0.5, z: p.z - nz * 0.5, nx, nz, y: p.y }, WH.backingOf(b.pieces), { pieces: there });
+  if (!r) return null;
+  const q = { ...p, x: r.x, z: r.z, yaw: r.yaw, q: r.q };
+  if (r.wclip) q.wclip = r.wclip;
+  return q;
+}
 function place(b, c, fr, f, opts = {}) {
   const Ck = checksM();
   const cand = [];
@@ -433,7 +448,10 @@ function place(b, c, fr, f, opts = {}) {
   const floors = b.pieces.filter(q => !q.trim && !q.decor && PM.piece(q.name).role === 'floor' && Math.hypot(q.x - fr.x, q.z - fr.z) < 6 &&
     (q.x - fr.x) * fr.nx + (q.z - fr.z) * fr.nz > 0.6).map(q => boxOf(Ck, q));
   const overFloor = bx => floors.some(o => (bx.x0 + bx.x1) / 2 > o.x0 && (bx.x0 + bx.x1) / 2 < o.x1 && (bx.z0 + bx.z1) / 2 > o.z0 && (bx.z0 + bx.z1) / 2 < o.z1 && bx.y0 >= o.y1 - 0.05 && bx.y0 - o.y1 < 2.35 && bx.y0 - o.y1 > 0.3);
-  for (const p of cand) {
+  for (const p0 of cand) {
+    // a prop hung on the motif's own wall goes against what shows of it (lib/wallhang.js), or not at all
+    const p = onWallM(b, p0, fr, there);
+    if (!p) continue;
     const bx = Ck.aabb(p), info = PM.piece(p.name);
     // the same shape already there from the rules (a corner post, a sill): one is enough
     if (trimNear.some(q => classOf(q.name) === p.cls && Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z) < 0.3)) continue;

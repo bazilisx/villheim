@@ -2508,20 +2508,25 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
   b.woodBays = b.woodBays || new Set();
   const noSpan = P.support(stonePiece).h >= 0.99;
   let style = styleOverride || C.wallStyle || 'plank';
-  if (noSpan && style === 'stone' && b.woodBays.has(bay)) style = 'plank';
+  // (and a bay a 2 m course family left in timber, or that has timber under it, stays timber up: masonry takes no
+  // support from wood)
+  if ((noSpan || /2x2/.test(stonePiece)) && ['stone', 'marble', 'grausten'].includes(style) && b.woodBays.has(bay)) style = 'plank';
   const stoneLike = ['stone', 'marble', 'grausten'].includes(style);
   // over an opening: planks where the stone cannot span it (stone), or where the metre left over would be a stone
   // course (2 m grausten courses leave a 1 m gap); a stone that cannot span also takes the bay above to planks
   const lintel = () => {
     if (!stoneLike) return;
-    if (noSpan) b.woodBays.add(bay);
+    if (noSpan || stoneCourse === 2) b.woodBays.add(bay);
     if (noSpan || stoneCourse === 2) style = 'plank';
   };
   const stoneCourse = /2x2/.test(stonePiece) ? 2 : 1;
   const pieceFor = y => {
     if (style === 'stone' || style === 'marble' || style === 'grausten') return [stonePiece, stoneCourse];
     // the stone course is the ground storey's footing only; upper storeys are all planks (stone on planks would fall)
-    if (style === 'stone-base' && y < y0 + 0.99 && y0 <= (C.baseTop != null ? C.baseTop : Infinity)) return [stoneCourse === 1 ? stonePiece : 'stone_wall_2x1', 1];
+    // (a family of 2 m courses lays a 2 m footing course of its own: grausten has no 1 m course, and stone between
+    // grausten read wrong, Tyler on showcases 15 and 16: "Stone is chunky and light gray. Grausten is smooth and dark gray
+    // and half the width")
+    if (style === 'stone-base' && y < y0 + stoneCourse - 0.01 && y0 <= (C.baseTop != null ? C.baseTop : Infinity)) return [stonePiece, stoneCourse];
     if (style === 'log') return ['wood_wall_log', 0.5];
     return [plank, 2];
   };
@@ -2531,9 +2536,9 @@ function wallSegment(b, K, C, x, y0, z, yaw, SH, kind, styleOverride) {
       const left = to - y;
       const [main, course] = pieceFor(y);
       if (course <= left + 0.01) { b.put(main, x, y + course / 2, z, yaw); y += course; }
-      // a 1 m course in a wall of 2 m stone courses is stone too (a plank course there would leave the stone above it
-      // standing on wood, which falls)
-      else if (left >= 0.99 && main !== 'wood_wall_log') { b.put(course === 1 ? main : (main === stonePiece ? 'stone_wall_2x1' : K.wallHalf), x, y + 0.5, z, yaw); y += 1; }
+      // a metre left in a wall of 2 m courses is the wall's own timber, never another family's stone: the bay is
+      // timber from there up, as over an opening)
+      else if (left >= 0.99 && main !== 'wood_wall_log') { if (course !== 1 && main === stonePiece) { b.put(K.wallHalf, x, y + 0.5, z, yaw); b.woodBays.add(bay); } else b.put(course === 1 ? main : K.wallHalf, x, y + 0.5, z, yaw); y += 1; }
       else { if (main === 'wood_wall_log') b.put(main, x, y + 0.25, z, yaw); else b.put(K.wallHalf, x, y + 0.5, z, yaw); y += 0.5; } // a half wall standing on the gap pokes 0.5 m up into the roof
     }
   };

@@ -928,6 +928,12 @@ function check(design, biome, opts = {}) {
     results.push({ check: 'doorways', ok: dw.length === 0, detail: dw.length ? `${dw.length} problems (${dw.slice(0, 3).map(p => `${p.door}: ${p.what} at ${p.at}`).join('; ')})` : 'every doorway clear and stepped' });
     const pf = pastureFences(pieces);
     results.push({ check: 'railings', ok: pf.length === 0, detail: pf.length ? `${pf.length} pasture fences used as rails (${pf.slice(0, 3).join('; ')})` : 'no pasture fence raised or indoors' });
+    // one masonry family in the walls (Tyler, showcases 15 and 16: "Stone is chunky and light gray. Grausten is smooth
+    // and dark gray and half the width"; the corpus mixes them in 150 of 1,001 masonry builds, mostly large castles,
+    // lab/shell_mine.js); a hearth's own stone is the hearth's
+    const fam = p => /^stone_(wall|arch|pillar)/.test(p.name) ? 'stone' : /^Piece_grausten_(wall|pillar)/i.test(p.name) ? 'grausten' : null;
+    const fams = [...new Set(pieces.filter(p => !p.decor && !p.hearthStone && fam(p)).map(fam))];
+    results.push({ check: 'masonry', ok: fams.length < 2, detail: fams.length < 2 ? 'one masonry family in the walls' : `walls of ${fams.join(' and ')}` });
     const cb = crossedBoards(pieces);
     results.push({ check: 'crossed boards', ok: cb.length === 0, detail: cb.length ? `${cb.length} out of line with the bargeboards (${cb.slice(0, 2).join('; ')})` : 'crossed boards in line' });
   }

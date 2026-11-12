@@ -34,7 +34,9 @@ const ORDER = ['Meadows', 'Black Forest', 'Swamp', 'Mountain', 'Plains', 'Mistla
 // spacing between two of the same; see docs/INTERIOR_DESIGN.md). Pivots are in the middle of the footprint.
 // at: floor (stands free), wall (back to a wall), mount (hung on a wall), rug, top (on a table), fire (on a fire),
 // hang (from the ceiling). rel: turn from the wall's inward normal when standing against a wall (0: local +z faces
-// the room). base: pivot height above the floor (floor torches stand 0.75 m below their pivot). b: the first biome
+// the room). base: pivot height above the floor (the standing torches' models reach 0.65 m under their pivot; corpus
+// builders' 0.75 m is over the floor piece's pivot, 0.1 m under the floor's top, and at 0.75 m over the floor's top their
+// foot hovered 10 cm, showcase 2026-11-12). b: the first biome
 // whose village can make it, the lower of the game's notes (design-list.csv) and the recipe.
 // Sizes are at least the game's own: the box round each piece's solid colliders (its mesh for rugs), from
 // data/piece-models.json, so furniture does not clip into walls or each other in the game. For pieces turned 90 or
@@ -101,10 +103,10 @@ const F = {
   wood_dragon1: { s: [3.34, 1.46, 1.0], c: [0.0, 1.69], at: 'mount', b: 'Black Forest', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
   darkwood_raven: { s: [3.09, 1.46, 0.8], c: [0.0, 1.54], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
   darkwood_wolf: { s: [2.18, 1.79, 0.83], c: [0.0, 1.09], at: 'mount', b: 'Swamp', cat: 'deco', wall: -0.1, y: 1.7, rel: 90 },
-  piece_groundtorch_wood: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Meadows', cat: 'light', base: 0.75 },
-  piece_groundtorch: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
-  piece_groundtorch_green: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.75 },
-  piece_groundtorch_mist: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Mistlands', cat: 'light', base: 0.75 },
+  piece_groundtorch_wood: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Meadows', cat: 'light', base: 0.65 },
+  piece_groundtorch: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.65 },
+  piece_groundtorch_green: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Swamp', cat: 'light', base: 0.65 },
+  piece_groundtorch_mist: { s: [0.4, 1.6, 0.4], at: 'floor', b: 'Mistlands', cat: 'light', base: 0.65 },
   piece_walltorch: { s: [0.31, 0.95, 0.45], at: 'mount', b: 'Black Forest', cat: 'light', wall: 0.28, y: 1.55, rel: 270 },
   piece_dvergr_lantern: { s: [0.78, 1.21, 1.11], c: [-0.55, 0.0], at: 'mount', b: 'Mistlands', cat: 'light', wall: 0.42, under: 0.35, rel: 90 },
   piece_brazierceiling01: { s: [0.97, 1.6, 0.91], at: 'hang', b: 'Swamp', cat: 'light', under: 1.6 },
@@ -1589,7 +1591,9 @@ function lightsIn(room, k, n, o) {
     const c = cells[0];
     if (c) {
       const top = room.ceilAt(c.x, c.z);
-      if (top - room.stand > 3.9 && room.add('piece_brazierceiling01', c.x, top - F.piece_brazierceiling01.under, c.z, 0, { mount: true, y0: top - 1.6 })) done++;
+      // (hung from the beam, floor or roof over it as builders hang it, lib/wallhang.js hangFrom)
+      const hy = top - room.stand > 3.9 && WHD() ? WHD().hangFrom({ name: 'piece_brazierceiling01', x: c.x, y: top - F.piece_brazierceiling01.under, z: c.z, yaw: 0 }, room.out) : null;
+      if (hy != null && hy - room.stand > 2.3 && room.add('piece_brazierceiling01', c.x, hy, c.z, 0, { mount: true, y0: hy })) done++;
     }
   }
   if (k.wallLight && lightOk(k.wallLight, room.biome)) {

@@ -53,6 +53,10 @@ function wallChecks(d, name) {
   const r = { wallOff: [], wallTurn: [], wallHalf: [], wallStack: [] };
   Au.wallHung(d.pieces, r);
   for (const [k, list] of Object.entries(r)) for (const m of list) ok(false, `${name}: ${k}: ${m}`);
+  // standing torches on their floor, hanging braziers from what is over them (lib/wallhang.js attach)
+  const f = { floats: [] };
+  Au.floats(d.pieces, f);
+  for (const m of f.floats) if (/^piece_(groundtorch|brazierceiling)/.test(m)) ok(false, `${name}: floats: ${m}`);
 }
 // the showcase's worst case for wall pieces: the Meadows hub, a stone plinth under 2x2 wood walls
 { const d = G.generate({ type: 'hub', biome: 'Meadows', culture: 'norse', stage: 's5', decor: 'd3', seed: 2 }); wallChecks(d, d.meta.Name);

@@ -330,6 +330,11 @@ function placer(b, T) {
         extra = r.wclip ? { ...extra, wclip: r.wclip } : extra;
         o = { ...o, hung: true };
       }
+      // a standing torch on what is under its foot (lib/wallhang.js settle): it was put 0.75 m over a level that was the
+      // floor's pivot in one place and 0.125 m over it in another, and hovered 10 to 64 cm (showcase 01)
+      // a hanging brazier from the beam, floor or roof over it (lib/wallhang.js hangFrom), or not at all
+      if (WHH() && name === 'piece_brazierceiling01' && !o.asIs) { const yy = WHH().hangFrom({ name, x, y, z, yaw: normH(yaw) }, b.pieces); if (yy == null) return false; y = yy; }
+      if (WHH() && /^piece_groundtorch/.test(name) && !o.asIs) { const yy = WHH().settle({ name, x, y, z, yaw: normH(yaw) }, b.pieces); if (yy == null) return false; y = yy; }
       const p = { name, x, y, z, yaw: normH(yaw), q: T.quat(normH(yaw)) };
       const bx = Ck.gameBox(p);
       if (!o.free) {

@@ -135,7 +135,7 @@ function backing(pieces, opts) {
   const any = opts && opts.any;
   for (const p of pieces) {
     const r = P.piece(p.name).role;
-    if (any) { if ((!opts.floors && ['floor', 'stair'].includes(r)) || ['roof', 'roofTop', 'roofCorner', 'plant', 'rug'].includes(r)) continue; }
+    if (any) { if ((!opts.floors && ['floor', 'stair'].includes(r)) || (!opts.roofs && ['roof', 'roofTop', 'roofCorner'].includes(r)) || ['plant', 'rug'].includes(r)) continue; }
     else if (p.decor || isHung(p.name) || !BACKING[r]) continue;
     const parts = partsOf(p);
     if (!parts || !parts.length) continue;
@@ -263,6 +263,64 @@ function restsOn(p, A) {
   const g = meet(partBox(p, HUNG[p.name].plate, 0.012), backDir(p), -0.1, 0.03);
   if (g && !BACKING[g.e.role]) return { on: g.e.p, how: 'mounted' };
   return null;
+}
+
+// ---------------------------------------------------------------- what any piece is attached to
+// The model box of any piece in world space (shrink off its sides, so a piece touching its neighbor at an edge does
+// not count as standing on it).
+function modelWorldBox(p, shrink) {
+  const mb = modelBox(p.name), q = qOf(p), s = shrink || 0;
+  const c = rotW(q, mb.c);
+  return boxW({ c: [c[0] + p.x, c[1] + p.y, c[2] + p.z], a: [rotW(q, [1, 0, 0]), rotW(q, [0, 1, 0]), rotW(q, [0, 0, 1])],
+    h: [Math.max(0.004, mb.s[0] / 2 - s), mb.s[1] / 2, Math.max(0.004, mb.s[2] / 2 - s)] });
+}
+/** How a piece meets what holds it: { below, above } the gaps (m) from its model box down to the first piece under it
+ * whose top is within reach of its foot, and up to the first piece over it whose underside is within reach of its top
+ * (Infinity when none within 1.5 m); 0 or less: touching or into it. A: backing(pieces, { any: true, floors: true }). */
+function attach(p, A) {
+  const box = modelWorldBox(p, 0.02), near = A.near(p.x, p.z, 2.6);
+  let below = Infinity, above = Infinity;
+  for (const e of near) {
+    if (e.p === p) continue;
+    for (const o of e.parts) {
+      const d = sweep(box, o, [0, -1, 0]);
+      if (d && d[1] > 0 && d[0] > -0.15 && d[0] < below && o.y1 <= box.y0 + 0.15) below = d[0];
+      const u = sweep(box, o, [0, 1, 0]);
+      if (u && u[1] > 0 && u[0] > -0.15 && u[0] < above && o.y0 >= box.y1 - 0.15) above = u[0];
+    }
+  }
+  return { below, above };
+}
+
+/** What holds pieces up, for attach and settle: every piece but roofs, rugs and plants, floors included, kept while
+ * the list's length stays the same. */
+const CACHE_S = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+function supportOf(pieces) {
+  const c = CACHE_S && CACHE_S.get(pieces);
+  if (c && c.n === pieces.length) return c.A;
+  const A = backing(pieces, { any: true, floors: true });
+  if (CACHE_S) CACHE_S.set(pieces, { n: pieces.length, A });
+  return A;
+}
+/** The height that hangs a ceiling piece (a hanging brazier) from the first beam, floor or roof over it, its chain's
+ * top 5 cm into it as corpus builders hang them (739 in liked builds: 5 cm at the median, 13 cm at the 10th
+ * percentile), or null when nothing is within 3 m over it (hub braziers hung 1.9 to 2.5 m under anything). */
+const CACHE_H = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+function hangFrom(p, pieces) {
+  let c = CACHE_H && CACHE_H.get(pieces);
+  if (!c || c.n !== pieces.length) { c = { n: pieces.length, A: backing(pieces, { any: true, floors: true, roofs: true }) }; if (CACHE_H) CACHE_H.set(pieces, c); }
+  const m = attach({ ...p, y: p.y - 0.5 }, c.A);
+  if (!isFinite(m.above) || m.above > 3.5) return null;
+  return +(p.y - 0.5 + m.above + 0.05).toFixed(3);
+}
+/** The height that sets a piece's model on the first thing under its foot within reach (m up or down), or null.
+ * For what stands (a standing torch whose foot hovered 10 to 64 cm over the floor, showcase 01 and 05). */
+function settle(p, pieces, reach) {
+  const r = reach || 0.7, A = supportOf(pieces);
+  const q = { ...p, y: p.y + r };
+  const m = attach(q, A);
+  if (!isFinite(m.below) || m.below > 2 * r) return null;
+  return +(q.y - m.below).toFixed(3);
 }
 
 // ---------------------------------------------------------------- hung pieces against each other
@@ -466,5 +524,5 @@ function row(t, n, w, gap) {
   return out;
 }
 
-const apiWH = { HUNG, isHung, BACKING, backing, backingOf, measure, overlaps, backDir, partBox, sweep, travel, modelBox, faceRect, hang, sinkOf, relOf, plan, spaced, row, restsOn, clashOnWall, both };
+const apiWH = { HUNG, isHung, BACKING, backing, backingOf, measure, overlaps, backDir, partBox, sweep, travel, modelBox, faceRect, hang, sinkOf, relOf, plan, spaced, row, restsOn, clashOnWall, both, attach, modelWorldBox, settle, supportOf, hangFrom };
 if (NODE_W) module.exports = apiWH; else window.VHWallhang = apiWH;

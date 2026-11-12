@@ -1718,16 +1718,14 @@ const AT_KINDS = {
   'wall:rafter': { trophy: 215, shield: 154, weapon: 61, fish: 26 },
 };
 // D-134 (Tyler): the larger mementos (rare treasures, bigger trophies, harder enemies) belong at the central hearth. A
-// trophy whose item model is longer than the corpus's 75th percentile of trophies on stands (1.90 m: data/item-models.json
-// bounds, each trophy weighted by the corpus builds that show it on a stand, data/stands-corpus.json itemBuilds; 833
-// sightings, 50th 1.07 m, 90th 2.92 m, 95th 3.08 m) goes only on the hub's stands. The corpus count covers every kind
-// of build, halls and castles too, and its 95th percentile (3.08 m) would let the Abomination's root arch (2.82 m) into
-// a home, so the 75th is the value in use (a setting, round 7b). Listed by name so the game's engine needs no item
-// models; lab/item_sizes.js is not needed to read them again: rerun the node one-liner in the round 7b record.
-const BIG_ITEM_M = 1.9;
-const BIG_ITEM = new Set(['TrophyWraith', 'TrophyAbomination', 'TrophyKvastur', 'TrophySerpent', 'TrophySGolem', 'TrophyLox', 'TrophyGoblinBrute',
-  'TrophySeeker', 'TrophySeekerBrute', 'TrophyGjall', 'TrophyBonemawSerpent', 'TrophyMoose', 'TrophyBarka', 'TrophyMole',
-  'TrophyEikthyr', 'TrophyBonemass', 'TrophyDragonQueen', 'TrophyGoblinKing', 'TrophySeekerQueen', 'TrophyFader']);
+// trophy whose item model is longer than the corpus houses' 90th percentile of trophies on stands goes only on the
+// hub's stands: 2.215 m (data/item-models.json bounds; 1,108 trophy stands in 86 house builds of the corpus,
+// categories starter home, building, advanced base, tree house and interior design, halls, taverns, villages, castles
+// and towers left out; 50th 0.74, 75th 1.34, 90th 2.215 (a wraith), 95th 2.92 m; read with lab/mine_stands.js scan,
+// round 7c). Listed by name (every trophy in ITEMS longer than BIG_ITEM_M), so the game's engine needs no item models.
+const BIG_ITEM_M = 2.215;
+const BIG_ITEM = new Set(['TrophyAbomination', 'TrophyKvastur', 'TrophySerpent', 'TrophySeeker', 'TrophySeekerBrute', 'TrophyGjall', 'TrophyBonemawSerpent',
+  'TrophyBarka', 'TrophyMole', 'TrophyEikthyr', 'TrophyBonemass', 'TrophyDragonQueen', 'TrophyGoblinKing', 'TrophySeekerQueen', 'TrophyFader']);
 function itemFrom(kind, biome, R, own = 2, seen, hub) {
   // any item from any biome may be on show in any village (Tyler, 2026-11-10: decor has no biome limit; D-080 is only
   // about how it is paid for); the village's own biome weighs a little more, for flavor
@@ -2554,6 +2552,9 @@ function check(design, biome, opts = {}) {
       const u = undersideOf(pieces[j], pt.x, pt.z, boxes[j]);
       // what is less than 0.5 m over the floor is a kerb, sill or dais on it, never the ceiling (with the game's
       // colliders a beam laid on the floor shows 5 cm over it)
+      // a furnishing's piece (p.decor) under 1.8 m is furniture people walk round (a beam laid on a half wall and a
+      // chest as a counter top, creative set KC-100), never the ceiling; one hung higher still counts
+      if (u != null && pieces[j].decor && u < pt.y + 1.8) continue;
       if (u != null && u > pt.y + (useShapes ? 0.5 : 0.05) && u < lowest) { lowest = u; by = pieces[j].name; }
     }
     if (!isFinite(lowest)) continue;
@@ -11140,6 +11141,9 @@ function dressTops(b, ctx, zones, rooms) {
         DEBUG_S[k] = (DEBUG_S[k] || 0) + 1;
       }
       if (!got) continue;
+      // a set of stands never moves furniture aside: the fitter lists what a set would push out of its way (got.displace),
+      // which the interior library takes out and this pass would leave standing inside the set (a ledge over a bench)
+      if (got.displace && got.displace.length) continue;
       // a wall stand into the wall's relief stays against its collider, as the corpus's builders hang them (D-127)
       if (got.some(p => p.name === 'itemstand' && p.wclip && intoCollider(p, idx) > WALL_COLL + 0.005)) continue;
       // never before what it stands on (a bench of a set that comes at the third stage)
@@ -11797,20 +11801,23 @@ function roomsOf(b, ctx) {
 
 // A group of loose furniture to another spot of its floor, clear of the lane cells given and reached by a person
 // (walkMap, spotsFor below); false when it fits nowhere or holds a piece that never moves.
-function moveAside(b, list, path) {
+// wc (clearLanes): the walk map of the last call that moved nothing, kept while b.pieces is the same list (a call that
+// moves nothing puts every piece back, so the map is the same; the game's engine ran walkMap once per call)
+function moveAside(b, list, path, wc) {
   if (!b.rooms || !b.rooms.length) return false;
   const F = decorL().FURNITURE, Ck = checksL();
   if (list.some(p => !p.decor || p.wclip || p.fclip || p.trim || p.outside || p.yard || PL.piece(p.name).role === 'door' || PL.piece(p.name).role === 'fire' || (p.rest && ['wall', 'hang'].includes(p.rest)) || ['mount', 'hang'].includes((F[p.name] || {}).at))) return false;
   // the biggest piece on the floor leads
   const area = p => { const o = Ck.aabb(p); return (o.x1 - o.x0) * (o.z1 - o.z0) - (p.rest === 'on' ? 99 : 0) - p.y; };
   const grp = [...list].sort((a, c) => area(c) - area(a));
-  const W = walkMap(b);
+  const W = wc && wc.pieces === b.pieces && wc.n === b.pieces.length ? wc.W : walkMap(b);
+  if (wc) { wc.pieces = b.pieces; wc.n = b.pieces.length; wc.W = W; }
   let h = 0;
   for (const p of grp) h = (Math.imul(h ^ Math.round(p.x * 100 + p.z * 7), 16777619) + 1) >>> 0;
   const S = spotsFor(b, W, grp, (path || []).map(c => ({ x: c.x, z: c.z })), h);
   for (const s of S.slice(0, 10)) {
     const u = placeGroup(grp, S.cx, S.cz, s);
-    if (meshClear(b, grp)) return true;
+    if (meshClear(b, grp) && kbClear(b, grp)) { if (wc) wc.pieces = null; return true; }
     u();
   }
   return false;
@@ -11825,7 +11832,7 @@ function clearLanes(b, ctx, rooms) {
   const Ck = checksL();
   const firstChest = b.pieces.find(p => p.decor && !p.kb && !p.outside && PL.piece(p.name).role === 'storage' && /chest/.test(p.name)) || null;
   let gone = 0, moved = 0;
-  const cache = new Map();
+  const cache = new Map(), wc = {};
   for (const room of rooms || roomsOf(b, ctx)) {
     const m = room.m;
     const hall = ['hall', 'tavern', 'temple'].includes(room.role);
@@ -11874,7 +11881,7 @@ function clearLanes(b, ctx, rooms) {
           if (keep) continue;
           // moved off the lane to a spot of its floor a person reaches, before it is left out (D-148: what does not
           // fit is left out)
-          if (moveAside(b, [...drop], path)) { budget--; moved++; any = true; continue; }
+          if (moveAside(b, [...drop], path, wc)) { budget--; moved++; any = true; continue; }
           if (leavesBare(b, m, drop)) continue;
           b.pieces = b.pieces.filter(p => !drop.has(p));
           budget--; gone++; any = true;
@@ -12271,6 +12278,7 @@ function spotsFor(b, W, grp, keep, seedN) {
   let h = (seedN >>> 0) || 7;
   const R = () => { h ^= h << 13; h >>>= 0; h ^= h >> 17; h ^= h << 5; h >>>= 0; return h / 4294967296; };
   const out = [];
+  const Ab = { x: 0, z: 0, hw: 0, hd: 0, c: 1, s: 0, r: 0 };
   for (let k = 0; k < 4; k++) {
     const boxes = rel.map(r => ({ ...turn(r, k), y0: r.y0, y1: r.y1, floor: r.floor }));
     // what itemBox works out for each of mine at this turn and does not depend on the spot
@@ -12292,13 +12300,24 @@ function spotsFor(b, W, grp, keep, seedN) {
         // itemBox (above) at this spot: the same numbers, worked the same way
         const px = nx + m.dx, pz = nz + m.dz;
         const mx = m.cc ? px + m.cc[0] * m.ca + m.cc[1] * m.sa : px, mz = m.cc ? pz - m.cc[0] * m.sa + m.cc[1] * m.ca : pz;
-        const Ab = { x: mx, z: mz, hw: m.hw, hd: m.hd, c: m.c, s: m.s, r: m.r }, ra = m.r;
-        const qb = { x0: mx - ra, x1: mx + ra, z0: mz - ra, z1: mz + ra };
-        const cand = near(qb, iIdx, items);
-        for (let n = 0; n < cand.length; n++) { const c2 = cand[n]; if (!(m.y0 > c2.y1 - 0.05 || c2.y0 > m.y1 - 0.05) && DI.overlap(Ab, c2.b, -0.02)) { ok = false; break; } }
+        Ab.x = mx; Ab.z = mz; Ab.hw = m.hw; Ab.hd = m.hd; Ab.c = m.c; Ab.s = m.s; Ab.r = m.r;
+        const ra = m.r, qx0 = mx - ra, qx1 = mx + ra, qz0 = mz - ra, qz1 = mz + ra;
+        // (the buckets read in place, no list made: the same pieces in the same order as near)
+        stamp++;
+        for (let i = Math.floor(qx0); i <= Math.floor(qx1) && ok; i++) for (let j = Math.floor(qz0); j <= Math.floor(qz1); j++) {
+          const l = iIdx.get(i * 4096 + j);
+          if (!l) continue;
+          for (const n of l) { const c2 = items[n]; if (c2._s === stamp) continue; c2._s = stamp; if (!(m.y0 > c2.y1 - 0.05 || c2.y0 > m.y1 - 0.05) && DI.overlap(Ab, c2.b, -0.02)) { ok = false; break; } }
+          if (!ok) break;
+        }
         if (!ok) break;
-        const dcand = near(qb, dIdx, doorList);
-        for (let n = 0; n < dcand.length; n++) if (DI.overlap(dcand[n].b, Ab, 0.02)) { ok = false; break; }
+        stamp++;
+        for (let i = Math.floor(qx0); i <= Math.floor(qx1) && ok; i++) for (let j = Math.floor(qz0); j <= Math.floor(qz1); j++) {
+          const l = dIdx.get(i * 4096 + j);
+          if (!l) continue;
+          for (const n of l) { const c2 = doorList[n]; if (c2._s === stamp) continue; c2._s = stamp; if (DI.overlap(c2.b, Ab, 0.02)) { ok = false; break; } }
+          if (!ok) break;
+        }
         if (!ok) break;
       }
       if (!ok) continue;
@@ -12505,6 +12524,30 @@ const meshL = () => (NODE_L ? require('./mesh.js') : window.VHMesh);
 const SHL = () => (NODE_L ? require('./shapes.js') : window.VHShapes);
 const W_STATION = /^(piece_workbench|forge|piece_stonecutter|piece_artisanstation|blackforge|piece_magetable|piece_cauldron)$/;
 const W_FURN = ['bed', 'table', 'seat', 'storage', 'craft', 'fire', 'clutter'];
+// A moved group against the library's set pieces round it, as the pool audit reads a set piece (lib/decorate.js audit
+// overlap, kbClip): the colliders no deeper than the pieces' own marked clip (p.clip), 3 cm between solid furniture
+// of two sets, and 2 cm more. A gem cutter moved alone went 0.5 m into the anvil of its own set (smithy Black Forest
+// s3d3 seed 384, round 7c).
+function kbClear(b, grp) {
+  const SH = SHL(), FD = decorL().FURNITURE;
+  if (!SH || !SH.world || !SH.clipDepth) return true;
+  const set = new Set(grp), SOLID = ['storage', 'craft', 'bed', 'table'];
+  const skip = q => ['mount', 'hang', 'top', 'fire', 'rug'].includes((FD[q.name] || {}).at);
+  for (const p of grp) {
+    if (!p.decor || skip(p)) continue;
+    let A = null;
+    for (const q of b.pieces) {
+      if (set.has(q) || !q.decor || !(p.kb || q.kb) || skip(q) || Math.abs(q.x - p.x) > 3 || Math.abs(q.z - p.z) > 3 || Math.abs(q.y - p.y) > 3) continue;
+      if (!A) { A = SH.world(p); if (!A || !A.length) break; }
+      const B = SH.world(q);
+      if (!B || !B.length) continue;
+      const solid = SOLID.includes((FD[p.name] || {}).cat) && SOLID.includes((FD[q.name] || {}).cat);
+      const lim = solid && p.kb !== q.kb ? 0.03 : Math.max(p.clip || 0, q.clip || 0);
+      if (SH.clipDepth(A, B) > lim + 0.02) return false;
+    }
+  }
+  return true;
+}
 function meshClear(b, grp) {
   const M = meshL(), SH = SHL();
   if (!M || !M.world || !M.deepest) return true;
@@ -12564,7 +12607,7 @@ function openWays(b, ctx) {
     const S = spotsFor(b, W, grp, keep, seedN++);
     for (const s of S.slice(0, 10)) {
       const undo = placeGroup(grp, S.cx, S.cz, s);
-      if (!meshClear(b, grp)) { undo(); continue; }
+      if (!meshClear(b, grp) || !kbClear(b, grp)) { undo(); continue; }
       const W2 = walkMap(b);
       if (accept(W2)) { W = W2; res.moved++; return true; }
       undo();
@@ -12680,7 +12723,7 @@ function openWays(b, ctx) {
             const S = undoAll.length ? spotsFor(b, W, grp, keep, seedN++) : S0;
             for (let i = Math.max(0, Math.min(r, S.length - 1)); i < S.length && i < r + 6; i++) {
               const u = placeGroup(grp, S.cx, S.cz, S[i]);
-              if (meshClear(b, grp)) { undoAll.push(u); break; }
+              if (meshClear(b, grp) && kbClear(b, grp)) { undoAll.push(u); break; }
               u();
             }
           }
@@ -13744,15 +13787,22 @@ function survey(b, G0) {
   for (const x of boxes) {
     if (x.info.role === 'stair' && x.o.y0 < G0 + 0.8) keep.push({ x0: x.o.x0 - 1.2, x1: x.o.x1 + 1.2, z0: x.o.z0 - 1.2, z1: x.o.z1 + 1.2, y0: -50, y1: 50, why: 'stair' });
     if (/^wood_(fine_|core_)?stack$/.test(x.p.name) && x.o.y0 < G0 + 0.5) keep.push({ x0: x.o.x0 - 1, x1: x.o.x1 + 1, z0: x.o.z0 - 1, z1: x.o.z1 + 1, y0: -50, y1: 50, why: 'woodpile' });
+    // and 0.65 m round any stair over its height, as the pool audit's stairs test reads it whatever stands between
+    // (a stair inside against the wall, pots outside it; workshop Meadows s3d3 seed 287, round 7c)
+    if (x.info.role === 'stair') keep.push({ x0: x.o.x0 - 0.65, x1: x.o.x1 + 0.65, z0: x.o.z0 - 0.65, z1: x.o.z1 + 0.65, y0: x.o.y0 - 0.1, y1: x.o.y1 + 0.3, why: 'stair' });
   }
   // what a plant may not stand in: anything but floors laid on the ground, rugs and other plants
   const solid = boxes.filter(x => !['rug'].includes(x.info.role) && !classOf(x.p.name) && !(x.info.role === 'floor' && x.o.y1 < G0 + 0.12)).map(x => x.o);
+  // the furnishing's own pieces by their catalog boxes too, as the pool audit's overlap test reads them (a ground torch
+  // by a door, whose collider is a thin stick, and a pot set into it; workshop Meadows s3d3 seed 287, round 7c)
+  // (pots only: they are the greenery the audit reads as furniture; the rest keep to the colliders, as before)
+  const furnBoxes = boxes.filter(x => x.p.decor && !x.p.green && !['rug'].includes(x.info.role)).map(x => Ck.catBox(x.p));
   const roofs = boxes.filter(x => ['roof', 'roofTop', 'roofCorner', 'gable', 'beam', 'floor'].includes(x.info.role) && x.o.y0 > G0 + 1.2).map(x => x.o);
   const fences = boxes.filter(x => x.p.yard && x.info.role === 'fence').map(x => x.o);
   // the gate closes the fence line for 'inside the yard'
   const gates = boxes.filter(x => x.p.yard && /gate/.test(x.p.name)).map(x => x.o);
   const paths = keep.filter(z => z.path);
-  return { boxes, faces, doors, keep, solid, roofs, fences, gates, paths, onFloor };
+  return { boxes, faces, doors, keep, solid, furn: furnBoxes, roofs, fences, gates, paths, onFloor };
 }
 function rectAlong(x, z, ux, uz, nx, nz, a0, a1, b0, b1) {
   const xs = [], zs = [];
@@ -13861,6 +13911,7 @@ function add(b, ctx) {
     if (inKeep({ ...foot, x0: x - rk, x1: x + rk, z0: z - rk, z1: z + rk })) return false;
     const box = Ck.aabb({ name: e[0], x, y: G0, z, yaw: 0, s: sc !== 1 ? [sc, sc, sc] : undefined });
     if (S.solid.some(o => hit(box, o, 0.08))) return false;
+    if (kind === 'pot' && S.furn.some(o => hit(box, o, -0.06))) return false;
     // the crown of a tree or bush clear of roofs, eaves and floors over it (a low plant passes under the eaves)
     if (kind === 'tree' || kind === 'bush') {
       const crown = { x0: x - r, x1: x + r, z0: z - r, z1: z + r, y0: G0 + top * 0.35, y1: G0 + top };
@@ -17999,9 +18050,10 @@ function biomeSafe(b, biome) {
   });
 }
 
-function finish(b, info) {
-  // nothing left in the air: a piece set on another (a chest on a bench, a mug on a table) goes when what held it was
-  // taken out by a later pass (a lane cleared, a set undone), checked the way the interior library checks its pieces
+// Nothing left in the air: a piece set on another (a chest on a bench, a mug on a table) goes when what held it was
+// taken out or moved by a later pass (a lane cleared, a set undone), checked the way the interior library checks its
+// pieces. Run before the stands are dressed and again after openWays, which moves furniture.
+function dropLoose(b) {
   for (let pass = 0; pass < 3; pass++) {
     const ctx = Decor.auditContext(b.pieces);
     // a chest stays up only on another chest (a set's chest left on the decorator's table, 2026-11-10)
@@ -18013,6 +18065,10 @@ function finish(b, info) {
     const out = new Set(loose);
     b.pieces = b.pieces.filter(p => !out.has(p));
   }
+}
+
+function finish(b, info) {
+  dropLoose(b);
   // a table rolled dressed that the passes left bare gets one thing on it (lib/kitbash.js redressTables)
   if (Kitbash.redressTables) Kitbash.redressTables(b, { culture: info.cultureKey });
   // every item stand holds something the household would keep there, or goes (lib/persona.js)
@@ -18023,7 +18079,7 @@ function finish(b, info) {
   // a person can walk in through every door, into every room and up to every bed, table, station and chest (D-152,
   // D-148; lib/layout.js openWays), after every pass that sets or moves furniture
   if (b.walks && b.rooms && b.rooms.length) { const yl = Math.min(...b.rooms.map(r => r.y)); for (const w of b.walks) if (w.y == null) w.y = yl; }
-  { const Lw = layoutLib(); if (Lw && Lw.openWays) Lw.openWays(b, info); }
+  { const Lw = layoutLib(); if (Lw && Lw.openWays) { Lw.openWays(b, info); dropLoose(b); } }
   dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
   for (const p of b.pieces) { const pi = P.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }

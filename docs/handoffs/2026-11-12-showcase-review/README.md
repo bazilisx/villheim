@@ -37,6 +37,7 @@ Research tracks write data and docs only, so they run side by side. The code tra
 | B Corpus rooms | design/wip-corpus-rooms | `tools/blueprint-lab/data/rooms-corpus/`, `docs/ROOM_STUDY.md` | 2, 3, 5, 7 |
 | C Outside study | design/wip-outside-study | `docs/INTERIOR_DESIGN.md` new sections, `docs/handoffs/2026-11-12-showcase-review/outside/` | 2 |
 | D Shell and space | design/wip-shell | `lib/generate.js`, `lib/styles.js`, `lib/layout.js` (hall widths, entries), `lib/details.js` (sills), `lab/test_structure.js` | 5, 6, 7 |
+| F Wall-hung pieces | design/wip-wallhung | new `lib/wallhang.js`, wall-hung call sites in `lib/decorate.js`, `lib/stands.js`, `lib/motifs.js`, `lib/hub.js` notice board, a check in `lab/test_structure.js` | 4 |
 | Lead | main | mod side (`src/Villheim.Logic` outside Generator): stand items, notice board, hub collapse in the game | 8 |
 
 After A, B and C report: **Track E, room intent.** A rewrite of interior furnishing around room purpose, focal point,
@@ -58,7 +59,7 @@ it until they agree it meets what they learned; then it goes to Tyler. At least 
 
 1. **Learn.** Tracks A to D as above. Each also writes `criteria/<track>.md`: a weighted checklist with tests, a pass
    mark and hard fails, grounded in its evidence.
-2. **Build.** Track E rewrites interior furnishing from the A, B and C findings and generates a random s3d3 building
+2. **Build.** Track E rewrites interior furnishing from the A, B, C and F findings and generates a random s3d3 building
    (random kind, culture, biome, seed). Buildings are never edited by hand: each critique becomes a rule change and
    the building is regenerated from its seed, so every village gets the fix.
 3. **Council.** A, B, C and D each score the building against their criteria and propose rule changes. An independent
@@ -67,5 +68,5 @@ it until they agree it meets what they learned; then it goes to Tyler. At least 
    earlier still passes. Then the building is saved as a PlanBuild blueprint in Tyler's profile
    (`config/PlanBuild/blueprints/inspiration/generated/ingame/council/`) with its renders and scorecards. After 6 rounds
    without quorum, the lead takes the disagreement to Tyler.
-5. **Target.** Five members (A to E) means 10 approved buildings, different kinds, cultures and biomes, all s3d3, plus
+5. **Target.** Six members (A to F) means 12 approved buildings, different kinds, cultures and biomes, all s3d3, plus
    the 16 showcase designs regenerated as a regression set. Tyler reviews them in the game.

@@ -557,8 +557,9 @@ function add(b, ctx) {
       y: y || 0, z: s.z - Math.sin(s.yaw * Math.PI / 180) * a + s.n[1] * d, yaw: normY(s.yaw + (turn || 0)), pad: 0.05 })));
     const W = fenceSpots(0.8);
     if (ctx.type === 'smithy') {
-      // the forge yard: the cooler and the tool rack against the fence, an anvil and the grinding wheel, coal
-      got.push(['forgeyard', along(W, [['forge_ext5', 0, 0, 180], ['forge_ext6', 2.3, 0.1, 180]])]);
+      // the forge yard: the cooler against the fence, an anvil and the grinding wheel, coal (the tool rack hangs on a
+      // wall: catalog wall-hung, 71 % of 416 builds, none in a yard)
+      got.push(['forgeyard', along(W, [['forge_ext5', 0, 0, 180]])]);
       got.push(['anvil', along(fenceSpots(1.4), [['forge_ext4', 0, 0, 180], ['forge_ext2', 1.4, 0, 200]])]);
       got.push(['coal', along(fenceSpots(1.2), [['coal_pile', 0, 0, 0]])]);
     } else if (ctx.type === 'tavern') {

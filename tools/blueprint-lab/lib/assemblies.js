@@ -32,6 +32,18 @@ function data() {
 }
 function setData(list) { REC = list; }
 const SHa = () => (NODE_AS ? require('./shapes.js') : window.VHShapes);
+// Vanilla pieces only (CLAUDE.md): a recipe with a piece the catalog of vanilla prefabs does not hold is never used.
+// Mined recipes kept two mod pieces (AC-shelving-03 FletcherTable_ext3_TW, AC-shelving-04 piece_chest_cargo; neither is
+// among the game's 5,936 prefabs), and piece_chest_cargo reached showcase 08.
+const CATa = () => { try { return NODE_AS ? require('./catalog.js') : window.VHCatalog; } catch (e) { return null; } };
+const VAN_OK = new Map();
+function vanillaOk(r) {
+  if (VAN_OK.has(r.id)) return VAN_OK.get(r.id);
+  const C = CATa();
+  const ok = !C || !C.get || (r.pieces || []).every(p => !!C.get(p.n));
+  VAN_OK.set(r.id, ok);
+  return ok;
+}
 
 function all() { return data(); }
 function get(id) { return typeof id === 'object' ? id : data().find(r => r.id === id) || null; }
@@ -87,6 +99,7 @@ function find(q) {
   for (const r of data()) {
     if (kinds && !kinds.includes(r.kind)) continue;
     if (ex.has(r.id)) continue;
+    if (!vanillaOk(r)) continue;
     if (q.room && r.rooms && !r.rooms.includes(q.room)) continue;
     if (q.wall && r.wall !== q.wall && !(q.wall === 'corner' && r.wall === 'back')) continue;
     if (q.from && r.from !== q.from) continue;

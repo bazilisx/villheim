@@ -261,7 +261,7 @@ const PLANTS_FALL = ['Pickable_Dandelion', 'Pickable_Onion', 'Pickable_Thistle',
 // the light against the wall, and a 1 m post up each side of the light. Lined up on the light itself, never on the
 // 2 m bay (the boxes stood under the bay's middle while the light sat in one half of it). Returns the pieces, marked
 // planter with the window's key; planterSurfaces(b) gives where plants go.
-function planter(b, ctx, o) {
+function planter(b, ctx, o, test) {
   const { K } = ctx, e = o.e, { ux, uz, ox, oz } = axes(e);
   const Ck = checksD();
   // the light: its middle and width along the wall (generate.js wallSegment's lastLight), else the bay
@@ -275,6 +275,7 @@ function planter(b, ctx, o) {
   const zone = { x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity };
   for (const [u, v] of [[lu - lw / 2 - 0.2, face], [lu + lw / 2 + 0.2, face + 1.1]]) { const x = e.x + ux * u + ox * v, z = e.z + uz * u + oz * v; zone.x0 = Math.min(zone.x0, x); zone.x1 = Math.max(zone.x1, x); zone.z0 = Math.min(zone.z0, z); zone.z1 = Math.max(zone.z1, z); }
   if (b.pieces.some(p => { if (wall.includes(p)) return false; const a = Ck.aabb(p); return a.x0 < zone.x1 && a.x1 > zone.x0 && a.z0 < zone.z1 && a.z1 > zone.z0 && a.y1 > y0 + 0.1 && a.y0 < y0 + 1 + lh; })) return null;
+  if (test) return true;
   const key = `${e.x},${e.z},${y0}`, T = { trim: true, planter: key };
   const at = (u, v) => [e.x + ux * u + ox * v, e.z + uz * u + oz * v];
   const yawAlong = e.yaw, yawAcross = (e.yaw + 90) % 360;
@@ -335,53 +336,39 @@ function exterior(b, ctx) {
   if (X.svalgang && ctx.wallSegment) added.gallery = svalgang(b, ctx) ? 1 : 0;
   if (X.gablePorch && !added.gallery) added.porch = gablePorch(b, ctx) ? 1 : 0;
 
-  // ---- windows
-  for (const o of openings) {
-    if (o.kind !== 'window') continue;
-    const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
-    // the trim budget: a window left bare as corpus builders leave three in ten, no frame, mullion or shutters
-    const frontW = !!ctx.door && e.out[0] === ctx.door.out[0] && e.out[1] === ctx.door.out[1];
-    if (!dressed(ctx, 'window', `${e.x},${e.z},${y0}`, frontW)) { o.bare = true; added.bare = (added.bare || 0) + 1; continue; }
-    if (MT && motifWindow(b, ctx, MT, o, used)) { added.windows++; added.motifs++; if (X.shutterKit) shutterKit(b, ctx, o, edgeAt, isOpen, added); continue; }
-    const stone = /stone|marble|grausten/.test(C.wallStyle || '') && !(b.woodBays && b.woodBays.has(`${Math.round(e.x * 10)},${Math.round(e.z * 10)}`));
-    const f = 0.25; // trim stands proud of the wall face (a beam is 0.4 m deep in the game: at 0.25 out it clears the inside)
-    // the light: the whole 2 m bay, or 1 m beside a 1 x 1 wall piece
-    const quarter = K.wallQuarter && b.pieces.find(p => p.name === K.wallQuarter && Math.abs(p.y - (y0 + 1.5)) < 0.3 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.2 && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 0.8);
-    const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
-    let lw = quarter ? 1 : 2, cx = e.x - ux * sd * 0.5, cz = e.z - uz * sd * 0.5;
-    const L = o.light, lh = L ? L.h : 1;
-    if (L) { lw = L.w; cx = L.x; cz = L.z; }
-    if (X.mullion && lw === 2 && (!L || ['open', 'shutter', 'arch'].includes(L.fill))) for (let j = 0; j < lh; j++) put(pole1, cx, y0 + 1.5 + j, cz, 0);
-    // a deck or gallery floor outside the window: no frame (the sill and head would hang over people walking there)
-    const deckOut = b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.hypot(p.x - (e.x + ox), p.z - (e.z + oz)) < 1.1 && Math.abs(p.y - y0) < 0.6);
-    if (X.windowFrame && !deckOut) {
-      // sill and head no wider than the light and a little over; posts at its sides on board walls only
-      // a 1 m light takes 1 m boards where posts carry them; without posts the 2 m beam rests on the wall beside
-      const posts = (!C.frame || stone) && C.wallStyle !== 'log';
-      const bm = lw === 2 || !posts ? beam : (K.beam1 || 'wood_beam_1'), bx = lw === 2 || !posts ? e.x : cx, bz = lw === 2 || !posts ? e.z : cz;
-      put(bm, bx + ox * f, y0 + 0.9, bz + oz * f, e.yaw);
-      // no head board: sill and head pairs stacked floor over floor read as a ladder (round 4 review); the head only
-      // where the wall is stone (the timber lintel shows there anyway)
-      if (stone && lh === 1) put(bm, bx + ox * f, y0 + 2.1, bz + oz * f, e.yaw);
-      if (posts) for (const s of [-1, 1]) for (let j = 0; j < lh; j++) put(pole1, cx + ux * s * (lw / 2) + ox * f, y0 + 1.5 + j, cz + uz * s * (lw / 2) + oz * f, 0);
+  // ---- windows: one treatment on every window of a run (the windows of one wall line on one storey), from the
+  // building program (lib/program.js, D-167); a run's motif is chosen once and kept on each window, or kept off all
+  const runs = windowRuns(b, ctx, openings);
+  for (const R of runs) {
+    // the motif: on every window of the run or none (MT.get keeps one motif per size and facade)
+    // (placed one by one, each seeing the last; when one window of the run takes none, the run's are taken back)
+    const dressedW = R.list.filter(o => !o.bare);
+    if (MT && dressedW.length) {
+      const n0 = (b.motifPending || []).length, used0 = [...used];
+      const ok = dressedW.every(o => motifWindow(b, ctx, MT, o, used));
+      if (ok) for (const o of dressedW) { o.motif = true; added.motifs++; }
+      else { if (b.motifPending) b.motifPending.length = n0; used.clear(); for (const id of used0) used.add(id); }
     }
-    if (X.shutterKit) { shutterKit(b, ctx, o, edgeAt, isOpen, added); added.windows++; continue; }
-    if (X.shutters && !stone) {
-      // open shutters flat on the wall either side, only where a plain bay is beside the window and the bay past it
-      // is no window wanting the same wall; both sides or none
-      const room = s => {
-        const n1 = edgeAt.get(`${e.x + ux * s * 2},${e.z + uz * s * 2}`), n2 = edgeAt.get(`${e.x + ux * s * 4},${e.z + uz * s * 4}`);
-        if (!n1 || n1.yaw !== e.yaw || isOpen.has(`${n1.x},${n1.z},${y0}`)) return false;
-        return !(n2 && n2.yaw === e.yaw && isOpen.has(`${n2.x},${n2.z},${y0}`));
-      };
-      if (room(-1) && room(1)) for (const s of [-1, 1]) put('wood_window', cx + ux * s * (lw / 2 + 0.6) + ox * 0.12, y0 + 1.5, cz + uz * s * (lw / 2 + 0.6) + oz * 0.12, e.yaw);
+    for (const o of R.list) {
+      if (o.bare) { added.bare = (added.bare || 0) + 1; continue; }
+      buildWindow(b, ctx, o, R, put, added);
+      added.windows++;
     }
-    added.windows++;
   }
+  // the facade as built, run by run (for the checks and the council: one treatment per run)
+  b.facade = runs.map(R => ({ side: R.side, line: R.line, storey: R.storey, dropped: [...R.drop], shutters: R.shut || null, windows: R.list.map(o => ({ x: o.e.x, z: o.e.z, y: o.y0, motif: !!o.motif,
+    features: o.bare ? [] : (o.built || []).concat(o.planterBox ? ['planter'] : []).filter((f, i, a) => a.indexOf(f) === i), program: o.features || [],
+    exception: o.program && o.program.exception ? o.program.exception.feature : null })) }));
 
-  // ---- doors
+  // ---- doors: one main door, the richest (frame, step and one of hood, lamps or banners); the others the frame only
+  // (lib/program.js door, D-167). Without a program the profile's flags dress every door.
+  const mainDoor = openings.find(o => o.kind !== 'window' && !o.storey && !o.back && ctx.door && o.e === ctx.door) ||
+    openings.find(o => o.kind === 'door' && !o.storey && !o.back);
   for (const o of openings) {
     if (o.kind === 'window') continue;
+    const dress = ctx.program && PRD ? PRD.door(ctx.program, { main: o === mainDoor }).dressing : null;
+    const wants = k => dress ? dress.includes(k) : k === 'hood' ? X.doorHood : k === 'lamps' ? X.doorLamp : k === 'step' ? X.doorstep : k === 'frame' ? X.doorFrame : k === 'banners';
+    o.dressing = dress;
     const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
     const h = o.kind === 'gate' ? 3 : 2;
     const mo = MT && o.kind === 'door' && !o.gallery && !o.balcony ? motifDoor(b, ctx, MT, o, used) : null;
@@ -390,7 +377,7 @@ function exterior(b, ctx) {
     const dp = b.pieces.find(p => PD.piece(p.name).role === 'door' && Math.hypot(p.x - e.x, p.z - e.z) < 1.2 && p.y > y0 - 0.5 && p.y < y0 + 3);
     const op = dp ? PD.doorOpening(dp) : null;
     const dx = op ? op.x : e.x, dz = op ? op.z : e.z, dw = op ? Math.min(2, op.w) : 2, dh = op ? Math.min(3, op.h) : h;
-    const framed = X.doorFrame && o.kind === 'door' && !mo;
+    const framed = wants('frame') && o.kind === 'door' && !mo;
     if (framed) {
       if (!C.frame) for (const s of [-1, 1]) put(pole, dx + ux * s * (dw / 2 + 0.05) + ox * 0.1, y0 + 1, dz + uz * s * (dw / 2 + 0.05) + oz * 0.1, 0);
       put(dw < 1.5 ? (K.beam1 || 'wood_beam_1') : beam, dx + ox * 0.25, y0 + dh + 0.2, dz + oz * 0.25, e.yaw); // the lintel, just over the door's frame
@@ -400,7 +387,7 @@ function exterior(b, ctx) {
     // a step in front of a ground-level door: two beams laid along the threshold (a 2 x 2 floor there read as a mat), (sunk to 5 cm above the floor so villagers walk over it, Tyler 2026-11-09)
     // unless a porch, stair or deck is already there
     const busy = b.pieces.some(p => Math.hypot(p.x - outside.x, p.z - outside.z) < 1.1 && ['floor', 'stair'].includes(PD.piece(p.name).role) && Math.abs(p.y - F) < 1.2);
-    if (X.doorstep && F < 0.01 && !busy && !(mo && mo.step)) for (const d of [0.35, 0.75]) put(beam, dx + ox * d, F - 0.05, dz + oz * d, e.yaw);
+    if (wants('step') && F < 0.01 && !busy && !(mo && mo.step)) for (const d of [0.35, 0.75]) put(beam, dx + ox * d, F - 0.05, dz + oz * d, e.yaw);
     // a small roof over the door (pent hood) on a rafter each side, falling away from the wall, its low edge level with
     // the door's head 2 m out (so the doorway keeps its headroom); never without the frame, never under an eave or a
     // porch less than 1.5 m over the door
@@ -410,7 +397,7 @@ function exterior(b, ctx) {
       const bx = checksD().aabb(p), out = (p.x - dx) * ox + (p.z - dz) * oz, side = Math.abs((p.x - dx) * ux + (p.z - dz) * uz);
       return out > -1.2 && out < 3.2 && side < 2.5 && bx.y0 > y0 + dh - 0.3 && bx.y0 < y0 + dh + 1.5;
     });
-    if (X.doorHood && framed && !covered && !(b.gallery && o.storey === 0) && SH >= 3) {
+    if (wants('hood') && framed && !covered && !(b.gallery && o.storey === 0) && SH >= 3) {
       const yaw = normD(Math.atan2(ox, oz) * 180 / Math.PI);
       put(K.roof26, outside.x, y0 + dh, outside.z, yaw);
       const r26 = slopeBeam(K, 26);
@@ -418,11 +405,11 @@ function exterior(b, ctx) {
       b.notes.push('A small roof over the door.');
     }
     // banners by the main door (bannerPlan): the lamps give way to them
-    const bannered = X.banner && X.banner.site === 'door' && !o.back && o.kind === 'door' && !added.doorBanner && bannerDoor(b, ctx, { x: dx, y: y0 > 0.01 && y0 < 2.01 ? 0 : y0, z: dz, nx: ox, nz: oz }, dw);
+    const bannered = X.banner && (dress ? wants('banners') : X.banner.site === 'door') && !o.back && o.kind === 'door' && !added.doorBanner && bannerDoor(b, ctx, { x: dx, y: y0 > 0.01 && y0 < 2.01 ? 0 : y0, z: dz, nx: ox, nz: oz }, dw);
     if (bannered) added.doorBanner = 1;
     // lamps: a pair in line with the door posts, a little outside them, with a frame only; on a raised house at the top
     // of the entry stair where a landing is
-    if (X.doorLamp && framed && !o.back && !(mo && mo.lit) && !bannered) {
+    if (wants('lamps') && framed && !o.back && !(mo && mo.lit) && !bannered) {
       const cands = [-1, 1].map(s => ({ name: 'piece_groundtorch_wood', x: +(dx + ux * s * (dw / 2 + 0.7) + ox * 0.35).toFixed(3), y: F + 0.65, z: +(dz + uz * s * (dw / 2 + 0.7) + oz * 0.35).toFixed(3), q: quatD(0), yaw: 0 }));
       const footing = c => F < 0.01 || b.pieces.some(p => PD.piece(p.name).role === 'floor' && Math.abs(p.y - F) < 0.2 && Math.abs(p.x - c.x) < 1.05 && Math.abs(p.z - c.z) < 1.05);
       if (cands.every(c => footing(c) && clear(b, c))) for (const c of cands) b.pieces.push({ ...c, decor: true, trim: true });
@@ -434,7 +421,7 @@ function exterior(b, ctx) {
   if (MT && X.motifCorners) added.corners += motifCorners(b, ctx, MT, used);
   // banners on a plain bay (bannerPlan), and where the door or the gable had no room for theirs; before the foot of the
   // walls, whose boards give way to the cloth
-  if (X.banner && (X.banner.site === 'face' || (X.banner.site === 'door' && !added.doorBanner) || (X.banner.site === 'gable' && !ctx.gableBannerDone)))
+  if (X.banner && !added.doorBanner && (X.banner.site === 'face' || X.banner.site === 'door' || (X.banner.site === 'gable' && !ctx.gableBannerDone)))
     added.faceBanner = bannerFace(b, ctx) ? 1 : 0;
   // ---- the foot of the walls, and things hung on the plain bays
   const based = MT && X.motifBase ? motifBases(b, ctx, MT, used) : new Set();
@@ -521,8 +508,8 @@ function exterior(b, ctx) {
     const P = ctx.persona || {};
     // (D-167, Tyler: "windows in a row would all have the same feature": the whole front run of the ground storey)
     // (the building program decides when there is one: its front ground run holds 'planter', D-165 and D-167)
-    const progRun = ctx.program && PRD ? PRD.run(ctx.program, { side: 'front', storey: 0 }) : null;
-    const chosen = ctx.planterWindows ? ctx.planterWindows(fronts, ctx) : progRun ? (progRun.features.includes('planter') ? fronts : [])
+    // (windowRuns: the windows whose run holds 'planter' and has room for a box under every window)
+    const chosen = ctx.planterWindows ? ctx.planterWindows(fronts, ctx) : ctx.program && PRD ? openings.filter(o => o.planterBox)
       : ((P.hobby || {}).plants || 0) >= 0.5 ? fronts : [];
     for (const o of chosen) {
       const got = planter(b, ctx, o);
@@ -689,29 +676,181 @@ function pruneMotifs(b, ctx) {
 // Shutters as the window kit's fill (generate.js windowKit, 'shutter'): Wood Shutters open flat on the wall either
 // side of a 1 m tall light where the wall beside it is plain (both or none), else closed in the light. On every
 // window of the building, the motif's trim or the rules' frame round it.
-function shutterKit(b, ctx, o, edgeAt, isOpen, added) {
-  const { e, y0 } = o, { ux, uz, ox, oz } = axes(e), L = o.light;
-  if (!L || L.h !== 1) return;
-  const cx = L.x, cz = L.z, lw = L.w, Ck = checksD();
-  const at = s => ({ name: 'wood_window', x: cx + ux * s * (lw / 2 + 0.6) + ox * 0.12, y: y0 + 1.5, z: cz + uz * s * (lw / 2 + 0.6) + oz * 0.12, yaw: e.yaw });
-  // beside the light: the 1 m wall piece of its own bay, or a plain bay next to it
-  const plainAt = s => {
-    const p = at(s), along = (p.x - e.x) * ux + (p.z - e.z) * uz;
-    if (Math.abs(along) < 1) return true; // over the bay's own 1 m wall piece
-    const n1 = edgeAt.get(`${e.x + ux * s * 2},${e.z + uz * s * 2}`);
-    if (!n1 || n1.yaw !== e.yaw) return false;
-    if (!isOpen.has(`${n1.x},${n1.z},${y0}`)) return true;
-    const l2 = (b.openings || []).find(q => q.e === n1 && q.y0 === y0);
-    return !!(l2 && l2.light && l2.light.w === 1 && Math.abs((l2.light.x - p.x) * ux + (l2.light.z - p.z) * uz) > 1.05);
-  };
-  const free = s => { const p = at(s); const bx = Ck.aabb({ ...p, q: quatD(p.yaw) }); return !b.pieces.some(q => { if (q.decor) return false; const r = PD.piece(q.name).role; if (!['pole', 'beam', 'window', 'light', 'misc'].includes(r) && !q.trim) return false; const a = Ck.aabb(q); return a.x0 < bx.x1 - 0.05 && a.x1 > bx.x0 + 0.05 && a.y0 < bx.y1 - 0.05 && a.y1 > bx.y0 + 0.05 && a.z0 < bx.z1 - 0.05 && a.z1 > bx.z0 + 0.05; }); };
-  if (plainAt(-1) && plainAt(1) && free(-1) && free(1)) {
-    for (const s of [-1, 1]) { const p = at(s); b.put(p.name, p.x, p.y, p.z, p.yaw, { trim: true }); }
+// ---------------------------------------------------------------- window runs (lib/program.js, D-167)
+
+// the light of a window bay: the whole 2 m bay, or 1 m beside a 1 x 1 wall piece, or the window kit's own light
+function lightOf(b, K, o) {
+  const { e, y0 } = o, { ux, uz, ox, oz } = axes(e);
+  const quarter = K.wallQuarter && b.pieces.find(p => p.name === K.wallQuarter && Math.abs(p.y - (y0 + 1.5)) < 0.3 && Math.abs((p.x - e.x) * ox + (p.z - e.z) * oz) < 0.2 && Math.abs((p.x - e.x) * ux + (p.z - e.z) * uz) < 0.8);
+  const sd = quarter ? ((quarter.x - e.x) * ux + (quarter.z - e.z) * uz > 0 ? 1 : -1) : 0;
+  const L = o.light;
+  if (L) return { cx: L.x, cz: L.z, lw: L.w, lh: L.h, fill: L.fill };
+  return { cx: e.x - ux * sd * 0.5, cz: e.z - uz * sd * 0.5, lw: quarter ? 1 : 2, lh: 1, fill: 'open' };
+}
+const stoneBay = (b, C, e) => /stone|marble|grausten/.test(C.wallStyle || '') && !(b.woodBays && b.woodBays.has(`${Math.round(e.x * 10)},${Math.round(e.z * 10)}`));
+
+// The windows of a building in runs: one wall line (its outward side and its offset) on one storey. Each window takes
+// its family from the program (o.features, o.program); each run takes the choices that must hold on all of its windows
+// (R.drop: features no window of the run can carry, so none carries them; R.shut: shutters open or closed).
+function windowRuns(b, ctx, openings) {
+  const { K, C, edges } = ctx, X = ctx.profile || {};
+  const prog = ctx.program && PRD ? ctx.program : null, D = ctx.door;
+  const sideOf = e => !D ? 'front' : e.out[0] === D.out[0] && e.out[1] === D.out[1] ? 'front' : e.out[0] === -D.out[0] && e.out[1] === -D.out[1] ? 'back' : 'side';
+  const doors = openings.filter(o => o.kind !== 'window');
+  const edgeAt = new Map(edges.map(e => [`${e.x},${e.z}`, e]));
+  const openAt = new Map(openings.map(o => [`${o.e.x},${o.e.z},${o.y0}`, o]));
+  const by = new Map();
+  for (const o of openings) {
+    if (o.kind !== 'window') continue;
+    const { e } = o, { ox, oz } = axes(e), storey = o.storey || 0;
+    const side = sideOf(e), line = `${e.out[0]},${e.out[1]}@${Math.round((e.x * ox + e.z * oz) * 10) / 10}`;
+    const key = `${side}|${line}|${storey}`;
+    if (!by.has(key)) by.set(key, { key, side, line, storey, list: [], drop: new Set() });
+    by.get(key).list.push(o);
+  }
+  const runs = [...by.values()];
+  for (const R of runs) {
+    R.list.sort((p, q) => (p.e.x + p.e.z) - (q.e.x + q.e.z));
+    R.stone = R.list.some(o => stoneBay(b, C, o.e));
+    for (const o of R.list) {
+      const { e, y0 } = o;
+      const byDoor = doors.some(d => (d.storey || 0) === R.storey && d.e.out[0] === e.out[0] && d.e.out[1] === e.out[1] && Math.hypot(d.e.x - e.x, d.e.z - e.z) < 3.1);
+      let feats;
+      if (prog) {
+        const fam = PRD.window(prog, { side: R.side, storey: R.storey, line: R.line, byDoor, key: `${e.x},${e.z},${y0}` });
+        o.program = fam;
+        feats = [...fam.features];
+        if (fam.exception && !feats.includes(fam.exception.feature)) feats.push(fam.exception.feature);
+      } else {
+        // a call without a program: the profile's flags, a window left bare by the trim budget (three in ten)
+        feats = !dressed(ctx, 'window', `${e.x},${e.z},${y0}`, R.side === 'front') ? []
+          : [X.windowFrame && 'sill', X.windowFrame && 'posts', X.windowFrame && R.stone && 'head', (X.shutters || X.shutterKit) && 'shutter'].filter(Boolean);
+      }
+      // the window kit's shutter light takes its leaves open beside it (closed leaves are the kit's own fill)
+      if (o.light && o.light.fill === 'shutter' && !(C.winKit && C.winKit.closed) && !feats.includes('shutter')) feats.push('shutter');
+      o.features = feats;
+      o.bare = !feats.some(f => !f.startsWith('fill:'));
+      // (the run it belongs to, for the program check of the council's candidate script)
+      o.run = { side: R.side, line: R.line, storey: R.storey, byDoor };
+    }
+  }
+  // what a run cannot carry on every window it carries on none
+  const roleOf = p => PD.piece(p.name).role;
+  for (const R of runs) {
+    for (const o of R.list) {
+      const { e, y0 } = o, { ux, uz, ox, oz } = axes(e), g = lightOf(b, K, o);
+      // a deck or gallery floor outside: no sill, head, hood or braces (they would hang over people walking there)
+      if (b.pieces.some(p => roleOf(p) === 'floor' && Math.hypot(p.x - (e.x + ox), p.z - (e.z + oz)) < 1.1 && Math.abs(p.y - y0) < 0.6)) ['sill', 'head', 'hood', 'brace'].forEach(f => R.drop.add(f));
+      // the head board under the storey's top beam
+      if (g.lh + 1.3 > (o.SH || ctx.SH) - 0.05) R.drop.add('head');
+      // sill and head stacked storey over storey read as a ladder (round 4 review): no head under a sill
+      const above = (b.openings || []).find(q => q.kind === 'window' && (q.storey || 0) === R.storey + 1 && Math.abs(q.e.x - e.x) < 0.1 && Math.abs(q.e.z - e.z) < 0.1);
+      if (above && (above.features || []).some(f => f === 'sill' || f === 'planter')) R.drop.add('head');
+      // the hood: never under an eave, a floor or a porch less than 1.5 m over the light
+      const yTop = y0 + 1 + g.lh;
+      if (b.pieces.some(p => {
+        if (!['roof', 'roofTop', 'roofCorner', 'floor'].includes(roleOf(p))) return false;
+        const bx = checksD().aabb(p), out = (p.x - g.cx) * ox + (p.z - g.cz) * oz, side = Math.abs((p.x - g.cx) * ux + (p.z - g.cz) * uz);
+        return out > -1.2 && out < 3.2 && side < 2.5 && bx.y0 > yTop - 0.3 && bx.y0 < yTop + 1.5;
+      })) R.drop.add('hood');
+      // braces: a knee brace under each end of the sill, its foot 1.8 m along the wall at the floor; the wall runs on
+      // past both ends of the light with no opening there
+      for (const s of [-1, 1]) {
+        const n1 = edgeAt.get(`${e.x + ux * s * 2},${e.z + uz * s * 2}`);
+        if (!n1 || n1.yaw !== e.yaw || openAt.has(`${n1.x},${n1.z},${y0}`)) R.drop.add('brace');
+      }
+    }
+    // planters: on kinds of building that take them (profile windowBoxes), where every window of the run has room
+    if (R.list.some(o => o.features.includes('planter')) && !(X.windowBoxes && R.list.every(o => planter(b, ctx, o, true)))) R.drop.add('planter');
+    for (const o of R.list) o.planterBox = o.features.includes('planter') && !R.drop.has('planter');
+    // (the box stands where the braces and the hood's eave would)
+    if (R.list.some(o => o.planterBox)) { R.drop.add('brace'); R.drop.add('hood'); }
+    // shutters: both leaves open flat on the wall where every window of the run has room for them; else closed in the
+    // light where every light is open or the kit's shutter light; else none
+    if (R.list.some(o => o.features.includes('shutter'))) {
+      if (R.stone) R.drop.add('shutter');
+      else if (R.list.every(o => shutterRoom(b, ctx, o, edgeAt, openAt))) R.shut = 'open';
+      else if (R.list.every(o => ['open', 'shutter'].includes(lightOf(b, K, o).fill))) R.shut = 'closed';
+      else R.drop.add('shutter');
+    }
+  }
+  return runs;
+}
+
+// room for both shutter leaves open flat on the wall either side of the light: over the bay's own 1 m wall piece or a
+// plain bay beside it, with no frame piece in the way
+function shutterRoom(b, ctx, o, edgeAt, openAt) {
+  const { e, y0 } = o, { ux, uz, ox, oz } = axes(e), g = lightOf(b, ctx.K, o), Ck = checksD();
+  return [-1, 1].every(s => {
+    for (let j = 0; j < g.lh; j++) {
+      const p = { name: 'wood_window', x: g.cx + ux * s * (g.lw / 2 + 0.6) + ox * 0.12, y: y0 + 1.5 + j, z: g.cz + uz * s * (g.lw / 2 + 0.6) + oz * 0.12, yaw: e.yaw };
+      const along = (p.x - e.x) * ux + (p.z - e.z) * uz;
+      if (Math.abs(along) >= 1) {
+        const n1 = edgeAt.get(`${e.x + ux * s * 2},${e.z + uz * s * 2}`);
+        if (!n1 || n1.yaw !== e.yaw) return false;
+        const l2 = openAt.get(`${n1.x},${n1.z},${y0}`);
+        if (l2 && !(l2.kind === 'window' && l2.light && l2.light.w === 1 && Math.abs((l2.light.x - p.x) * ux + (l2.light.z - p.z) * uz) > 1.05)) return false;
+      }
+      const bx = Ck.aabb({ ...p, q: quatD(p.yaw) });
+      if (b.pieces.some(q => { if (q.decor) return false; const r = PD.piece(q.name).role; if (!['pole', 'beam', 'window', 'light', 'misc'].includes(r) && !q.trim) return false; const a = Ck.aabb(q); return a.x0 < bx.x1 - 0.05 && a.x1 > bx.x0 + 0.05 && a.y0 < bx.y1 - 0.05 && a.y1 > bx.y0 + 0.05 && a.z0 < bx.z1 - 0.05 && a.z1 > bx.z0 + 0.05; })) return false;
+    }
+    return true;
+  });
+}
+
+// one window's treatment: exactly its run's features (sill, head, posts, braces, hood, shutters; the planter box is
+// built with the planters below), with the program's one piece for each; a window with a motif keeps the motif's
+// frame and takes the run's shutters
+function buildWindow(b, ctx, o, R, put, added) {
+  const { K, C } = ctx, X = ctx.profile || {}, P = (ctx.program && ctx.program.pieces) || {};
+  const { e, y0 } = o, { ux, uz, ox, oz } = axes(e), g = lightOf(b, K, o), { cx, cz, lw, lh } = g;
+  const built = o.built = [];
+  const has = f => { const ok = o.features.includes(f) && !R.drop.has(f); if (ok && !built.includes(f)) built.push(f); return ok; };
+  const beam = P.sill || K.beam || 'wood_beam', pole1 = P.posts || K.pole1 || 'wood_pole';
+  const f = 0.25; // trim stands proud of the wall face (a beam is 0.4 m deep in the game: at 0.25 out it clears the inside)
+  if (!o.motif) {
+    if (X.mullion && lw === 2 && ['open', 'shutter', 'arch'].includes(g.fill)) for (let j = 0; j < lh; j++) put(pole1, cx, y0 + 1.5 + j, cz, 0);
+    // posts at the light's sides on board walls only (a frame wall's posts are there already, logs need none)
+    const posts = (!C.frame || R.stone) && C.wallStyle !== 'log';
+    // a 1 m light takes 1 m boards where posts carry them; without posts the 2 m beam rests on the wall beside
+    const bm = lw === 2 || !posts ? beam : (K.beam1 || 'wood_beam_1'), bx = lw === 2 || !posts ? e.x : cx, bz = lw === 2 || !posts ? e.z : cz;
+    // the planter box brings its own sill and side boards
+    const box = has('planter');
+    if (has('sill') && !box) put(bm, bx + ox * f, y0 + 0.9, bz + oz * f, e.yaw);
+    if (has('head')) put(bm, bx + ox * f, y0 + 1 + lh + 0.1, bz + oz * f, e.yaw);
+    if (has('posts') && posts && !box) for (const s of [-1, 1]) for (let j = 0; j < lh; j++) put(pole1, cx + ux * s * (lw / 2) + ox * f, y0 + 1.5 + j, cz + uz * s * (lw / 2) + oz * f, 0);
+    if (has('brace')) {
+      // a 26 degree beam under each end of the sill, rising toward the light: the game's wood_beam_26 runs 2 m along
+      // and 1 m up with its middle 0.5 m over its pivot (data/piece-models.json), so the pivot 0.1 m under the floor
+      // puts its foot on the floor 1.9 m out and its head under the sill at the light's edge (generate.js put shifts
+      // the dark one to match)
+      const br = slopeBeam(K, 26);
+      for (const s of [-1, 1]) {
+        const yaw = normD(Math.atan2(s * uz, -s * ux) * 180 / Math.PI), a = lw / 2 + 0.9;
+        put(br, cx + ux * s * a + ox * f, y0 - 0.1, cz + uz * s * a + oz * f, yaw);
+      }
+      added.windowBraces = (added.windowBraces || 0) + 1;
+    }
+    if (has('hood')) {
+      // a small roof over the light on a rafter each side, falling away from the wall, its low edge level with the
+      // light's head 2 m out (as the door's)
+      const yaw = normD(Math.atan2(ox, oz) * 180 / Math.PI), hx = cx + ox, hz = cz + oz, yH = y0 + 1 + lh;
+      put(P.hood || K.roof26, hx, yH, hz, yaw);
+      const r26 = slopeBeam(K, 26);
+      for (const s of [-1, 1]) put(r26, hx + ux * s * 0.85, yH - 0.15, hz + uz * s * 0.85, yaw + 90);
+      added.windowHoods = (added.windowHoods || 0) + 1;
+    }
+  }
+  if (has('shutter') && R.shut === 'open') {
+    for (const s of [-1, 1]) for (let j = 0; j < lh; j++) put(P.shutter || 'wood_window', cx + ux * s * (lw / 2 + 0.6) + ox * 0.12, y0 + 1.5 + j, cz + uz * s * (lw / 2 + 0.6) + oz * 0.12, e.yaw);
     added.shutters = (added.shutters || 0) + 1;
-  } else if (lw === 1) {
-    // closed: the leaf over the light (it runs 1 m to the -x side of its hinge)
-    const lx = Math.cos(e.yaw * Math.PI / 180), lz = -Math.sin(e.yaw * Math.PI / 180); // the piece's local +x
-    b.put('wood_window', cx + lx * 0.5, y0 + 1.5, cz + lz * 0.5, e.yaw, { trim: true });
+  } else if (has('shutter') && R.shut === 'closed') {
+    // closed: a leaf over each metre of the light (a leaf runs 1 m to the -x side of its hinge)
+    const lx = Math.cos(e.yaw * Math.PI / 180), lz = -Math.sin(e.yaw * Math.PI / 180);
+    for (let k = 0; k < lw; k++) for (let j = 0; j < lh; j++) {
+      const t = k - (lw - 1) / 2;
+      put(P.shutter || 'wood_window', cx + ux * t + lx * 0.5, y0 + 1.5 + j, cz + uz * t + lz * 0.5, e.yaw);
+    }
     added.shuttersClosed = (added.shuttersClosed || 0) + 1;
   }
 }

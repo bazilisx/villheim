@@ -5,14 +5,23 @@
 const fs = require('fs'), path = require('path');
 const dir = __dirname;
 const out = process.argv[2] || path.join(dir, '../../../src/Villheim.Logic/Generator/lab.js');
-const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'wallhang.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'decorate.js', 'motifs.js', 'program.js', 'details.js', 'kitbash.js', 'stands.js', 'layout.js', 'yards.js', 'landscape.js', 'reach.js', 'hub.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
+const libs = ['pieces.js', 'shapes.js', 'mesh.js', 'wallhang.js', 'styles.js', 'persona.js', 'blueprint.js', 'checks.js', 'features.js', 'program.js', 'rooms_intent.js', 'decorate.js', 'motifs.js', 'details.js', 'kitbash.js', 'standitems.js', 'assemblies.js', 'stands.js', 'layout.js', 'yards.js', 'landscape.js', 'reach.js', 'hub.js', 'generate.js', 'critic.js', 'request.js', 'floorplan.js', 'audit.js'];
 const code = libs.map(f => `// ---- ${f}\n(function () {\n${fs.readFileSync(path.join(dir, f), 'utf8')}\n})();`).join('\n');
 const rules = fs.readFileSync(path.join(dir, '../data/rules-lite.json'), 'utf8').trim();
 const scorer = fs.readFileSync(path.join(dir, '../data/scorer.json'), 'utf8').trim();
 const interior = fs.readFileSync(path.join(dir, '../data/interior-lite.json'), 'utf8').trim();
 const critic = fs.readFileSync(path.join(dir, '../data/critic.json'), 'utf8').trim();
-// the building program's rules (lib/program.js, data/architecture/rules.json)
+// the room intent planner's corpus numbers (lib/rooms_intent.js, lab/build_intent_data.js)
+const intent = fs.readFileSync(path.join(dir, '../data/intent.json'), 'utf8').trim();
+// track H's building program rules (lib/program.js)
 const arch = fs.readFileSync(path.join(dir, '../data/architecture/rules.json'), 'utf8').trim();
+// track G's furniture recipes (lib/assemblies.js): authored and corpus recipes
+// (vanilla pieces only: recipes with a piece outside the catalog are left out, as lib/assemblies.js find leaves them out)
+const CAT_B = require('./catalog.js');
+const assemblies = JSON.stringify(['authored.json', 'corpus.json'].flatMap(f => JSON.parse(fs.readFileSync(path.join(dir, '../data/assemblies', f), 'utf8')).recipes).filter(r => (r.pieces || []).every(p => !!CAT_B.get(p.n))));
+// track G's stand items (lib/standitems.js): items, rules and the corpus place weights
+const standItems = JSON.stringify({ items: JSON.parse(fs.readFileSync(path.join(dir, '../data/stand-items/items.json'), 'utf8')).items,
+  rules: JSON.parse(fs.readFileSync(path.join(dir, '../data/stand-items/rules.json'), 'utf8')), corpus: JSON.parse(fs.readFileSync(path.join(dir, '../data/stand-items/corpus.json'), 'utf8')) });
 // the game's solid colliders per piece (lib/shapes.js), for the checks and the furniture sizes
 const solids = fs.readFileSync(path.join(dir, '../data/piece-solids.json'), 'utf8').trim();
 // room templates (D-058) without what only the lab reads (source, popularity, area, the ID key), and Tyler's weights
@@ -39,6 +48,10 @@ const stands = JSON.stringify({ heights: fs.existsSync(standsPath) ? JSON.parse(
 const text = `// Villheim blueprint lab, bundled for the game. Made by tools/blueprint-lab/lib/build_engine.js; do not edit.
 var window = this;
 window.VH_STANDS = ${stands};
+window.VH_INTENT = ${intent};
+window.VH_ARCH = ${arch};
+window.VHStandItemsData = ${standItems};
+window.VHAssembliesData = ${assemblies};
 ${code}
 // ---- data
 window.VH_RULES = ${rules};
@@ -54,7 +67,6 @@ window.VH_ROOMS = ${roomsLite};
 window.VH_ROOM_WEIGHTS = ${roomWeights};
 window.VH_MOTIFS = ${JSON.stringify({ motifs: motifLite.motifs })};
 window.VH_MOTIF_WEIGHTS = ${JSON.stringify(motifLite.weights)};
-window.VH_ARCH = ${arch};
 VHDecorate.setRules(VH_RULES);
 // ---- entry point for the game: one request, best of 'tries' seeds
 function vhMake(type, biome, culture, stage, words, seed, tries) {

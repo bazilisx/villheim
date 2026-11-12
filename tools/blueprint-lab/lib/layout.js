@@ -424,8 +424,18 @@ function roomsOf(b, ctx) {
 // (walkMap, spotsFor below); false when it fits nowhere or holds a piece that never moves.
 // wc (clearLanes): the walk map of the last call that moved nothing, kept while b.pieces is the same list (a call that
 // moves nothing puts every piece back, so the map is the same; the game's engine ran walkMap once per call)
+// With room intent (lib/rooms_intent.js) every piece stands where its zone put it: a group moves only when it holds a
+// bed, a table or a station (and moves whole, with its set); a loose seat, chest, barrel or stand that blocks a way is
+// left out instead of being carried to a spot with no purpose (D-148: "any furniture or decor that disrupts that
+// expectation should not be placed"; the showcase review: chests carried to the middle of a room by this pass)
+function moveOk(b, grp) {
+  if (!b.intentPlan) return true;
+  const F = decorL().FURNITURE;
+  return grp.some(p => ['bed', 'table', 'craft'].includes((F[p.name] || {}).cat));
+}
 function moveAside(b, list, path, wc) {
   if (!b.rooms || !b.rooms.length) return false;
+  if (!moveOk(b, list)) return false;
   const F = decorL().FURNITURE, Ck = checksL();
   if (list.some(p => !p.decor || p.wclip || p.fclip || p.trim || p.outside || p.yard || PL.piece(p.name).role === 'door' || PL.piece(p.name).role === 'fire' || (p.rest && ['wall', 'hang'].includes(p.rest)) || ['mount', 'hang'].includes((F[p.name] || {}).at))) return false;
   // the biggest piece on the floor leads
@@ -725,6 +735,13 @@ function walkMap(b) {
     if (A.length && B.length) links.push([yl, A, yh, B]);
   }
   out.links = links;
+  // no door: a person walks in over any open edge of the ground floor (an open front, a pavilion, an arcade), so every
+  // free cell on the floor's edge that no wall or post makes hard is a way in. One cell of the main room was the seed,
+  // and what it reached hung on the order of the cells (candidate smithy md steppe 614: its forge was left out).
+  if (!queue.length) {
+    const g = out.grids.get(levels[0]);
+    for (const c of g.list) if (c.free && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([di, dj]) => !g.cn.has((c.i + di) * 4096 + c.j + dj))) seed(levels[0], c);
+  }
   if (!queue.length) { const g = out.grids.get(levels[0]); const m = g.rs.find(r => r.main) || g.rs[0]; for (const c of g.list) if (c.free && c.x > m.x0 && c.x < m.x1 && c.z > m.z0 && c.z < m.z1) { seed(levels[0], c); break; } }
   const walk = () => {
     while (queue.length) {
@@ -1224,7 +1241,7 @@ function openWays(b, ctx) {
   const given = new Set();
   let W = walkMap(b);
   const tryMove = (grp, keep, accept) => {
-    if (grp.some(fixed)) return false;
+    if (grp.some(fixed) || !moveOk(b, grp)) return false;
     const S = spotsFor(b, W, grp, keep, seedN++);
     for (const s of S.slice(0, 10)) {
       const undo = placeGroup(grp, S.cx, S.cz, s);
@@ -1328,7 +1345,7 @@ function openWays(b, ctx) {
         for (const q of [...blockers]) {
           if (!b.pieces.includes(q) || seenG.has(q)) continue;
           let grp = groupOf(b, q);
-          let S = grp.some(fixed) ? [] : spotsFor(b, W, grp, keep, seedN++);
+          let S = grp.some(fixed) || !moveOk(b, grp) ? [] : spotsFor(b, W, grp, keep, seedN++);
           // a set that finds no spot whole moves piece by piece (each with what stands on it, a table with its seats)
           if (!S.length && q.kb) { const gp = groupOf(b, q, true), S2 = gp.some(fixed) ? [] : spotsFor(b, W, gp, keep, seedN++); if (S2.length) { grp = gp; S = S2; } }
           for (const r of grp) seenG.add(r);

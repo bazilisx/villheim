@@ -34,6 +34,13 @@ for (const [type, biome, culture, stage] of cases) for (const seed of [1, 2, 3])
   }
   // what hangs on a wall touches it, faces the room and keeps clear of what else hangs there (lib/wallhang.js)
   wallChecks(d, name);
+  // one treatment on every window of a run (lib/program.js, D-167): the same built features and motif or none
+  for (const R of d.facade || []) {
+    const sig = w => (w.motif ? 'motif+' : '') + [...w.features].sort().join('+');
+    // (one window may carry the program's one reasoned exception: lib/program.js window)
+    const plain = R.windows.filter(w => !w.exception || !w.features.includes(w.exception));
+    ok(R.windows.length - plain.length <= 1 && new Set(plain.map(sig)).size <= 1, `${name}: windows of one run treated differently (${R.side} ${R.line} storey ${R.storey}: ${R.windows.map(sig).join(' | ')})`);
+  }
   // the fire under the smoke hole
   const fire = d.pieces.find(p => p.decor && /^(fire_pit|hearth)$/.test(p.name));
   if (fire) {

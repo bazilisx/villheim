@@ -158,8 +158,17 @@ function backing(pieces, opts) {
   const addKeep = p => {
     const r = P.piece(p.name).role;
     if (any) { if ((!opts.floors && ['floor', 'stair'].includes(r)) || (!opts.roofs && ['roof', 'roofTop', 'roofCorner'].includes(r)) || ['plant', 'rug'].includes(r)) return; }
-    else if (p.decor || isHung(p.name) || !BACKING[r]) return;
-    const parts = partsOf(p);
+    // (a beam, post or quarter wall a set or an assembly adds, p.trim, holds what hangs on it as the shell's own do)
+    else if ((p.decor && !(p.trim && P.piece(p.name).structural)) || isHung(p.name) || !BACKING[r]) return;
+    let parts = partsOf(p);
+    // a floor holds what stands on it by its collider, which can stand over what shows (the ashwood floor's model top
+    // 0.077 m over its pivot, its collider 0.097; corpus furniture on it stands 0.099 over the pivot at the median of
+    // 2,149, lab measure of 2026-11-12, track E record)
+    if (any && opts.floors && r === 'floor') { const col = Sh && Sh.world ? Sh.world(p) : null; if (col && col.length) parts = (parts || []).concat(col); }
+    // and a chest, barrel, table or seat holds what is set on it by what shows of its top: the barrel chest's collider
+    // is its staves and its floor, open at the top, where corpus builders set flat stands on its lid (0.92 m over its
+    // pivot at the median of 169, model top 0.899; lab measure of 2026-11-12, track E record)
+    if (any && opts.floors && ['storage', 'table', 'seat', 'craft'].includes(r) && p.decor !== false) { const mb = modelWorldBox(p, 0); if (mb) parts = (parts || []).concat([{ ...mb, m: 1 }]); }
     if (!parts || !parts.length) return;
     const e = { p, role: r, parts, bb: Me.aabbOf(parts) };
     list.push(e);
@@ -366,7 +375,15 @@ function hangFrom(p, pieces) {
   const A = indexOf(CACHE_H, pieces, { any: true, floors: true, roofs: true });
   const m = attach({ ...p, y: p.y - 0.5 }, A);
   if (!isFinite(m.above) || m.above > 3.5) return null;
-  return +(p.y - 0.5 + m.above + 0.05).toFixed(3);
+  let y = p.y - 0.5 + m.above + 0.05;
+  // (under a sloped roof the first measure stops short of the slope: measured again from where it lands, as the float
+  // check measures it; showcase 03 hung 9 cm under its roof)
+  for (let i = 0; i < 3; i++) {
+    const n = attach({ ...p, y }, A);
+    if (!isFinite(n.above) || n.above <= 0.03 || n.above > 1) break;
+    y += n.above + 0.05;
+  }
+  return +y.toFixed(3);
 }
 /** The height that sets a piece's model on the first thing under its foot within reach (m up or down), or null.
  * For what stands (a standing torch whose foot hovered 10 to 64 cm over the floor, showcase 01 and 05). */

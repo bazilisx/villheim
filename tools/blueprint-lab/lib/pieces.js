@@ -108,7 +108,10 @@ const RULES = [
   [/stake_wall|stakewall|sharpstakes/, 'fence', [4, 3, 0.5], 'box'],
   [/fence/, 'fence', [2, 1, 0.2], 'box'],
   [/decowall|divider|wall/i, 'wall', [2, 2, 0.2], 'box'],
-  // furniture and work
+  // furniture and work; station upgrades first, or the workbench's chopping block, tanning rack, adze and tool shelf
+  // (piece_workbench_ext1 to 4) read as seats by 'bench' and the galdr table's upgrades as tables (track B, showcase
+  // review 2026-11-12; catalog kind station-addon)
+  [/_ext(\d|$|_)/, 'craft', [1.4, 1.4, 1.2], 'prop'],
   [/bed/i, 'bed', [1.3, 0.6, 2.3], 'prop'],
   [/table_round/, 'table', [1.6, 0.9, 1.6], 'prop'],
   [/table|workbench$|piece_workbench$/, 'table', [2, 0.9, 1], 'prop'],

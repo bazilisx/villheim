@@ -383,12 +383,16 @@ function leanTo(b, K, bearing, d0) {
 const NOTICE_HEADS = ['Village notices', 'Work wanted', 'Trades'];
 // sign places on a face: along it, up from the board's middle; and the headings of each face of the board
 const NOTICE_WALL = [[-0.51, -0.24], [0.51, -0.24], [0, 0.27]];
-const NOTICE_BOARD = [[0, 0.255], [0, -0.255]];
+// (the board's two rows sit 2 cm low on its half wall: the darkwood cap's mesh reaches 2.5 cm under its pivot's box,
+// and the cap rests on the posts' tops at 2.0 m)
+const NOTICE_BOARD = [[0, 0.235], [0, -0.275]];
 function noticeBoard(b, K, x, z, yaw) {
   const ux = Math.cos(rad(yaw)), uz = -Math.sin(rad(yaw)), nx = Math.sin(rad(yaw)), nz = Math.cos(rad(yaw));
   for (const s of [-1.1, 1.1]) b.put(K.pole, x + ux * s, 1, z + uz * s, yaw, { notice: true });
   b.put(K.wallHalf || 'wood_wall_half', x, 1.5, z, yaw, { notice: true });
-  b.put(K.beam, x, 2.1, z, yaw, { notice: true });
+  // (the cap rests on the half wall's top at 2.0 m: at 2.1 its lower 10 cm sat in the half wall and in the top sign's
+  // place, 3 cm into the sign once the biome's thicker darkwood beam took its place, showcase 02)
+  b.put(K.beam, x, 2.2, z, yaw, { notice: true });
   noticeSigns(b, x, 1.5, z, ux, uz, nx, nz, NOTICE_BOARD, [0, 1]);
   noticeSigns(b, x, 1.5, z, ux, uz, -nx, -nz, NOTICE_BOARD, [2, 0]);
 }
@@ -397,7 +401,12 @@ function noticeSigns(b, x, y, z, ux, uz, nx, nz, layout, heads) {
   const WH = WHH(), B = WH ? WH.backingOf(b.pieces) : null;
   layout.forEach(([s, dy], i) => {
     // (the 2x2 and half walls carry a rail on one face: a sign that meets it goes over it instead, or stays off)
-    const r = WH && WH.hang('sign', { x: x + ux * s, z: z + uz * s, nx, nz, y: y + dy }, B, { cover: 1, pieces: b.pieces, gapOk: 0, heights: [y + 0.23, y + dy + 0.1, y + dy - 0.1] });
+    // (and clear of the board's own beams and posts: a top sign went 3 cm into the beam over it, showcase 02)
+    const clear = r => { const sb = WH.modelWorldBox({ name: 'sign', x: r.x, y: r.y, z: r.z, yaw: normH(r.yaw) }, 0); if (!sb) return true;
+      return !b.pieces.some(q => q.notice && /beam|pole/.test(q.name) && (() => { const o = WH.modelWorldBox(q, 0); return o && o.x0 < sb.x1 - 0.015 && o.x1 > sb.x0 + 0.015 && o.y0 < sb.y1 - 0.01 && o.y1 > sb.y0 + 0.01 && o.z0 < sb.z1 - 0.015 && o.z1 > sb.z0 + 0.015; })()); };
+    let r = null;
+    const hs = [y + 0.23, y + dy + 0.1, y + dy - 0.1];
+    if (WH) for (const h of [hs, ...hs.map(v => [v]), [y + dy - 0.2]]) { const t = WH.hang('sign', { x: x + ux * s, z: z + uz * s, nx, nz, y: y + dy }, B, { cover: 1, pieces: b.pieces, gapOk: 0, heights: h }); if (t && clear(t)) { r = t; break; } }
     if (r) b.put('sign', r.x, r.y, r.z, r.yaw, { decor: true, notice: true, info: NOTICE_HEADS[heads[i]], ...(r.wclip ? { wclip: r.wclip } : {}) });
   });
 }
@@ -412,7 +421,7 @@ function noticeWall(b, w, y0) {
 function campDesign(b, K, T, o) {
   const { R, cultureKey, decor, place } = o;
   b.put('fire_pit', 0, 0, 0, 0, { decor: true, hearth: true });
-  b.put('piece_cookingstation', 0, 0.4, 0, 0, { decor: true });
+  b.put('piece_cookingstation', 0, 0.2, 0, 0, { decor: true });
   // lean-tos: three most often, two or four (hub1 s1: three, 113 to 134 degrees apart, 5.4 to 8.8 m out); never on the
   // door side (the roads come in at -z)
   const n = R() < 0.6 ? 3 : R() < 0.5 ? 2 : 4;
@@ -1244,6 +1253,9 @@ function roomSpots(room, ok) {
   return out.sort((a, c) => a.a - c.a);
 }
 
+// The hall floor's top for furniture standing on it: corpus builders stand furniture 0.097 to 0.10 m over the floor
+// piece's pivot; at 0.125 m the hub's benches, tables and chests hovered 3 to 4 cm (track F's measure, showcase review)
+const HUB_FY = 0.1;
 function furnish(b, K, C, T, o, F) {
   const { stage, line, place, has, skipDecor, V } = o;
   const k = +stage[1];
@@ -1264,7 +1276,8 @@ function furnish(b, K, C, T, o, F) {
   const form = k >= 2 ? V.hearth : 'pit';
   b.put(form === 'pit' ? 'fire_pit' : 'hearth', 0, 0.125, 0, 0, { decor: true, hearth: true, ds: 1 });
   place.keep(-2.4, 2.4, -2, 2, 0, 3);
-  b.put('piece_cookingstation', 0, 0.55, 0, 0, { decor: true, ds: 1 });
+  // (corpus: a cooking station stands 0.20 over a fire pit, 252 of 256, and 0.583 over a hearth, 116 of 123)
+  b.put('piece_cookingstation', 0, 0.125 + (form === 'pit' ? 0.2 : 0.583), 0, 0, { decor: true, ds: 1 });
   const fires = [{ x: 0, z: 0 }];
   if (form === 'long') for (const x of [-2, 2]) {
     b.put('stone_floor_2x2', x, -0.375, 0, 0, { hearthStone: true });
@@ -1361,19 +1374,19 @@ function furnish(b, K, C, T, o, F) {
     const ring = f.x === 0 && f.z === 0 ? [0, 90, 270, 180].slice(0, k <= 3 ? 3 : 2) : [90, 270];
     for (const a of ring) {
       const x = f.x + Math.sin(rad(a)) * 3.2, z = f.z + Math.cos(rad(a)) * 3.2;
-      if (place.put('piece_bench01', x, 0.125, z, a + 180, ds(f === fires[0] ? 1 : 2))) benches.push({ x, z, yaw: normH(a + 180), a, main: f === fires[0] });
+      if (place.put('piece_bench01', x, HUB_FY, z, a + 180, ds(f === fires[0] ? 1 : 2))) benches.push({ x, z, yaw: normH(a + 180), a, main: f === fires[0] });
     }
     for (const a of [45, 225]) putRug(V.rug, f.x + Math.sin(rad(a)) * 2.6, 0.14, f.z + Math.cos(rad(a)) * 2.6, a, ds(2));
   }
   if (!leader) {
     const bn = benches.find(bb => bb.main && bb.a === 0) || benches[0];
-    leader = bn ? { x: bn.x, y: 0.125, z: bn.z, yaw: bn.yaw } : { x: 0, y: 0.125, z: 3, yaw: 180 };
+    leader = bn ? { x: bn.x, y: HUB_FY, z: bn.z, yaw: bn.yaw } : { x: 0, y: 0.125, z: 3, yaw: 180 };
   }
   // feast tables with benches: along the arms of a cross, in a ring in a round hall (under the gallery from s4)
   const tryTable = (x, z, yaw, d) => {
-    if (!place.put('piece_table', x, 0.125, z, yaw, ds(d))) return;
+    if (!place.put('piece_table', x, HUB_FY, z, yaw, ds(d))) return;
     const nx = Math.sin(rad(yaw)), nz = Math.cos(rad(yaw));
-    for (const s of [-1, 1]) place.put('piece_bench01', x + nx * s * 0.95, 0.125, z + nz * s * 0.95, yaw + (s > 0 ? 180 : 0), ds(d));
+    for (const s of [-1, 1]) place.put('piece_bench01', x + nx * s * 0.95, HUB_FY, z + nz * s * 0.95, yaw + (s > 0 ? 180 : 0), ds(d));
   };
   // a long table: tables end to end along (ux, uz) from (x0, z0) over len metres, a row of benches down each side
   const longRow = (x0, z0, ux, uz, len, d) => {
@@ -1381,9 +1394,9 @@ function furnish(b, K, C, T, o, F) {
     let put = 0;
     for (let i = 0; i < n; i++) {
       const x = x0 + ux * (1.225 + 2.45 * i), z = z0 + uz * (1.225 + 2.45 * i);
-      if (!place.put('piece_table', x, 0.125, z, yaw, ds(i < 2 ? d : 2))) continue;
+      if (!place.put('piece_table', x, HUB_FY, z, yaw, ds(i < 2 ? d : 2))) continue;
       put++;
-      for (const sg of [-1, 1]) place.put('piece_bench01', x - uz * sg * 0.95, 0.125, z + ux * sg * 0.95, yaw + (sg > 0 ? 0 : 180), ds(i < 2 ? d : 2));
+      for (const sg of [-1, 1]) place.put('piece_bench01', x - uz * sg * 0.95, HUB_FY, z + ux * sg * 0.95, yaw + (sg > 0 ? 0 : 180), ds(i < 2 ? d : 2));
     }
     return put;
   };
@@ -1399,10 +1412,10 @@ function furnish(b, K, C, T, o, F) {
   const noGo = (x, z) => (F.inSide && F.inSide(x, 1.6)) || (F.zc != null && z < F.zc + 1.6);
   // a loose group: a table with chairs at its heads and sides (D-152), turned a little toward the fire
   const group = (x, z, yaw, d) => {
-    if (!place.put('piece_table', x, 0.125, z, yaw, ds(d))) return false;
+    if (!place.put('piece_table', x, HUB_FY, z, yaw, ds(d))) return false;
     const a = rad(yaw), ex = Math.cos(a), ez = -Math.sin(a), nx = Math.sin(a), nz = Math.cos(a);
     for (const [px, pz, py] of [[ex * 1.6, ez * 1.6, yaw + 90], [-ex * 1.6, -ez * 1.6, yaw - 90], [nx * 0.95 + ex * 0.6, nz * 0.95 + ez * 0.6, yaw + 180], [-nx * 0.95 - ex * 0.6, -nz * 0.95 - ez * 0.6, yaw]])
-      place.put(V.chair || 'piece_chair', x + px, 0.125, z + pz, py, ds(d));
+      place.put(V.chair || 'piece_chair', x + px, HUB_FY, z + pz, py, ds(d));
     nGroups++;
     return true;
   };
@@ -1449,7 +1462,7 @@ function furnish(b, K, C, T, o, F) {
     for (let i = 0; i < n; i++) {
       const a = (i + 0.5) * 360 / n, x = Math.sin(rad(a)) * rr, z = Math.cos(rad(a)) * rr;
       // (the ring leaves gaps toward the door and the high seat, and a way through between every two benches)
-      if (seating === 'ring') { if (Math.abs(normH(a - 180 + 180) - 180) < 35 || Math.abs(normH(a - (F.seatA || 0) + 180) - 180) < 35) continue; place.put('piece_logbench01', x, 0.125, z, a + 180, ds(i % 2 ? 2 : 1)); }
+      if (seating === 'ring') { if (Math.abs(normH(a - 180 + 180) - 180) < 35 || Math.abs(normH(a - (F.seatA || 0) + 180) - 180) < 35) continue; place.put('piece_logbench01', x, HUB_FY, z, a + 180, ds(i % 2 ? 2 : 1)); }
       else putRug(i % 2 ? V.rug : 'jute_carpet', x, 0.14, z, a, ds(i % 2 ? 2 : 1));
     }
     if (line !== 'cross') {
@@ -1524,7 +1537,7 @@ function furnish(b, K, C, T, o, F) {
     let i = 0;
     for (const sp of spots) {
       if (i >= items.length) break;
-      if (place.put(items[i], sp.x, 0.125, sp.z, sp.yaw, { ds: i < 3 ? 1 : 2, chest: /chest/.test(items[i]) })) i++;
+      if (place.put(items[i], sp.x, HUB_FY, sp.z, sp.yaw, { ds: i < 3 ? 1 : 2, chest: /chest/.test(items[i]) })) i++;
     }
   }
   // mementos (D-134): more empty item stands along the walls

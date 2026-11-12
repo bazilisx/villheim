@@ -48,6 +48,7 @@ const SETS = [];
 // opts: y (for wall pieces: the pivot's height), sink (metres into the floor), back (stand with its back to the wall,
 // 2 cm off), key (the set is out without it), want (what an item stand holds), k (the slot, for building pieces that
 // take the village's own wood)
+const BACK_TURN = { piece_chest_warderobe: 180 };
 const pc = (n, x, z, yaw, rest, o) => Object.assign({ n, x, z, yaw, rest }, o || {});
 function set(id, name, o, pieces) { SETS.push(Object.assign({ key: id, name, pieces }, o)); }
 const C45 = Math.SQRT1_2;
@@ -309,7 +310,9 @@ function build(s) {
   }
   const made = [];
   for (const [i, m] of s.pieces.entries()) {
-    const p = { name: m.n, x: m.x, y: 0, z: m.z, yaw: m.yaw };
+    // (sets are written with each piece's back on -z; the wardrobe's back is +z: catalog, and 59 % of 109 corpus wardrobes
+    // with a wall within 1.2 m have it on their +z side; its depth is centered on its pivot, so the turn keeps its place)
+    const p = { name: m.n, x: m.x, y: 0, z: m.z, yaw: (m.yaw + (BACK_TURN[m.n] || 0)) % 360 };
     // against a wall: back on the wall's face (2 cm off for what stands on the floor)
     if (m.rest === 'wall' || m.back) {
       const b = boxOf(p), gap = m.rest === 'wall' ? 0 : 0.02;

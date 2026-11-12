@@ -986,7 +986,7 @@ function putMount(room, name, spot) {
   if (WHD() && WHD().isHung(name) && room.out && spot.face) {
     const hs = [];
     if ((F[name] || {}).under == null) for (let d = 0.1; d <= 0.401; d += 0.1) for (const yy of [spot.y + d, spot.y - d]) if (spot.lowY == null || (yy >= spot.lowY && yy <= spot.topY)) hs.push(+yy.toFixed(2));
-    const r = WHD().hang(name, { x: spot.x0 != null ? spot.x0 : spot.x, z: spot.z0 != null ? spot.z0 : spot.z, nx: spot.face.nx, nz: spot.face.nz, y: spot.y }, WHD().backingOf(room.out), { heights: hs });
+    const r = WHD().hang(name, { x: spot.x0 != null ? spot.x0 : spot.x, z: spot.z0 != null ? spot.z0 : spot.z, nx: spot.face.nx, nz: spot.face.nz, y: spot.y }, WHD().backingOf(room.out), { heights: hs, pieces: room.out });
     if (!r) return null;
     const [mx, mz] = middleOf(name, r.x, r.z, r.yaw);
     spot = { ...spot, x: mx, z: mz, y: r.y, yaw: r.yaw, clip: r.wclip ? r.wclip - 0.005 : 0, hung: true };

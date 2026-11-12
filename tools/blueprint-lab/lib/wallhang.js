@@ -126,14 +126,15 @@ function partsOf(p) {
   const Me = meshW();
   return (Me.proud(p.name) && (Me.worldFine(p) || Me.world(p))) || shapesW().world(p) || null;
 }
-// opts.any: every piece but floors, roofs and the plants counts (what a piece is mounted on, for the corpus counts)
+// opts.any: every piece but floors, roofs and the plants counts (what a piece is mounted on, for the corpus counts);
+// opts.floors with it: floors and stairs too (what a piece stands on)
 function backing(pieces, opts) {
   const cells = new Map(), list = [];
   const P = piecesW(), Me = meshW(), Sh = shapesW();
   const any = opts && opts.any;
   for (const p of pieces) {
     const r = P.piece(p.name).role;
-    if (any) { if (['floor', 'roof', 'roofTop', 'roofCorner', 'plant', 'rug'].includes(r)) continue; }
+    if (any) { if ((!opts.floors && ['floor', 'stair'].includes(r)) || ['roof', 'roofTop', 'roofCorner', 'plant', 'rug'].includes(r)) continue; }
     else if (p.decor || isHung(p.name) || !BACKING[r]) continue;
     const parts = partsOf(p);
     if (!parts || !parts.length) continue;
@@ -207,12 +208,15 @@ function measure(p, B) {
   // the plate in 3 by 3 parts: how much of it has the wall behind it
   const mb = modelBox(p.name), ax = Math.abs(h.back[0]) > 0.5 ? 0 : 2, side = ax === 0 ? 2 : 0;
   const pl = h.plate || [mb.c[side] - mb.s[side] / 2, mb.c[side] + mb.s[side] / 2, mb.c[1] - mb.s[1] / 2, mb.c[1] + mb.s[1] / 2];
-  let met = 0;
+  // (as hang counts it: past the first touch, up to half the plate may stand off an uneven wall by its median)
+  const cells = [];
   for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
     const a0 = pl[0] + (pl[1] - pl[0]) * i / 3, b0 = pl[2] + (pl[3] - pl[2]) * j / 3;
-    const g = travel(partBox(p, [a0, a0 + (pl[1] - pl[0]) / 3, b0, b0 + (pl[3] - pl[2]) / 3], 0.004), u, near);
-    if (isFinite(gap) && g <= gap + 0.05) met++;
+    cells.push(travel(partBox(p, [a0, a0 + (pl[1] - pl[0]) / 3, b0, b0 + (pl[3] - pl[2]) / 3], 0.004), u, near) - gap);
   }
+  const med = cells.slice().sort((a, b) => a - b)[4];
+  const extra = med > 0.04 && med <= (BUMPY[h.kind] || 0) ? med : 0;
+  const met = isFinite(gap) ? cells.filter(c => c <= extra + 0.05).length : 0;
   // turned the wrong way: the wall it touches or is sunk into lies on its front side, or the wall is nearer in front
   // (pieces that look the same from both sides only by the sides); turned a quarter: a wall nearer at its side than
   // behind it, and none behind it within 10 cm (a torch put up with its arm along the wall)
@@ -230,6 +234,34 @@ function measure(p, B) {
     }
   }
   return { gap, front, cover: met / 9, facing, turn, wall: hit.e ? hit.e.p : null, kind: h.kind };
+}
+
+/** What a piece of the hung kinds rests on or is mounted on when it is no wall's: { on, how } with how 'stands' (on a
+ * floor, a shelf or furniture within 4 cm under it: a sign set on edge on a floor, a ledge as a cabinet's top) or
+ * 'mounted' (on something that is no wall within 3 cm behind it: a label on a chest's front, a stand on a banner),
+ * or null. A: backing(pieces, { any: true, floors: true }). */
+function restsOn(p, A) {
+  const near = A.near(p.x, p.z, 2.6);
+  // the first piece met moving its box along u that it does not reach into already by more than 8 cm
+  const meet = (box, u, lo, hi, under) => {
+    let best = null;
+    for (const e of near) {
+      if (e.p === p) continue;
+      for (const o of e.parts) {
+        // (what it stands on: a part whose top is at its foot, not a wall it is hung against or a cup set on it)
+        if (under && (o.y1 > box.y0 + 0.08 || o.y1 < box.y0 - 0.08)) continue;
+        const iv = sweep(box, o, u);
+        if (!iv || iv[1] <= 0 || iv[0] < lo || iv[0] > hi) continue;
+        if (!best || iv[0] < best.t) best = { t: iv[0], e };
+      }
+    }
+    return best;
+  };
+  const d = meet(partBox(p, null, 0.01), [0, -1, 0], -0.08, 0.04, true);
+  if (d) return { on: d.e.p, how: 'stands' };
+  const g = meet(partBox(p, HUNG[p.name].plate, 0.012), backDir(p), -0.1, 0.03);
+  if (g && !BACKING[g.e.role]) return { on: g.e.p, how: 'mounted' };
+  return null;
 }
 
 // ---------------------------------------------------------------- hung pieces against each other
@@ -313,7 +345,9 @@ function backingOf(pieces) {
  * wall behind all of the piece's back (cover: share of the 3 by 3 parts of its back plate that meet the wall within
  * 4 cm; default all of them, opts.cover to ask less), when something stands in front of the wall there, or when the
  * piece would go deeper into anything than its sink (a crossing wall or a post at its side).
- * opts.heights: other heights to try, in order, when the first fails (a 2x2 wood wall's rails). B: backingOf(pieces). */
+ * opts.heights: other heights to try, in order, when the first fails (a 2x2 wood wall's rails). opts.pieces: what is
+ * in the building already (and of the set being fitted); a spot whose outline on the wall overlaps one hung there is
+ * refused (a torch hung over an item stand, a spice rack over two ledges, showcase 01 and 06). B: backingOf(pieces). */
 function hang(name, spot, B, opts) {
   opts = opts || {};
   const h = HUNG[name];
@@ -348,6 +382,8 @@ function hang(name, spot, B, opts) {
     // the back plate on the wall: parts within 4 cm of touching
     const met = cells.filter(c => c <= extra + 0.05).length;
     if (met / 9 < need - 1e-6) continue;
+    // never over or under another piece hung on that wall: their outlines on the wall keep apart
+    if (opts.pieces && clashOnWall(p, opts.pieces, opts.gapOk != null ? opts.gapOk : 0.02)) continue;
     const lim = h.kind === 'banner' ? 0.025 : 0.015;
     const res = { name, x: p.x, y: p.y, z: p.z, yaw, q: p.q, gap: -(sink + extra) };
     if (sink + extra > lim) res.wclip = +(sink + extra + 0.01).toFixed(3);
@@ -356,49 +392,76 @@ function hang(name, spot, B, opts) {
   return null;
 }
 
-// ---------------------------------------------------------------- arranging
-// Where builders put things on a wall, from decor-use corpus pieces (docs/handoffs/2026-11-12-showcase-review/wallhung.md):
-// over the piece of furniture against the wall, centered on it; a pair either side of a window, a door or a hearth at
-// one height; one in the middle of a plain stretch of wall; a row at one height with even gaps. Lights stand alone on
-// a wall run (96 % of corpus runs). Never two in one place, never one over another unless a set stacks them on purpose.
-// slots(face, o): the slots of one wall face, best first. face: { a0, a1, runs: [{ kind, a0, a1 }], px(t), pz(t), nx, nz }
-// (lib/decorate.js faceModel); o.under: what stands against the face [{ t0, t1, top, kind }]; o.w: the width of what
-// goes up; o.taken: [{ t0, t1, y0, y1 }] already on the face; o.kind: the hung family. Each slot: { t, y (over the
-// floor, or null for the caller's), why, pair (the other slot of a pair) }.
-function slots(face, o) {
-  const w = o.w || 0.5, out = [];
-  const plain = face.runs.filter(r => r.kind === 'wall');
-  const clearRun = (t0, t1) => plain.some(r => r.a0 <= t0 + 0.01 && r.a1 >= t1 - 0.01);
-  const free = (t, y0, y1) => !(o.taken || []).some(m => m.t0 < t + w / 2 + 0.15 && m.t1 > t - w / 2 - 0.15 && m.y0 < y1 + 0.15 && m.y1 > y0 - 0.15);
-  // over furniture standing against this wall, centered on it
-  for (const u of o.under || []) {
-    const t = (u.t0 + u.t1) / 2;
-    if (clearRun(t - w / 2 - 0.05, t + w / 2 + 0.05)) out.push({ t, y: u.top != null ? u.top : null, why: 'over ' + (u.kind || 'furniture'), rank: 3 });
+// Whether a hung piece's outline on its wall overlaps one of the pieces of the hung kinds on the same wall (backs
+// within 25 degrees, middles within 0.7 m out from the wall), closer than gap along the wall or up it.
+function clashOnWall(p, pieces, gap) {
+  const u = backDir(p), nx = -u[0], nz = -u[2];
+  const ra = faceRect(p, nx, nz);
+  for (const q of pieces) {
+    if (q === p || !isHung(q.name) || Math.abs(q.x - p.x) > 3 || Math.abs(q.z - p.z) > 3 || Math.abs(q.y - p.y) > 3.5) continue;
+    const v = backDir(q);
+    if (u[0] * v[0] + u[2] * v[2] < 0.9) continue;
+    const rb = faceRect(q, nx, nz);
+    if (Math.abs((ra.n0 + ra.n1) / 2 - (rb.n0 + rb.n1) / 2) > 0.7) continue;
+    if (Math.min(ra.a1, rb.a1) - Math.max(ra.a0, rb.a0) > -gap && Math.min(ra.y1, rb.y1) - Math.max(ra.y0, rb.y0) > -gap) return true;
   }
-  // a pair either side of an opening, symmetric about its middle
+  return false;
+}
+
+// ---------------------------------------------------------------- arranging
+// Where things go on a wall, from decor-use corpus pieces (docs/ROOM_STUDY.md section 7, data/rooms-corpus/walls.json,
+// and the track record): one thing alone on its stretch of wall (59 % of item stands, 68 % of signs, 96 % of lights and
+// banners), centered over what stands against the wall (15 % of signs over a chest), a pair either side of a window or
+// a door at one height, or a row at one height. Lights stand alone on a wall, 2.7 m apart (p50) and at one height
+// (71 %). Never one over another unless a set stacks them on purpose.
+//
+// plan(face, o): the slots of one wall face in the order to try them. face: { a0, a1, runs: [{ kind, a0, a1 }] } as
+// lib/decorate.js faceModel makes it. o.under: what stands against the face, [{ t0, t1, kind }] along it; o.w: the
+// width of what goes up; o.light: a light (alone on its stretch, beside openings first). Each slot: { t, why, rank,
+// mate } (mate: the other slot of a symmetric pair, tried with the same thing or not at all).
+// spaced(taken, t, w, light): whether t keeps clear of the slots already used on the face.
+function plan(face, o) {
+  o = o || {};
+  const w = o.w || 1, out = [];
+  const plain = face.runs.filter(r => r.kind === 'wall');
+  const onPlain = (t0, t1) => plain.some(r => r.a0 <= t0 + 0.01 && r.a1 >= t1 - 0.01);
+  const pairAt = (mid, d, why, rank) => {
+    if (!onPlain(mid - d - w / 2, mid - d + w / 2) || !onPlain(mid + d - w / 2, mid + d + w / 2)) return false;
+    const A = { t: +(mid - d).toFixed(3), why, rank }, B = { t: +(mid + d).toFixed(3), why, rank };
+    A.mate = B; B.mate = A; out.push(A, B);
+    return true;
+  };
+  // a pair either side of an opening, symmetric about its middle (lights first beside the door, as the corpus puts them)
   for (const r of face.runs) {
     if (r.kind !== 'window' && r.kind !== 'door') continue;
     const mid = (r.a0 + r.a1) / 2, half = (r.a1 - r.a0) / 2;
-    for (const off of [0.35, 0.55]) {
-      const d = half + off + w / 2;
-      if (clearRun(mid - d - w / 2, mid - d + w / 2) && clearRun(mid + d - w / 2, mid + d + w / 2)) {
-        const a = { t: mid - d, y: null, why: 'beside ' + r.kind, rank: 2 }, b = { t: mid + d, y: null, why: 'beside ' + r.kind, rank: 2 };
-        a.pair = b; b.pair = a; out.push(a); break;
-      }
-    }
+    for (const off of [0.3, 0.5, 0.8]) if (pairAt(mid, half + off + w / 2, 'beside the ' + r.kind, o.light ? 4 : 2)) break;
   }
-  // the middle of each plain stretch long enough
-  for (const r of plain) if (r.a1 - r.a0 >= w + 0.6) out.push({ t: (r.a0 + r.a1) / 2, y: null, why: 'middle of the wall', rank: 1 });
-  out.sort((a, b) => b.rank - a.rank);
-  return out.filter(s => free(s.t, -Infinity, Infinity) || true);
+  // over what stands against the wall, centered on it
+  for (const u of o.under || []) {
+    const t = (u.t0 + u.t1) / 2;
+    if (onPlain(t - w / 2, t + w / 2)) out.push({ t: +t.toFixed(3), why: 'over the ' + (u.kind || 'furniture'), rank: o.light ? 1 : 3 });
+  }
+  for (const r of plain) {
+    const len = r.a1 - r.a0, mid = (r.a0 + r.a1) / 2;
+    // the middle of a plain stretch
+    if (len >= w + 0.4) out.push({ t: +mid.toFixed(3), why: 'middle of the wall', rank: o.light ? 2 : 1.5 });
+    // a long stretch: a pair at its quarters, mirrored about its middle
+    if (len >= 2 * w + 2.4) pairAt(mid, len / 4, 'pair on a long wall', 1);
+  }
+  out.sort((x, y) => y.rank - x.rank || Math.abs(x.t - (face.a0 + face.a1) / 2) - Math.abs(y.t - (face.a0 + face.a1) / 2));
+  return out;
 }
-/** n pieces of width w in a row at one height centered on t, with even gaps (corpus: same-prefab neighbors at one
- * height, see the track record): the along-wall positions. */
+function spaced(taken, t, w, light) {
+  const min = light ? 2.0 : w + 0.6;
+  return !taken.some(u => Math.abs(u.t - t) < Math.max(min, (u.w + w) / 2 + 0.6));
+}
+/** n pieces of width w in a row at one height centered on t, gap apart (the along-wall places). */
 function row(t, n, w, gap) {
   const step = w + gap, out = [];
   for (let i = 0; i < n; i++) out.push(+(t + (i - (n - 1) / 2) * step).toFixed(3));
   return out;
 }
 
-const apiWH = { HUNG, isHung, BACKING, backing, backingOf, measure, overlaps, backDir, partBox, sweep, travel, modelBox, faceRect, hang, sinkOf, relOf, slots, row };
+const apiWH = { HUNG, isHung, BACKING, backing, backingOf, measure, overlaps, backDir, partBox, sweep, travel, modelBox, faceRect, hang, sinkOf, relOf, plan, spaced, row, restsOn, clashOnWall };
 if (NODE_W) module.exports = apiWH; else window.VHWallhang = apiWH;

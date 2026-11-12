@@ -324,7 +324,7 @@ function placer(b, T) {
         const a = normH(yaw) * Math.PI / 180, nx = Math.sin(a), nz = Math.cos(a);
         const hs = [];
         for (let d = 0.1; d <= 0.301; d += 0.1) hs.push(y + d, y - d);
-        const r = WHH().hang(name, { x: x - nx * 0.3, z: z - nz * 0.3, nx, nz, y }, WHH().backingOf(b.pieces), { heights: hs.filter(v => v > 0.9 + (o.floor || 0)) });
+        const r = WHH().hang(name, { x: x - nx * 0.3, z: z - nz * 0.3, nx, nz, y }, WHH().backingOf(b.pieces), { heights: hs.filter(v => v > 0.9 + (o.floor || 0)), pieces: b.pieces });
         if (!r) return false;
         x = r.x; y = r.y; z = r.z; yaw = r.yaw;
         extra = r.wclip ? { ...extra, wclip: r.wclip } : extra;
@@ -389,7 +389,7 @@ function noticeBoard(b, K, x, z, yaw) {
 function noticeSigns(b, x, y, z, ux, uz, nx, nz) {
   const WH = WHH(), B = WH ? WH.backingOf(b.pieces) : null;
   NOTICE_LAYOUT.forEach(([s, dy], i) => {
-    const r = WH && WH.hang('sign', { x: x + ux * s, z: z + uz * s, nx, nz, y: y + dy }, B, { cover: 1 });
+    const r = WH && WH.hang('sign', { x: x + ux * s, z: z + uz * s, nx, nz, y: y + dy }, B, { cover: 1, pieces: b.pieces, gapOk: 0 });
     if (r) b.put('sign', r.x, r.y, r.z, r.yaw, { decor: true, notice: true, info: NOTICE_HEADS[i], ...(r.wclip ? { wclip: r.wclip } : {}) });
   });
 }

@@ -75,6 +75,7 @@ namespace Villheim.Logic
             Village.LagProbe.Stop();
             Village.PlotTool.Unload();
             Villagers.ChildBody.Unload();
+            Villagers.MemoryLook.Unload();
             Villagers.GhostDeath.Unload();
             LogicConfig.Unbind();
             _harmony?.UnpatchSelf();

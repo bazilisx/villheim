@@ -44,6 +44,7 @@ namespace Villheim.Logic.Villagers
         public static void ApplyNow()
         {
             _version++;
+            MemoryLook.MarkDirty();
             VillheimPlugin.Debug("Ghost look: settings changed, applying now.");
         }
 
@@ -189,6 +190,15 @@ namespace Villheim.Logic.Villagers
             float tint = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostTintDay.Value, LogicConfig.GhostTint.Value, dark)) : 0f;
             float alpha = on ? Mathf.Clamp(Mathf.Lerp(LogicConfig.GhostAlphaDay.Value, LogicConfig.GhostAlpha.Value, dark), 0.02f, 1f) : 1f;
             float glow = on ? Mathf.Clamp01(Mathf.Lerp(LogicConfig.GhostGlowDay.Value, LogicConfig.GhostGlow.Value, dark)) : 0f;
+            // The memory look (D-160, LookMode) takes its body values from its own dials; its glow is drawn by
+            // MemoryLook's own passes, so none goes into the body here.
+            bool memory = on && MemoryLook.Active;
+            if (memory)
+            {
+                MemoryLook.BodyValues(dark, out tint, out alpha);
+                glow = 0f;
+            }
+
             Shader ghost = alpha < 0.99f ? GhostShader() : null;
             // One shared list (lag cluster B): this runs about once a second for every villager and animal, and each
             // call made a new array of all their renderers.
@@ -196,7 +206,9 @@ namespace Villheim.Logic.Villagers
             villager.GetComponentsInChildren(true, ScanList);
             foreach (Renderer renderer in ScanList)
             {
-                if (renderer == null || renderer is ParticleSystemRenderer || renderer is LineRenderer || renderer is TrailRenderer)
+                // The memory look's own passes and feet cards (MemoryLook.IsPass) keep their own materials.
+                if (renderer == null || renderer is ParticleSystemRenderer || renderer is LineRenderer || renderer is TrailRenderer ||
+                    MemoryLook.IsPass(renderer))
                 {
                     continue;
                 }
@@ -217,10 +229,19 @@ namespace Villheim.Logic.Villagers
                     continue;
                 }
 
+                bool swapped = false;
                 foreach (Slot slot in slots)
                 {
-                    Apply(slot, tint, alpha, glow, ghost);
+                    Apply(slot, tint, alpha, glow, ghost, memory);
+                    swapped |= slot.Swapped;
                 }
+
+                MemoryLook.Decorate(renderer, memory && swapped);
+            }
+
+            if (refresh || memory)
+            {
+                MemoryLook.Track(villager, memory);
             }
 
             if (!state.Revealed)
@@ -281,7 +302,7 @@ namespace Villheim.Logic.Villagers
             return slots;
         }
 
-        private static void Apply(Slot slot, float tint, float alpha, float glow, Shader ghost)
+        private static void Apply(Slot slot, float tint, float alpha, float glow, Shader ghost, bool memory = false)
         {
             Material m = slot.Material;
             if (m == null)
@@ -314,7 +335,9 @@ namespace Villheim.Logic.Villagers
             // (his own shader back), so the last step, from 0.99 to 1, is still a jump.
             if (slot.Swapped && m.HasProperty("_TintColor"))
             {
-                Color tintRgb = (Color.Lerp(Color.white, Teal, tint) + GlowColor * glow) * Strength(alpha);
+                // The memory look: its own colors scaled by alpha, tinted once here (MemoryLook's darkening pass dims
+                // what is behind by the same alpha).
+                Color tintRgb = memory ? MemoryLook.BodyTint(tint, alpha) : (Color.Lerp(Color.white, Teal, tint) + GlowColor * glow) * Strength(alpha);
                 m.SetColor("_TintColor", new Color(tintRgb.r, tintRgb.g, tintRgb.b, alpha));
                 if (m.HasProperty("_Cutoff") && _ghostCutoff >= 0f)
                 {
@@ -360,7 +383,10 @@ namespace Villheim.Logic.Villagers
                 }
 
                 Color baseColor = slot.Base[property];
-                Color tinted = Color.Lerp(baseColor, baseColor * Teal, tint);
+                // The memory look tints a swapped body once, through _TintColor above; solid, it tints here as the ghost look does.
+                Color tintTo = memory ? LogicConfig.MemoryTintColor.Value : Teal;
+                float baseTint = memory && slot.Swapped ? 0f : tint;
+                Color tinted = Color.Lerp(baseColor, baseColor * tintTo, baseTint);
                 tinted.a = property == "_Color" || property == "_BaseColor" || property == "_TintColor" ? baseColor.a * alpha : baseColor.a;
                 m.SetColor(property, tinted);
                 slot.Written[property] = tinted;
@@ -387,7 +413,7 @@ namespace Villheim.Logic.Villagers
             Mathf.Abs(a.r - b.r) < 0.002f && Mathf.Abs(a.g - b.g) < 0.002f && Mathf.Abs(a.b - b.b) < 0.002f && Mathf.Abs(a.a - b.a) < 0.002f;
 
         /// <summary>0 by day, rising to 1 in the dark hours.</summary>
-        private static float Darkness()
+        internal static float Darkness()
         {
             if (EnvMan.instance == null)
             {

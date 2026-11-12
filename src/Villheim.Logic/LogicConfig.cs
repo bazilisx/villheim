@@ -274,6 +274,32 @@ namespace Villheim.Logic
         public static ConfigEntry<float> VillagerRegen;
         public static ConfigEntry<float> RestRegenFactor;
         public static ConfigEntry<float> GhostDeathSeconds;
+        // The memory look (Villagers/MemoryLook.cs), section "3e - Look: memory".
+        public static ConfigEntry<string> LookMode;
+        public static ConfigEntry<float> MemoryAlpha;
+        public static ConfigEntry<float> MemoryAlphaDay;
+        public static ConfigEntry<float> MemoryTint;
+        public static ConfigEntry<float> MemoryTintDay;
+        public static ConfigEntry<UnityEngine.Color> MemoryTintColor;
+        public static ConfigEntry<float> MemoryBrightness;
+        public static ConfigEntry<float> MemoryMilk;
+        public static ConfigEntry<float> MemoryMilkDay;
+        public static ConfigEntry<UnityEngine.Color> MemoryMilkColor;
+        public static ConfigEntry<float> MemoryGlow;
+        public static ConfigEntry<float> MemoryGlowDay;
+        public static ConfigEntry<UnityEngine.Color> MemoryGlowColor;
+        public static ConfigEntry<float> MemoryGlowSpread;
+        public static ConfigEntry<float> MemoryGlowSoftness;
+        public static ConfigEntry<int> MemoryGlowLayers;
+        public static ConfigEntry<UnityEngine.Vector4> MemoryGlowEdge;
+        public static ConfigEntry<bool> MemoryFeetGlow;
+        public static ConfigEntry<float> MemoryFeetStrength;
+        public static ConfigEntry<float> MemoryFeetSize;
+        public static ConfigEntry<UnityEngine.Color> MemoryFeetColor;
+        public static ConfigEntry<float> MemoryFeetLight;
+        public static ConfigEntry<string> MemoryDebugSolo;
+        public static ConfigEntry<string> MemoryPassMaterial;
+        public static ConfigEntry<string> MemoryShellMode;
         // Hair review and the kids rig (Villagers/HairReview.cs), section "3d - Hair review".
         public static ConfigEntry<string> RigCulture;
         public static ConfigEntry<string> RigHairMan;
@@ -654,6 +680,7 @@ namespace Villheim.Logic
             ElderLongBeard = Admin(config, looks, "ElderLongBeard", 0.8f,
                 "Chance that an elder man wears a long beard (long, thick, royal, braided or Stonedweller), and has a beard at all.");
             BindChildShape(config, looks);
+            BindMemoryLook(config);
             GhostDeathSeconds = Admin(config, looks, "GhostDeathSeconds", 3.5f,
                 "Seconds a dying villager takes to fade out as he rises, after the ghost's vanishing effect.");
             GhostDeath = Admin(config, looks, "GhostDeath", true,
@@ -1196,11 +1223,19 @@ namespace Villheim.Logic
             foreach (ConfigEntryBase entry in new ConfigEntryBase[]
                      {
                          GhostLook, GhostAlpha, GhostTint, GhostGlow, GhostAlphaDay, GhostTintDay, GhostGlowDay, GhostColor, GhostGlowColor,
+                         LookMode, MemoryAlpha, MemoryAlphaDay, MemoryTint, MemoryTintDay, MemoryTintColor, MemoryBrightness, MemoryGlow,
+                         MemoryMilk, MemoryMilkDay, MemoryMilkColor,
+                         MemoryGlowDay, MemoryGlowColor, MemoryGlowSpread, MemoryGlowSoftness, MemoryGlowLayers, MemoryGlowEdge, MemoryFeetGlow,
+                         MemoryFeetStrength, MemoryFeetSize, MemoryFeetColor, MemoryFeetLight, MemoryDebugSolo, MemoryPassMaterial,
+                         MemoryShellMode,
                      })
             {
                 if (entry is ConfigEntry<float> f) Hook(f, apply);
                 else if (entry is ConfigEntry<bool> b) Hook(b, apply);
                 else if (entry is ConfigEntry<UnityEngine.Color> c) Hook(c, apply);
+                else if (entry is ConfigEntry<int> i) Hook(i, apply);
+                else if (entry is ConfigEntry<string> t) Hook(t, apply);
+                else if (entry is ConfigEntry<UnityEngine.Vector4> v) Hook(v, apply);
             }
 
             Hook(GhostApplyNow, (_, __) =>
@@ -1211,6 +1246,82 @@ namespace Villheim.Logic
                     GhostApplyNow.Value = false;
                 }
             });
+        }
+
+        /// <summary>
+        /// Section "3e - Look: memory" (D-160): the memory look, a second look next to the ghost look, picked with
+        /// LookMode. Sliders in the config manager (F1); each change shows on villagers and the 'vh memory' model at
+        /// once. Night values blend into the Day values through dusk and dawn, as the ghost look's do.
+        /// </summary>
+        private static void BindMemoryLook(ConfigFile config)
+        {
+            const string memory = "3e - Look: memory";
+            int order = 100;
+
+            ConfigEntry<T> Dial<T>(string key, T value, string description, AcceptableValueBase range = null) =>
+                config.Bind(memory, key, value, new ConfigDescription(description, range,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true, Order = order-- }));
+
+            AcceptableValueRange<float> Range(float min, float max) => new AcceptableValueRange<float>(min, max);
+
+            LookMode = Dial("LookMode", "Memory",
+                "Which look villagers and village animals have while GhostLook ('3c - Villager looks') is on. Ghost: the " +
+                "first look. Memory: see-through in their own colors with a teal tint, a soft teal glow around them and a " +
+                "glow at their feet. 'vh memory' puts up a still model in front of you to tune these against.",
+                new AcceptableValueList<string>("Memory", "Ghost"));
+            MemoryAlpha = Dial("MemoryAlpha", 0.6f,
+                "Body: how strongly their own colors (skin, clothes, hair) show at night, from barely there near 0 to full " +
+                "at 0.99. At 1 they are fully solid with their normal look and none of the memory look.", Range(0.05f, 1f));
+            MemoryAlphaDay = Dial("MemoryAlphaDay", 0.75f, "Body: the same by day.", Range(0.05f, 1f));
+            MemoryMilk = Dial("MemoryMilk", 0.4f,
+                "Body: how milky they are at night, like frosted glass: how much of what is behind them is covered by " +
+                "MemoryMilkColor. 0 is clear (only their colors over what is behind), 1 hides what is behind.", Range(0f, 1f));
+            MemoryMilkDay = Dial("MemoryMilkDay", 0.5f, "Body: the same by day.", Range(0f, 1f));
+            MemoryMilkColor = Dial("MemoryMilkColor", new UnityEngine.Color(0.82f, 0.96f, 0.93f), "Body: the milk color, whitish teal by default.");
+            MemoryTint = Dial("MemoryTint", 0.35f, "Body: how strongly their own colors are tinted toward MemoryTintColor at night, 0 for none.",
+                Range(0f, 1f));
+            MemoryTintDay = Dial("MemoryTintDay", 0.45f, "Body: the same by day.", Range(0f, 1f));
+            MemoryTintColor = Dial("MemoryTintColor", new UnityEngine.Color(0.45f, 0.95f, 0.85f), "Body: the tint color.");
+            MemoryBrightness = Dial("MemoryBrightness", 1.1f,
+                "Body: how bright their own colors are drawn, 1 as they are. Raise it if they look dark at night.", Range(0.2f, 3f));
+            MemoryGlow = Dial("MemoryGlow", 0.35f, "Glow around them: how strong it is at night, 0 for none.", Range(0f, 1f));
+            MemoryGlowDay = Dial("MemoryGlowDay", 0.18f, "Glow around them: how strong it is by day.", Range(0f, 1f));
+            MemoryGlowColor = Dial("MemoryGlowColor", new UnityEngine.Color(0.35f, 1f, 0.85f), "Glow around them: its color.");
+            MemoryGlowSpread = Dial("MemoryGlowSpread", 0.015f,
+                "Glow around them: how far it reaches out from the body, in meters.", Range(0f, 0.08f));
+            MemoryGlowSoftness = Dial("MemoryGlowSoftness", 0.6f,
+                "Glow around them: how gently it fades toward its outer edge. 0 is an even band, 1 fades fast from the body out.",
+                Range(0f, 1f));
+            MemoryGlowLayers = Dial("MemoryGlowLayers", 2,
+                "Glow around them: how many shells it is drawn in. More is smoother and costs a little more; 0 turns the glow off.",
+                new AcceptableValueRange<int>(0, 4));
+            MemoryGlowEdge = Dial("MemoryGlowEdge", new UnityEngine.Vector4(-1.37f, 0.27f, 0.24f, 1.25f),
+                "Glow around them: the game glow shader's own edge fading numbers (_EdgeFading). The default is what the " +
+                "game's still lightning glow uses. Try other numbers only if the glow looks wrong at its edges.");
+            MemoryFeetGlow = Dial("MemoryFeetGlow", true,
+                "Feet: a soft teal glow under the sole of each foot, moving with the foot, and a faint light at the feet. Off: none.");
+            MemoryFeetStrength = Dial("MemoryFeetStrength", 0.6f, "Feet: how strong the glow on the ground is.", Range(0f, 1f));
+            MemoryFeetSize = Dial("MemoryFeetSize", 0.35f,
+                "Feet: how wide the glow under each foot is, in meters.",
+                Range(0.05f, 1.5f));
+            MemoryFeetColor = Dial("MemoryFeetColor", new UnityEngine.Color(0.35f, 1f, 0.85f), "Feet: the glow's color.");
+            MemoryPassMaterial = Dial("MemoryPassMaterial", "FallenWarrior",
+                "Which game material the milk and the glow at the outline are drawn with ('vh memory pass next' steps " +
+                "through them). FallenWarrior: the shader that already draws villagers see-through, adding its color. " +
+                "WeaponGlow: the game's glow on weapons. The others are the game's particle materials.",
+                new AcceptableValueList<string>(Villagers.MemoryLook.PassKeys));
+            MemoryShellMode = Dial("MemoryShellMode", "Auto",
+                "How the glow at the outline is pushed out from the body. Push: by the material's own _VertPush (only " +
+                "WeaponGlow has it). Baked: the villager's pose is copied every second frame and pushed out here, for " +
+                "villagers within 30 m (costs more). Auto: Push when the material has it, else Baked.",
+                new AcceptableValueList<string>("Auto", "Push", "Baked"));
+            MemoryDebugSolo = Dial("MemoryDebugSolo", "Off",
+                "Testing: show only one part of the look, in bright magenta at full strength, to see whether it draws at " +
+                "all. The villager's own colors are turned off meanwhile, so the body itself is unseen. Off for the normal look.",
+                new AcceptableValueList<string>("Off", "Milk", "Glow", "Feet"));
+            MemoryFeetLight = Dial("MemoryFeetLight", 0.5f,
+                "Feet: how bright the faint light at the feet is (it lights the ground and things close by), 0 for no light.",
+                Range(0f, 3f));
         }
 
         /// <summary>

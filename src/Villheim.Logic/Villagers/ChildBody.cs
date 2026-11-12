@@ -444,7 +444,7 @@ namespace Villheim.Logic.Villagers
         }
 
         /// <summary>A still copy of the villager body, dressed plainly, with no network object, AI or physics.</summary>
-        private static GameObject Model(Vector3 at, Quaternion facing, bool female, string hair, string beard, Vector3 skin, Vector3 hairColor)
+        internal static GameObject Model(Vector3 at, Quaternion facing, bool female, string hair, string beard, Vector3 skin, Vector3 hairColor)
         {
             GameObject model;
             ZNetView.m_forceDisableInit = true;

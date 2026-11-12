@@ -8,16 +8,17 @@
   "likedRule": "top quarter of vanilla builds by votes (votes >= 10), ties by downloads",
   "rooms": 20400,
   "roomsLiked": 11945,
-  "families": "prefab first cut (lab/rooms_corpus_lib.js FAMILY_PREFAB)",
+  "families": "track A catalog (data/catalog/pieces.json family, version 1); prefabs it does not list have no family",
   "roomRule": "reader room (lib/decorate.js readLevel) with half or more of its floor under a roof, 4 to 400 m2, vanilla build, no mod piece inside; floor furniture: pivot under 0.5 m over the floor"
  },
  "fields": {
-  "families": "material family of each prefab used here, from prefab first cut (lab/rooms_corpus_lib.js FAMILY_PREFAB)",
+  "families": "material family of each prefab used here, from track A catalog (data/catalog/pieces.json family, version 1); prefabs it does not list have no family; the families entry below is the prefab first cut, kept for reference",
   "seatTable": "per table family: seats at its tables, the share of the same family, and the share of each seat family",
   "roomFamilies": "rooms with two or more family-tagged pieces (tables, seats, thrones, beds, chests): families per room and the share of those pieces in the most common family",
   "familyRooms": "rooms holding each family",
   "familyPairs": "two families in one room: rooms, expected by chance, lift (observed over expected)",
-  "rarelyTogether": "pairs expected 5 or more times seen under half as often"
+  "rarelyTogether": "pairs expected 5 or more times seen under half as often",
+  "color": "seat against its own table: delta E (CIE76) and delta L between the catalog mean colors (look.mean), quantiles, share under 10 and over 25; chance: the same table against the seats of other sets. roomLumaSpread: per room, the spread of luma (0 to 255) across its tables, seats, thrones, beds and chests, observed and with the same pieces dealt to rooms at random"
  },
  "families": {
   "piece_table": "plain wood",
@@ -67,110 +68,159 @@
   "goblin_bed": "bone"
  },
  "seatTable": {
-  "fine wood": {
-   "seats": 957,
-   "same": 0.025,
+  "fine_furniture": {
+   "seats": 1629,
+   "same": 0.02,
    "with": {
-    "dark wood": 0.921,
-    "fine wood": 0.025,
-    "plain wood": 0.022,
-    "stone": 0.017,
-    "ashwood": 0.01,
-    "black marble": 0.002,
-    "dvergr": 0.002,
-    "bone": 0.001
+    "darkwood_furniture": 0.898,
+    "rustic_furniture": 0.038,
+    "fine_furniture": 0.02,
+    "stone_props": 0.015,
+    "runed_furniture": 0.011,
+    "marble_furniture": 0.007,
+    "ashwood_furniture": 0.006,
+    "bone": 0.004,
+    "dvergr_props": 0.001
    }
   },
-  "plain wood": {
+  "rustic_furniture": {
    "seats": 785,
    "same": 0.279,
    "with": {
-    "fine wood": 0.417,
-    "dark wood": 0.284,
-    "plain wood": 0.279,
-    "stone": 0.01,
+    "fine_furniture": 0.417,
+    "darkwood_furniture": 0.284,
+    "rustic_furniture": 0.279,
+    "stone_props": 0.01,
     "log": 0.005,
-    "dvergr": 0.005
+    "dvergr_props": 0.005
    }
   },
-  "dark wood": {
-   "seats": 668,
-   "same": 0.865,
-   "with": {
-    "dark wood": 0.865,
-    "plain wood": 0.061,
-    "runed": 0.024,
-    "black marble": 0.013,
-    "stone": 0.013,
-    "fine wood": 0.012,
-    "bone": 0.01
-   }
-  },
-  "black marble": {
+  "marble_furniture": {
    "seats": 139,
    "same": 0.317,
    "with": {
-    "dark wood": 0.604,
-    "black marble": 0.317,
+    "darkwood_furniture": 0.604,
+    "marble_furniture": 0.317,
     "bone": 0.043,
-    "plain wood": 0.022,
-    "fine wood": 0.014
+    "rustic_furniture": 0.022,
+    "fine_furniture": 0.014
    }
   },
-  "runed": {
+  "runed_furniture": {
    "seats": 15,
    "same": 0.733,
    "with": {
-    "runed": 0.733,
-    "dark wood": 0.133,
-    "black marble": 0.067,
-    "fine wood": 0.067
+    "runed_furniture": 0.733,
+    "darkwood_furniture": 0.133,
+    "marble_furniture": 0.067,
+    "fine_furniture": 0.067
    }
   },
-  "dvergr": {
+  "dvergr_props": {
    "seats": 61,
    "same": 0.852,
    "with": {
-    "dvergr": 0.852,
-    "plain wood": 0.098,
-    "dark wood": 0.033,
-    "stone": 0.016
+    "dvergr_props": 0.852,
+    "rustic_furniture": 0.098,
+    "darkwood_furniture": 0.033,
+    "stone_props": 0.016
+   }
+  }
+ },
+ "color": {
+  "seats": 2629,
+  "dE": {
+   "n": 2629,
+   "p10": 0,
+   "p25": 6.1,
+   "p50": 6.1,
+   "p75": 15.2,
+   "p90": 16.9
+  },
+  "dL": {
+   "n": 2629,
+   "p10": 0,
+   "p25": 4.1,
+   "p50": 4.1,
+   "p75": 11.7,
+   "p90": 11.7
+  },
+  "under10": 0.581,
+  "over25": 0.044,
+  "chance": {
+   "pairs": 13145,
+   "dE": {
+    "n": 13145,
+    "p10": 5.1,
+    "p25": 6.1,
+    "p50": 10.4,
+    "p75": 15.2,
+    "p90": 24.2
+   },
+   "dL": {
+    "n": 13145,
+    "p10": 1.8,
+    "p25": 4.1,
+    "p50": 5.9,
+    "p75": 10,
+    "p90": 15.7
+   },
+   "under10": 0.392,
+   "over25": 0.078
+  },
+  "roomLumaSpread": {
+   "rooms": 2886,
+   "observed": {
+    "n": 2886,
+    "p10": 0,
+    "p25": 0,
+    "p50": 0,
+    "p75": 43.3,
+    "p90": 58.5
+   },
+   "chance": {
+    "n": 2886,
+    "p10": 10.15,
+    "p25": 29.1,
+    "p50": 47.6,
+    "p75": 66.6,
+    "p90": 76.4
    }
   }
  },
  "roomFamilies": {
-  "rooms": 2853,
+  "rooms": 2886,
   "familiesPerRoom": {
-   "n": 2853,
+   "n": 2886,
    "p10": 1,
    "p25": 1,
    "p50": 1,
    "p75": 2,
-   "p90": 3
+   "p90": 4
   },
-  "oneFamily": 0.595,
-  "twoFamilies": 0.225,
-  "threePlus": 0.18,
+  "oneFamily": 0.579,
+  "twoFamilies": 0.2,
+  "threePlus": 0.221,
   "mainFamilyShare": {
-   "n": 2853,
-   "p10": 0.5,
-   "p25": 0.67,
+   "n": 2886,
+   "p10": 0.43,
+   "p25": 0.62,
    "p50": 1,
    "p75": 1,
    "p90": 1
   },
   "byKind": {
    "storage": {
-    "rooms": 831,
-    "oneFamily": 0.939,
+    "rooms": 853,
+    "oneFamily": 0.938,
     "p50": 1,
     "p90": 1
    },
    "smithy": {
-    "rooms": 136,
-    "oneFamily": 0.456,
+    "rooms": 137,
+    "oneFamily": 0.474,
     "p50": 2,
-    "p90": 3
+    "p90": 4
    },
    "bath": {
     "rooms": 11,
@@ -179,68 +229,68 @@
     "p90": 2
    },
    "other": {
-    "rooms": 445,
-    "oneFamily": 0.962,
+    "rooms": 450,
+    "oneFamily": 0.956,
     "p50": 1,
     "p90": 1
    },
    "sitting": {
     "rooms": 134,
-    "oneFamily": 0.597,
+    "oneFamily": 0.567,
     "p50": 1,
     "p90": 2
    },
    "dormitory": {
     "rooms": 61,
     "oneFamily": 0.246,
-    "p50": 2,
-    "p90": 3
+    "p50": 3,
+    "p90": 4
    },
    "throne hall": {
     "rooms": 166,
-    "oneFamily": 0.133,
+    "oneFamily": 0.096,
     "p50": 3,
     "p90": 4
    },
    "bedroom": {
     "rooms": 425,
-    "oneFamily": 0.254,
+    "oneFamily": 0.188,
     "p50": 2,
-    "p90": 3
+    "p90": 4
    },
    "feast hall": {
-    "rooms": 85,
-    "oneFamily": 0.459,
+    "rooms": 86,
+    "oneFamily": 0.337,
     "p50": 2,
-    "p90": 3
+    "p90": 4
    },
    "home": {
     "rooms": 197,
-    "oneFamily": 0.076,
-    "p50": 3,
-    "p90": 4
+    "oneFamily": 0.056,
+    "p50": 4,
+    "p90": 5
    },
    "dining": {
     "rooms": 104,
-    "oneFamily": 0.096,
+    "oneFamily": 0.058,
     "p50": 2,
     "p90": 3
    },
    "kitchen": {
-    "rooms": 85,
-    "oneFamily": 0.529,
+    "rooms": 86,
+    "oneFamily": 0.581,
     "p50": 1,
-    "p90": 2
+    "p90": 3
    },
    "workshop": {
-    "rooms": 71,
-    "oneFamily": 0.521,
+    "rooms": 72,
+    "oneFamily": 0.514,
     "p50": 1,
-    "p90": 2
+    "p90": 3
    },
    "display": {
-    "rooms": 43,
-    "oneFamily": 0.744,
+    "rooms": 44,
+    "oneFamily": 0.75,
     "p50": 1,
     "p90": 2
    },
@@ -251,475 +301,723 @@
     "p90": 2
    },
    "portal room": {
-    "rooms": 8,
-    "oneFamily": 0.75,
+    "rooms": 9,
+    "oneFamily": 0.778,
     "p50": 1,
     "p90": 2
    },
    "tavern hall": {
     "rooms": 31,
-    "oneFamily": 0.065,
+    "oneFamily": 0,
     "p50": 3,
     "p90": 3
    },
    "shrine": {
     "rooms": 5,
-    "oneFamily": 0.8,
+    "oneFamily": 0.6,
     "p50": 1,
-    "p90": 2.2
+    "p90": 2.6
    }
   }
  },
  "familyRooms": {
-  "plain wood": 1634,
-  "fine wood": 1399,
-  "dark wood": 707,
-  "black metal": 463,
-  "ashwood": 172,
-  "black marble": 119,
+  "rustic_furniture": 1635,
+  "iron_props": 1376,
+  "darkwood_furniture": 691,
+  "fine_furniture": 616,
+  "hide": 332,
+  "ashwood": 130,
+  "marble_furniture": 119,
   "log": 73,
-  "stone": 47,
-  "dvergr": 38,
-  "bone": 26,
-  "runed": 22,
+  "ashwood_furniture": 49,
+  "stone_props": 47,
+  "gold": 45,
+  "dvergr_props": 38,
+  "runed_furniture": 27,
+  "bone": 18,
   "grausten": 17
  },
  "familyPairs": [
   {
-   "a": "fine wood",
-   "b": "plain wood",
-   "rooms": 643,
-   "expected": 801.2,
-   "lift": 0.8
+   "a": "iron_props",
+   "b": "rustic_furniture",
+   "rooms": 426,
+   "expected": 779.5,
+   "lift": 0.55
   },
   {
-   "a": "dark wood",
-   "b": "fine wood",
-   "rooms": 513,
-   "expected": 346.7,
-   "lift": 1.48
+   "a": "darkwood_furniture",
+   "b": "rustic_furniture",
+   "rooms": 396,
+   "expected": 391.5,
+   "lift": 1.01
   },
   {
-   "a": "dark wood",
-   "b": "plain wood",
-   "rooms": 403,
-   "expected": 404.9,
-   "lift": 1
+   "a": "darkwood_furniture",
+   "b": "fine_furniture",
+   "rooms": 395,
+   "expected": 147.5,
+   "lift": 2.68
   },
   {
-   "a": "black metal",
-   "b": "fine wood",
-   "rooms": 161,
-   "expected": 227,
-   "lift": 0.71
-  },
-  {
-   "a": "black metal",
-   "b": "dark wood",
-   "rooms": 124,
-   "expected": 114.7,
-   "lift": 1.08
-  },
-  {
-   "a": "black metal",
-   "b": "plain wood",
-   "rooms": 101,
-   "expected": 265.2,
-   "lift": 0.38
-  },
-  {
-   "a": "ashwood",
-   "b": "fine wood",
-   "rooms": 89,
-   "expected": 84.3,
+   "a": "fine_furniture",
+   "b": "rustic_furniture",
+   "rooms": 370,
+   "expected": 349,
    "lift": 1.06
   },
   {
-   "a": "ashwood",
-   "b": "dark wood",
-   "rooms": 86,
-   "expected": 42.6,
-   "lift": 2.02
+   "a": "darkwood_furniture",
+   "b": "iron_props",
+   "rooms": 333,
+   "expected": 329.5,
+   "lift": 1.01
+  },
+  {
+   "a": "fine_furniture",
+   "b": "iron_props",
+   "rooms": 276,
+   "expected": 293.7,
+   "lift": 0.94
+  },
+  {
+   "a": "hide",
+   "b": "iron_props",
+   "rooms": 230,
+   "expected": 158.3,
+   "lift": 1.45
+  },
+  {
+   "a": "darkwood_furniture",
+   "b": "hide",
+   "rooms": 208,
+   "expected": 79.5,
+   "lift": 2.62
+  },
+  {
+   "a": "hide",
+   "b": "rustic_furniture",
+   "rooms": 196,
+   "expected": 188.1,
+   "lift": 1.04
+  },
+  {
+   "a": "fine_furniture",
+   "b": "hide",
+   "rooms": 154,
+   "expected": 70.9,
+   "lift": 2.17
   },
   {
    "a": "ashwood",
-   "b": "plain wood",
-   "rooms": 85,
-   "expected": 98.5,
-   "lift": 0.86
+   "b": "rustic_furniture",
+   "rooms": 66,
+   "expected": 73.6,
+   "lift": 0.9
   },
   {
-   "a": "black marble",
-   "b": "dark wood",
+   "a": "ashwood",
+   "b": "darkwood_furniture",
+   "rooms": 66,
+   "expected": 31.1,
+   "lift": 2.12
+  },
+  {
+   "a": "ashwood",
+   "b": "iron_props",
    "rooms": 57,
-   "expected": 29.5,
-   "lift": 1.93
+   "expected": 62,
+   "lift": 0.92
   },
   {
-   "a": "black marble",
-   "b": "fine wood",
-   "rooms": 54,
-   "expected": 58.4,
+   "a": "darkwood_furniture",
+   "b": "marble_furniture",
+   "rooms": 56,
+   "expected": 28.5,
+   "lift": 1.97
+  },
+  {
+   "a": "iron_props",
+   "b": "marble_furniture",
+   "rooms": 53,
+   "expected": 56.7,
    "lift": 0.93
   },
   {
    "a": "log",
-   "b": "plain wood",
+   "b": "rustic_furniture",
    "rooms": 53,
-   "expected": 41.8,
-   "lift": 1.27
+   "expected": 41.4,
+   "lift": 1.28
   },
   {
-   "a": "plain wood",
-   "b": "stone",
+   "a": "ashwood",
+   "b": "fine_furniture",
+   "rooms": 38,
+   "expected": 27.7,
+   "lift": 1.37
+  },
+  {
+   "a": "fine_furniture",
+   "b": "marble_furniture",
+   "rooms": 35,
+   "expected": 25.4,
+   "lift": 1.38
+  },
+  {
+   "a": "rustic_furniture",
+   "b": "stone_props",
    "rooms": 33,
-   "expected": 26.9,
-   "lift": 1.23
+   "expected": 26.6,
+   "lift": 1.24
   },
   {
-   "a": "fine wood",
-   "b": "log",
-   "rooms": 32,
-   "expected": 35.8,
-   "lift": 0.89
-  },
-  {
-   "a": "black marble",
-   "b": "plain wood",
+   "a": "marble_furniture",
+   "b": "rustic_furniture",
    "rooms": 29,
-   "expected": 68.2,
+   "expected": 67.4,
    "lift": 0.43
   },
   {
-   "a": "fine wood",
-   "b": "stone",
+   "a": "fine_furniture",
+   "b": "log",
    "rooms": 28,
-   "expected": 23,
-   "lift": 1.21
+   "expected": 15.6,
+   "lift": 1.8
   },
   {
-   "a": "dark wood",
-   "b": "stone",
-   "rooms": 27,
-   "expected": 11.6,
-   "lift": 2.32
+   "a": "gold",
+   "b": "iron_props",
+   "rooms": 28,
+   "expected": 21.5,
+   "lift": 1.31
   },
   {
-   "a": "black marble",
-   "b": "black metal",
-   "rooms": 27,
-   "expected": 19.3,
-   "lift": 1.4
+   "a": "darkwood_furniture",
+   "b": "stone_props",
+   "rooms": 26,
+   "expected": 11.3,
+   "lift": 2.31
   },
   {
-   "a": "ashwood",
-   "b": "black metal",
-   "rooms": 22,
-   "expected": 27.9,
-   "lift": 0.79
-  },
-  {
-   "a": "dark wood",
-   "b": "log",
-   "rooms": 17,
-   "expected": 18.1,
-   "lift": 0.94
-  },
-  {
-   "a": "bone",
-   "b": "dark wood",
-   "rooms": 15,
-   "expected": 6.4,
-   "lift": 2.33
-  },
-  {
-   "a": "bone",
-   "b": "fine wood",
-   "rooms": 15,
-   "expected": 12.7,
-   "lift": 1.18
-  },
-  {
-   "a": "fine wood",
-   "b": "runed",
-   "rooms": 13,
-   "expected": 10.8,
-   "lift": 1.21
-  },
-  {
-   "a": "dvergr",
-   "b": "fine wood",
-   "rooms": 13,
-   "expected": 18.6,
-   "lift": 0.7
-  },
-  {
-   "a": "ashwood",
-   "b": "black marble",
-   "rooms": 12,
-   "expected": 7.2,
-   "lift": 1.67
-  },
-  {
-   "a": "dvergr",
-   "b": "plain wood",
-   "rooms": 12,
-   "expected": 21.8,
-   "lift": 0.55
-  },
-  {
-   "a": "dark wood",
-   "b": "dvergr",
-   "rooms": 11,
-   "expected": 9.4,
-   "lift": 1.17
-  },
-  {
-   "a": "black marble",
-   "b": "bone",
-   "rooms": 10,
-   "expected": 1.1,
-   "lift": 9.22
-  },
-  {
-   "a": "black marble",
-   "b": "stone",
-   "rooms": 9,
-   "expected": 2,
-   "lift": 4.59
-  },
-  {
-   "a": "fine wood",
-   "b": "grausten",
-   "rooms": 8,
-   "expected": 8.3,
-   "lift": 0.96
-  },
-  {
-   "a": "dark wood",
-   "b": "runed",
-   "rooms": 8,
-   "expected": 5.5,
-   "lift": 1.47
-  },
-  {
-   "a": "plain wood",
-   "b": "runed",
-   "rooms": 7,
-   "expected": 12.6,
-   "lift": 0.56
-  },
-  {
-   "a": "black metal",
-   "b": "stone",
-   "rooms": 7,
-   "expected": 7.6,
-   "lift": 0.92
-  },
-  {
-   "a": "grausten",
-   "b": "runed",
-   "rooms": 6,
-   "expected": 0.1,
-   "lift": 45.77
-  },
-  {
-   "a": "black metal",
-   "b": "runed",
-   "rooms": 5,
-   "expected": 3.6,
-   "lift": 1.4
-  },
-  {
-   "a": "grausten",
-   "b": "plain wood",
-   "rooms": 5,
-   "expected": 9.7,
-   "lift": 0.51
-  },
-  {
-   "a": "black metal",
-   "b": "bone",
-   "rooms": 5,
-   "expected": 4.2,
-   "lift": 1.18
-  },
-  {
-   "a": "ashwood",
-   "b": "dvergr",
-   "rooms": 5,
-   "expected": 2.3,
-   "lift": 2.18
-  },
-  {
-   "a": "bone",
-   "b": "plain wood",
-   "rooms": 4,
-   "expected": 14.9,
-   "lift": 0.27
-  },
-  {
-   "a": "black metal",
-   "b": "log",
-   "rooms": 4,
-   "expected": 11.8,
-   "lift": 0.34
-  },
-  {
-   "a": "ashwood",
-   "b": "runed",
-   "rooms": 4,
-   "expected": 1.3,
-   "lift": 3.02
-  },
-  {
-   "a": "black metal",
-   "b": "dvergr",
-   "rooms": 4,
-   "expected": 6.2,
-   "lift": 0.65
-  },
-  {
-   "a": "ashwood",
-   "b": "bone",
-   "rooms": 4,
-   "expected": 1.6,
-   "lift": 2.55
-  },
-  {
-   "a": "bone",
-   "b": "runed",
-   "rooms": 3,
-   "expected": 0.2,
-   "lift": 14.96
-  },
-  {
-   "a": "dark wood",
-   "b": "grausten",
-   "rooms": 3,
-   "expected": 4.2,
-   "lift": 0.71
-  },
-  {
-   "a": "black marble",
-   "b": "dvergr",
-   "rooms": 3,
-   "expected": 1.6,
-   "lift": 1.89
-  },
-  {
-   "a": "ashwood",
-   "b": "stone",
-   "rooms": 3,
-   "expected": 2.8,
-   "lift": 1.06
-  },
-  {
-   "a": "log",
-   "b": "stone",
-   "rooms": 3,
-   "expected": 1.2,
+   "a": "fine_furniture",
+   "b": "stone_props",
+   "rooms": 25,
+   "expected": 10,
    "lift": 2.49
   },
   {
-   "a": "ashwood",
-   "b": "grausten",
-   "rooms": 2,
-   "expected": 1,
-   "lift": 1.95
+   "a": "ashwood_furniture",
+   "b": "rustic_furniture",
+   "rooms": 23,
+   "expected": 27.8,
+   "lift": 0.83
+  },
+  {
+   "a": "ashwood_furniture",
+   "b": "darkwood_furniture",
+   "rooms": 23,
+   "expected": 11.7,
+   "lift": 1.96
+  },
+  {
+   "a": "gold",
+   "b": "rustic_furniture",
+   "rooms": 23,
+   "expected": 25.5,
+   "lift": 0.9
+  },
+  {
+   "a": "hide",
+   "b": "marble_furniture",
+   "rooms": 22,
+   "expected": 13.7,
+   "lift": 1.61
+  },
+  {
+   "a": "darkwood_furniture",
+   "b": "gold",
+   "rooms": 22,
+   "expected": 10.8,
+   "lift": 2.04
+  },
+  {
+   "a": "iron_props",
+   "b": "stone_props",
+   "rooms": 21,
+   "expected": 22.4,
+   "lift": 0.94
+  },
+  {
+   "a": "ashwood_furniture",
+   "b": "fine_furniture",
+   "rooms": 20,
+   "expected": 10.5,
+   "lift": 1.91
+  },
+  {
+   "a": "darkwood_furniture",
+   "b": "log",
+   "rooms": 17,
+   "expected": 17.5,
+   "lift": 0.97
+  },
+  {
+   "a": "gold",
+   "b": "hide",
+   "rooms": 16,
+   "expected": 5.2,
+   "lift": 3.09
+  },
+  {
+   "a": "ashwood_furniture",
+   "b": "iron_props",
+   "rooms": 16,
+   "expected": 23.4,
+   "lift": 0.68
+  },
+  {
+   "a": "fine_furniture",
+   "b": "runed_furniture",
+   "rooms": 15,
+   "expected": 5.8,
+   "lift": 2.6
+  },
+  {
+   "a": "dvergr_props",
+   "b": "iron_props",
+   "rooms": 14,
+   "expected": 18.1,
+   "lift": 0.77
+  },
+  {
+   "a": "fine_furniture",
+   "b": "gold",
+   "rooms": 13,
+   "expected": 9.6,
+   "lift": 1.35
+  },
+  {
+   "a": "iron_props",
+   "b": "log",
+   "rooms": 12,
+   "expected": 34.8,
+   "lift": 0.34
+  },
+  {
+   "a": "dvergr_props",
+   "b": "rustic_furniture",
+   "rooms": 12,
+   "expected": 21.5,
+   "lift": 0.56
+  },
+  {
+   "a": "hide",
+   "b": "stone_props",
+   "rooms": 10,
+   "expected": 5.4,
+   "lift": 1.85
   },
   {
    "a": "bone",
+   "b": "fine_furniture",
+   "rooms": 10,
+   "expected": 3.8,
+   "lift": 2.6
+  },
+  {
+   "a": "bone",
+   "b": "marble_furniture",
+   "rooms": 10,
+   "expected": 0.7,
+   "lift": 13.47
+  },
+  {
+   "a": "darkwood_furniture",
+   "b": "dvergr_props",
+   "rooms": 10,
+   "expected": 9.1,
+   "lift": 1.1
+  },
+  {
+   "a": "bone",
+   "b": "darkwood_furniture",
+   "rooms": 9,
+   "expected": 4.3,
+   "lift": 2.09
+  },
+  {
+   "a": "iron_props",
+   "b": "runed_furniture",
+   "rooms": 9,
+   "expected": 12.9,
+   "lift": 0.7
+  },
+  {
+   "a": "marble_furniture",
+   "b": "stone_props",
+   "rooms": 9,
+   "expected": 1.9,
+   "lift": 4.64
+  },
+  {
+   "a": "dvergr_props",
+   "b": "fine_furniture",
+   "rooms": 9,
+   "expected": 8.1,
+   "lift": 1.11
+  },
+  {
+   "a": "gold",
+   "b": "marble_furniture",
+   "rooms": 7,
+   "expected": 1.9,
+   "lift": 3.77
+  },
+  {
+   "a": "runed_furniture",
+   "b": "rustic_furniture",
+   "rooms": 7,
+   "expected": 15.3,
+   "lift": 0.46
+  },
+  {
+   "a": "fine_furniture",
+   "b": "grausten",
+   "rooms": 7,
+   "expected": 3.6,
+   "lift": 1.93
+  },
+  {
+   "a": "grausten",
+   "b": "runed_furniture",
+   "rooms": 7,
+   "expected": 0.2,
+   "lift": 44.01
+  },
+  {
+   "a": "hide",
+   "b": "runed_furniture",
+   "rooms": 7,
+   "expected": 3.1,
+   "lift": 2.25
+  },
+  {
+   "a": "darkwood_furniture",
+   "b": "runed_furniture",
+   "rooms": 7,
+   "expected": 6.5,
+   "lift": 1.08
+  },
+  {
+   "a": "ashwood",
+   "b": "marble_furniture",
+   "rooms": 7,
+   "expected": 5.4,
+   "lift": 1.31
+  },
+  {
+   "a": "ashwood",
+   "b": "ashwood_furniture",
+   "rooms": 7,
+   "expected": 2.2,
+   "lift": 3.17
+  },
+  {
+   "a": "grausten",
+   "b": "rustic_furniture",
+   "rooms": 5,
+   "expected": 9.6,
+   "lift": 0.52
+  },
+  {
+   "a": "bone",
+   "b": "iron_props",
+   "rooms": 5,
+   "expected": 8.6,
+   "lift": 0.58
+  },
+  {
+   "a": "ashwood",
+   "b": "runed_furniture",
+   "rooms": 5,
+   "expected": 1.2,
+   "lift": 4.11
+  },
+  {
+   "a": "ashwood_furniture",
+   "b": "marble_furniture",
+   "rooms": 5,
+   "expected": 2,
+   "lift": 2.47
+  },
+  {
+   "a": "grausten",
+   "b": "hide",
+   "rooms": 4,
+   "expected": 2,
+   "lift": 2.05
+  },
+  {
+   "a": "ashwood",
+   "b": "gold",
+   "rooms": 4,
+   "expected": 2,
+   "lift": 1.97
+  },
+  {
+   "a": "ashwood",
+   "b": "hide",
+   "rooms": 4,
+   "expected": 15,
+   "lift": 0.27
+  },
+  {
+   "a": "dvergr_props",
+   "b": "hide",
+   "rooms": 4,
+   "expected": 4.4,
+   "lift": 0.92
+  },
+  {
+   "a": "ashwood_furniture",
+   "b": "hide",
+   "rooms": 4,
+   "expected": 5.6,
+   "lift": 0.71
+  },
+  {
+   "a": "hide",
+   "b": "log",
+   "rooms": 4,
+   "expected": 8.4,
+   "lift": 0.48
+  },
+  {
+   "a": "ashwood_furniture",
+   "b": "gold",
+   "rooms": 4,
+   "expected": 0.8,
+   "lift": 5.24
+  },
+  {
+   "a": "grausten",
+   "b": "iron_props",
+   "rooms": 3,
+   "expected": 8.1,
+   "lift": 0.37
+  },
+  {
+   "a": "darkwood_furniture",
+   "b": "grausten",
+   "rooms": 3,
+   "expected": 4.1,
+   "lift": 0.74
+  },
+  {
+   "a": "dvergr_props",
+   "b": "marble_furniture",
+   "rooms": 3,
+   "expected": 1.6,
+   "lift": 1.91
+  },
+  {
+   "a": "ashwood_furniture",
+   "b": "dvergr_props",
+   "rooms": 3,
+   "expected": 0.6,
+   "lift": 4.65
+  },
+  {
+   "a": "ashwood",
+   "b": "stone_props",
+   "rooms": 3,
+   "expected": 2.1,
+   "lift": 1.42
+  },
+  {
+   "a": "ashwood",
+   "b": "dvergr_props",
+   "rooms": 3,
+   "expected": 1.7,
+   "lift": 1.75
+  },
+  {
+   "a": "log",
+   "b": "stone_props",
+   "rooms": 3,
+   "expected": 1.2,
+   "lift": 2.52
+  },
+  {
+   "a": "bone",
+   "b": "rustic_furniture",
+   "rooms": 2,
+   "expected": 10.2,
+   "lift": 0.2
+  },
+  {
+   "a": "bone",
+   "b": "hide",
+   "rooms": 2,
+   "expected": 2.1,
+   "lift": 0.97
+  },
+  {
+   "a": "ashwood",
    "b": "grausten",
    "rooms": 2,
-   "expected": 0.2,
-   "lift": 12.91
+   "expected": 0.8,
+   "lift": 2.61
+  },
+  {
+   "a": "gold",
+   "b": "runed_furniture",
+   "rooms": 2,
+   "expected": 0.4,
+   "lift": 4.75
+  },
+  {
+   "a": "ashwood_furniture",
+   "b": "bone",
+   "rooms": 2,
+   "expected": 0.3,
+   "lift": 6.54
+  },
+  {
+   "a": "gold",
+   "b": "grausten",
+   "rooms": 2,
+   "expected": 0.3,
+   "lift": 7.55
   },
   {
    "a": "ashwood",
    "b": "log",
    "rooms": 2,
-   "expected": 4.4,
-   "lift": 0.45
+   "expected": 3.3,
+   "lift": 0.61
   },
   {
-   "a": "black metal",
-   "b": "grausten",
-   "rooms": 1,
-   "expected": 2.8,
-   "lift": 0.36
-  },
-  {
-   "a": "black marble",
-   "b": "log",
+   "a": "log",
+   "b": "marble_furniture",
    "rooms": 1,
    "expected": 3,
    "lift": 0.33
   },
   {
-   "a": "black marble",
-   "b": "grausten",
+   "a": "grausten",
+   "b": "marble_furniture",
    "rooms": 1,
    "expected": 0.7,
-   "lift": 1.41
+   "lift": 1.43
   },
   {
-   "a": "black marble",
-   "b": "runed",
+   "a": "marble_furniture",
+   "b": "runed_furniture",
    "rooms": 1,
-   "expected": 0.9,
-   "lift": 1.09
+   "expected": 1.1,
+   "lift": 0.9
   },
   {
    "a": "bone",
-   "b": "stone",
-   "rooms": 1,
-   "expected": 0.4,
-   "lift": 2.33
-  },
-  {
-   "a": "dvergr",
-   "b": "stone",
-   "rooms": 1,
-   "expected": 0.6,
-   "lift": 1.6
-  },
-  {
-   "a": "dvergr",
-   "b": "runed",
+   "b": "stone_props",
    "rooms": 1,
    "expected": 0.3,
    "lift": 3.41
+  },
+  {
+   "a": "dvergr_props",
+   "b": "stone_props",
+   "rooms": 1,
+   "expected": 0.6,
+   "lift": 1.62
+  },
+  {
+   "a": "dvergr_props",
+   "b": "gold",
+   "rooms": 1,
+   "expected": 0.6,
+   "lift": 1.69
+  },
+  {
+   "a": "bone",
+   "b": "gold",
+   "rooms": 1,
+   "expected": 0.3,
+   "lift": 3.56
+  },
+  {
+   "a": "gold",
+   "b": "stone_props",
+   "rooms": 1,
+   "expected": 0.7,
+   "lift": 1.36
+  },
+  {
+   "a": "dvergr_props",
+   "b": "runed_furniture",
+   "rooms": 1,
+   "expected": 0.4,
+   "lift": 2.81
+  },
+  {
+   "a": "ashwood",
+   "b": "bone",
+   "rooms": 1,
+   "expected": 0.8,
+   "lift": 1.23
   }
  ],
  "rarelyTogether": [
   {
    "a": "bone",
-   "b": "plain wood",
+   "b": "rustic_furniture",
+   "rooms": 2,
+   "expected": 10.2,
+   "lift": 0.2
+  },
+  {
+   "a": "ashwood",
+   "b": "hide",
    "rooms": 4,
-   "expected": 14.9,
+   "expected": 15,
    "lift": 0.27
   },
   {
-   "a": "black metal",
+   "a": "iron_props",
    "b": "log",
-   "rooms": 4,
-   "expected": 11.8,
+   "rooms": 12,
+   "expected": 34.8,
    "lift": 0.34
   },
   {
-   "a": "black metal",
-   "b": "plain wood",
-   "rooms": 101,
-   "expected": 265.2,
-   "lift": 0.38
+   "a": "grausten",
+   "b": "iron_props",
+   "rooms": 3,
+   "expected": 8.1,
+   "lift": 0.37
   },
   {
-   "a": "black marble",
-   "b": "plain wood",
+   "a": "marble_furniture",
+   "b": "rustic_furniture",
    "rooms": 29,
-   "expected": 68.2,
+   "expected": 67.4,
    "lift": 0.43
+  },
+  {
+   "a": "runed_furniture",
+   "b": "rustic_furniture",
+   "rooms": 7,
+   "expected": 15.3,
+   "lift": 0.46
+  },
+  {
+   "a": "hide",
+   "b": "log",
+   "rooms": 4,
+   "expected": 8.4,
+   "lift": 0.48
   }
  ]
 }

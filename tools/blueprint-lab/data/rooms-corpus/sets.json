@@ -8,15 +8,15 @@
   "likedRule": "top quarter of vanilla builds by votes (votes >= 10), ties by downloads",
   "rooms": 20400,
   "roomsLiked": 11945,
-  "families": "prefab first cut (lab/rooms_corpus_lib.js FAMILY_PREFAB)",
+  "families": "track A catalog (data/catalog/pieces.json family, version 1); prefabs it does not list have no family",
   "roomRule": "reader room (lib/decorate.js readLevel) with half or more of its floor under a roof, 4 to 400 m2, vanilla build, no mod piece inside; floor furniture: pivot under 0.5 m over the floor"
  },
  "fields": {
   "tableSets": "per dining table prefab: seats are floor seats and thrones whose pivot is within 1.25 m of the table box (each seat to its nearest table). seatsPerTable over all tables, seatsPerSeatedTable over tables with one or more; seatPrefabsPerSet: distinct seat prefabs at one table; matchedShare: sets whose seats are all one prefab; matchedFamilyShare: sets whose seats all share the table's material family; position: head (beyond an end), side, corner; gapSide/gapHead: m from the seat pivot to the table box; sideOffset: m from the table middle line to a side seat pivot; turnBySeat: [turn in 15 degree steps between the seat yaw and the bearing to the table, count] (the most common turn is the facing convention of that prefab); combos: seat prefab sets with counts",
   "beds": "per bed prefab: head is local -z; near: [position: type, share of beds]; positions behind head, beside head, beside foot, foot, on; names: [position: prefab, count]; chestAtFoot, sideTable (a table, chest, barrel, crate or building piece beside the head), lightBeside, rugUnder: shares",
-  "work": "per station (forge, smelter, workbench, ...): backToWall share (pivot under 0.6 m from a wall face); near: prefabs within 4 m: share of stations with one or more, count per station, distance quantiles (m), where (in front, behind, beside in the station frame)",
-  "bars": "counters: building pieces inside a room with tops 0.8 to 1.4 m over the floor (no 2x2 floors), joined into a run 2 m or longer and at most 0.8 m between part pivots across; wallBehind: m from the counter line to the wall on its nearer side; clearBehind: m from the counter to the wall or to floor furniture standing behind it; behind: prefabs behind the counter (count of bars); seatsInFront: seats within 1.6 m in front",
-  "custom": "building pieces standing inside rooms (custom furniture): piece, height band of its top (seat height 0.25-0.7 m, table height 0.7-1.25, shelf height 1.25-2.4), the nearest furniture type within 1.2 m, pieces, rooms, builds, room kinds, one example in a liked build (world x, y, z)"
+  "work": "per station (forge, smelter, workbench, ...): backToWall share (a wall face within 0.6 m behind the station's back, local -z); near: prefabs within 4 m: share of stations with one or more, count per station, distance quantiles (m), where (in front, behind, beside in the station frame)",
+  "bars": "counters: building pieces inside a room with tops 0.8 to 1.4 m over the floor (no 2x2 floors), joined into a run 2 m or longer and at most 0.8 m between part pivots across; bars are the free-standing ones (0.9 m or more to the wall behind) in social rooms (tavern and feast halls, dining, home, hearth room, kitchen, throne hall, sitting room), worktops the ones nearer a wall (any room); wallBehind: m from the counter line to the wall on its nearer side; clearBehind: m from the counter to the wall or to floor furniture standing behind it; behind: prefabs behind the counter (count of bars); seatsInFront: seats within 1.6 m in front",
+  "custom": "building pieces standing inside rooms (custom furniture): piece, height band of its top (seat height 0.25-0.7 m, table height 0.7-1.25, shelf height 1.25-2.4), the nearest furniture type within 1.2 m, pieces, rooms, builds, room kinds, one example in a liked build (turned frame x, y, z); custom lists those with furniture near, customAlone those with none near (half walls as seats along a wall, beams as rails, partitions)"
  },
  "tableSets": {
   "piece_table": {
@@ -495,7 +495,7 @@
     "p90": 2
    },
    "matchedShare": 0.757,
-   "matchedFamilyShare": 0.689,
+   "matchedFamilyShare": 0.019,
    "seats": {
     "piece_chair03": 0.826,
     "piece_bench01": 0.061,
@@ -1061,7 +1061,7 @@
     "p90": 1
    },
    "matchedShare": 1,
-   "matchedFamilyShare": null,
+   "matchedFamilyShare": 0,
    "seats": {
     "piece_chair03": 1
    },
@@ -1941,7 +1941,7 @@
  "work": {
   "piece_workbench": {
    "stations": 399,
-   "backToWall": 0.313,
+   "backToWall": 0.774,
    "near": [
     {
      "n": "piece_workbench_ext1",
@@ -2394,7 +2394,7 @@
   },
   "piece_artisanstation": {
    "stations": 342,
-   "backToWall": 0.067,
+   "backToWall": 0.178,
    "near": [
     {
      "n": "piece_artisanstation",
@@ -2834,7 +2834,7 @@
   },
   "forge": {
    "stations": 231,
-   "backToWall": 0.463,
+   "backToWall": 0.645,
    "near": [
     {
      "n": "forge_ext6",
@@ -3289,7 +3289,7 @@
   },
   "piece_stonecutter": {
    "stations": 167,
-   "backToWall": 0.03,
+   "backToWall": 0.108,
    "near": [
     {
      "n": "piece_artisanstation",
@@ -3730,7 +3730,7 @@
   },
   "blackforge": {
    "stations": 85,
-   "backToWall": 0.188,
+   "backToWall": 0.541,
    "near": [
     {
      "n": "blackforge_ext1",
@@ -4176,7 +4176,7 @@
   },
   "piece_magetable": {
    "stations": 64,
-   "backToWall": 0.078,
+   "backToWall": 0.719,
    "near": [
     {
      "n": "piece_magetable_ext",
@@ -4616,7 +4616,7 @@
   },
   "smelter": {
    "stations": 62,
-   "backToWall": 0.048,
+   "backToWall": 0.097,
    "near": [
     {
      "n": "smelter",
@@ -5059,7 +5059,7 @@
   },
   "charcoal_kiln": {
    "stations": 42,
-   "backToWall": 0.048,
+   "backToWall": 0.19,
    "near": [
     {
      "n": "piece_chest_wood",
@@ -5319,7 +5319,7 @@
   },
   "eitrrefinery": {
    "stations": 27,
-   "backToWall": 0.222,
+   "backToWall": 0.185,
    "near": [
     {
      "n": "itemstandh",
@@ -5627,7 +5627,7 @@
   },
   "blastfurnace": {
    "stations": 24,
-   "backToWall": 0.25,
+   "backToWall": 0.375,
    "near": [
     {
      "n": "blastfurnace",
@@ -6010,192 +6010,111 @@
   }
  },
  "bars": {
-  "n": 1618,
-  "liked": 848,
+  "n": 57,
+  "liked": 20,
   "byKind": {
-   "corridor": 0.174,
-   "empty": 0.151,
-   "other": 0.14,
-   "storage": 0.1,
-   "display": 0.071,
-   "bedroom": 0.069,
-   "smithy": 0.053,
-   "kitchen": 0.051,
-   "home": 0.045,
-   "throne hall": 0.032,
-   "workshop": 0.031,
-   "feast hall": 0.019,
-   "sitting": 0.017,
-   "tavern hall": 0.015,
-   "dining": 0.015,
-   "dormitory": 0.008,
-   "hearth room": 0.004,
-   "bath": 0.003,
-   "shrine": 0.001,
-   "portal room": 0.001
+   "home": 0.456,
+   "kitchen": 0.193,
+   "throne hall": 0.158,
+   "tavern hall": 0.088,
+   "sitting": 0.053,
+   "dining": 0.035,
+   "feast hall": 0.018
   },
   "length": {
-   "n": 1618,
+   "n": 57,
    "p10": 2,
    "p25": 2,
-   "p50": 3,
+   "p50": 2.83,
    "p75": 4,
-   "p90": 6
+   "p90": 5.99
   },
   "top": {
-   "n": 1618,
-   "p10": 0.88,
-   "p25": 1,
+   "n": 57,
+   "p10": 0.95,
+   "p25": 1.02,
    "p50": 1.02,
    "p75": 1.13,
-   "p90": 1.27
+   "p90": 1.19
   },
   "wallBehind": {
-   "n": 1618,
-   "p10": 0.25,
-   "p25": 0.25,
-   "p50": 0.5,
-   "p75": 0.75,
-   "p90": 1
+   "n": 57,
+   "p10": 1,
+   "p25": 1.25,
+   "p50": 1.75,
+   "p75": 2.5,
+   "p90": 2.75
   },
   "clearBehind": {
-   "n": 1618,
-   "p10": 0.15,
-   "p25": 0.15,
-   "p50": 0.4,
-   "p75": 0.65,
-   "p90": 0.65
+   "n": 57,
+   "p10": 0,
+   "p25": 0.31,
+   "p50": 0.83,
+   "p75": 1.15,
+   "p90": 1.65
   },
-  "clearUnder08": 0.916,
+  "clearUnder08": 0.421,
   "pieces": [
    [
     "wood_floor_1x1",
-    788
-   ],
-   [
-    "Piece_grausten_floor_1x1",
-    386
+    38
    ],
    [
     "wood_beam_1",
-    254
+    11
    ],
    [
     "wood_beam",
-    246
+    9
    ],
    [
     "wood_wall_half",
-    134
+    5
    ],
    [
     "ashwood_floor_1x1",
-    75
-   ],
-   [
-    "wood_wall_log_4x0.5",
-    44
-   ],
-   [
-    "ashwood_beam_1m",
-    34
-   ],
-   [
-    "blackmarble_tile_floor_1x1",
-    29
-   ],
-   [
-    "ashwood_beam_2m",
-    28
-   ],
-   [
-    "blackmarble_floor_triangle",
-    22
-   ],
-   [
-    "Piece_grausten_pillarbeam_small",
-    22
-   ],
-   [
-    "darkwood_beam",
-    22
-   ],
-   [
-    "wood_wall_quarter",
-    14
+    4
    ],
    [
     "wood_wall_log",
-    14
+    2
+   ],
+   [
+    "wood_wall_log_4x0.5",
+    2
+   ],
+   [
+    "Piece_grausten_floor_1x1",
+    2
+   ],
+   [
+    "darkwood_beam",
+    2
+   ],
+   [
+    "ashwood_beam_2m",
+    2
+   ],
+   [
+    "blackmarble_tile_floor_1x1",
+    1
+   ],
+   [
+    "darkwood_beam4x4",
+    1
    ]
   ],
   "behind": [
    [
-    "blackmarble_head01",
-    85
-   ],
-   [
     "piece_chest_wood",
-    64
-   ],
-   [
-    "piece_dvergr_lantern",
-    31
-   ],
-   [
-    "piece_chest",
-    27
-   ],
-   [
-    "goblinking_totemholder",
-    21
-   ],
-   [
-    "piece_chest_blackmetal",
-    13
-   ],
-   [
-    "piece_walltorch",
-    13
-   ],
-   [
-    "piece_chest_barrel",
-    13
-   ],
-   [
-    "piece_chest_private",
-    9
-   ],
-   [
-    "piece_groundtorch_wood",
-    9
-   ],
-   [
-    "fermenter",
-    8
-   ],
-   [
-    "piece_workbench_ext1",
-    8
+    14
    ],
    [
     "piece_workbench_ext3",
-    6
+    5
    ],
    [
-    "ArmorStand",
-    6
-   ],
-   [
-    "piece_bed02",
-    6
-   ],
-   [
-    "piece_chair",
-    6
-   ],
-   [
-    "dvergrprops_lantern_standing",
+    "piece_workbench_ext1",
     5
    ],
    [
@@ -6207,78 +6126,141 @@
     4
    ],
    [
-    "blackmarble_head02",
-    4
+    "piece_chest_blackmetal",
+    3
+   ],
+   [
+    "piece_chest",
+    3
+   ],
+   [
+    "fermenter",
+    3
+   ],
+   [
+    "piece_chair",
+    2
+   ],
+   [
+    "ArmorStand",
+    1
+   ],
+   [
+    "piece_workbench_ext4",
+    1
+   ],
+   [
+    "piece_pot1",
+    1
+   ],
+   [
+    "piece_pot3",
+    1
+   ],
+   [
+    "piece_pot2",
+    1
+   ],
+   [
+    "piece_walltorch",
+    1
+   ],
+   [
+    "piece_groundtorch_wood",
+    1
+   ],
+   [
+    "piece_groundtorch",
+    1
+   ],
+   [
+    "piece_workbench_ext2",
+    1
+   ],
+   [
+    "piece_dvergr_lantern",
+    1
+   ],
+   [
+    "piece_chair03",
+    1
    ]
   ],
   "seatsInFront": {
-   "n": 1618,
+   "n": 57,
    "p10": 0,
    "p25": 0,
    "p50": 0,
-   "p75": 0,
-   "p90": 1
+   "p75": 1,
+   "p90": 3
   },
   "examples": [
    {
-    "file": "advanced-base/a-teeny-house-for-a-friendly-family-of-4-vikings-1900inst__Å¿»¬¿¡_teeny-house.blueprint",
-    "kind": "feast hall",
-    "len": 2,
-    "clear": 0.65,
+    "file": "advanced-base/dynef-stning-plains-fortress-fully-decorated-late-game-base-for-up-to-6-vikings__Brueplint_dunefortressendgame.blueprint",
+    "kind": "home",
+    "lvl": 4.41,
+    "cx": 8.89,
+    "cz": -42.2,
+    "len": 3,
+    "clear": 0.9,
     "pieces": [
-     "ashwood_beam_1m",
-     "ashwood_beam_2m"
+     "wood_floor_1x1"
+    ],
+    "behind": [
+     "piece_chest_blackmetal",
+     "piece_chest_blackmetal",
+     "piece_chest_blackmetal"
+    ]
+   },
+   {
+    "file": "artistic/mage-house-wip-inspired-by-apudma__MutantArtCat_MageHouse.blueprint",
+    "kind": "throne hall",
+    "lvl": 4.1,
+    "cx": 6.53,
+    "cz": -2.94,
+    "len": 2,
+    "clear": 0.39,
+    "pieces": [
+     "wood_beam"
+    ],
+    "behind": [
+     "piece_chest_wood",
+     "piece_chest_wood",
+     "ArmorStand"
+    ]
+   },
+   {
+    "file": "building/high-summit-lodge-a-frame-longhouse.blueprint",
+    "kind": "throne hall",
+    "lvl": -5.04,
+    "cx": 5.84,
+    "cz": -3.24,
+    "len": 7,
+    "clear": 0.9,
+    "pieces": [
+     "wood_floor_1x1"
     ],
     "behind": []
    },
    {
-    "file": "advanced-base/lin-s-beautifull-mansion.blueprint",
-    "kind": "kitchen",
+    "file": "building/house-3245.blueprint",
+    "kind": "throne hall",
+    "lvl": 1.1,
+    "cx": 0.08,
+    "cz": -13.17,
     "len": 4,
-    "clear": 0.4,
+    "clear": 0.9,
     "pieces": [
      "wood_floor_1x1"
     ],
     "behind": []
    },
    {
-    "file": "boat-house/cozy-dock-house.blueprint",
-    "kind": "dining",
-    "len": 2,
-    "clear": 0.4,
-    "pieces": [
-     "wood_floor_1x1"
-    ],
-    "behind": []
-   },
-   {
-    "file": "building/medieval-forest-house-with-basement.blueprint",
-    "kind": "kitchen",
-    "len": 2,
-    "clear": 0.15,
-    "pieces": [
-     "ashwood_floor_1x1"
-    ],
-    "behind": [
-     "dvergrprops_lantern_standing"
-    ]
-   },
-   {
-    "file": "building/seabase-for-4.blueprint",
-    "kind": "feast hall",
-    "len": 2.5,
-    "clear": 0.13,
-    "pieces": [
-     "wood_beam",
-     "wood_beam_1"
-    ],
-    "behind": [
-     "piece_chest_barrel"
-    ]
-   },
-   {
     "file": "building/seabase-for-4.blueprint",
     "kind": "kitchen",
+    "lvl": 2.6,
+    "cx": 6.36,
+    "cz": -5.98,
     "len": 2.5,
     "clear": 0.26,
     "pieces": [
@@ -6299,6 +6281,9 @@
    {
     "file": "building/seabase-for-4.blueprint",
     "kind": "kitchen",
+    "lvl": 2.6,
+    "cx": 10.94,
+    "cz": -5.31,
     "len": 2.5,
     "clear": 1.15,
     "pieces": [
@@ -6307,23 +6292,41 @@
     "behind": []
    },
    {
-    "file": "castle/fogbreaker-fortress.blueprint",
-    "kind": "kitchen",
-    "len": 3.49,
-    "clear": 0.4,
+    "file": "building/the-clock-house-20000inst__PuP_house-clock.blueprint",
+    "kind": "sitting",
+    "lvl": 22.75,
+    "cx": -21.26,
+    "cz": 25.6,
+    "len": 4.25,
+    "clear": 0.9,
     "pieces": [
-     "wood_floor_1x1",
-     "wood_beam_1"
+     "Piece_grausten_floor_1x1"
     ],
     "behind": []
    },
    {
-    "file": "castle/fogbreaker-fortress.blueprint",
-    "kind": "kitchen",
-    "len": 4,
-    "clear": 0.4,
+    "file": "building/the-clock-house-20000inst__PuP_house-clock.blueprint",
+    "kind": "sitting",
+    "lvl": 22.75,
+    "cx": 21.26,
+    "cz": 25.6,
+    "len": 4.25,
+    "clear": 0.9,
     "pieces": [
-     "wood_beam_1",
+     "Piece_grausten_floor_1x1"
+    ],
+    "behind": []
+   },
+   {
+    "file": "building/winter-cabin-1761.blueprint",
+    "kind": "throne hall",
+    "lvl": 0,
+    "cx": -2.95,
+    "cz": -3.98,
+    "len": 2,
+    "clear": 2.15,
+    "pieces": [
+     "wood_wall_half",
      "wood_floor_1x1"
     ],
     "behind": []
@@ -6331,16 +6334,9 @@
    {
     "file": "castle/perfect-stone-castle.blueprint",
     "kind": "kitchen",
-    "len": 3,
-    "clear": 0.65,
-    "pieces": [
-     "wood_floor_1x1"
-    ],
-    "behind": []
-   },
-   {
-    "file": "castle/perfect-stone-castle.blueprint",
-    "kind": "kitchen",
+    "lvl": 0.14,
+    "cx": -7.15,
+    "cz": 3.21,
     "len": 4,
     "clear": 0.9,
     "pieces": [
@@ -6350,50 +6346,2087 @@
     "behind": []
    },
    {
-    "file": "longhouse/great-hall-1835.blueprint",
+    "file": "longhouse/river-longhouse__Å¿»¬¿¡_River-Longhouse.blueprint",
     "kind": "feast hall",
-    "len": 3,
-    "clear": 0.15,
+    "lvl": 15.75,
+    "cx": -70.76,
+    "cz": 6.24,
+    "len": 4,
+    "clear": 0.9,
     "pieces": [
-     "wood_beam"
+     "wood_floor_1x1"
+    ],
+    "behind": [
+     "piece_chest"
+    ]
+   },
+   {
+    "file": "longhouse/viking-longhouse__Å¿»¬¿¡_longhouse.blueprint",
+    "kind": "home",
+    "lvl": 22.23,
+    "cx": 75.92,
+    "cz": -32,
+    "len": 2,
+    "clear": 1.65,
+    "pieces": [
+     "wood_floor_1x1"
     ],
     "behind": []
    }
-  ]
- },
- "custom": [
-  {
-   "piece": "woodwall",
-   "height": "high",
-   "near": "none",
-   "pieces": 3438,
-   "rooms": 1082,
-   "builds": 394,
-   "kinds": [
-    [
-     "empty",
-     1131
-    ],
+  ],
+  "worktops": {
+   "n": 1432,
+   "byKind": [
     [
      "corridor",
-     546
+     271
+    ],
+    [
+     "other",
+     217
+    ],
+    [
+     "empty",
+     202
+    ],
+    [
+     "storage",
+     149
+    ],
+    [
+     "display",
+     101
     ],
     [
      "bedroom",
-     345
+     91
     ],
     [
-     "home",
-     174
+     "smithy",
+     75
+    ],
+    [
+     "kitchen",
+     72
+    ]
+   ],
+   "top": {
+    "n": 1432,
+    "p10": 0.88,
+    "p25": 0.97,
+    "p50": 1.02,
+    "p75": 1.13,
+    "p90": 1.27
+   },
+   "pieces": [
+    [
+     "wood_floor_1x1",
+     700
+    ],
+    [
+     "Piece_grausten_floor_1x1",
+     349
+    ],
+    [
+     "wood_beam_1",
+     213
+    ],
+    [
+     "wood_beam",
+     196
+    ],
+    [
+     "wood_wall_half",
+     119
+    ],
+    [
+     "ashwood_floor_1x1",
+     70
+    ],
+    [
+     "wood_wall_log_4x0.5",
+     40
+    ],
+    [
+     "ashwood_beam_1m",
+     33
+    ],
+    [
+     "ashwood_beam_2m",
+     25
+    ],
+    [
+     "blackmarble_floor_triangle",
+     22
+    ]
+   ],
+   "on": [
+    [
+     "blackmarble_head01",
+     78
+    ],
+    [
+     "piece_chest_wood",
+     39
+    ],
+    [
+     "piece_dvergr_lantern",
+     29
+    ],
+    [
+     "goblinking_totemholder",
+     21
+    ],
+    [
+     "piece_chest",
+     15
+    ],
+    [
+     "piece_chest_barrel",
+     13
+    ],
+    [
+     "piece_walltorch",
+     12
+    ],
+    [
+     "piece_groundtorch_wood",
+     8
+    ],
+    [
+     "piece_chest_blackmetal",
+     7
+    ],
+    [
+     "fermenter",
+     5
+    ]
+   ]
+  }
+ },
+ "custom": [
+  {
+   "piece": "wood_floor_1x1",
+   "height": "table height",
+   "near": "chest",
+   "pieces": 2747,
+   "rooms": 544,
+   "builds": 242,
+   "kinds": [
+    [
+     "storage",
+     952
+    ],
+    [
+     "other",
+     403
+    ],
+    [
+     "smithy",
+     254
+    ],
+    [
+     "bedroom",
+     212
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-mountain-home.blueprint",
+    "x": 8.8,
+    "y": 0.76,
+    "z": 6.43
+   }
+  },
+  {
+   "piece": "wood_floor_1x1",
+   "height": "shelf height",
+   "near": "chest",
+   "pieces": 2504,
+   "rooms": 501,
+   "builds": 239,
+   "kinds": [
+    [
+     "storage",
+     737
+    ],
+    [
+     "other",
+     379
+    ],
+    [
+     "smithy",
+     336
+    ],
+    [
+     "bedroom",
+     185
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-mountain-home.blueprint",
+    "x": 8.8,
+    "y": 1.7599999999999998,
+    "z": 6.43
+   }
+  },
+  {
+   "piece": "wood_floor",
+   "height": "table height",
+   "near": "chest",
+   "pieces": 1726,
+   "rooms": 612,
+   "builds": 184,
+   "kinds": [
+    [
+     "storage",
+     1040
+    ],
+    [
+     "other",
+     167
+    ],
+    [
+     "corridor",
+     146
+    ],
+    [
+     "smithy",
+     84
     ]
    ],
    "example": {
     "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 28.14,
-    "y": 5.930000000000001,
-    "z": 11.6
+    "x": 14.3,
+    "y": 19.91,
+    "z": 5.62
    }
   },
+  {
+   "piece": "wood_floor",
+   "height": "shelf height",
+   "near": "chest",
+   "pieces": 1610,
+   "rooms": 544,
+   "builds": 183,
+   "kinds": [
+    [
+     "storage",
+     963
+    ],
+    [
+     "other",
+     199
+    ],
+    [
+     "corridor",
+     95
+    ],
+    [
+     "smithy",
+     84
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 29.27,
+    "y": 3.04,
+    "z": 16.77
+   }
+  },
+  {
+   "piece": "wood_beam",
+   "height": "table height",
+   "near": "chest",
+   "pieces": 784,
+   "rooms": 320,
+   "builds": 160,
+   "kinds": [
+    [
+     "storage",
+     327
+    ],
+    [
+     "smithy",
+     83
+    ],
+    [
+     "other",
+     65
+    ],
+    [
+     "bedroom",
+     64
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 31,
+    "y": 7,
+    "z": 4
+   }
+  },
+  {
+   "piece": "wood_beam",
+   "height": "shelf height",
+   "near": "chest",
+   "pieces": 748,
+   "rooms": 315,
+   "builds": 160,
+   "kinds": [
+    [
+     "storage",
+     286
+    ],
+    [
+     "smithy",
+     111
+    ],
+    [
+     "other",
+     79
+    ],
+    [
+     "bedroom",
+     67
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/castle-final-part.blueprint",
+    "x": -18.47,
+    "y": 1.69,
+    "z": 9.66
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "seat height",
+   "near": "chest",
+   "pieces": 470,
+   "rooms": 262,
+   "builds": 129,
+   "kinds": [
+    [
+     "storage",
+     201
+    ],
+    [
+     "other",
+     81
+    ],
+    [
+     "smithy",
+     61
+    ],
+    [
+     "bedroom",
+     35
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/house-scorpion__Å¿»¬¿¡_Scorpion_house.blueprint",
+    "x": -4.95,
+    "y": 16.64,
+    "z": -45.14
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "shelf height",
+   "near": "chest",
+   "pieces": 481,
+   "rooms": 257,
+   "builds": 128,
+   "kinds": [
+    [
+     "storage",
+     192
+    ],
+    [
+     "other",
+     59
+    ],
+    [
+     "bedroom",
+     48
+    ],
+    [
+     "smithy",
+     40
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/das-kunsthaus.blueprint",
+    "x": -8.6,
+    "y": -0.92,
+    "z": 53.61
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "seat height",
+   "near": "light",
+   "pieces": 313,
+   "rooms": 156,
+   "builds": 108,
+   "kinds": [
+    [
+     "empty",
+     73
+    ],
+    [
+     "bedroom",
+     39
+    ],
+    [
+     "home",
+     37
+    ],
+    [
+     "other",
+     33
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/medieval-church.blueprint",
+    "x": -4.86,
+    "y": 0.57,
+    "z": 12.53
+   }
+  },
+  {
+   "piece": "wood_floor_1x1",
+   "height": "table height",
+   "near": "itemstand",
+   "pieces": 691,
+   "rooms": 190,
+   "builds": 99,
+   "kinds": [
+    [
+     "display",
+     231
+    ],
+    [
+     "smithy",
+     78
+    ],
+    [
+     "home",
+     57
+    ],
+    [
+     "throne hall",
+     55
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/castle-final-part.blueprint",
+    "x": -15.45,
+    "y": 10.899999999999999,
+    "z": 6.16
+   }
+  },
+  {
+   "piece": "wood_pole",
+   "height": "shelf height",
+   "near": "chest",
+   "pieces": 251,
+   "rooms": 141,
+   "builds": 89,
+   "kinds": [
+    [
+     "storage",
+     78
+    ],
+    [
+     "bedroom",
+     42
+    ],
+    [
+     "home",
+     27
+    ],
+    [
+     "other",
+     23
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/teepee-supreme.blueprint",
+    "x": -5.62,
+    "y": 0.86,
+    "z": 6.01
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "shelf height",
+   "near": "light",
+   "pieces": 219,
+   "rooms": 117,
+   "builds": 87,
+   "kinds": [
+    [
+     "empty",
+     40
+    ],
+    [
+     "bedroom",
+     31
+    ],
+    [
+     "home",
+     22
+    ],
+    [
+     "other",
+     19
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/tavern-in-the-meadows-contest.blueprint",
+    "x": 3.54,
+    "y": 4.32,
+    "z": 0.51
+   }
+  },
+  {
+   "piece": "wood_wall_quarter",
+   "height": "table height",
+   "near": "chest",
+   "pieces": 217,
+   "rooms": 142,
+   "builds": 84,
+   "kinds": [
+    [
+     "other",
+     47
+    ],
+    [
+     "storage",
+     45
+    ],
+    [
+     "bedroom",
+     26
+    ],
+    [
+     "workshop",
+     17
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_deepnorthbase.blueprint",
+    "x": -9.11,
+    "y": 0.38,
+    "z": -7.17
+   }
+  },
+  {
+   "piece": "wood_beam",
+   "height": "table height",
+   "near": "light",
+   "pieces": 261,
+   "rooms": 128,
+   "builds": 79,
+   "kinds": [
+    [
+     "empty",
+     106
+    ],
+    [
+     "home",
+     32
+    ],
+    [
+     "bedroom",
+     24
+    ],
+    [
+     "smithy",
+     14
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 21.4,
+    "y": 5.5600000000000005,
+    "z": 21.99
+   }
+  },
+  {
+   "piece": "wood_floor_1x1",
+   "height": "shelf height",
+   "near": "itemstand",
+   "pieces": 403,
+   "rooms": 134,
+   "builds": 77,
+   "kinds": [
+    [
+     "display",
+     153
+    ],
+    [
+     "throne hall",
+     40
+    ],
+    [
+     "home",
+     36
+    ],
+    [
+     "kitchen",
+     25
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/lin-s-beautifull-mansion.blueprint",
+    "x": 5.75,
+    "y": 2.38,
+    "z": -3.26
+   }
+  },
+  {
+   "piece": "wood_beam_1",
+   "height": "table height",
+   "near": "chest",
+   "pieces": 210,
+   "rooms": 114,
+   "builds": 77,
+   "kinds": [
+    [
+     "storage",
+     45
+    ],
+    [
+     "other",
+     41
+    ],
+    [
+     "bedroom",
+     26
+    ],
+    [
+     "kitchen",
+     23
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_deepnorthbase.blueprint",
+    "x": -15.31,
+    "y": 1.3800000000000001,
+    "z": -17.09
+   }
+  },
+  {
+   "piece": "wood_wall_quarter",
+   "height": "table height",
+   "near": "light",
+   "pieces": 159,
+   "rooms": 115,
+   "builds": 76,
+   "kinds": [
+    [
+     "empty",
+     45
+    ],
+    [
+     "bedroom",
+     26
+    ],
+    [
+     "workshop",
+     15
+    ],
+    [
+     "throne hall",
+     13
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_earlystoragefull.blueprint",
+    "x": -14.64,
+    "y": 0.37,
+    "z": 0.06
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "shelf height",
+   "near": "itemstand",
+   "pieces": 168,
+   "rooms": 106,
+   "builds": 75,
+   "kinds": [
+    [
+     "display",
+     66
+    ],
+    [
+     "home",
+     19
+    ],
+    [
+     "throne hall",
+     18
+    ],
+    [
+     "bedroom",
+     17
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/das-kunsthaus.blueprint",
+    "x": -13.62,
+    "y": -1.5299999999999998,
+    "z": 2.57
+   }
+  },
+  {
+   "piece": "wood_beam_1",
+   "height": "shelf height",
+   "near": "chest",
+   "pieces": 245,
+   "rooms": 110,
+   "builds": 74,
+   "kinds": [
+    [
+     "storage",
+     51
+    ],
+    [
+     "other",
+     41
+    ],
+    [
+     "smithy",
+     32
+    ],
+    [
+     "workshop",
+     30
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/castle-final-part.blueprint",
+    "x": -20.24,
+    "y": 1.69,
+    "z": 8.11
+   }
+  },
+  {
+   "piece": "wood_floor_1x1",
+   "height": "table height",
+   "near": "light",
+   "pieces": 215,
+   "rooms": 109,
+   "builds": 74,
+   "kinds": [
+    [
+     "empty",
+     42
+    ],
+    [
+     "bedroom",
+     28
+    ],
+    [
+     "storage",
+     22
+    ],
+    [
+     "sitting",
+     18
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_deepnorthbase.blueprint",
+    "x": -15.22,
+    "y": 1.4500000000000002,
+    "z": -17.78
+   }
+  },
+  {
+   "piece": "wood_pole",
+   "height": "shelf height",
+   "near": "light",
+   "pieces": 162,
+   "rooms": 109,
+   "builds": 72,
+   "kinds": [
+    [
+     "empty",
+     33
+    ],
+    [
+     "storage",
+     22
+    ],
+    [
+     "throne hall",
+     20
+    ],
+    [
+     "workshop",
+     17
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 6,
+    "y": 5.5,
+    "z": 6
+   }
+  },
+  {
+   "piece": "woodwall",
+   "height": "shelf height",
+   "near": "chest",
+   "pieces": 193,
+   "rooms": 112,
+   "builds": 70,
+   "kinds": [
+    [
+     "storage",
+     124
+    ],
+    [
+     "other",
+     50
+    ],
+    [
+     "kitchen",
+     7
+    ],
+    [
+     "bedroom",
+     3
+    ]
+   ],
+   "example": {
+    "file": "artistic/mage-house-wip-inspired-by-apudma__MutantArtCat_MageHouse.blueprint",
+    "x": 11.06,
+    "y": 7,
+    "z": -6.9
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "seat height",
+   "near": "itemstand",
+   "pieces": 193,
+   "rooms": 109,
+   "builds": 68,
+   "kinds": [
+    [
+     "display",
+     92
+    ],
+    [
+     "home",
+     22
+    ],
+    [
+     "kitchen",
+     14
+    ],
+    [
+     "bedroom",
+     13
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/das-kunsthaus.blueprint",
+    "x": -14.6,
+    "y": 3.08,
+    "z": 40.61
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "seat height",
+   "near": "kitchen",
+   "pieces": 148,
+   "rooms": 78,
+   "builds": 66,
+   "kinds": [
+    [
+     "kitchen",
+     86
+    ],
+    [
+     "smithy",
+     19
+    ],
+    [
+     "throne hall",
+     18
+    ],
+    [
+     "display",
+     8
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 31.28,
+    "y": 18.5,
+    "z": 1.05
+   }
+  },
+  {
+   "piece": "wood_beam",
+   "height": "shelf height",
+   "near": "light",
+   "pieces": 172,
+   "rooms": 92,
+   "builds": 66,
+   "kinds": [
+    [
+     "empty",
+     50
+    ],
+    [
+     "other",
+     24
+    ],
+    [
+     "bedroom",
+     16
+    ],
+    [
+     "corridor",
+     13
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 15.57,
+    "y": 3.01,
+    "z": 20.99
+   }
+  },
+  {
+   "piece": "wood_beam",
+   "height": "table height",
+   "near": "itemstand",
+   "pieces": 182,
+   "rooms": 96,
+   "builds": 64,
+   "kinds": [
+    [
+     "display",
+     58
+    ],
+    [
+     "home",
+     21
+    ],
+    [
+     "feast hall",
+     20
+    ],
+    [
+     "kitchen",
+     16
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/castle-final-part.blueprint",
+    "x": 25.96,
+    "y": 10.78,
+    "z": 0.18
+   }
+  },
+  {
+   "piece": "wood_floor",
+   "height": "table height",
+   "near": "kitchen",
+   "pieces": 147,
+   "rooms": 75,
+   "builds": 61,
+   "kinds": [
+    [
+     "empty",
+     35
+    ],
+    [
+     "storage",
+     30
+    ],
+    [
+     "corridor",
+     22
+    ],
+    [
+     "other",
+     19
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/lin-s-beautifull-mansion.blueprint",
+    "x": -15.61,
+    "y": 0.96,
+    "z": 0.17
+   }
+  },
+  {
+   "piece": "wood_wall_quarter",
+   "height": "shelf height",
+   "near": "chest",
+   "pieces": 162,
+   "rooms": 102,
+   "builds": 58,
+   "kinds": [
+    [
+     "other",
+     36
+    ],
+    [
+     "storage",
+     35
+    ],
+    [
+     "bedroom",
+     20
+    ],
+    [
+     "smithy",
+     19
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_deepnorthbase.blueprint",
+    "x": -9.11,
+    "y": 1.3800000000000001,
+    "z": -7.17
+   }
+  },
+  {
+   "piece": "wood_wall_quarter",
+   "height": "table height",
+   "near": "itemstand",
+   "pieces": 145,
+   "rooms": 86,
+   "builds": 55,
+   "kinds": [
+    [
+     "throne hall",
+     20
+    ],
+    [
+     "home",
+     19
+    ],
+    [
+     "display",
+     18
+    ],
+    [
+     "smithy",
+     15
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/the-lost-hall-of-aegir.blueprint",
+    "x": 15.16,
+    "y": 32.6,
+    "z": 88.44
+   }
+  },
+  {
+   "piece": "wood_pole",
+   "height": "seat height",
+   "near": "itemstand",
+   "pieces": 186,
+   "rooms": 71,
+   "builds": 54,
+   "kinds": [
+    [
+     "display",
+     103
+    ],
+    [
+     "feast hall",
+     18
+    ],
+    [
+     "home",
+     14
+    ],
+    [
+     "bedroom",
+     14
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/das-kunsthaus.blueprint",
+    "x": -23.62,
+    "y": -1.03,
+    "z": 40.57
+   }
+  },
+  {
+   "piece": "wood_wall_quarter",
+   "height": "shelf height",
+   "near": "light",
+   "pieces": 110,
+   "rooms": 79,
+   "builds": 53,
+   "kinds": [
+    [
+     "empty",
+     28
+    ],
+    [
+     "bedroom",
+     16
+    ],
+    [
+     "workshop",
+     11
+    ],
+    [
+     "throne hall",
+     9
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_earlystoragefull.blueprint",
+    "x": -14.64,
+    "y": 1.3800000000000001,
+    "z": 0.06
+   }
+  },
+  {
+   "piece": "wood_beam_1",
+   "height": "table height",
+   "near": "light",
+   "pieces": 118,
+   "rooms": 77,
+   "builds": 53,
+   "kinds": [
+    [
+     "empty",
+     19
+    ],
+    [
+     "storage",
+     16
+    ],
+    [
+     "bedroom",
+     15
+    ],
+    [
+     "home",
+     11
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 6,
+    "y": 5.21,
+    "z": 6.88
+   }
+  },
+  {
+   "piece": "wood_pole",
+   "height": "seat height",
+   "near": "chest",
+   "pieces": 143,
+   "rooms": 79,
+   "builds": 53,
+   "kinds": [
+    [
+     "storage",
+     67
+    ],
+    [
+     "other",
+     18
+    ],
+    [
+     "home",
+     13
+    ],
+    [
+     "corridor",
+     12
+    ]
+   ],
+   "example": {
+    "file": "artistic/apudma-s-mage-house.blueprint",
+    "x": 4.86,
+    "y": 17.630000000000003,
+    "z": 24.63
+   }
+  },
+  {
+   "piece": "wood_beam",
+   "height": "shelf height",
+   "near": "itemstand",
+   "pieces": 161,
+   "rooms": 79,
+   "builds": 52,
+   "kinds": [
+    [
+     "display",
+     71
+    ],
+    [
+     "kitchen",
+     18
+    ],
+    [
+     "feast hall",
+     11
+    ],
+    [
+     "throne hall",
+     10
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/das-kunsthaus.blueprint",
+    "x": -15.6,
+    "y": 4.58,
+    "z": 37.61
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "seat height",
+   "near": "seat",
+   "pieces": 107,
+   "rooms": 66,
+   "builds": 51,
+   "kinds": [
+    [
+     "throne hall",
+     18
+    ],
+    [
+     "home",
+     16
+    ],
+    [
+     "display",
+     14
+    ],
+    [
+     "bedroom",
+     12
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/the-pier.blueprint",
+    "x": -26.02,
+    "y": 2.4,
+    "z": 6.44
+   }
+  },
+  {
+   "piece": "wood_beam_1",
+   "height": "shelf height",
+   "near": "light",
+   "pieces": 133,
+   "rooms": 63,
+   "builds": 50,
+   "kinds": [
+    [
+     "empty",
+     49
+    ],
+    [
+     "bedroom",
+     16
+    ],
+    [
+     "storage",
+     14
+    ],
+    [
+     "workshop",
+     9
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 6,
+    "y": 4.35,
+    "z": 7.23
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "seat height",
+   "near": "banner",
+   "pieces": 122,
+   "rooms": 71,
+   "builds": 49,
+   "kinds": [
+    [
+     "throne hall",
+     19
+    ],
+    [
+     "bedroom",
+     17
+    ],
+    [
+     "home",
+     15
+    ],
+    [
+     "corridor",
+     12
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/medieval-church.blueprint",
+    "x": -0.86,
+    "y": 0.57,
+    "z": 12.56
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "shelf height",
+   "near": "seat",
+   "pieces": 74,
+   "rooms": 58,
+   "builds": 49,
+   "kinds": [
+    [
+     "workshop",
+     9
+    ],
+    [
+     "bedroom",
+     8
+    ],
+    [
+     "throne hall",
+     7
+    ],
+    [
+     "dormitory",
+     5
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/the-pier.blueprint",
+    "x": -26.02,
+    "y": 2.4,
+    "z": 6.44
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "seat height",
+   "near": "rug",
+   "pieces": 147,
+   "rooms": 70,
+   "builds": 48,
+   "kinds": [
+    [
+     "smithy",
+     38
+    ],
+    [
+     "bedroom",
+     31
+    ],
+    [
+     "home",
+     15
+    ],
+    [
+     "throne hall",
+     13
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/das-kunsthaus.blueprint",
+    "x": -22.62,
+    "y": -1.03,
+    "z": 38.57
+   }
+  },
+  {
+   "piece": "wood_floor",
+   "height": "table height",
+   "near": "rug",
+   "pieces": 315,
+   "rooms": 107,
+   "builds": 47,
+   "kinds": [
+    [
+     "empty",
+     144
+    ],
+    [
+     "display",
+     113
+    ],
+    [
+     "other",
+     22
+    ],
+    [
+     "smithy",
+     8
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 24.28,
+    "y": 11.01,
+    "z": -4.97
+   }
+  },
+  {
+   "piece": "wood_beam",
+   "height": "shelf height",
+   "near": "sign",
+   "pieces": 192,
+   "rooms": 77,
+   "builds": 47,
+   "kinds": [
+    [
+     "storage",
+     75
+    ],
+    [
+     "workshop",
+     24
+    ],
+    [
+     "display",
+     16
+    ],
+    [
+     "bedroom",
+     15
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 9,
+    "y": 3,
+    "z": -21
+   }
+  },
+  {
+   "piece": "wood_pole",
+   "height": "seat height",
+   "near": "light",
+   "pieces": 90,
+   "rooms": 65,
+   "builds": 47,
+   "kinds": [
+    [
+     "empty",
+     17
+    ],
+    [
+     "corridor",
+     16
+    ],
+    [
+     "storage",
+     13
+    ],
+    [
+     "bedroom",
+     9
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 33.28,
+    "y": 18.5,
+    "z": 4.05
+   }
+  },
+  {
+   "piece": "wood_floor_1x1",
+   "height": "shelf height",
+   "near": "light",
+   "pieces": 162,
+   "rooms": 69,
+   "builds": 46,
+   "kinds": [
+    [
+     "corridor",
+     44
+    ],
+    [
+     "storage",
+     22
+    ],
+    [
+     "other",
+     21
+    ],
+    [
+     "empty",
+     18
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_deepnorthbase.blueprint",
+    "x": -15.32,
+    "y": 1.5,
+    "z": -17.68
+   }
+  },
+  {
+   "piece": "wood_beam",
+   "height": "table height",
+   "near": "kitchen",
+   "pieces": 97,
+   "rooms": 54,
+   "builds": 46,
+   "kinds": [
+    [
+     "empty",
+     22
+    ],
+    [
+     "kitchen",
+     22
+    ],
+    [
+     "storage",
+     15
+    ],
+    [
+     "home",
+     11
+    ]
+   ],
+   "example": {
+    "file": "other/endgame-base-for-10-players__endgamebasefor10.blueprint",
+    "x": -10.02,
+    "y": 9.65,
+    "z": -14.4
+   }
+  },
+  {
+   "piece": "wood_beam_1",
+   "height": "table height",
+   "near": "itemstand",
+   "pieces": 118,
+   "rooms": 65,
+   "builds": 45,
+   "kinds": [
+    [
+     "display",
+     33
+    ],
+    [
+     "smithy",
+     9
+    ],
+    [
+     "kitchen",
+     8
+    ],
+    [
+     "home",
+     8
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/das-kunsthaus.blueprint",
+    "x": -14.6,
+    "y": 3.58,
+    "z": 41.11
+   }
+  },
+  {
+   "piece": "wood_beam",
+   "height": "table height",
+   "near": "sign",
+   "pieces": 197,
+   "rooms": 69,
+   "builds": 45,
+   "kinds": [
+    [
+     "storage",
+     104
+    ],
+    [
+     "workshop",
+     29
+    ],
+    [
+     "bedroom",
+     17
+    ],
+    [
+     "home",
+     12
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_deepnorthbase.blueprint",
+    "x": -15.11,
+    "y": 1.3800000000000001,
+    "z": -14.67
+   }
+  },
+  {
+   "piece": "wood_beam_1",
+   "height": "shelf height",
+   "near": "itemstand",
+   "pieces": 124,
+   "rooms": 64,
+   "builds": 45,
+   "kinds": [
+    [
+     "display",
+     52
+    ],
+    [
+     "bedroom",
+     12
+    ],
+    [
+     "throne hall",
+     8
+    ],
+    [
+     "home",
+     7
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/house-scorpion__Å¿»¬¿¡_Scorpion_house.blueprint",
+    "x": -7.95,
+    "y": 13.65,
+    "z": -26.33
+   }
+  },
+  {
+   "piece": "wood_pole",
+   "height": "shelf height",
+   "near": "itemstand",
+   "pieces": 83,
+   "rooms": 58,
+   "builds": 44,
+   "kinds": [
+    [
+     "display",
+     17
+    ],
+    [
+     "home",
+     10
+    ],
+    [
+     "workshop",
+     8
+    ],
+    [
+     "throne hall",
+     8
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/castle-final-part.blueprint",
+    "x": -15.47,
+    "y": 0.34,
+    "z": 10.99
+   }
+  },
+  {
+   "piece": "wood_floor_1x1",
+   "height": "table height",
+   "near": "seat",
+   "pieces": 148,
+   "rooms": 62,
+   "builds": 43,
+   "kinds": [
+    [
+     "feast hall",
+     31
+    ],
+    [
+     "storage",
+     28
+    ],
+    [
+     "display",
+     17
+    ],
+    [
+     "home",
+     14
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/castle-final-part.blueprint",
+    "x": 5.98,
+    "y": 1.69,
+    "z": 4.76
+   }
+  },
+  {
+   "piece": "ashwood_beam_2m",
+   "height": "table height",
+   "near": "light",
+   "pieces": 208,
+   "rooms": 89,
+   "builds": 42,
+   "kinds": [
+    [
+     "empty",
+     36
+    ],
+    [
+     "other",
+     26
+    ],
+    [
+     "dining",
+     21
+    ],
+    [
+     "corridor",
+     18
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-teeny-house-for-a-friendly-family-of-4-vikings-1900inst__Å¿»¬¿¡_teeny-house.blueprint",
+    "x": 9.97,
+    "y": 2.44,
+    "z": -12.2
+   }
+  },
+  {
+   "piece": "wood_wall_half",
+   "height": "shelf height",
+   "near": "kitchen",
+   "pieces": 68,
+   "rooms": 51,
+   "builds": 42,
+   "kinds": [
+    [
+     "empty",
+     13
+    ],
+    [
+     "storage",
+     9
+    ],
+    [
+     "home",
+     9
+    ],
+    [
+     "kitchen",
+     9
+    ]
+   ],
+   "example": {
+    "file": "building/house-3245.blueprint",
+    "x": 2.86,
+    "y": 1.5,
+    "z": 13.94
+   }
+  },
+  {
+   "piece": "wood_floor_1x1",
+   "height": "table height",
+   "near": "rug",
+   "pieces": 183,
+   "rooms": 66,
+   "builds": 40,
+   "kinds": [
+    [
+     "bedroom",
+     45
+    ],
+    [
+     "corridor",
+     36
+    ],
+    [
+     "display",
+     26
+    ],
+    [
+     "smithy",
+     15
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/house-scorpion__Å¿»¬¿¡_Scorpion_house.blueprint",
+    "x": -5.47,
+    "y": 12.85,
+    "z": -23.08
+   }
+  },
+  {
+   "piece": "wood_beam",
+   "height": "shelf height",
+   "near": "kitchen",
+   "pieces": 81,
+   "rooms": 45,
+   "builds": 40,
+   "kinds": [
+    [
+     "kitchen",
+     28
+    ],
+    [
+     "smithy",
+     18
+    ],
+    [
+     "throne hall",
+     11
+    ],
+    [
+     "empty",
+     6
+    ]
+   ],
+   "example": {
+    "file": "artistic/apudma-s-mage-house.blueprint",
+    "x": 0.75,
+    "y": 16,
+    "z": 24.25
+   }
+  },
+  {
+   "piece": "wood_floor_1x1",
+   "height": "seat height",
+   "near": "itemstand",
+   "pieces": 185,
+   "rooms": 74,
+   "builds": 40,
+   "kinds": [
+    [
+     "display",
+     70
+    ],
+    [
+     "home",
+     21
+    ],
+    [
+     "bedroom",
+     16
+    ],
+    [
+     "dormitory",
+     12
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/lin-s-beautifull-mansion.blueprint",
+    "x": 4.75,
+    "y": 0.38,
+    "z": -2.26
+   }
+  },
+  {
+   "piece": "wood_floor_1x1",
+   "height": "seat height",
+   "near": "light",
+   "pieces": 138,
+   "rooms": 56,
+   "builds": 37,
+   "kinds": [
+    [
+     "empty",
+     74
+    ],
+    [
+     "smithy",
+     13
+    ],
+    [
+     "bedroom",
+     9
+    ],
+    [
+     "corridor",
+     7
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 16.1,
+    "y": 5.01,
+    "z": 21.51
+   }
+  },
+  {
+   "piece": "wood_floor",
+   "height": "table height",
+   "near": "light",
+   "pieces": 136,
+   "rooms": 69,
+   "builds": 37,
+   "kinds": [
+    [
+     "empty",
+     65
+    ],
+    [
+     "display",
+     35
+    ],
+    [
+     "corridor",
+     12
+    ],
+    [
+     "smithy",
+     6
+    ]
+   ],
+   "example": {
+    "file": "artistic/apudma-s-mage-house.blueprint",
+    "x": -5.16,
+    "y": 18.700000000000003,
+    "z": 19.32
+   }
+  },
+  {
+   "piece": "stone_floor_2x2",
+   "height": "table height",
+   "near": "light",
+   "pieces": 174,
+   "rooms": 76,
+   "builds": 35,
+   "kinds": [
+    [
+     "empty",
+     107
+    ],
+    [
+     "display",
+     44
+    ],
+    [
+     "corridor",
+     12
+    ],
+    [
+     "other",
+     6
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
+    "x": 30.16,
+    "y": 6.720000000000001,
+    "z": -20.32
+   }
+  },
+  {
+   "piece": "wood_floor",
+   "height": "table height",
+   "near": "itemstand",
+   "pieces": 123,
+   "rooms": 63,
+   "builds": 35,
+   "kinds": [
+    [
+     "display",
+     72
+    ],
+    [
+     "smithy",
+     11
+    ],
+    [
+     "storage",
+     10
+    ],
+    [
+     "empty",
+     8
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/das-kunsthaus.blueprint",
+    "x": -15.6,
+    "y": 3.58,
+    "z": 40.61
+   }
+  },
+  {
+   "piece": "wood_floor",
+   "height": "table height",
+   "near": "seat",
+   "pieces": 124,
+   "rooms": 63,
+   "builds": 35,
+   "kinds": [
+    [
+     "empty",
+     55
+    ],
+    [
+     "display",
+     29
+    ],
+    [
+     "storage",
+     10
+    ],
+    [
+     "corridor",
+     9
+    ]
+   ],
+   "example": {
+    "file": "artistic/yubaba-s-bathhouse-from-spirited-away.blueprint",
+    "x": 6.9,
+    "y": 4.68,
+    "z": -44.09
+   }
+  },
+  {
+   "piece": "wood_beam_1",
+   "height": "seat height",
+   "near": "itemstand",
+   "pieces": 92,
+   "rooms": 46,
+   "builds": 35,
+   "kinds": [
+    [
+     "display",
+     18
+    ],
+    [
+     "home",
+     15
+    ],
+    [
+     "feast hall",
+     15
+    ],
+    [
+     "smithy",
+     8
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/lin-s-beautifull-mansion.blueprint",
+    "x": -0.43,
+    "y": 0.23,
+    "z": 5.06
+   }
+  }
+ ],
+ "customAlone": [
   {
    "piece": "wood_wall_half",
    "height": "seat height",
@@ -6491,70 +8524,6 @@
    }
   },
   {
-   "piece": "wood_floor_1x1",
-   "height": "table height",
-   "near": "chest",
-   "pieces": 2747,
-   "rooms": 544,
-   "builds": 242,
-   "kinds": [
-    [
-     "storage",
-     952
-    ],
-    [
-     "other",
-     403
-    ],
-    [
-     "smithy",
-     254
-    ],
-    [
-     "bedroom",
-     212
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-mountain-home.blueprint",
-    "x": 8.8,
-    "y": 0.76,
-    "z": 6.43
-   }
-  },
-  {
-   "piece": "wood_floor_1x1",
-   "height": "shelf height",
-   "near": "chest",
-   "pieces": 2504,
-   "rooms": 501,
-   "builds": 239,
-   "kinds": [
-    [
-     "storage",
-     737
-    ],
-    [
-     "other",
-     379
-    ],
-    [
-     "smithy",
-     336
-    ],
-    [
-     "bedroom",
-     185
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-mountain-home.blueprint",
-    "x": 8.8,
-    "y": 1.7599999999999998,
-    "z": 6.43
-   }
-  },
-  {
    "piece": "wood_beam",
    "height": "shelf height",
    "near": "none",
@@ -6584,134 +8553,6 @@
     "x": 5,
     "y": 9,
     "z": 7
-   }
-  },
-  {
-   "piece": "woodwall",
-   "height": "high",
-   "near": "chest",
-   "pieces": 975,
-   "rooms": 519,
-   "builds": 207,
-   "kinds": [
-    [
-     "storage",
-     371
-    ],
-    [
-     "other",
-     156
-    ],
-    [
-     "smithy",
-     82
-    ],
-    [
-     "bedroom",
-     76
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 18.96,
-    "y": 12.11,
-    "z": -5.41
-   }
-  },
-  {
-   "piece": "wood_pole2",
-   "height": "high",
-   "near": "none",
-   "pieces": 1135,
-   "rooms": 438,
-   "builds": 201,
-   "kinds": [
-    [
-     "empty",
-     309
-    ],
-    [
-     "corridor",
-     156
-    ],
-    [
-     "bedroom",
-     97
-    ],
-    [
-     "workshop",
-     81
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 30.57,
-    "y": 2,
-    "z": 20.99
-   }
-  },
-  {
-   "piece": "wood_floor",
-   "height": "table height",
-   "near": "chest",
-   "pieces": 1726,
-   "rooms": 612,
-   "builds": 184,
-   "kinds": [
-    [
-     "storage",
-     1040
-    ],
-    [
-     "other",
-     167
-    ],
-    [
-     "corridor",
-     146
-    ],
-    [
-     "smithy",
-     84
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 14.3,
-    "y": 19.91,
-    "z": 5.62
-   }
-  },
-  {
-   "piece": "wood_floor",
-   "height": "shelf height",
-   "near": "chest",
-   "pieces": 1610,
-   "rooms": 544,
-   "builds": 183,
-   "kinds": [
-    [
-     "storage",
-     963
-    ],
-    [
-     "other",
-     199
-    ],
-    [
-     "corridor",
-     95
-    ],
-    [
-     "smithy",
-     84
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 29.27,
-    "y": 3.04,
-    "z": 16.77
    }
   },
   {
@@ -6747,38 +8588,6 @@
    }
   },
   {
-   "piece": "wood_wall_half",
-   "height": "high",
-   "near": "none",
-   "pieces": 696,
-   "rooms": 328,
-   "builds": 174,
-   "kinds": [
-    [
-     "empty",
-     213
-    ],
-    [
-     "bedroom",
-     108
-    ],
-    [
-     "corridor",
-     89
-    ],
-    [
-     "kitchen",
-     49
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 31.08,
-    "y": 8.16,
-    "z": -18.03
-   }
-  },
-  {
    "piece": "wood_pole",
    "height": "seat height",
    "near": "none",
@@ -6811,102 +8620,6 @@
    }
   },
   {
-   "piece": "woodwall",
-   "height": "high",
-   "near": "light",
-   "pieces": 552,
-   "rooms": 298,
-   "builds": 163,
-   "kinds": [
-    [
-     "bedroom",
-     95
-    ],
-    [
-     "empty",
-     88
-    ],
-    [
-     "home",
-     57
-    ],
-    [
-     "corridor",
-     45
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/das-kunsthaus.blueprint",
-    "x": -8.62,
-    "y": -1.0299999999999998,
-    "z": 11.57
-   }
-  },
-  {
-   "piece": "wood_beam",
-   "height": "table height",
-   "near": "chest",
-   "pieces": 784,
-   "rooms": 320,
-   "builds": 160,
-   "kinds": [
-    [
-     "storage",
-     327
-    ],
-    [
-     "smithy",
-     83
-    ],
-    [
-     "other",
-     65
-    ],
-    [
-     "bedroom",
-     64
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 31,
-    "y": 7,
-    "z": 4
-   }
-  },
-  {
-   "piece": "wood_beam",
-   "height": "shelf height",
-   "near": "chest",
-   "pieces": 748,
-   "rooms": 315,
-   "builds": 160,
-   "kinds": [
-    [
-     "storage",
-     286
-    ],
-    [
-     "smithy",
-     111
-    ],
-    [
-     "other",
-     79
-    ],
-    [
-     "bedroom",
-     67
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/castle-final-part.blueprint",
-    "x": -18.47,
-    "y": 1.69,
-    "z": 9.66
-   }
-  },
-  {
    "piece": "wood_wall_quarter",
    "height": "table height",
    "near": "none",
@@ -6936,38 +8649,6 @@
     "x": 31.78,
     "y": 19,
     "z": 4.05
-   }
-  },
-  {
-   "piece": "wood_wall_quarter",
-   "height": "high",
-   "near": "none",
-   "pieces": 517,
-   "rooms": 260,
-   "builds": 133,
-   "kinds": [
-    [
-     "empty",
-     220
-    ],
-    [
-     "bedroom",
-     49
-    ],
-    [
-     "corridor",
-     48
-    ],
-    [
-     "workshop",
-     32
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/the-lost-hall-of-aegir.blueprint",
-    "x": 43.15,
-    "y": 22.599999999999998,
-    "z": 103.43
    }
   },
   {
@@ -7131,70 +8812,6 @@
    }
   },
   {
-   "piece": "wood_wall_half",
-   "height": "seat height",
-   "near": "chest",
-   "pieces": 470,
-   "rooms": 262,
-   "builds": 129,
-   "kinds": [
-    [
-     "storage",
-     201
-    ],
-    [
-     "other",
-     81
-    ],
-    [
-     "smithy",
-     61
-    ],
-    [
-     "bedroom",
-     35
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/house-scorpion__Å¿»¬¿¡_Scorpion_house.blueprint",
-    "x": -4.95,
-    "y": 16.64,
-    "z": -45.14
-   }
-  },
-  {
-   "piece": "wood_wall_half",
-   "height": "shelf height",
-   "near": "chest",
-   "pieces": 481,
-   "rooms": 257,
-   "builds": 128,
-   "kinds": [
-    [
-     "storage",
-     192
-    ],
-    [
-     "other",
-     59
-    ],
-    [
-     "bedroom",
-     48
-    ],
-    [
-     "smithy",
-     40
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/das-kunsthaus.blueprint",
-    "x": -8.6,
-    "y": -0.92,
-    "z": 53.61
-   }
-  },
-  {
    "piece": "wood_wall_quarter",
    "height": "shelf height",
    "near": "none",
@@ -7323,134 +8940,6 @@
    }
   },
   {
-   "piece": "wood_wall_half",
-   "height": "high",
-   "near": "chest",
-   "pieces": 520,
-   "rooms": 258,
-   "builds": 116,
-   "kinds": [
-    [
-     "storage",
-     255
-    ],
-    [
-     "other",
-     54
-    ],
-    [
-     "smithy",
-     51
-    ],
-    [
-     "bedroom",
-     40
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 18.96,
-    "y": 13.139999999999999,
-    "z": -5.4
-   }
-  },
-  {
-   "piece": "wood_pole",
-   "height": "high",
-   "near": "none",
-   "pieces": 318,
-   "rooms": 157,
-   "builds": 114,
-   "kinds": [
-    [
-     "empty",
-     76
-    ],
-    [
-     "corridor",
-     72
-    ],
-    [
-     "home",
-     33
-    ],
-    [
-     "bedroom",
-     22
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 6,
-    "y": 5.5,
-    "z": -10
-   }
-  },
-  {
-   "piece": "wood_wall_half",
-   "height": "seat height",
-   "near": "light",
-   "pieces": 313,
-   "rooms": 156,
-   "builds": 108,
-   "kinds": [
-    [
-     "empty",
-     73
-    ],
-    [
-     "bedroom",
-     39
-    ],
-    [
-     "home",
-     37
-    ],
-    [
-     "other",
-     33
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/medieval-church.blueprint",
-    "x": -4.86,
-    "y": 0.57,
-    "z": 12.53
-   }
-  },
-  {
-   "piece": "woodiron_pole",
-   "height": "high",
-   "near": "none",
-   "pieces": 478,
-   "rooms": 229,
-   "builds": 107,
-   "kinds": [
-    [
-     "empty",
-     215
-    ],
-    [
-     "home",
-     53
-    ],
-    [
-     "corridor",
-     41
-    ],
-    [
-     "shrine",
-     29
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/tavern-in-the-meadows-contest.blueprint",
-    "x": -4.97,
-    "y": 1.34,
-    "z": 4.03
-   }
-  },
-  {
    "piece": "wood_wall_roof_45",
    "height": "shelf height",
    "near": "none",
@@ -7547,38 +9036,6 @@
    }
   },
   {
-   "piece": "wood_floor_1x1",
-   "height": "table height",
-   "near": "itemstand",
-   "pieces": 691,
-   "rooms": 190,
-   "builds": 99,
-   "kinds": [
-    [
-     "display",
-     231
-    ],
-    [
-     "smithy",
-     78
-    ],
-    [
-     "home",
-     57
-    ],
-    [
-     "throne hall",
-     55
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/castle-final-part.blueprint",
-    "x": -15.45,
-    "y": 10.899999999999999,
-    "z": 6.16
-   }
-  },
-  {
    "piece": "ashwood_beam_2m",
    "height": "table height",
    "near": "none",
@@ -7611,262 +9068,6 @@
    }
   },
   {
-   "piece": "wood_pole2",
-   "height": "high",
-   "near": "light",
-   "pieces": 300,
-   "rooms": 178,
-   "builds": 95,
-   "kinds": [
-    [
-     "empty",
-     73
-    ],
-    [
-     "throne hall",
-     34
-    ],
-    [
-     "bedroom",
-     30
-    ],
-    [
-     "home",
-     26
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 16.57,
-    "y": 2,
-    "z": 20.99
-   }
-  },
-  {
-   "piece": "woodwall",
-   "height": "high",
-   "near": "itemstand",
-   "pieces": 300,
-   "rooms": 166,
-   "builds": 91,
-   "kinds": [
-    [
-     "display",
-     68
-    ],
-    [
-     "bedroom",
-     34
-    ],
-    [
-     "feast hall",
-     30
-    ],
-    [
-     "throne hall",
-     24
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/das-kunsthaus.blueprint",
-    "x": -9.62,
-    "y": -1.0299999999999998,
-    "z": 2.57
-   }
-  },
-  {
-   "piece": "wood_pole",
-   "height": "shelf height",
-   "near": "chest",
-   "pieces": 251,
-   "rooms": 141,
-   "builds": 89,
-   "kinds": [
-    [
-     "storage",
-     78
-    ],
-    [
-     "bedroom",
-     42
-    ],
-    [
-     "home",
-     27
-    ],
-    [
-     "other",
-     23
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/teepee-supreme.blueprint",
-    "x": -5.62,
-    "y": 0.86,
-    "z": 6.01
-   }
-  },
-  {
-   "piece": "wood_roof_45",
-   "height": "high",
-   "near": "none",
-   "pieces": 800,
-   "rooms": 160,
-   "builds": 89,
-   "kinds": [
-    [
-     "empty",
-     205
-    ],
-    [
-     "bedroom",
-     154
-    ],
-    [
-     "home",
-     150
-    ],
-    [
-     "corridor",
-     62
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 12.6,
-    "y": 5.4,
-    "z": -21.74
-   }
-  },
-  {
-   "piece": "wood_beam_26",
-   "height": "high",
-   "near": "none",
-   "pieces": 257,
-   "rooms": 112,
-   "builds": 87,
-   "kinds": [
-    [
-     "bedroom",
-     44
-    ],
-    [
-     "home",
-     41
-    ],
-    [
-     "empty",
-     37
-    ],
-    [
-     "display",
-     23
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 4.98,
-    "y": 14.719999999999999,
-    "z": -0.58
-   }
-  },
-  {
-   "piece": "wood_wall_half",
-   "height": "shelf height",
-   "near": "light",
-   "pieces": 219,
-   "rooms": 117,
-   "builds": 87,
-   "kinds": [
-    [
-     "empty",
-     40
-    ],
-    [
-     "bedroom",
-     31
-    ],
-    [
-     "home",
-     22
-    ],
-    [
-     "other",
-     19
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/tavern-in-the-meadows-contest.blueprint",
-    "x": 3.54,
-    "y": 4.32,
-    "z": 0.51
-   }
-  },
-  {
-   "piece": "darkwood_decowall",
-   "height": "high",
-   "near": "none",
-   "pieces": 399,
-   "rooms": 144,
-   "builds": 86,
-   "kinds": [
-    [
-     "empty",
-     111
-    ],
-    [
-     "bedroom",
-     48
-    ],
-    [
-     "corridor",
-     44
-    ],
-    [
-     "shrine",
-     40
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-teeny-house-for-a-friendly-family-of-4-vikings-1900inst__Å¿»¬¿¡_teeny-house.blueprint",
-    "x": -9.6,
-    "y": 9.44,
-    "z": -8.73
-   }
-  },
-  {
-   "piece": "wood_wall_quarter",
-   "height": "table height",
-   "near": "chest",
-   "pieces": 217,
-   "rooms": 142,
-   "builds": 84,
-   "kinds": [
-    [
-     "other",
-     47
-    ],
-    [
-     "storage",
-     45
-    ],
-    [
-     "bedroom",
-     26
-    ],
-    [
-     "workshop",
-     17
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_deepnorthbase.blueprint",
-    "x": -9.11,
-    "y": 0.38,
-    "z": -7.17
-   }
-  },
-  {
    "piece": "wood_beam",
    "height": "seat height",
    "near": "none",
@@ -7896,262 +9097,6 @@
     "x": 6,
     "y": 3,
     "z": -13
-   }
-  },
-  {
-   "piece": "woodwall",
-   "height": "high",
-   "near": "banner",
-   "pieces": 242,
-   "rooms": 136,
-   "builds": 81,
-   "kinds": [
-    [
-     "throne hall",
-     41
-    ],
-    [
-     "bedroom",
-     38
-    ],
-    [
-     "home",
-     35
-    ],
-    [
-     "empty",
-     29
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/das-kunsthaus.blueprint",
-    "x": -14.6,
-    "y": 3.58,
-    "z": 39.61
-   }
-  },
-  {
-   "piece": "wood_pole_log_4",
-   "height": "high",
-   "near": "none",
-   "pieces": 333,
-   "rooms": 148,
-   "builds": 80,
-   "kinds": [
-    [
-     "empty",
-     79
-    ],
-    [
-     "home",
-     45
-    ],
-    [
-     "shrine",
-     33
-    ],
-    [
-     "other",
-     32
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/das-kunsthaus.blueprint",
-    "x": -8.51,
-    "y": 0.040000000000000036,
-    "z": 6.57
-   }
-  },
-  {
-   "piece": "wood_beam",
-   "height": "table height",
-   "near": "light",
-   "pieces": 261,
-   "rooms": 128,
-   "builds": 79,
-   "kinds": [
-    [
-     "empty",
-     106
-    ],
-    [
-     "home",
-     32
-    ],
-    [
-     "bedroom",
-     24
-    ],
-    [
-     "smithy",
-     14
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 21.4,
-    "y": 5.5600000000000005,
-    "z": 21.99
-   }
-  },
-  {
-   "piece": "wood_floor_1x1",
-   "height": "shelf height",
-   "near": "itemstand",
-   "pieces": 403,
-   "rooms": 134,
-   "builds": 77,
-   "kinds": [
-    [
-     "display",
-     153
-    ],
-    [
-     "throne hall",
-     40
-    ],
-    [
-     "home",
-     36
-    ],
-    [
-     "kitchen",
-     25
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/lin-s-beautifull-mansion.blueprint",
-    "x": 5.75,
-    "y": 2.38,
-    "z": -3.26
-   }
-  },
-  {
-   "piece": "wood_beam_1",
-   "height": "table height",
-   "near": "chest",
-   "pieces": 210,
-   "rooms": 114,
-   "builds": 77,
-   "kinds": [
-    [
-     "storage",
-     45
-    ],
-    [
-     "other",
-     41
-    ],
-    [
-     "bedroom",
-     26
-    ],
-    [
-     "kitchen",
-     23
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_deepnorthbase.blueprint",
-    "x": -15.31,
-    "y": 1.3800000000000001,
-    "z": -17.09
-   }
-  },
-  {
-   "piece": "wood_pole2",
-   "height": "high",
-   "near": "chest",
-   "pieces": 280,
-   "rooms": 155,
-   "builds": 76,
-   "kinds": [
-    [
-     "storage",
-     107
-    ],
-    [
-     "other",
-     47
-    ],
-    [
-     "home",
-     28
-    ],
-    [
-     "bedroom",
-     22
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 31,
-    "y": 8,
-    "z": 5
-   }
-  },
-  {
-   "piece": "wood_wall_quarter",
-   "height": "table height",
-   "near": "light",
-   "pieces": 159,
-   "rooms": 115,
-   "builds": 76,
-   "kinds": [
-    [
-     "empty",
-     45
-    ],
-    [
-     "bedroom",
-     26
-    ],
-    [
-     "workshop",
-     15
-    ],
-    [
-     "throne hall",
-     13
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_earlystoragefull.blueprint",
-    "x": -14.64,
-    "y": 0.37,
-    "z": 0.06
-   }
-  },
-  {
-   "piece": "wood_wall_half",
-   "height": "shelf height",
-   "near": "itemstand",
-   "pieces": 168,
-   "rooms": 106,
-   "builds": 75,
-   "kinds": [
-    [
-     "display",
-     66
-    ],
-    [
-     "home",
-     19
-    ],
-    [
-     "throne hall",
-     18
-    ],
-    [
-     "bedroom",
-     17
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/das-kunsthaus.blueprint",
-    "x": -13.62,
-    "y": -1.5299999999999998,
-    "z": 2.57
    }
   },
   {
@@ -8252,294 +9197,6 @@
   },
   {
    "piece": "wood_beam_1",
-   "height": "shelf height",
-   "near": "chest",
-   "pieces": 245,
-   "rooms": 110,
-   "builds": 74,
-   "kinds": [
-    [
-     "storage",
-     51
-    ],
-    [
-     "other",
-     41
-    ],
-    [
-     "smithy",
-     32
-    ],
-    [
-     "workshop",
-     30
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/castle-final-part.blueprint",
-    "x": -20.24,
-    "y": 1.69,
-    "z": 8.11
-   }
-  },
-  {
-   "piece": "wood_floor_1x1",
-   "height": "table height",
-   "near": "light",
-   "pieces": 215,
-   "rooms": 109,
-   "builds": 74,
-   "kinds": [
-    [
-     "empty",
-     42
-    ],
-    [
-     "bedroom",
-     28
-    ],
-    [
-     "storage",
-     22
-    ],
-    [
-     "sitting",
-     18
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_deepnorthbase.blueprint",
-    "x": -15.22,
-    "y": 1.4500000000000002,
-    "z": -17.78
-   }
-  },
-  {
-   "piece": "wood_pole",
-   "height": "shelf height",
-   "near": "light",
-   "pieces": 162,
-   "rooms": 109,
-   "builds": 72,
-   "kinds": [
-    [
-     "empty",
-     33
-    ],
-    [
-     "storage",
-     22
-    ],
-    [
-     "throne hall",
-     20
-    ],
-    [
-     "workshop",
-     17
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 6,
-    "y": 5.5,
-    "z": 6
-   }
-  },
-  {
-   "piece": "wood_pole",
-   "height": "high",
-   "near": "chest",
-   "pieces": 223,
-   "rooms": 117,
-   "builds": 72,
-   "kinds": [
-    [
-     "storage",
-     74
-    ],
-    [
-     "bedroom",
-     32
-    ],
-    [
-     "workshop",
-     23
-    ],
-    [
-     "throne hall",
-     21
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/castle-final-part.blueprint",
-    "x": -18.64,
-    "y": 2.19,
-    "z": 9.08
-   }
-  },
-  {
-   "piece": "darkwood_roof_45",
-   "height": "high",
-   "near": "none",
-   "pieces": 716,
-   "rooms": 175,
-   "builds": 72,
-   "kinds": [
-    [
-     "empty",
-     307
-    ],
-    [
-     "other",
-     70
-    ],
-    [
-     "corridor",
-     66
-    ],
-    [
-     "bedroom",
-     66
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/dynef-stning-plains-fortress-fully-decorated-late-game-base-for-up-to-6-vikings__Brueplint_dunefortressendgame.blueprint",
-    "x": -14.94,
-    "y": 3.8600000000000003,
-    "z": -32.37
-   }
-  },
-  {
-   "piece": "woodwall",
-   "height": "shelf height",
-   "near": "chest",
-   "pieces": 193,
-   "rooms": 112,
-   "builds": 70,
-   "kinds": [
-    [
-     "storage",
-     124
-    ],
-    [
-     "other",
-     50
-    ],
-    [
-     "kitchen",
-     7
-    ],
-    [
-     "bedroom",
-     3
-    ]
-   ],
-   "example": {
-    "file": "artistic/mage-house-wip-inspired-by-apudma__MutantArtCat_MageHouse.blueprint",
-    "x": 11.06,
-    "y": 7,
-    "z": -6.9
-   }
-  },
-  {
-   "piece": "ashwood_wall_2x2",
-   "height": "high",
-   "near": "none",
-   "pieces": 368,
-   "rooms": 164,
-   "builds": 69,
-   "kinds": [
-    [
-     "empty",
-     119
-    ],
-    [
-     "other",
-     39
-    ],
-    [
-     "bedroom",
-     31
-    ],
-    [
-     "kitchen",
-     25
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/my-country-house__Å¿»¬¿¡_big_house.blueprint",
-    "x": 1.96,
-    "y": 2.93,
-    "z": 27.28
-   }
-  },
-  {
-   "piece": "wood_wall_half",
-   "height": "seat height",
-   "near": "itemstand",
-   "pieces": 193,
-   "rooms": 109,
-   "builds": 68,
-   "kinds": [
-    [
-     "display",
-     92
-    ],
-    [
-     "home",
-     22
-    ],
-    [
-     "kitchen",
-     14
-    ],
-    [
-     "bedroom",
-     13
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/das-kunsthaus.blueprint",
-    "x": -14.6,
-    "y": 3.08,
-    "z": 40.61
-   }
-  },
-  {
-   "piece": "wood_beam_45",
-   "height": "high",
-   "near": "none",
-   "pieces": 212,
-   "rooms": 91,
-   "builds": 68,
-   "kinds": [
-    [
-     "empty",
-     72
-    ],
-    [
-     "corridor",
-     33
-    ],
-    [
-     "home",
-     28
-    ],
-    [
-     "dormitory",
-     21
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 6,
-    "y": 4,
-    "z": -9
-   }
-  },
-  {
-   "piece": "wood_beam_1",
    "height": "seat height",
    "near": "none",
    "pieces": 231,
@@ -8568,70 +9225,6 @@
     "x": 4.06,
     "y": 1.2,
     "z": 5.53
-   }
-  },
-  {
-   "piece": "wood_wall_quarter",
-   "height": "high",
-   "near": "chest",
-   "pieces": 152,
-   "rooms": 95,
-   "builds": 67,
-   "kinds": [
-    [
-     "storage",
-     35
-    ],
-    [
-     "other",
-     22
-    ],
-    [
-     "smithy",
-     16
-    ],
-    [
-     "bedroom",
-     16
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/deep-north-1-0-ready-base__Sheepshank_deepnorthbase.blueprint",
-    "x": -9.11,
-    "y": 2.38,
-    "z": -7.17
-   }
-  },
-  {
-   "piece": "wood_wall_half",
-   "height": "seat height",
-   "near": "kitchen",
-   "pieces": 148,
-   "rooms": 78,
-   "builds": 66,
-   "kinds": [
-    [
-     "kitchen",
-     86
-    ],
-    [
-     "smithy",
-     19
-    ],
-    [
-     "throne hall",
-     18
-    ],
-    [
-     "display",
-     8
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 31.28,
-    "y": 18.5,
-    "z": 1.05
    }
   },
   {
@@ -8667,166 +9260,6 @@
    }
   },
   {
-   "piece": "wood_beam",
-   "height": "shelf height",
-   "near": "light",
-   "pieces": 172,
-   "rooms": 92,
-   "builds": 66,
-   "kinds": [
-    [
-     "empty",
-     50
-    ],
-    [
-     "other",
-     24
-    ],
-    [
-     "bedroom",
-     16
-    ],
-    [
-     "corridor",
-     13
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 15.57,
-    "y": 3.01,
-    "z": 20.99
-   }
-  },
-  {
-   "piece": "woodwall",
-   "height": "high",
-   "near": "kitchen",
-   "pieces": 143,
-   "rooms": 91,
-   "builds": 64,
-   "kinds": [
-    [
-     "kitchen",
-     46
-    ],
-    [
-     "throne hall",
-     23
-    ],
-    [
-     "other",
-     13
-    ],
-    [
-     "smithy",
-     11
-    ]
-   ],
-   "example": {
-    "file": "blacksmith/cute-little-blacksmith-vbuild.blueprint",
-    "x": 5.73,
-    "y": 3,
-    "z": 3.52
-   }
-  },
-  {
-   "piece": "wood_beam",
-   "height": "table height",
-   "near": "itemstand",
-   "pieces": 182,
-   "rooms": 96,
-   "builds": 64,
-   "kinds": [
-    [
-     "display",
-     58
-    ],
-    [
-     "home",
-     21
-    ],
-    [
-     "feast hall",
-     20
-    ],
-    [
-     "kitchen",
-     16
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/castle-final-part.blueprint",
-    "x": 25.96,
-    "y": 10.78,
-    "z": 0.18
-   }
-  },
-  {
-   "piece": "woodwall",
-   "height": "high",
-   "near": "seat",
-   "pieces": 130,
-   "rooms": 100,
-   "builds": 62,
-   "kinds": [
-    [
-     "bedroom",
-     29
-    ],
-    [
-     "throne hall",
-     16
-    ],
-    [
-     "other",
-     15
-    ],
-    [
-     "home",
-     13
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/a-mountain-home.blueprint",
-    "x": 3.25,
-    "y": -7.24,
-    "z": 11.88
-   }
-  },
-  {
-   "piece": "wood_floor",
-   "height": "table height",
-   "near": "kitchen",
-   "pieces": 147,
-   "rooms": 75,
-   "builds": 61,
-   "kinds": [
-    [
-     "empty",
-     35
-    ],
-    [
-     "storage",
-     30
-    ],
-    [
-     "corridor",
-     22
-    ],
-    [
-     "other",
-     19
-    ]
-   ],
-   "example": {
-    "file": "advanced-base/lin-s-beautifull-mansion.blueprint",
-    "x": -15.61,
-    "y": 0.96,
-    "z": 0.17
-   }
-  },
-  {
    "piece": "darkwood_decowall",
    "height": "shelf height",
    "near": "none",
@@ -8859,67 +9292,99 @@
    }
   },
   {
-   "piece": "darkwood_pole4",
-   "height": "high",
+   "piece": "woodiron_beam",
+   "height": "shelf height",
    "near": "none",
-   "pieces": 173,
-   "rooms": 94,
+   "pieces": 485,
+   "rooms": 111,
    "builds": 58,
    "kinds": [
     [
      "empty",
-     56
+     227
     ],
     [
-     "bedroom",
-     28
+     "corridor",
+     103
     ],
     [
-     "other",
-     13
+     "shrine",
+     68
     ],
     [
      "storage",
-     9
+     29
     ]
    ],
    "example": {
-    "file": "advanced-base/a-cozy-home-for-a-friendly-company-of-vikings__Å¿»¬¿¡_cozy_house.blueprint",
-    "x": 4,
-    "y": 2.91,
-    "z": -3.77
+    "file": "advanced-base/the-lost-hall-of-aegir.blueprint",
+    "x": 31.38,
+    "y": 12.6,
+    "z": 37.55
    }
   },
   {
-   "piece": "woodwall",
-   "height": "high",
-   "near": "station_ext",
-   "pieces": 87,
-   "rooms": 74,
+   "piece": "ashwood_beam_2m",
+   "height": "shelf height",
+   "near": "none",
+   "pieces": 450,
+   "rooms": 137,
    "builds": 58,
    "kinds": [
     [
-     "smithy",
-     18
+     "empty",
+     152
     ],
     [
-     "workshop",
-     16
+     "corridor",
+     100
+    ],
+    [
+     "sitting",
+     39
     ],
     [
      "other",
-     14
+     34
+    ]
+   ],
+   "example": {
+    "file": "advanced-base/a-teeny-house-for-a-friendly-family-of-4-vikings-1900inst__Å¿»¬¿¡_teeny-house.blueprint",
+    "x": -6.91,
+    "y": 2.4899999999999998,
+    "z": -3.12
+   }
+  },
+  {
+   "piece": "woodiron_pole",
+   "height": "shelf height",
+   "near": "none",
+   "pieces": 154,
+   "rooms": 99,
+   "builds": 55,
+   "kinds": [
+    [
+     "empty",
+     68
+    ],
+    [
+     "shrine",
+     28
     ],
     [
      "bedroom",
+     13
+    ],
+    [
+     "corridor",
      10
     ]
    ],
    "example": {
-    "file": "advanced-base/the-pier.blueprint",
-    "x": -29.9,
-    "y": 2.9,
-    "z": -7.6
+    "file": "advanced-base/tavern-in-the-meadows-contest.blueprint",
+    "x": -4.97,
+    "y": -0.66,
+    "z": 4.03
    }
   }
  ]

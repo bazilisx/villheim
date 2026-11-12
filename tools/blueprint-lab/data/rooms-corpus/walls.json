@@ -8,7 +8,7 @@
   "likedRule": "top quarter of vanilla builds by votes (votes >= 10), ties by downloads",
   "rooms": 20400,
   "roomsLiked": 11945,
-  "families": "prefab first cut (lab/rooms_corpus_lib.js FAMILY_PREFAB)",
+  "families": "track A catalog (data/catalog/pieces.json family, version 1); prefabs it does not list have no family",
   "roomRule": "reader room (lib/decorate.js readLevel) with half or more of its floor under a roof, 4 to 400 m2, vanilla build, no mod piece inside; floor furniture: pivot under 0.5 m over the floor"
  },
  "fields": {

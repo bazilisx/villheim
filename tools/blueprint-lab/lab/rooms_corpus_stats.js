@@ -14,7 +14,7 @@ const lab = path.join(__dirname, '..');
 const D = require(lab + '/lib/decorate.js');
 const { obox, ptDist, overlap } = D._int;
 const L = require('./rooms_corpus_lib.js');
-const { P, typeOf, SEATK, LIGHTK, FLOOR_T, familyOf, qs, q, share, top, inc, norm, angDiff } = L;
+const { P, typeOf, SEATK, LIGHTK, FLOOR_T, familyOf, colorDiff, qs, q, share, top, inc, norm, angDiff } = L;
 
 const args = process.argv.slice(2);
 const opt = k => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
@@ -22,6 +22,8 @@ const [src, outDir] = args;
 if (!src || !outDir) { console.error('usage: node lab/rooms_corpus_stats.js <extract dir> <out dir> [--showcase dir] [--catalog pieces.json]'); process.exit(1); }
 L.loadCatalog(opt('--catalog') || '/home/claude/wt/catalog/tools/blueprint-lab/data/catalog/pieces.json');
 const showDir = opt('--showcase');
+// --audit: also write raw.json with per-room, per-set and per-door records (lab/rooms_corpus_audit.js reads it)
+const AUDIT = args.includes('--audit');
 fs.mkdirSync(outDir, { recursive: true });
 
 const G = 0.5, SUB = 0.25;
@@ -101,11 +103,12 @@ const FOCAL_ORDER = {
 // ---------------------------------------------------------------- accumulators
 const A = {
   rooms: 0, roomsLiked: 0, kinds: {}, // kind -> { n, liked, builds:Set, area:[], W:[], Lg:[], ceil:[], counts:{type:[...]}, ... }
-  examples: {}, tableSets: [], beds: [], forges: [], benches: [], bars: [], custom: {}, customEx: {}, cohesion: { seatTable: [], roomFam: [] },
+  examples: {}, tableSets: [], beds: [], forges: [], benches: [], bars: [], custom: {}, customEx: {}, cohesion: { seatTable: [], roomFam: [], roomNames: [] },
   space: { corridor: [], hall: [], doorDepth: {}, doorNear: {}, through: {}, toFocal: {}, structThrough: {}, stairNear: [], porch: [], gallery: [], wing: [] },
   walls: { items: [], pairs: {}, shelfTops: {}, over: {}, heights: {}, spacing: {}, windowRel: {} },
   roomPairs: { n: 0, item: {}, pair: {} }, roomFamPairs: { n: 0, item: {}, pair: {} },
   roomTypeCounts: {}, // per room counts by name for caps (per room)
+  raw: { rooms: [], doors: [], ways: [], halls: [], walls: [], wings: [], loose: [] },
   buildIn: new Map(), showIn: new Map(), showNames: new Map(), // per build, indoors: area, counts by name
 };
 function K(kind) {
@@ -157,6 +160,8 @@ function processRoom(r, bi) {
   for (const it of floor) if (it.t === 'seat') inc(k.seatK, SEATK[it.n] || it.n);
   for (const it of items) if (it.t === 'light') inc(k.lightK, LIGHTK(it.n));
   A.rooms++; if (B.liked) A.roomsLiked++;
+  const RAWR = AUDIT ? { kind, area: r.area, lvl: r.lvl, cx: r.cx, cz: r.cz, counts: cnt, nFurn: floor.length, names: floor.map(it => it.n) } : null;
+  if (RAWR) A.raw.rooms.push(RAWR);
   // per room counts by name (caps per room)
   const byName = {};
   for (const it of items) if (it.t !== 'build' && it.t !== 'plant' && (it.in || ['light', 'drape', 'banner', 'shelf', 'itemstand', 'sign'].includes(it.t))) inc(byName, it.n);
@@ -176,6 +181,8 @@ function processRoom(r, bi) {
     if (c.length) { const big = c.sort((a, b) => sizeOf(b.n)[0] * sizeOf(b.n)[2] - sizeOf(a.n)[0] * sizeOf(a.n)[2])[0]; focal = { t, n: big.n, x: big.x, z: big.z, it: big }; break; }
   }
   inc(k.focal, focal ? (focal.n || focal.t) : 'none');
+  if (RAWR) RAWR.focal = focal ? (focal.n || focal.t) : null;
+  const wallD0 = (x, z) => { let m = Infinity; for (const f of r.faces) { if (f[9]) continue; const t = (x - f[0]) * f[2] + (z - f[1]) * f[3]; if (t < f[6] - 0.3 || t > f[7] + 0.3) continue; const off = (x - f[0]) * f[4] + (z - f[1]) * f[5]; if (off > -0.3) m = Math.min(m, Math.max(0, off - f[8])); } return m; };
   // ---------------- table sets
   const tables = floor.filter(it => it.t === 'table');
   const seats = floor.filter(it => it.t === 'seat' || it.t === 'throne');
@@ -208,6 +215,13 @@ function processRoom(r, bi) {
     if (d > 8) continue;
     k.faceFocal.push({ n: s.n, d: r2(d), rel: Math.round(norm(s.yaw - yawTo(focal.x - s.x, focal.z - s.z))) });
   }
+  // loose seats (audit): seats in no table set, not against a wall and not within 3 m of a fire or a throne
+  if (RAWR) for (const s2 of seats) {
+    if ([...setOf.values()].some(l => l.some(o => o.s === s2)) || s2.t === 'throne') continue;
+    const nearFire = floor.some(o => (o.t === 'fire' || o.t === 'throne') && Math.hypot(o.x - s2.x, o.z - s2.z) < 3);
+    const wd = wallD0(s2.x, s2.z);
+    if (!nearFire && wd > 0.6) A.raw.loose.push({ kind, n: s2.n, x: r2(s2.x), z: r2(s2.z), lvl: r.lvl, wall: r2(Math.min(wd, 9)) });
+  }
   // ---------------- beds: what is beside and at the foot
   const wallD = (x, z) => { let m = Infinity; for (const f of r.faces) { if (f[9]) continue; const t = (x - f[0]) * f[2] + (z - f[1]) * f[3]; if (t < f[6] - 0.3 || t > f[7] + 0.3) continue; const off = (x - f[0]) * f[4] + (z - f[1]) * f[5]; if (off > -0.3) m = Math.min(m, Math.max(0, off - f[8])); } return m; };
   for (const bd of floor.filter(it => it.t === 'bed')) {
@@ -238,6 +252,7 @@ function processRoom(r, bi) {
   const stor = items.filter(it => it.in && (it.t === 'chest' || it.t === 'barrel'));
   const stacked = stor.filter(a => stor.some(c => c !== a && Math.hypot(c.x - a.x, c.z - a.z) < 0.4 && a.y - c.y > 0.45 && a.y - c.y < 1.6)).length;
   k.stack.push([stor.length, stacked]);
+  if (RAWR) { RAWR.stacked = stacked; RAWR.fams = [...new Set(floor.map(it => familyOf(it.n)).filter(Boolean))]; RAWR.tone = floor.filter(it => ['table', 'seat', 'throne', 'bed', 'chest'].includes(it.t)).map(it => it.n); RAWR.outdoor = items.filter(it => it.in && /^(wood_fence|darkwood_raven|darkwood_wolf|wood_dragon1)$/.test(it.n)).map(it => it.n); }
   for (const ch of floor.filter(it => it.t === 'chest')) k.chestWall.push(Math.min(9, Math.max(0, wallD(ch.x, ch.z) - Math.min(ch.b.hw, ch.b.hd))));
   // ---------------- work corners: forge and workbench with what stands round them
   for (const st of floor.filter(it => it.t === 'forge' || /^(piece_workbench|piece_artisanstation|piece_stonecutter|piece_magetable|blackforge)$/.test(it.n))) {
@@ -250,10 +265,13 @@ function processRoom(r, bi) {
       const lx = dx * c - dz * s0, lz = dx * s0 + dz * c;
       near.push({ n: o.n, d: r2(d), lx: r2(lx), lz: r2(lz), y: r2(o.y), rel: Math.round(norm(o.yaw - st.yaw)) });
     }
-    A.forges.push({ kind, liked: B.liked, n: st.n, wall: r2(Math.min(9, wallD(st.x, st.z))), near, file: B.file });
+    // the back of the station (local -z, the side away from where the smith stands) to the nearest wall
+    const [sfx, sfz] = fwd(st.yaw);
+    const back = wallD(st.x - sfx * (st.b.hd + 0.2), st.z - sfz * (st.b.hd + 0.2));
+    A.forges.push({ kind, liked: B.liked, n: st.n, wall: r2(Math.min(9, back)), near, file: B.file });
   }
   // ---------------- bars
-  for (const bar of bars) A.bars.push({ kind, liked: B.liked, file: B.file, ...bar, x: undefined, z: undefined });
+  for (const bar of bars) A.bars.push({ kind, liked: B.liked, file: B.file, lvl: r.lvl, cx: r2(bar.x), cz: r2(bar.z), ...bar, x: undefined, z: undefined, free: bar.wall >= 0.9 });
   // ---------------- custom furniture: building pieces standing inside the room under 2.4 m
   for (const it of items) {
     if (it.t !== 'build' || !it.in || it.y > 2.4) continue;
@@ -274,6 +292,8 @@ function processRoom(r, bi) {
   const fams = {};
   for (const it of famT) inc(fams, familyOf(it.n));
   if (famT.length >= 2) A.cohesion.roomFam.push({ kind, liked: B.liked, fams, n: famT.length });
+  const colT = floor.filter(it => ['table', 'seat', 'throne', 'bed', 'chest'].includes(it.t) && L.COLOR.has(it.n));
+  if (colT.length >= 2) A.cohesion.roomNames.push(colT.map(it => it.n));
   // ---------------- pairs at room level: furniture and decor names, and families
   const nameSet = new Set(items.filter(it => it.t !== 'build' && it.t !== 'other' && it.t !== 'food' && L.isVanilla(it.n) && (it.in || ['light', 'drape', 'banner', 'shelf', 'itemstand', 'sign'].includes(it.t))).map(it => it.n));
   for (const d of r.doors) if (/cloth_hanging|fenrirhide_hanging/.test(d[6] || '')) nameSet.add(d[6]);
@@ -366,7 +386,7 @@ function clearance(r, cs, blockers) {
   // square to the axes by lab/rooms_corpus_extract.js), in sub cells
   const runAlong = (c, di, dj) => { let n = 1; for (const sg of [1, -1]) { let k = 1; for (;;) { const o = sub.get((c.si + di * k * sg) * 131072 + c.sj + dj * k * sg); if (!o || !o.free) break; n++; k++; } } return n; };
   let maxD = 0;
-  for (const c of sub.values()) { if (!c.free) continue; c.d = Math.min(runAlong(c, 1, 0), runAlong(c, 0, 1)); if (c.d > maxD) maxD = c.d; }
+  for (const c of sub.values()) { if (!c.free) continue; c.wx = runAlong(c, 1, 0); c.wz = runAlong(c, 0, 1); c.d = Math.min(c.wx, c.wz); if (c.d > maxD) maxD = c.d; }
   const ws = [...sub.values()].filter(c => c.free).map(c => c.d).sort((a, b) => a - b);
   return { sub, maxD, maxW: maxD * SUB, medW: ws.length ? ws[Math.floor(ws.length / 2)] * SUB : 0, at: (x, z) => sub.get(Math.floor(x / SUB) * 131072 + Math.floor(z / SUB)) };
 }
@@ -408,11 +428,19 @@ function space(r, kind, k, items, floor, cs, struct, W, Lg, focal, B, bi) {
   const openShare = wallLen ? openLen / wallLen : 0;
   const ways = r.doors.length + r.stairs.length;
   if (r.ceil < 1.9) return;
-  if (kind === 'corridor' && ways >= 2) S.hall.push({ w: r2(struct.medW), W: r2(W), L: r2(Lg), liked: B.liked, file: B.file, lvl: r.lvl, cx: r.cx, cz: r.cz, doors: ways });
+  if (AUDIT && (kind === 'corridor' || (Lg >= 2.2 * W && W <= 4.5)) && ways >= 2) A.raw.halls.push({ kind, lvl: r.lvl, cx: r.cx, cz: r.cz, W: r2(W), L: r2(Lg), fill: r2(r.area / (W * Lg)), ways, doors: r.doors.length });
+  if (kind === 'corridor' && ways >= 2) S.hall.push({ b: r.b, w: r2(struct.medW), W: r2(W), L: r2(Lg), fill: r2(r.area / (W * Lg)), liked: B.liked, file: B.file, lvl: r.lvl, cx: r.cx, cz: r.cz, doors: ways });
   if (kind === 'corridor') S.corridor.push({ w: r2(struct.medW), wMax: r2(struct.maxW), W: r2(W), L: r2(Lg), liked: B.liked, file: B.file, lvl: r.lvl, cx: r.cx, cz: r.cz });
   if (openShare >= 0.3 && r.cov >= 0.5 && W <= 4.5 && Lg >= 4) (r.lvl > (B.lowest == null ? r.lvl : B.lowest) + 1.5 ? S.gallery : S.porch).push({ w: r2(struct.medW), W: r2(W), L: r2(Lg), open: r2(openShare), liked: B.liked, file: B.file });
   // wings: rooms of other kinds that are long and narrow
   if (kind !== 'corridor' && Lg >= 2.2 * W && W <= 5 && floor.length >= 2) S.wing.push({ kind, w: r2(struct.medW), W: r2(W), L: r2(Lg), liked: B.liked, file: B.file });
+  // narrow wings inside a room (audit): floor whose shorter free run (walls and posts blocking) is under 3.9 m while its
+  // longer run is twice that and 4 m or more
+  if (AUDIT) {
+    const nar = [...struct.sub.values()].filter(c => c.free && c.d * SUB < 3.9 && Math.max(c.wx, c.wz) >= 2 * c.d && Math.max(c.wx, c.wz) * SUB >= 4);
+    const area = nar.length * SUB * SUB;
+    if (area >= 6) A.raw.wings.push({ kind, lvl: r.lvl, cx: r.cx, cz: r.cz, area: r2(area), w: r2(q(nar.map(c => c.d * SUB), 0.5)), L: r2(q(nar.map(c => Math.max(c.wx, c.wz) * SUB), 0.5)), roomArea: r.area });
+  }
   // with the furniture
   const block = floor.filter(it => !['rug'].includes(it.t)).map(it => it.b);
   const cl = clearance(r, cs, block);
@@ -430,7 +458,9 @@ function space(r, kind, k, items, floor, cs, struct, W, Lg, focal, B, bi) {
     let near = Infinity, nearN = null;
     for (const it of floor) { if (it.t === 'rug') continue; const dd = ptDist(it.b, x, z); if (dd < near) { near = dd; nearN = it.n; } }
     (S.doorDepth[kind] = S.doorDepth[kind] || []).push(r2(depth));
+    if (AUDIT) A.raw.doors.push({ kind, lvl: r.lvl, x: r2(x), z: r2(z), depth: r2(depth), near: null, open: !!d[5] });
     if (isFinite(near)) (S.doorNear[kind] = S.doorNear[kind] || []).push({ d: r2(near), n: nearN });
+    if (AUDIT && isFinite(near)) { const dd = A.raw.doors[A.raw.doors.length - 1]; if (dd && dd.x === r2(x) && dd.z === r2(z)) { dd.near = r2(near); dd.nearN = nearN; } }
   }
   // the main lines: from the main door to every other door and stair (through), and to the focal point
   const main = doorsAll[0];
@@ -442,13 +472,15 @@ function space(r, kind, k, items, floor, cs, struct, W, Lg, focal, B, bi) {
       if (Math.hypot(ex - px, ez - pz) < 2) continue;
       const b = freeNear(cl, ex, ez), bS = freeNear(struct, ex, ez);
       if (!a.length || !b.length) continue;
-      (S.through[kind] = S.through[kind] || []).push(r2(wOf(widest(cl, a, b))));
+      const wv = r2(wOf(widest(cl, a, b)));
+      (S.through[kind] = S.through[kind] || []).push(wv);
+      if (AUDIT) A.raw.ways.push({ kind, lvl: r.lvl, to: 'door or stair', w: wv, x: r2(ex), z: r2(ez), open: !!main[5] });
       if (aS.length && bS.length) (S.structThrough[kind] = S.structThrough[kind] || []).push(r2(wOf(widest(struct, aS, bS))));
     }
     if (focal && focal.it && a.length) {
       const fb = focal.it.b;
       const bF = [...cl.sub.values()].filter(c => c.free && ptDist(fb, c.x, c.z) < 0.75);
-      if (bF.length) (S.toFocal[kind] = S.toFocal[kind] || []).push(r2(wOf(widest(cl, a, bF))));
+      if (bF.length) { const wv = r2(wOf(widest(cl, a, bF))); (S.toFocal[kind] = S.toFocal[kind] || []).push(wv); if (AUDIT) A.raw.ways.push({ kind, lvl: r.lvl, to: 'focal ' + focal.it.n, w: wv, open: !!main[5] }); }
     }
   }
   // stair landings: how far the nearest floor furniture keeps from the foot or head of a stair
@@ -508,6 +540,7 @@ function walls(r, kind, items, floor, B) {
       if (wrel === 'no window on this wall' || rank[rel] < rank[wrel]) wrel = rel;
     }
     inc(W.windowRel[t] = W.windowRel[t] || {}, wrel);
+    if (AUDIT) A.raw.walls.push({ kind, n, t, y: r2(o.it.y), off: r2(o.off), under, wrel });
   }
   for (const list of byFace.values()) {
     list.sort((a, b) => a.t - b.t);
@@ -617,6 +650,7 @@ function write() {
     bedHeadToWall: 'm from the head end to the nearest wall face behind it', bedHeadAgainstWall: 'share under 0.4 m', chestToWall: 'm from a chest\'s back (pivot less half its depth) to the nearest wall face', chestAgainstWall: 'share under 0.35 m', stackedChests: 'chests and barrels in the room standing on another (0.4 m across, 0.45 to 1.6 m higher): rooms with storage, share of them with a stack, share of storage pieces stacked, stacked pieces per room when any',
   }, kinds }, null, 1));
   fs.writeFileSync(path.join(outDir, 'examples.json'), JSON.stringify({ meta, fields: { '<kind>': 'rooms in liked builds first, by votes: file, title, votes, floor height (lvl), room middle (cx, cz), area, floor furniture' }, examples: ex }, null, 1));
+  if (AUDIT) fs.writeFileSync(path.join(outDir, 'raw.json'), JSON.stringify({ ...A.raw, tableSets: A.tableSets, beds: A.beds, work: A.forges, bars: A.bars }));
   writeSets(meta); writeMaterials(meta); writeSpace(meta); writeWalls(meta); writePairs(meta); writeCaps(meta);
   console.log(JSON.stringify(meta, null, 1));
 }
@@ -675,21 +709,25 @@ function writeSets(meta) {
     work[sn] = { stations: l.length, backToWall: share(l, f => f.wall < 0.6), near: top(ext, 18).map(([n2, c]) => ({ n: n2, share: +(c / l.length).toFixed(3), perStation: qs(cnt[n2]), distance: qs(dist[n2]), where: pct(side[n2], dist[n2].length) })) };
   }
   // bars
-  const bars = A.bars;
+  const SOCIAL = new Set(['tavern hall', 'feast hall', 'dining', 'home', 'hearth room', 'kitchen', 'throne hall', 'sitting']);
+  const bars = A.bars.filter(b => SOCIAL.has(b.kind) && b.free);
+  const worktops = A.bars.filter(b => !b.free);
   const barOut = { n: bars.length, liked: bars.filter(b => b.liked).length, byKind: pct(bars.reduce((o, b) => inc(o, b.kind), {}), bars.length || 1), length: qs(bars.map(b => b.len)), top: qs(bars.map(b => b.top)),
     wallBehind: qs(bars.map(b => b.wall)), clearBehind: qs(bars.map(b => b.clear)), clearUnder08: share(bars, b => b.clear < 0.8),
     pieces: top(bars.reduce((o, b) => { for (const p of b.pieces) inc(o, p); return o; }, {}), 15), behind: top(bars.reduce((o, b) => { for (const p of new Set(b.behind)) inc(o, p); return o; }, {}), 20),
-    seatsInFront: qs(bars.map(b => b.seatsFront)), examples: bars.filter(b => b.liked && (b.kind === 'tavern hall' || b.kind === 'feast hall' || b.kind === 'dining' || b.kind === 'kitchen')).slice(0, 12).map(b => ({ file: b.file, kind: b.kind, len: b.len, clear: b.clear, pieces: b.pieces, behind: b.behind.slice(0, 8) })) };
+    seatsInFront: qs(bars.map(b => b.seatsFront)), examples: bars.filter(b => b.liked).slice(0, 12).map(b => ({ file: b.file, kind: b.kind, lvl: b.lvl, cx: b.cx, cz: b.cz, len: b.len, clear: b.clear, pieces: b.pieces, behind: b.behind.slice(0, 8) })),
+    worktops: { n: worktops.length, byKind: top(worktops.reduce((o, b) => inc(o, b.kind), {}), 8), top: qs(worktops.map(b => b.top)), pieces: top(worktops.reduce((o, b) => { for (const p of b.pieces) inc(o, p); return o; }, {}), 10), on: top(worktops.reduce((o, b) => { for (const p of new Set(b.behind)) inc(o, p); return o; }, {}), 10) } };
   // custom furniture
   const custom = Object.entries(A.custom).map(([k2, o]) => { const [n2, h, nearT] = k2.split('|'); return { piece: n2, height: h, near: nearT, pieces: o.n, rooms: o.rooms.size, builds: o.builds.size, kinds: top(o.kinds, 4), example: A.customEx[k2] || null }; })
-    .filter(c => c.builds >= 5 && c.height !== 'floor').sort((a, b) => b.builds - a.builds).slice(0, 80);
+    .filter(c => c.builds >= 5 && c.height !== 'floor' && c.height !== 'high').sort((a, b) => b.builds - a.builds);
+  const customNear = custom.filter(c => c.near !== 'none').slice(0, 60), customAlone = custom.filter(c => c.near === 'none').slice(0, 30);
   fs.writeFileSync(path.join(outDir, 'sets.json'), JSON.stringify({ meta, fields: {
     tableSets: 'per dining table prefab: seats are floor seats and thrones whose pivot is within 1.25 m of the table box (each seat to its nearest table). seatsPerTable over all tables, seatsPerSeatedTable over tables with one or more; seatPrefabsPerSet: distinct seat prefabs at one table; matchedShare: sets whose seats are all one prefab; matchedFamilyShare: sets whose seats all share the table\'s material family; position: head (beyond an end), side, corner; gapSide/gapHead: m from the seat pivot to the table box; sideOffset: m from the table middle line to a side seat pivot; turnBySeat: [turn in 15 degree steps between the seat yaw and the bearing to the table, count] (the most common turn is the facing convention of that prefab); combos: seat prefab sets with counts',
     beds: 'per bed prefab: head is local -z; near: [position: type, share of beds]; positions behind head, beside head, beside foot, foot, on; names: [position: prefab, count]; chestAtFoot, sideTable (a table, chest, barrel, crate or building piece beside the head), lightBeside, rugUnder: shares',
-    work: 'per station (forge, smelter, workbench, ...): backToWall share (pivot under 0.6 m from a wall face); near: prefabs within 4 m: share of stations with one or more, count per station, distance quantiles (m), where (in front, behind, beside in the station frame)',
-    bars: 'counters: building pieces inside a room with tops 0.8 to 1.4 m over the floor (no 2x2 floors), joined into a run 2 m or longer and at most 0.8 m between part pivots across; wallBehind: m from the counter line to the wall on its nearer side; clearBehind: m from the counter to the wall or to floor furniture standing behind it; behind: prefabs behind the counter (count of bars); seatsInFront: seats within 1.6 m in front',
-    custom: 'building pieces standing inside rooms (custom furniture): piece, height band of its top (seat height 0.25-0.7 m, table height 0.7-1.25, shelf height 1.25-2.4), the nearest furniture type within 1.2 m, pieces, rooms, builds, room kinds, one example in a liked build (world x, y, z)',
-  }, tableSets, beds, work, bars: barOut, custom }, null, 1));
+    work: 'per station (forge, smelter, workbench, ...): backToWall share (a wall face within 0.6 m behind the station\'s back, local -z); near: prefabs within 4 m: share of stations with one or more, count per station, distance quantiles (m), where (in front, behind, beside in the station frame)',
+    bars: 'counters: building pieces inside a room with tops 0.8 to 1.4 m over the floor (no 2x2 floors), joined into a run 2 m or longer and at most 0.8 m between part pivots across; bars are the free-standing ones (0.9 m or more to the wall behind) in social rooms (tavern and feast halls, dining, home, hearth room, kitchen, throne hall, sitting room), worktops the ones nearer a wall (any room); wallBehind: m from the counter line to the wall on its nearer side; clearBehind: m from the counter to the wall or to floor furniture standing behind it; behind: prefabs behind the counter (count of bars); seatsInFront: seats within 1.6 m in front',
+    custom: 'building pieces standing inside rooms (custom furniture): piece, height band of its top (seat height 0.25-0.7 m, table height 0.7-1.25, shelf height 1.25-2.4), the nearest furniture type within 1.2 m, pieces, rooms, builds, room kinds, one example in a liked build (turned frame x, y, z); custom lists those with furniture near, customAlone those with none near (half walls as seats along a wall, beams as rails, partitions)',
+  }, tableSets, beds, work, bars: barOut, custom: customNear, customAlone }, null, 1));
 }
 
 function writeMaterials(meta) {
@@ -706,12 +744,28 @@ function writeMaterials(meta) {
     .sort((x, y) => y.rooms - x.rooms);
   const neverMix = famPairs.filter(p => p.expected >= 5 && p.lift < 0.5).sort((a, b) => a.lift - b.lift);
   const famRooms = Object.fromEntries(Object.entries(P2.item).sort((a, b) => b[1] - a[1]));
-  // family not found in any pair (rooms with a single family) count too
+  // color: seat against its table (catalog look.mean, delta E), and against a table of another set (chance)
+  const sets = A.tableSets.filter(t => t.n > 0);
+  const obs = [], chance = [];
+  sets.forEach((t, i) => {
+    for (const se of t.seats) { const c = colorDiff(t.table, se.n); if (c) obs.push(c); }
+    for (let k = 1; k <= 5; k++) { const o = sets[(i + k * 97) % sets.length]; for (const se of o.seats) { const c = colorDiff(t.table, se.n); if (c) chance.push(c); } }
+  });
+  const color = { seats: obs.length, dE: qs(obs.map(c => +c.dE.toFixed(1))), dL: qs(obs.map(c => +c.dL.toFixed(1))), under10: share(obs, c => c.dE < 10), over25: share(obs, c => c.dE > 25),
+    chance: { pairs: chance.length, dE: qs(chance.map(c => +c.dE.toFixed(1))), dL: qs(chance.map(c => +c.dL.toFixed(1))), under10: share(chance, c => c.dE < 10), over25: share(chance, c => c.dE > 25) } };
+  // per room: the spread of lightness among the family-tagged furniture, against the same pieces dealt to rooms at random
+  const spread = l => { const Ls = l.map(n2 => L.COLOR.get(n2)).filter(Boolean).map(h => colorDiff(l[0], l[0]) && h).map(h => { const v = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; }); return Ls.length >= 2 ? Math.max(...Ls) - Math.min(...Ls) : null; };
+  const roomsN = A.cohesion.roomNames.filter(l => l.length >= 2);
+  const pool = roomsN.flat();
+  let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const sp = roomsN.map(spread).filter(v => v != null), spC = roomsN.map(l => spread(l.map(() => pool[Math.floor(rnd() * pool.length)]))).filter(v => v != null);
+  color.roomLumaSpread = { rooms: sp.length, observed: qs(sp.map(v => +v.toFixed(1))), chance: qs(spC.map(v => +v.toFixed(1))) };
   fs.writeFileSync(path.join(outDir, 'materials.json'), JSON.stringify({ meta, fields: {
-    families: 'material family of each prefab used here, from ' + L.familySource(), seatTable: 'per table family: seats at its tables, the share of the same family, and the share of each seat family',
+    families: 'material family of each prefab used here, from ' + L.familySource() + '; the families entry below is the prefab first cut, kept for reference', seatTable: 'per table family: seats at its tables, the share of the same family, and the share of each seat family',
     roomFamilies: 'rooms with two or more family-tagged pieces (tables, seats, thrones, beds, chests): families per room and the share of those pieces in the most common family',
     familyRooms: 'rooms holding each family', familyPairs: 'two families in one room: rooms, expected by chance, lift (observed over expected)', rarelyTogether: 'pairs expected 5 or more times seen under half as often',
-  }, families: L.FAMILY_PREFAB, seatTable: seatTableShare,
+    color: 'seat against its own table: delta E (CIE76) and delta L between the catalog mean colors (look.mean), quantiles, share under 10 and over 25; chance: the same table against the seats of other sets. roomLumaSpread: per room, the spread of luma (0 to 255) across its tables, seats, thrones, beds and chests, observed and with the same pieces dealt to rooms at random',
+  }, families: L.FAMILY_PREFAB, seatTable: seatTableShare, color,
   roomFamilies: { rooms: roomF.length, familiesPerRoom: qs(famCount), oneFamily: share(famCount, v => v === 1), twoFamilies: share(famCount, v => v === 2), threePlus: share(famCount, v => v >= 3), mainFamilyShare: qs(domShare),
     byKind: Object.fromEntries(Object.entries(roomF.reduce((o, r) => { (o[r.kind] = o[r.kind] || []).push(Object.keys(r.fams).length); return o; }, {})).map(([k2, l]) => [k2, { rooms: l.length, oneFamily: share(l, v => v === 1), p50: q(l, 0.5), p90: q(l, 0.9) }])) },
   familyRooms: famRooms, familyPairs: famPairs, rarelyTogether: neverMix }, null, 1));
@@ -723,9 +777,15 @@ function writeSpace(meta) {
   const out = {
     corridor: { n: S.corridor.length, clearWidth: qs(S.corridor.map(c => c.w)), clearWidthTiles: tiles(S.corridor.map(c => c.w)), boxShortSide: qs(S.corridor.map(c => c.W)), length: qs(S.corridor.map(c => c.L)),
       under2m: share(S.corridor, c => c.w < 1.9), under2mLiked: share(S.corridor.filter(c => c.liked), c => c.w < 1.9), widthHist: pct(S.corridor.reduce((o, c) => inc(o, String(Math.min(6, Math.round(c.w * 2) / 2))), {}), S.corridor.length || 1) },
+    // straight halls in buildings of house to hall size: the floor fills 80 % of its box, and the build has 30 to 600 m2
+    // of indoor floor; the box short side is then the hall's inside width
+    straightHall: (() => { const l = S.hall.filter(c => c.fill >= 0.8 && A.buildIn.get(c.b) && A.buildIn.get(c.b).area >= 30 && A.buildIn.get(c.b).area <= 600);
+      return { n: l.length, builds: new Set(l.map(c => c.b)).size, liked: l.filter(c => c.liked).length, width: qs(l.map(c => c.W)), widthLiked: qs(l.filter(c => c.liked).map(c => c.W)), length: qs(l.map(c => c.L)),
+        under2m: share(l, c => c.W < 1.9), w2to3: share(l, c => c.W >= 1.9 && c.W < 2.9), w3to4: share(l, c => c.W >= 2.9 && c.W < 3.9), atLeast4m: share(l, c => c.W >= 3.9),
+        examples: l.filter(c => c.liked).sort((a, b) => a.W - b.W).filter((c, i, ll) => i % Math.max(1, Math.floor(ll.length / 10)) === 0).slice(0, 10).map(c => ({ ...c, b: undefined })) }; })(),
     hall: { n: S.hall.length, liked: S.hall.filter(c => c.liked).length, clearWidth: qs(S.hall.map(c => c.w)), clearWidthLiked: qs(S.hall.filter(c => c.liked).map(c => c.w)), clearWidthTiles: tiles(S.hall.map(c => c.w)), length: qs(S.hall.map(c => c.L)),
       under2m: share(S.hall, c => c.w < 1.9), atLeast4m: share(S.hall, c => c.w >= 3.9), widthHist: pct(S.hall.reduce((o, c) => inc(o, String(Math.min(6, Math.round(c.w * 2) / 2))), {}), S.hall.length || 1),
-      examples: S.hall.filter(c => c.liked).sort((a, b) => a.w - b.w).filter((c, i, l) => i % Math.max(1, Math.floor(l.length / 10)) === 0).slice(0, 10) },
+      examples: S.hall.filter(c => c.liked).sort((a, b) => a.w - b.w).filter((c, i, l) => i % Math.max(1, Math.floor(l.length / 10)) === 0).slice(0, 10).map(c => ({ ...c, b: undefined })) },
     wing: { n: S.wing.length, clearWidth: qs(S.wing.map(c => c.w)), boxShortSide: qs(S.wing.map(c => c.W)), byKind: top(S.wing.reduce((o, c) => inc(o, c.kind), {}), 10) },
     porch: { n: S.porch.length, clearWidth: qs(S.porch.map(c => c.w)), boxShortSide: qs(S.porch.map(c => c.W)), length: qs(S.porch.map(c => c.L)) },
     gallery: { n: S.gallery.length, clearWidth: qs(S.gallery.map(c => c.w)), boxShortSide: qs(S.gallery.map(c => c.W)), length: qs(S.gallery.map(c => c.L)) },
@@ -738,7 +798,8 @@ function writeSpace(meta) {
   };
   fs.writeFileSync(path.join(outDir, 'space.json'), JSON.stringify({ meta, fields: {
     corridor: 'rooms of kind corridor with a ceiling 1.9 m or more (all rooms below too) (at most one floor piece, long: long side 2.5 times the short or clear width 3 m or less and 6 m long): clearWidth, m, the median over its floor of the local clear width (the shorter free run along x and z on a 0.25 m grid, walls and posts blocking); wMax in the examples is the widest; clearWidthTiles: the same in 2 m wood_floor tiles; widthHist: share by clear width rounded to 0.5 m',
-    hall: 'corridors (as above) that join two or more doors or stairs, ceiling 1.9 m or more: the walk-through halls',
+    hall: 'corridors (as above) that join two or more doors or stairs, ceiling 1.9 m or more: the walk-through halls (castle walls and balconies of large builds fall in here too)',
+    straightHall: 'halls whose floor fills 80 % or more of their box, in builds with 30 to 600 m2 of indoor floor: width is the box short side, the inside width wall to wall (m)',
     wing: 'other rooms long and narrow (long side 2.2 times the short, short side 5 m or less) with two or more floor pieces', porch: 'ground level rooms under a roof with 30 % or more of their edge open, short side 4.5 m or less',
     gallery: 'the same 1.5 m or more over the lowest floor of the build (balconies, galleries)', doorClearDepth: 'm straight in from each door to the first furniture or wall, by room kind',
     doorNearestFurniture: 'm from a door middle to the nearest floor furniture box (rugs left out), share under 1 m, and what stands within 1.2 m', throughWidth: 'm, the narrowest point of the widest way from the main door to each other door or stair with the furniture in place; structure: the same with no furniture',
@@ -875,6 +936,18 @@ function writeCaps(meta) {
     const ref = indoor.all[k2]; if (!ref || k2 === 'area') continue;
     if (k2 === 'main light share' ? v > ref.p90_when : (ref.p90_when != null && v > ref.p90_when) || (ref.per100m2_p90_when != null && v / row.area * 100 > ref.per100m2_p90_when * 1.0 && v > (ref.p50_when || 0))) (overIn[k2] = overIn[k2] || []).push([name.replace(/^showcase-/, ''), v, +(v / row.area * 100).toFixed(1)]);
   }
+  // by culture (data/culture-corpus/members.json), cultures with 12 or more such builds: the share of builds using each
+  // light, seat, table and bed prefab, and counts per build
+  const byCulture = {};
+  const cultOf = b => (binfo.get(b) || {}).culture;
+  const cults = {};
+  for (const o of inB) { const c = cultOf(o.b); if (c) (cults[c] = cults[c] || []).push(o); }
+  for (const [c, l] of Object.entries(cults)) {
+    if (l.length < 12) continue;
+    const use = t => { const o = {}; for (const b of l) for (const n2 of Object.keys(b.counts)) if (typeOf(n2) === t) inc(o, n2); return top(o, 6).map(([n2, k2]) => [n2, +(k2 / l.length).toFixed(2)]); };
+    byCulture[c] = { builds: l.length, lights: use('light'), seats: use('seat'), tables: use('table'), beds: use('bed'), chests: use('chest'), rugs: use('rug'),
+      perBuild: Object.fromEntries(['light', 'seat', 'table', 'bed', 'chest', 'rug', 'itemstand', 'banner'].map(t => [t, q(l.map(b => tc(b, t)), 0.5)])), lightKinds: q(l.map(lk), 0.5) };
+  }
   // stacked chests per build, from the extracted rooms (chests whose pivot is over another chest within 0.4 m)
   fs.writeFileSync(path.join(outDir, 'caps.json'), JSON.stringify({ meta: { ...meta, furnishedBuilds: furnished.length, likedFurnished: likedF.length, showcase: show.length }, fields: {
     perBuild: 'whole build, outdoors included: per prefab or type over furnished vanilla builds (a table, bed, seat, chest or fire anywhere): has (share of builds), p50 and p90 over all, p50_when and p90_when over builds that have it, max',
@@ -883,7 +956,8 @@ function writeCaps(meta) {
     stacked: 'chests standing on chests (pivot 0.4 m or less apart across, 0.5 to 1.6 m higher): builds with any, and per build when any',
     indoor: 'indoors only (the pieces of a build\'s study rooms, each piece once), builds with 30 to 400 m2 of indoor floor: per prefab in 15 or more of them, and per type: has, p50, p90, p50_when, p90_when, and per 100 m2 of indoor floor among builds that have it (per100m2_p50_when, per100m2_p90_when); all = every such build, liked_ = liked ones',
     showcaseIndoor: 'the same indoor counts for the showcase designs (area: indoor floor, m2)', showcaseIndoorOver: '[design, count, per 100 m2] where a showcase count is over the indoor p90_when, or over the per 100 m2 p90_when and the p50_when',
-  }, indoor, showcaseIndoor: showIn, showcaseIndoorOver: overIn, perBuild, perBuildLiked, perRoom, showcase, showcaseOverP90: over, stacked: stackedChests(furnished, show) }, null, 1));
+    byCulture: 'indoors, per culture with 12 or more builds of 30 to 400 m2: share of builds using each light, seat, table, bed, chest and rug prefab, p50 counts per build',
+  }, indoor, byCulture, showcaseIndoor: showIn, showcaseIndoorOver: overIn, perBuild, perBuildLiked, perRoom, showcase, showcaseOverP90: over, stacked: stackedChests(furnished, show) }, null, 1));
 }
 function stackedChests(furnished, show) {
   // needs positions: read from the compact lines for the furnished builds

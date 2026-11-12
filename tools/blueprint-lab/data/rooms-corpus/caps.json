@@ -8,7 +8,7 @@
   "likedRule": "top quarter of vanilla builds by votes (votes >= 10), ties by downloads",
   "rooms": 20400,
   "roomsLiked": 11945,
-  "families": "prefab first cut (lab/rooms_corpus_lib.js FAMILY_PREFAB)",
+  "families": "track A catalog (data/catalog/pieces.json family, version 1); prefabs it does not list have no family",
   "roomRule": "reader room (lib/decorate.js readLevel) with half or more of its floor under a roof, 4 to 400 m2, vanilla build, no mod piece inside; floor furniture: pivot under 0.5 m over the floor",
   "furnishedBuilds": 1062,
   "likedFurnished": 251,
@@ -26,7 +26,8 @@
   "stacked": "chests standing on chests (pivot 0.4 m or less apart across, 0.5 to 1.6 m higher): builds with any, and per build when any",
   "indoor": "indoors only (the pieces of a build's study rooms, each piece once), builds with 30 to 400 m2 of indoor floor: per prefab in 15 or more of them, and per type: has, p50, p90, p50_when, p90_when, and per 100 m2 of indoor floor among builds that have it (per100m2_p50_when, per100m2_p90_when); all = every such build, liked_ = liked ones",
   "showcaseIndoor": "the same indoor counts for the showcase designs (area: indoor floor, m2)",
-  "showcaseIndoorOver": "[design, count, per 100 m2] where a showcase count is over the indoor p90_when, or over the per 100 m2 p90_when and the p50_when"
+  "showcaseIndoorOver": "[design, count, per 100 m2] where a showcase count is over the indoor p90_when, or over the per 100 m2 p90_when and the p50_when",
+  "byCulture": "indoors, per culture with 12 or more builds of 30 to 400 m2: share of builds using each light, seat, table, bed, chest and rug prefab, p50 counts per build"
  },
  "indoor": {
   "builds": 579,
@@ -1977,6 +1978,580 @@
     "per100m2_p50_when": null,
     "per100m2_p90_when": null
    }
+  }
+ },
+ "byCulture": {
+  "castle": {
+   "builds": 22,
+   "lights": [
+    [
+     "piece_walltorch",
+     0.36
+    ],
+    [
+     "piece_brazierceiling01",
+     0.27
+    ],
+    [
+     "piece_groundtorch_wood",
+     0.23
+    ],
+    [
+     "piece_dvergr_lantern",
+     0.18
+    ],
+    [
+     "piece_groundtorch",
+     0.14
+    ],
+    [
+     "piece_Lavalantern",
+     0.09
+    ]
+   ],
+   "seats": [
+    [
+     "piece_chair03",
+     0.23
+    ],
+    [
+     "piece_chair",
+     0.14
+    ],
+    [
+     "piece_bench01",
+     0.09
+    ],
+    [
+     "piece_blackwood_bench01",
+     0.05
+    ],
+    [
+     "piece_blackmarble_bench",
+     0.05
+    ],
+    [
+     "piece_chair02",
+     0.05
+    ]
+   ],
+   "tables": [
+    [
+     "piece_table_round",
+     0.09
+    ],
+    [
+     "piece_table_oak",
+     0.05
+    ],
+    [
+     "piece_table",
+     0.05
+    ]
+   ],
+   "beds": [
+    [
+     "ashwood_bed",
+     0.09
+    ],
+    [
+     "piece_bed02",
+     0.09
+    ],
+    [
+     "bed",
+     0.09
+    ]
+   ],
+   "chests": [
+    [
+     "piece_chest_blackmetal",
+     0.23
+    ],
+    [
+     "piece_chest",
+     0.18
+    ],
+    [
+     "piece_chest_wood",
+     0.18
+    ],
+    [
+     "piece_chest_treasure",
+     0.14
+    ],
+    [
+     "piece_chest_private",
+     0.09
+    ]
+   ],
+   "rugs": [
+    [
+     "jute_carpet",
+     0.32
+    ],
+    [
+     "rug_fur",
+     0.27
+    ],
+    [
+     "rug_deer",
+     0.14
+    ],
+    [
+     "jute_carpet_blue",
+     0.09
+    ],
+    [
+     "rug_hare",
+     0.09
+    ],
+    [
+     "rug_wolf",
+     0.09
+    ]
+   ],
+   "perBuild": {
+    "light": 3.5,
+    "seat": 0,
+    "table": 0,
+    "bed": 0,
+    "chest": 0.5,
+    "rug": 0,
+    "itemstand": 0,
+    "banner": 0
+   },
+   "lightKinds": 1
+  },
+  "norse": {
+   "builds": 41,
+   "lights": [
+    [
+     "piece_walltorch",
+     0.39
+    ],
+    [
+     "piece_dvergr_lantern",
+     0.27
+    ],
+    [
+     "piece_groundtorch_wood",
+     0.17
+    ],
+    [
+     "piece_brazierceiling01",
+     0.15
+    ],
+    [
+     "piece_groundtorch",
+     0.15
+    ],
+    [
+     "piece_brazierfloor01",
+     0.07
+    ]
+   ],
+   "seats": [
+    [
+     "piece_chair03",
+     0.24
+    ],
+    [
+     "piece_chair",
+     0.22
+    ],
+    [
+     "piece_chair02",
+     0.17
+    ],
+    [
+     "piece_logbench01",
+     0.15
+    ],
+    [
+     "piece_bench01",
+     0.12
+    ],
+    [
+     "piece_blackwood_bench01",
+     0.02
+    ]
+   ],
+   "tables": [
+    [
+     "piece_table_round",
+     0.2
+    ],
+    [
+     "piece_table",
+     0.17
+    ],
+    [
+     "piece_table_oak",
+     0.1
+    ],
+    [
+     "piece_blackmarble_table",
+     0.02
+    ]
+   ],
+   "beds": [
+    [
+     "piece_bed02",
+     0.22
+    ],
+    [
+     "bed",
+     0.22
+    ],
+    [
+     "ashwood_bed",
+     0.05
+    ]
+   ],
+   "chests": [
+    [
+     "piece_chest_wood",
+     0.41
+    ],
+    [
+     "piece_chest",
+     0.22
+    ],
+    [
+     "piece_chest_blackmetal",
+     0.17
+    ],
+    [
+     "piece_chest_private",
+     0.17
+    ],
+    [
+     "piece_chest_treasure",
+     0.02
+    ],
+    [
+     "piece_chest_warderobe",
+     0.02
+    ]
+   ],
+   "rugs": [
+    [
+     "rug_deer",
+     0.34
+    ],
+    [
+     "rug_fur",
+     0.32
+    ],
+    [
+     "rug_wolf",
+     0.2
+    ],
+    [
+     "jute_carpet",
+     0.15
+    ],
+    [
+     "rug_hare",
+     0.12
+    ],
+    [
+     "rug_asksvin",
+     0.07
+    ]
+   ],
+   "perBuild": {
+    "light": 5,
+    "seat": 1,
+    "table": 0,
+    "bed": 0,
+    "chest": 2,
+    "rug": 2,
+    "itemstand": 0,
+    "banner": 0
+   },
+   "lightKinds": 1
+  },
+  "ashlands": {
+   "builds": 28,
+   "lights": [
+    [
+     "piece_dvergr_lantern",
+     0.5
+    ],
+    [
+     "piece_walltorch",
+     0.39
+    ],
+    [
+     "piece_Lavalantern",
+     0.32
+    ],
+    [
+     "Candle_resin",
+     0.25
+    ],
+    [
+     "piece_jackoturnip",
+     0.14
+    ],
+    [
+     "piece_brazierceiling01",
+     0.11
+    ]
+   ],
+   "seats": [
+    [
+     "piece_chair03",
+     0.43
+    ],
+    [
+     "piece_chair",
+     0.29
+    ],
+    [
+     "piece_blackwood_bench01",
+     0.14
+    ],
+    [
+     "piece_blackmarble_bench",
+     0.11
+    ],
+    [
+     "piece_bench01",
+     0.04
+    ],
+    [
+     "piece_chair02",
+     0.04
+    ]
+   ],
+   "tables": [
+    [
+     "piece_table_round",
+     0.18
+    ],
+    [
+     "piece_table_oak",
+     0.14
+    ],
+    [
+     "piece_table",
+     0.04
+    ],
+    [
+     "piece_blackmarble_table",
+     0.04
+    ]
+   ],
+   "beds": [
+    [
+     "piece_bed02",
+     0.25
+    ],
+    [
+     "ashwood_bed",
+     0.21
+    ]
+   ],
+   "chests": [
+    [
+     "piece_chest",
+     0.32
+    ],
+    [
+     "piece_chest_private",
+     0.21
+    ],
+    [
+     "piece_chest_blackmetal",
+     0.18
+    ],
+    [
+     "piece_chest_treasure",
+     0.11
+    ],
+    [
+     "piece_chest_wood",
+     0.11
+    ],
+    [
+     "TreasureChest_mountaincave",
+     0.04
+    ]
+   ],
+   "rugs": [
+    [
+     "rug_fur",
+     0.29
+    ],
+    [
+     "jute_carpet",
+     0.21
+    ],
+    [
+     "rug_wolf",
+     0.18
+    ],
+    [
+     "rug_asksvin",
+     0.14
+    ],
+    [
+     "rug_deer",
+     0.11
+    ],
+    [
+     "rug_hare",
+     0.11
+    ]
+   ],
+   "perBuild": {
+    "light": 6,
+    "seat": 2,
+    "table": 0,
+    "bed": 0,
+    "chest": 2,
+    "rug": 0.5,
+    "itemstand": 1,
+    "banner": 0
+   },
+   "lightKinds": 2
+  },
+  "norse-forest": {
+   "builds": 24,
+   "lights": [
+    [
+     "piece_walltorch",
+     0.71
+    ],
+    [
+     "piece_groundtorch_wood",
+     0.46
+    ],
+    [
+     "piece_dvergr_lantern",
+     0.17
+    ],
+    [
+     "piece_brazierceiling01",
+     0.17
+    ],
+    [
+     "piece_groundtorch",
+     0.17
+    ],
+    [
+     "Candle_resin",
+     0.13
+    ]
+   ],
+   "seats": [
+    [
+     "piece_chair02",
+     0.46
+    ],
+    [
+     "piece_chair",
+     0.42
+    ],
+    [
+     "piece_logbench01",
+     0.38
+    ],
+    [
+     "piece_bench01",
+     0.29
+    ],
+    [
+     "piece_chair03",
+     0.21
+    ]
+   ],
+   "tables": [
+    [
+     "piece_table",
+     0.46
+    ],
+    [
+     "piece_table_round",
+     0.17
+    ]
+   ],
+   "beds": [
+    [
+     "bed",
+     0.58
+    ],
+    [
+     "piece_bed02",
+     0.21
+    ],
+    [
+     "ashwood_bed",
+     0.04
+    ]
+   ],
+   "chests": [
+    [
+     "piece_chest_wood",
+     0.75
+    ],
+    [
+     "piece_chest",
+     0.21
+    ],
+    [
+     "piece_chest_private",
+     0.17
+    ],
+    [
+     "piece_chest_treasure",
+     0.08
+    ],
+    [
+     "piece_chest_blackmetal",
+     0.04
+    ]
+   ],
+   "rugs": [
+    [
+     "rug_deer",
+     0.67
+    ],
+    [
+     "rug_wolf",
+     0.21
+    ],
+    [
+     "rug_fur",
+     0.17
+    ],
+    [
+     "rug_hare",
+     0.13
+    ],
+    [
+     "rug_Bjorn",
+     0.04
+    ],
+    [
+     "jute_carpet",
+     0.04
+    ]
+   ],
+   "perBuild": {
+    "light": 9,
+    "seat": 2.5,
+    "table": 1,
+    "bed": 1,
+    "chest": 9,
+    "rug": 4,
+    "itemstand": 3.5,
+    "banner": 0
+   },
+   "lightKinds": 2
   }
  },
  "showcaseIndoor": {

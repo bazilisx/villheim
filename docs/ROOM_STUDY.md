@@ -8,7 +8,7 @@ specific rooms, and how they make custom furniture for different rooms" (TYLER_N
 from the corpus. The numbers are targets for the furnishing rewrite (track E) and for the council's checks
 (`docs/handoffs/2026-11-12-showcase-review/criteria/corpus-rooms.md`).
 
-Status: first draft of the numbers (2026-11-12). Sections marked "to refine" are being checked against renders.
+Status: numbers of 2026-11-12, checked against renders of exemplar rooms (private repo, `research/2026-11-12-rooms/`).
 
 ## Data and method
 
@@ -27,9 +27,9 @@ Status: first draft of the numbers (2026-11-12). Sections marked "to refine" are
 - Weighting: every count is given over all rooms and over rooms in liked builds, the top quarter of vanilla builds by
   votes (380 builds, 10 votes or more). The corpus has no Tyler verdicts (`verdict` is empty in compact.json). Liked
   builds are larger on average, so they hold 11,945 of the 20,400 rooms; per-build numbers below count each build once.
-- Material families: a first cut by prefab (`lab/rooms_corpus_lib.js` `FAMILY_PREFAB`), labeled as such in every
-  output, until track A's catalog (`data/catalog/pieces.json`) exists; the scripts read the catalog when it is there.
-  Where families are uncertain the prefab pairs are given, which do not depend on the labels.
+- Material families and colors: track A's catalog (`data/catalog/pieces.json`, `family` and `look.mean`), read from
+  its working copy when it is there; the prefab first cut (`lab/rooms_corpus_lib.js` `FAMILY_PREFAB`) is used without
+  it, and each output names which it used. Prefab pairs are given beside families, as they do not depend on labels.
 - Showcase: the 16 showcase designs are made again with the lab exactly as `vh gen showcase` makes them
   (`lab/rooms_corpus_showcase.js`, one try of each seed) and read with the same scripts.
 
@@ -42,6 +42,7 @@ node lab/rooms_corpus_showcase.js /tmp/corpus-rooms/showcase.jsonl && node lab/r
 node lab/rooms_corpus_stats.js /tmp/corpus-rooms/all data/rooms-corpus --showcase /tmp/corpus-rooms/show --compact /tmp/corpus-rooms/compact.jsonl
 node lab/rooms_corpus_gardens.js /tmp/corpus-rooms/compact.jsonl /tmp/corpus-rooms/all data/rooms-corpus/gardens.json --showcase /tmp/corpus-rooms/showcase.jsonl /tmp/corpus-rooms/show
 node lab/rooms_corpus_render.js <compact.jsonl> <builds.jsonl> <file> <cx> <cz> <floor y> <radius> <out.png>
+node lab/rooms_corpus_audit.js <design.blueprint>   # the council check, docs/handoffs/2026-11-12-showcase-review/criteria/corpus-rooms.md
 ```
 
 Outputs in `tools/blueprint-lab/data/rooms-corpus/`, each with a `fields` entry: `kinds.json` (per room kind: size,
@@ -98,8 +99,7 @@ How the rest orients to it (`kinds.json` seatsFacingFocal, `sets.json`):
   Stools (`piece_chair`, `dvergrprops_stool`) have no front; they stand at 90 or 270 as often as 0.
 - Seats away from a table, within 8 m of the focal piece: 35 % to 57 % of them turn within 30 degrees of the most
   common turn toward it (bedroom 38 %, home 36 %, throne hall 44 %, hearth room 57 %).
-- Stations with the pivot under 0.6 m from a wall face: workbench 31 %, forge 46 % (to refine: measured from the
-  pivot, not the back).
+- Stations with their back (local -z) within 0.6 m of a wall: workbench 77 %, forge 65 %, artisan table 18 %.
 
 ## 2. Counts per room kind
 
@@ -178,29 +178,58 @@ Work corners (`sets.json` work; within 4 m of the station):
   rack (ext2) beside at 2.4 m in 36 %, adze (ext3) beside 2.5 m in 22 %; one of each. Chests beside at 2.4 m in 25 %.
 - Extensions never stand in front of their station more than 7 % of the time.
 
-Counters and bars (`sets.json` bars, to refine): runs of building pieces with tops 0.8 to 1.4 m over the floor, 2 m or
-longer. Counter tops sit at 1.02 m (p50; p10 0.88, p90 1.27). The common counter pieces are wood_floor_1x1 (788),
-grausten floor 1x1 (386), wood_beam_1 and wood_beam (500), wood_wall_half (134). Most such runs stand against a wall
-(worktops, chest shelves); free-standing bars with a walk-in space behind them are being separated.
+Counters and bars (`sets.json` bars): runs of building pieces with tops 0.8 to 1.4 m over the floor, 2 m or longer.
+Counter tops sit at 1.02 m (p50; p10 0.88, p90 1.27).
+- Worktops (a counter within 0.9 m of a wall, 1,432 in all rooms) are built from wood_floor_1x1 (700), grausten floor
+  1x1 (349), wood_beam_1 and wood_beam (409), wood_wall_half (119); on and behind them stand chests, dvergr lanterns,
+  black marble heads and totems.
+- Free-standing bars in social rooms are rare: at most 57 in the corpus (the finder has false positives, see Renders
+  checked) (20 in liked builds), in homes (46 %), kitchens
+  (19 %), throne halls (16 %) and tavern halls (9 %). 2.8 m long (p50), wood_floor_1x1 on top in 38 of them. The wall
+  behind is 1.75 m away (p50; p10 1.0) and the clear width behind, to the wall or to what stands there, is 0.83 m
+  (p50; 42 % under 0.8 m). Behind them: wood chests, workbench and forge extensions, fermenters. Seats in front: none
+  in half of them, 3 at p90.
 
-Custom furniture (`sets.json` custom, to refine): the most used are wood_floor_1x1 at table and shelf height over or
-beside chests (shelves over chest rows, 242 builds), wood_beam at table height, wood_wall_half at seat height (bench
-seats along walls and hearths), wood_floor_1x1 beside a bed head (nightstand, 139 dragon beds and 108 beds).
+Custom furniture (`sets.json` custom and customAlone): building pieces standing inside rooms, by the height of
+their top and the furniture next to them.
+- Shelving over chests: wood_floor_1x1 at table height (242 builds) and shelf height (239), wood_floor (2x2) at both
+  (184), wood_beam at both (160), wood_wall_half (129): chest rows get a built shelf or a second tier.
+- Display plinths: wood_floor_1x1 under item stands at table height (99 builds) and shelf height (77).
+- Seats and ledges: wood_wall_half at seat height along walls (292 builds with nothing near, 224 in hearth rooms),
+  wood_wall_half at seat height in kitchens (66 builds).
+- Nightstands: wood_floor_1x1 beside a bed head (139 dragon beds, 108 beds), wood_beam (112 beds), wood_wall_half
+  (57 beds), grausten and ashwood floor 1x1 beside ashwood beds.
 
 ## 4. Material cohesion
 
-`materials.json`, prefab first cut of families; prefab pairs below do not depend on the labels.
+`materials.json`. Families are track A's catalog families (`data/catalog/pieces.json` version 1); the prefab pairs
+do not depend on family labels.
 
-- Table sets: 86 % to 99 % of sets use one seat prefab. The seats builders put at each table: piece_table with
-  chair02 (42 %) or chair03 (24 %) or bench01 (17 %); round table with chair03 (86 %); oak table with chair03 (83 %);
-  black marble table with chair03 (60 %) or black marble bench (22 %); dvergr table with dvergr stools (85 %).
+- One seat prefab per table in 76 % to 99 % of sets. The seats builders put at each table: piece_table with chair02
+  (42 %), chair03 (24 %) or bench01 (17 %); round table with chair03 (86 %); oak table with chair03 (83 %); black
+  marble table with chair03 (60 %) or the black marble bench (22 %); dvergr table with dvergr stools (85 %).
 - piece_bench01 at a black marble table: 1.4 % of its seats (139 seats). Black marble benches at wooden tables: none
   at piece_table, 0.2 % of seats at round tables, 0.6 % at oak tables.
-- Rooms with two or more family-tagged pieces (tables, seats, thrones, beds, chests; 2,853 rooms): one family in 60 %,
-  two in 23 %, three or more in 18 %. Storage rooms are 94 % one family; bedrooms, homes and halls mix two to three.
-- Family pairs against chance in one room: dark wood with stone 2.3 times chance, ashwood with dark wood 2.0, black
-  marble with dark wood 1.9, dark wood with the round table's family 1.5. Rarely together: bone with plain wood (0.27),
-  black metal with log (0.34), black metal with plain wood (0.38), black marble with plain wood (0.43).
+- Color (catalog `look.mean`, delta E between a seat and its own table, 2,629 seats): p50 6.1, p90 16.9, 58 % under
+  10. The same tables against the seats of other sets (chance): p50 10.4, p90 24.2, 39 % under 10. Builders pick seats
+  that match the table's color.
+- Per room, the spread of luma (0 to 255) across tables, seats, thrones, beds and chests (2,886 rooms): p50 0, p75 43,
+  p90 59. The same pieces dealt to rooms at random: p50 48, p75 67. Most rooms keep their furniture in one tone; a
+  quarter carry a second, contrasting tone.
+- Families per room (rooms with two or more family-tagged pieces): one family in 58 %, two in 20 %, three or more in
+  22 %. Storage rooms stay in one family 94 % of the time; bedrooms, homes, dining rooms and halls mix two or three.
+- Families together in a room, against chance: darkwood furniture with fine furniture 2.7, darkwood furniture with
+  hide (the dragon bed) 2.6, fine furniture with stone props 2.5, darkwood furniture with stone props 2.3, ashwood with
+  darkwood furniture 2.1, darkwood with marble furniture 2.0. Rarely together: bone with rustic furniture 0.20,
+  ashwood with hide 0.27, iron props with log 0.34, marble furniture with rustic furniture 0.43, runed furniture with
+  rustic furniture 0.46.
+- For track A: the catalog puts piece_table_round and piece_table_oak in fine_furniture and piece_chair03 in
+  darkwood_furniture, yet chair03 is 90 % of the seats at fine_furniture tables and the color difference is small
+  (round table to chair03 delta E 6.1). The pairing is a set in the corpus.
+- By culture (`caps.json` byCulture, indoor, builds of 30 to 400 m2): norse-forest builds use log benches in 38 % and
+  wall torches in 71 %; ashlands builds use dvergr lanterns (50 %) and lava lanterns (32 %), chair03 (43 %) and the
+  ashwood bench (14 %); castle builds use wall torches (36 %) and hanging braziers (27 %); norse builds wall torches
+  (39 %) and dvergr lanterns (27 %). Samples: 22 to 41 builds per culture.
 
 ## 5. Repetition caps
 
@@ -243,9 +272,13 @@ builds; p50 and p90 among builds that use it; per 100 m2 among builds that use i
 `space.json`. Widths are the clear width of the floor on a 0.25 m grid, walls and posts blocking, from the turned
 build (exact for walls along x and z).
 
-- Walk-through halls (corridor rooms that join two or more doors or stairs, ceiling 1.9 m or more; 750 halls in
-  all builds): clear width p50 2.0 m (p10 1.0, p90 3.5). 47 % are under 2 m and 7.5 % are 4 m or wider. In wood_floor
-  tiles (2 m): p50 one tile, p90 1.75 tiles. Liked builds: p50 1.5 m.
+- Straight walk-through halls in buildings of house to hall size (the hall joins two or more doors or stairs, its
+  floor fills 80 % of its box, ceiling 1.9 m or more, the build has 30 to 600 m2 indoors; 131 halls in 88 builds):
+  inside width p50 2.0 m (p10 1.0, p25 1.06, p75 2.5, p90 4.0). Under 2 m: 50 %; 2 to 3 m: 28 %; 3 to 4 m: 9 %; 4 m
+  or more: 13 %. Liked builds: p50 1.5 m (31 halls). In renders the narrow ones are loft walkways round a hearth
+  opening and side passages beside a stair (`starter-home/cottage.blueprint`, `building/thatch-cottage.blueprint`).
+- All halls, any build size (750; castle walls and balconies of large builds fall in here too): clear width p50 2 m,
+  47 % under 2 m, 7.5 % 4 m or wider.
 - Tyler's rule stands as given: passages are at least two wood_floor pieces wide; one piece only for a closet or a
   hidden passage. The corpus halls are narrower than the rule in most builds; the rule is the target.
 - Porches (ground floor, 30 % or more of the edge open): clear width p50 2 m, box short side p50 3.1 m. Galleries and
@@ -310,6 +343,32 @@ build (exact for walls along x and z).
   and castles; old logs (FirTree_oldLog) as props.
 - Showcase: planters at 7.7 % of windows (corpus 0.9 %), with crops and flowers where the corpus uses vines; plant
   clusters of one species 19 % (corpus 73 %).
+
+## Renders checked
+
+Pictures of exemplar rooms (`lab/rooms_corpus_render.js`, two views from above with the walls cut at 2.6 m and a plan)
+are in the private repo, `research/2026-11-12-rooms/`, since they show builders' work. What they show against the
+numbers:
+
+- `tavern-hall.png` (`tavern/forest-lodge.blueprint`): a fire pit in the middle of a round rug with two tables and
+  benches on two sides; a long oak table with chairs on one side and a bench on the other; hearths in alcoves; 2 to 3 m
+  of open floor round each set. One set per focal, rugs under the sets.
+- `bedroom.png` (`starter-home/geletopp-cabin...gumdropendgame.blueprint`): two dragon beds side by side with their
+  heads at the wall, a rug between and at the foot, a round table with chairs beside.
+- `dining.png` (`advanced-base/castle-final-part.blueprint`): one table with a bench on one side and a chair at the
+  head, in an eight-sided tower room.
+- `hall-thatch-1.6m.png`, `hall-cottage-1m.png`: the narrow halls of small houses are a side passage beside a stair
+  and a loft walkway round the hearth opening. `hall-2m-0.png` and `hall-2m-1.png` show that the all-halls count
+  takes in balconies and castle wall walks, which is why the straight-hall count is the one to use.
+- `smithy.png` (the ground floor of the same cabin, read as a smithy because a forge stands in it with no bed): an
+  open work floor with the stations round a middle fire, some turned 45 degrees into the corners, chests in rows by
+  the door, jute carpets laid at angles in the corners.
+- `bar.png` (`building/high-summit-lodge-a-frame-longhouse.blueprint`): the counter found there is a run of 1x1 floors
+  beside a stair in a basement, not a bar. The counter finder has false positives; the bar numbers in section 3 are an
+  upper bound on what builders do and need a check by eye before use.
+
+Render with `NODE_PATH=/home/claude/shared/lab_node_modules` when the lab's node_modules is the shared link (the
+canvas package finds its native part through it).
 
 ## Co-occurrence of items (`pairs.json`)
 

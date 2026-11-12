@@ -78,24 +78,40 @@ const FAMILY_PREFAB = {
   piece_chest_blackmetal: 'black metal', piece_chest_treasure: 'fine wood',
   piece_bone_throne: 'bone', piece_moose_throne: 'bone', goblin_bed: 'bone',
 };
-let CATALOG = null, CATALOG_SRC = null;
+let CATALOG = null, CATALOG_SRC = null, CATALOG_VERSION = null;
+const COLOR = new Map();
 function loadCatalog(p) {
   if (!p || !fs.existsSync(p)) return null;
   try {
     const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-    const list = Array.isArray(j) ? j : j.pieces || Object.values(j);
+    const raw = Array.isArray(j) ? j : j.pieces || j;
+    const list = Array.isArray(raw) ? raw : Object.entries(raw).map(([k, r]) => ({ id: k, ...r }));
     const m = new Map();
     for (const r of list) {
       const id = r.id || r.prefab || r.name;
       const fam = r.family || r.materialFamily || (r.material && (r.material.family || r.material)) || null;
       if (id && fam && typeof fam === 'string') m.set(id, fam);
+      if (id && r.look && r.look.mean) COLOR.set(id, r.look.mean);
     }
-    if (m.size) { CATALOG = m; CATALOG_SRC = p; }
+    if (m.size) { CATALOG = m; CATALOG_SRC = p; CATALOG_VERSION = j.version || null; }
   } catch (e) { /* keep the first cut */ }
   return CATALOG;
 }
-const familyOf = name => (CATALOG && CATALOG.get(name)) || FAMILY_PREFAB[name] || null;
-const familySource = () => (CATALOG ? `track A catalog ${CATALOG_SRC}` : 'prefab first cut (lab/rooms_corpus_lib.js FAMILY_PREFAB)');
+const familyOf = name => (CATALOG && CATALOG.get(name)) || (CATALOG ? null : FAMILY_PREFAB[name]) || null;
+const familySource = () => (CATALOG ? `track A catalog (data/catalog/pieces.json family, version ${CATALOG_VERSION}); prefabs it does not list have no family` : 'prefab first cut (lab/rooms_corpus_lib.js FAMILY_PREFAB)');
+// color difference (CIE76 delta E in Lab) between two prefabs' mean colors from the catalog (look.mean), or null
+function toLab(hex) {
+  const v = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => (c > 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92));
+  const X = (v[0] * 0.4124 + v[1] * 0.3576 + v[2] * 0.1805) / 0.95047, Y = v[0] * 0.2126 + v[1] * 0.7152 + v[2] * 0.0722, Z = (v[0] * 0.0193 + v[1] * 0.1192 + v[2] * 0.9505) / 1.08883;
+  const f = t => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  return [116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))];
+}
+function colorDiff(a, b) {
+  const ca = COLOR.get(a), cb = COLOR.get(b);
+  if (!ca || !cb) return null;
+  const la = toLab(ca), lb = toLab(cb);
+  return { dE: Math.hypot(la[0] - lb[0], la[1] - lb[1], la[2] - lb[2]), dL: Math.abs(la[0] - lb[0]) };
+}
 
 // ---------------------------------------------------------------- vanilla
 const CACHE = '/work/models/vhmodels/work/cache', INDEX = '/work/models/vhmodels/work/index.json';
@@ -120,4 +136,4 @@ const inc = (o, k, v = 1) => { o[k] = (o[k] || 0) + v; return o; };
 const norm = a => ((a % 360) + 360) % 360;
 const angDiff = (a, b) => { const d = norm(a - b); return d > 180 ? 360 - d : d; };
 
-module.exports = { P, typeOf, SEATK, LIGHTK, FLOOR_T, FAMILY_PREFAB, familyOf, familySource, loadCatalog, isVanilla, MOD, q, qs, share, top, inc, norm, angDiff };
+module.exports = { colorDiff, COLOR, P, typeOf, SEATK, LIGHTK, FLOOR_T, FAMILY_PREFAB, familyOf, familySource, loadCatalog, isVanilla, MOD, q, qs, share, top, inc, norm, angDiff };

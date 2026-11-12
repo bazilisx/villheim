@@ -1949,7 +1949,15 @@ function hangFrom(p, pieces) {
   const A = indexOf(CACHE_H, pieces, { any: true, floors: true, roofs: true });
   const m = attach({ ...p, y: p.y - 0.5 }, A);
   if (!isFinite(m.above) || m.above > 3.5) return null;
-  return +(p.y - 0.5 + m.above + 0.05).toFixed(3);
+  let y = p.y - 0.5 + m.above + 0.05;
+  // (under a sloped roof the first measure stops short of the slope: measured again from where it lands, as the float
+  // check measures it; showcase 03 hung 9 cm under its roof)
+  for (let i = 0; i < 3; i++) {
+    const n = attach({ ...p, y }, A);
+    if (!isFinite(n.above) || n.above <= 0.03 || n.above > 1) break;
+    y += n.above + 0.05;
+  }
+  return +y.toFixed(3);
 }
 /** The height that sets a piece's model on the first thing under its foot within reach (m up or down), or null.
  * For what stands (a standing torch whose foot hovered 10 to 64 cm over the floor, showcase 01 and 05). */
@@ -3107,7 +3115,13 @@ function dressStands(b, ctx) {
   // plank table's pivot against its model top 0.820 and its collider top 0.86; on a wall ledge 0.075 to 0.085 m
   // against its model top 0.07; lab measures of 2026-11-12, track E record)
   const Ms = (() => { try { return NODE_P ? require('./mesh.js') : window.VHMesh; } catch (e) { return null; } })();
-  const showTop = q => { const md = Ms && Ms.dims ? Ms.dims(q.name) : null; return md && md.show && md.showAt && !P_.piece(q.name).structural ? q.y + md.showAt[1] + md.show[1] / 2 : null; };
+  // a flat stand's pivot over the pivot of the level piece it stands on, the corpus mode per support (n, cases at the
+  // mode): where the game's placement lands, which is the collider top on a ledge and within 2 cm of the model top on
+  // most tables. Other pieces use the model top.
+  const STAND_ON = { piece_table: 0.82, piece_table_oak: 0.79, piece_table_round: 0.8, piece_blackmarble_table: 0.82, piece_table_runed: 0.79,
+    mountainkit_table: 0.8, dvergrprops_table: 0.74, dvergrprops_crate: 1.02, piece_bench01: 0.56, piece_chest_barrel: 0.9, wood_ledge: 0.03 };
+  // (1194/593, 702/621, 442/410, 121/110, 14/13, 65/65, 10/8, 10/10, 114/35, 79/12; wood_ledge: 17 of 20 on level ledges)
+  const showTop = q => { if (STAND_ON[q.name] != null) return q.y + STAND_ON[q.name]; const md = Ms && Ms.dims ? Ms.dims(q.name) : null; return md && md.show && md.showAt && !P_.piece(q.name).structural ? q.y + md.showAt[1] + md.show[1] / 2 : null; };
   const topOf = (p, near) => {
     let best = null;
     for (const q of near) {
@@ -5361,6 +5375,23 @@ const ROOM_ASM = { home: 'home', bedroom: 'bedroom', dormitory: 'bedroom', 'tave
 const ASM_SKIP = /^(bed|piece_bed02|ashwood_bed|piece_chair|piece_chair0\d|piece_bench01|piece_table|piece_table_round|piece_table_oak|piece_throne)/;
 const DBG_ASM = typeof process !== 'undefined' && process.env && process.env.VH_DEBUG_ASM ? {} : null;
 if (DBG_ASM) process.on('exit', () => console.log(JSON.stringify(DBG_ASM)));
+const WH_I = () => { try { return NODE_I ? require('./wallhang.js') : window.VHWallhang; } catch (e) { return null; } };
+// Does every free-standing piece of a placed recipe rest on the room's floor or on another piece of the recipe? Mined
+// recipes can leave out the floor or platform a piece stood on in its build (AC-armor-alcove-16: its armor stand at
+// 0.38 m with the floor under it left out, 38 cm over the floor in showcase 16).
+function asmGrounded(pieces, stand, P) {
+  const WH = WH_I();
+  if (!WH || !WH.modelWorldBox) return true;
+  const boxes = pieces.map(p => WH.modelWorldBox({ ...p, q: p.q || null }, 0));
+  for (let i = 0; i < pieces.length; i++) {
+    const p = pieces[i], b = boxes[i];
+    if (!b || WH.isHung(p.name) || (P && P.piece(p.name).structural)) continue;
+    if (Math.abs(b.y0 - stand) <= 0.05) continue;
+    if (b.y0 < stand - 0.05) return false;
+    if (!boxes.some((o, j) => j !== i && o && Math.abs(o.y1 - b.y0) <= 0.06 && o.x0 < b.x1 && o.x1 > b.x0 && o.z0 < b.z1 && o.z1 > b.z0)) return false;
+  }
+  return true;
+}
 const ASM_P = () => { try { return NODE_I ? require('./assemblies.js') : window.VHAssemblies; } catch (e) { return null; } };
 function builtZone(room, plan, H, I) {
   const AS = ASM_P();
@@ -5408,7 +5439,7 @@ function builtZone(room, plan, H, I) {
     const s = spots[0];
     if (!s) continue;
     const got = AS.place(r, { x: s.x0, y: room.stand, z: s.z0, facing: s.yaw }, { family: plan.suite.table ? (pc(plan.suite.table) || {}).f : null });
-    if (!got) continue;
+    if (!got || !asmGrounded(got.pieces, room.stand, P)) continue;
     plan.asm.used[r.id] = 1;
     const recs = [];
     for (const p of got.pieces) {
@@ -5803,9 +5834,9 @@ const F = {
   piece_throne01: { s: [1.4, 2.5, 1.0], at: 'wall', b: 'Swamp', cat: 'seat' },
   fire_pit: { s: [1.4, 0.4, 1.4], at: 'floor', b: 'Meadows', cat: 'fire' },
   hearth: { s: [4.0, 0.6, 3.0], at: 'floor', b: 'Swamp', cat: 'fire' },
-  piece_cookingstation: { s: [2.0, 0.8, 0.5], at: 'fire', b: 'Meadows', cat: 'craft', lift: 0.25 },
-  piece_cookingstation_iron: { s: [3.6, 2.0, 0.73], at: 'fire', b: 'Swamp', cat: 'craft', lift: 0.25 },
-  piece_cauldron: { s: [1.0, 1.4, 1.0], at: 'fire', b: 'Black Forest', cat: 'craft', lift: 0.25 },
+  piece_cookingstation: { s: [2.0, 0.8, 0.5], at: 'fire', b: 'Meadows', cat: 'craft', lift: 0.2 },
+  piece_cookingstation_iron: { s: [3.6, 2.0, 0.73], at: 'fire', b: 'Swamp', cat: 'craft', lift: 0.583 },
+  piece_cauldron: { s: [1.0, 1.4, 1.0], at: 'fire', b: 'Black Forest', cat: 'craft', lift: 0.2 },
   fermenter: { s: [1.6, 2.2, 1.55], at: 'wall', b: 'Black Forest', cat: 'craft', tall: true },
   piece_workbench: { s: [3.01, 1.03, 1.1], at: 'wall', b: 'Meadows', cat: 'craft' },
   piece_workbench_ext1: { s: [0.81, 1.01, 0.8], c: [-0.06, 0.0], at: 'wall', b: 'Meadows', cat: 'craft' },
@@ -6791,6 +6822,7 @@ function placeFire(room, ctx, kind) {
   void R;
   return rec;
 }
+// (corpus: a cooking station or cauldron stands 0.20 over a fire pit's pivot, 252 of 256 and 110 of 112)
 function onFire(room, name, o = {}) {
   const fire = room.fire;
   if (!fire || fire.name !== 'fire_pit') return null;
@@ -8516,7 +8548,8 @@ function furnishPlan(room, role, c) {
     const tavern = role === 'tavern';
     if (isFire) {
       placeFire(room, c, ok('hearth', biome) && !tavern ? 'hearth' : 'fire_pit');
-      if (room.fire && room.fire.name === 'fire_pit') onFire(room, ok('piece_cookingstation_iron', biome) && d >= 3 ? 'piece_cookingstation_iron' : 'piece_cookingstation');
+      // (the iron station spans a hearth: 257 of 259 corpus iron stations stand on one, 2 on a fire pit)
+      if (room.fire && room.fire.name === 'fire_pit') onFire(room, 'piece_cookingstation');
     }
     planPaths(room);
     if (tavern) cookCorner(room, role, c);
@@ -8979,7 +9012,7 @@ function tplFit(room, role, c, fr, ch, needFire) {
           const [x, z] = at(Math.max(-pw / 2 + 0.3, Math.min(pw / 2 - 0.3, lx)), Math.max(-pd / 2 + 0.2, Math.min(pd / 2 - 0.2, lz)));
           // two pots or spits over one hearth keep apart (they cross each other in the game otherwise)
           const [fw, , fd] = size(n);
-          if (!room.placed.some(r => r.onFire && overlap(r.b, obox(x, z, fw, fd, yaw), -0.05))) rec = room.add(n, x, par.y0 + (f.lift || 0.25), z, yaw, { onFire: true });
+          if (!room.placed.some(r => r.onFire && overlap(r.b, obox(x, z, fw, fd, yaw), -0.05))) rec = room.add(n, x, par.y0 + (par.name === 'hearth' ? 0.583 : (f.lift || 0.2)), z, yaw, { onFire: true }); // (corpus: 0.583 over a hearth, 116 of 123 stations, 236 of 257 iron)
         }
       } else {
         // a seat tucked under a table in the build comes out until it is clear
@@ -14023,7 +14056,10 @@ function pose(item, stand, yaw, top) {
   if (stand !== 'itemstandh' || !it || !it.flat) return { tilt: 0, q: quat(yaw, 0), y: top, box: null, h: null };
   const f = it.flat, low = f.low != null ? f.low : 0;
   const lie = it.tall && D.rules.pose.tallKinds.includes(it.kind);
-  if (!lie) return { tilt: 0, q: quat(yaw, 0), y: top - Math.min(0, low), box: { x: f.x, z: f.z }, h: f.top - Math.min(0, low) };
+  // (an upright item never lifts its stand: corpus flat stands sit on their table or floor at the median -0.003 m
+  // whatever they hold, items whose model reaches under the plate included: Carrot n 259, Mushroom n 110,
+  // TrophySkeleton n 67, CookedLoxMeat n 47)
+  if (!lie) return { tilt: 0, q: quat(yaw, 0), y: top, box: { x: f.x, z: f.z }, h: f.top };
   // turned +90 about x (the corpus's usual turn, local z pointing down: 475 of 715 turned weapon stands): y' = -z,
   // z' = y, the item lies along the stand's +z; turned -90: y' = z, z' = -y. The turn that lifts the stand least wins.
   const up = f.z[1], down = -f.z[0];
@@ -18709,7 +18745,7 @@ function noticeWall(b, w, y0) {
 function campDesign(b, K, T, o) {
   const { R, cultureKey, decor, place } = o;
   b.put('fire_pit', 0, 0, 0, 0, { decor: true, hearth: true });
-  b.put('piece_cookingstation', 0, 0.4, 0, 0, { decor: true });
+  b.put('piece_cookingstation', 0, 0.2, 0, 0, { decor: true });
   // lean-tos: three most often, two or four (hub1 s1: three, 113 to 134 degrees apart, 5.4 to 8.8 m out); never on the
   // door side (the roads come in at -z)
   const n = R() < 0.6 ? 3 : R() < 0.5 ? 2 : 4;
@@ -19564,7 +19600,8 @@ function furnish(b, K, C, T, o, F) {
   const form = k >= 2 ? V.hearth : 'pit';
   b.put(form === 'pit' ? 'fire_pit' : 'hearth', 0, 0.125, 0, 0, { decor: true, hearth: true, ds: 1 });
   place.keep(-2.4, 2.4, -2, 2, 0, 3);
-  b.put('piece_cookingstation', 0, 0.55, 0, 0, { decor: true, ds: 1 });
+  // (corpus: a cooking station stands 0.20 over a fire pit, 252 of 256, and 0.583 over a hearth, 116 of 123)
+  b.put('piece_cookingstation', 0, 0.125 + (form === 'pit' ? 0.2 : 0.583), 0, 0, { decor: true, ds: 1 });
   const fires = [{ x: 0, z: 0 }];
   if (form === 'long') for (const x of [-2, 2]) {
     b.put('stone_floor_2x2', x, -0.375, 0, 0, { hearthStone: true });

@@ -635,6 +635,23 @@ const ROOM_ASM = { home: 'home', bedroom: 'bedroom', dormitory: 'bedroom', 'tave
 const ASM_SKIP = /^(bed|piece_bed02|ashwood_bed|piece_chair|piece_chair0\d|piece_bench01|piece_table|piece_table_round|piece_table_oak|piece_throne)/;
 const DBG_ASM = typeof process !== 'undefined' && process.env && process.env.VH_DEBUG_ASM ? {} : null;
 if (DBG_ASM) process.on('exit', () => console.log(JSON.stringify(DBG_ASM)));
+const WH_I = () => { try { return NODE_I ? require('./wallhang.js') : window.VHWallhang; } catch (e) { return null; } };
+// Does every free-standing piece of a placed recipe rest on the room's floor or on another piece of the recipe? Mined
+// recipes can leave out the floor or platform a piece stood on in its build (AC-armor-alcove-16: its armor stand at
+// 0.38 m with the floor under it left out, 38 cm over the floor in showcase 16).
+function asmGrounded(pieces, stand, P) {
+  const WH = WH_I();
+  if (!WH || !WH.modelWorldBox) return true;
+  const boxes = pieces.map(p => WH.modelWorldBox({ ...p, q: p.q || null }, 0));
+  for (let i = 0; i < pieces.length; i++) {
+    const p = pieces[i], b = boxes[i];
+    if (!b || WH.isHung(p.name) || (P && P.piece(p.name).structural)) continue;
+    if (Math.abs(b.y0 - stand) <= 0.05) continue;
+    if (b.y0 < stand - 0.05) return false;
+    if (!boxes.some((o, j) => j !== i && o && Math.abs(o.y1 - b.y0) <= 0.06 && o.x0 < b.x1 && o.x1 > b.x0 && o.z0 < b.z1 && o.z1 > b.z0)) return false;
+  }
+  return true;
+}
 const ASM_P = () => { try { return NODE_I ? require('./assemblies.js') : window.VHAssemblies; } catch (e) { return null; } };
 function builtZone(room, plan, H, I) {
   const AS = ASM_P();
@@ -682,7 +699,7 @@ function builtZone(room, plan, H, I) {
     const s = spots[0];
     if (!s) continue;
     const got = AS.place(r, { x: s.x0, y: room.stand, z: s.z0, facing: s.yaw }, { family: plan.suite.table ? (pc(plan.suite.table) || {}).f : null });
-    if (!got) continue;
+    if (!got || !asmGrounded(got.pieces, room.stand, P)) continue;
     plan.asm.used[r.id] = 1;
     const recs = [];
     for (const p of got.pieces) {

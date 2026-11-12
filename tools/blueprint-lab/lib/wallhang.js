@@ -374,7 +374,15 @@ function hangFrom(p, pieces) {
   const A = indexOf(CACHE_H, pieces, { any: true, floors: true, roofs: true });
   const m = attach({ ...p, y: p.y - 0.5 }, A);
   if (!isFinite(m.above) || m.above > 3.5) return null;
-  return +(p.y - 0.5 + m.above + 0.05).toFixed(3);
+  let y = p.y - 0.5 + m.above + 0.05;
+  // (under a sloped roof the first measure stops short of the slope: measured again from where it lands, as the float
+  // check measures it; showcase 03 hung 9 cm under its roof)
+  for (let i = 0; i < 3; i++) {
+    const n = attach({ ...p, y }, A);
+    if (!isFinite(n.above) || n.above <= 0.03 || n.above > 1) break;
+    y += n.above + 0.05;
+  }
+  return +y.toFixed(3);
 }
 /** The height that sets a piece's model on the first thing under its foot within reach (m up or down), or null.
  * For what stands (a standing torch whose foot hovered 10 to 64 cm over the floor, showcase 01 and 05). */

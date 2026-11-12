@@ -85,7 +85,10 @@ function pose(item, stand, yaw, top) {
   if (stand !== 'itemstandh' || !it || !it.flat) return { tilt: 0, q: quat(yaw, 0), y: top, box: null, h: null };
   const f = it.flat, low = f.low != null ? f.low : 0;
   const lie = it.tall && D.rules.pose.tallKinds.includes(it.kind);
-  if (!lie) return { tilt: 0, q: quat(yaw, 0), y: top - Math.min(0, low), box: { x: f.x, z: f.z }, h: f.top - Math.min(0, low) };
+  // (an upright item never lifts its stand: corpus flat stands sit on their table or floor at the median -0.003 m
+  // whatever they hold, items whose model reaches under the plate included: Carrot n 259, Mushroom n 110,
+  // TrophySkeleton n 67, CookedLoxMeat n 47)
+  if (!lie) return { tilt: 0, q: quat(yaw, 0), y: top, box: { x: f.x, z: f.z }, h: f.top };
   // turned +90 about x (the corpus's usual turn, local z pointing down: 475 of 715 turned weapon stands): y' = -z,
   // z' = y, the item lies along the stand's +z; turned -90: y' = z, z' = -y. The turn that lifts the stand least wins.
   const up = f.z[1], down = -f.z[0];

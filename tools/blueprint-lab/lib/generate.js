@@ -1088,7 +1088,7 @@ function generate(req) {
     // (over an end hearth only the rake's ridge cap, raised with the others; over a side one the row, the eave, and the
     // bargeboards that lay on them)
     const over = (p, m) => (o => o.x0 < col.x1 - 0.05 + m && o.x1 > col.x0 + 0.05 - m && o.z0 < col.z1 - 0.05 + m && o.z1 > col.z0 + 0.05 - m && o.y1 > top - 0.3)(checksLib().catBox(p));
-    const extra = !col ? [] : hearth.spot === 'end' ? takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && over(p, 0))
+    const extra = !col ? [] : hearth.spot === 'end' ? takeOut(b, p => !p.decor && isCap(p) && over(p, 0))
       : takeOut(b, p => !p.decor && (['roof', 'roofTop', 'roofCorner'].includes(P.piece(p.name).role) ? over(p, 0)
         : P.piece(p.name).role === 'beam' && (p.trim || /_(26|45)$/.test(p.name)) && over(p, /_(26|45)$/.test(p.name) ? 1.2 : 0)));
     // the ridge caps over the fire's place stay out for smoke; the last pass puts them back if no fire is laid
@@ -1284,7 +1284,7 @@ function generate(req) {
     const at = { x: Math.max(w0.cx - w0.W + 1, Math.min(w0.cx + w0.W - 1, doorX)), z: w0.cz }, fr = flueRect(w0, at, w0.W - 1);
     const climbs = ladders.flatMap(l => [l.hole, l.land, l.stand, ...(l.run || [])].filter(Boolean));
     if (fr && !climbs.some(c => inRect(fr, c[0], c[1], -0.1))) {
-      const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && inRect(fr, p.x, p.z) && p.y > top - 0.3);
+      const caps = takeOut(b, p => !p.decor && isCap(p) && inRect(fr, p.x, p.z) && p.y > top - 0.3);
       if (caps.length) b.vents.push({ kind: 'ridge', caps, x: avg(caps.map(c => c.x)), z: avg(caps.map(c => c.z)), y: caps[0].y, rect: rectOf(caps), from: storeys > 1 && !(loft && !loft.knee) ? F + SH : caps[0].y });
     }
   }
@@ -2006,6 +2006,9 @@ const inRect = (r, x, z, pad = 0) => x > r.x0 - pad && x < r.x1 + pad && z > r.z
 // low enough to catch the smoke.
 const HOOD = 2.55;
 // Take pieces out of a build (and out of its key set, so they can be put back in the same place later).
+// a ridge cap (the crossed boards on a gable share the catalog's roofTop role; they stay on the bargeboards' line when
+// the caps over a fire are lifted for smoke: showcase 09 had them 0.6 m up with the caps)
+function isCap(p) { return P.piece(p.name).role === 'roofTop' && !/wall_roof_top/.test(p.name); }
 function takeOut(b, test) {
   const out = b.pieces.filter(test);
   if (!out.length) return out;
@@ -3267,7 +3270,7 @@ function endFallback(b, h, w0, o) {
   const fr = flueRect(w0, { x: h.x, z: h.z }, w0.W - 1);
   if (!fr) return null;
   const Ck = checksLib();
-  const caps = takeOut(b, p => !p.decor && P.piece(p.name).role === 'roofTop' && p.y > (o.top != null ? o.top : o.F + o.storeys * o.SH) - 0.3 &&
+  const caps = takeOut(b, p => !p.decor && isCap(p) && p.y > (o.top != null ? o.top : o.F + o.storeys * o.SH) - 0.3 &&
     (a => a.x0 < fr.x1 - 0.05 && a.x1 > fr.x0 + 0.05 && a.z0 < fr.z1 - 0.05 && a.z1 > fr.z0 + 0.05)(Ck.catBox(p)));
   if (!caps.length) return null;
   b.vents.push({ kind: 'ridge', caps, x: h.x, z: h.z, y: Math.max(...caps.map(c => c.y)), rect: fr, from: o.F + HOOD, hood: true });

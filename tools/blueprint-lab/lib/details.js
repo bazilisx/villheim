@@ -944,7 +944,7 @@ function gablePorch(b, ctx) {
     b.put(slopeBeam(K, 45), x + s, yR - 1, zf - 2.08, s > 0 ? 180 : 0, T); // bargeboard on the open front
   }
   b.put(K.roofTop45, x, yR, zf - 1, 90, T);
-  if (ctx.profile.crossed) b.put('wood_wall_roof_top_45', x, yR - 1, zf - 2, 0, T); // crossed boards over the porch gable, crossing on its apex
+  if (ctx.profile.crossed) b.put('wood_wall_roof_top_45', x, yR - 1, zf - 2, 0, T); // crossed boards over the porch gable, crossing where the bargeboards' lines meet (this roof's rows sit a metre closer to the ridge than a house's)
   if (!b.pieces.some(p => p.name === K.floor && Math.abs(p.x - x) < 0.1 && Math.abs(p.z - (zf - 1)) < 0.1)) b.put(K.floor, x, F, zf - 1, 0, T);
   b.notes.push('A gabled porch over the front door.');
   return true;
@@ -1084,10 +1084,12 @@ function bargeboards(K, C, w, ctx, rows, ends, add, low, pivot, r) {
       else add(name, u, pivot(rows) - r / 2, sv * (2 + 2 * rows + 1), (sv < 0 ? 180 : 0) + 90, 'trim', low(rows));
     }
     // crossed boards over the apex: the game's Wood Roof Cross (the piece is the pair of crossed boards that Norwegian
-    // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it
-    // the piece's boards cross 1 m (26 degrees: 0.5 m) over its pivot, so the crossing sits on the apex (it stood a
-    // metre too high, its arms 2 m over the ridge)
-    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * (w.W + rk), capY - (r === 2 ? 1 : 0.5), 0, 90, 'trim', capY + 1);
+    // vindskier end in), on the ridge where it meets the gable, as a quarter of the corpus builds have it. Corpus
+    // builds set its pivot at the ridge cap's height (958 of the crosses beside a 45 degree cap, the next most common
+    // 142 at 2 m) and its boards run on in line with the 45 degree bargeboards (1,881 of 5,042 in-plane beams on a
+    // board's line, the rest 2 m or more off it: lab/shell_mine.js), so the boards carry the bargeboards on past the
+    // apex and cross over the ridge (showcase 13: set a metre lower, they ran a metre under the bargeboards' line)
+    if (X.crossed && !ctx.dragonsHere && !apex) add(r === 2 ? 'wood_wall_roof_top_45' : 'wood_wall_roof_top', sg * (w.W + rk), capY, 0, 90, 'trim', capY + (r === 2 ? 2 : 1));
   });
 }
 

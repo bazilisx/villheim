@@ -7,7 +7,7 @@ series of overrestrictivr and over bound rules", with independent helpers auditi
 - Two audits ran first, independently: Tyler's recurring corrections (from past chats, records and the Decisions tab)
   and instruction best practice (Anthropic's Claude Code and prompting docs and engineering posts, with others). Both
   then reviewed the drafts. The audit files quote chats and live in the private repo, `research/2026-11-12-tuneup/`.
-- Changed: `CLAUDE.md` (purpose first; working habits from the audits; your rules kept), `.claude/rules/village.md`
+- Changed: `CLAUDE.md` (purpose first; working habits from the audits; Tyler's rules kept), `.claude/rules/village.md`
   (village rules), `docs/DESIGN_QUALITIES.md` (the measure for designs, with the hard-rules table),
   `docs/HELPER_RULES.md` (helpers and the council, replacing briefs kept outside the repo), `docs/REVIEW_SHEET.md`
   (sheet mechanics), `docs/DEVELOPMENT.md` (deleting branches), the seven seat criteria files (now diagnostic notes),

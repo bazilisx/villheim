@@ -1362,6 +1362,7 @@ function generate(req) {
     const want = FR() < (/grausten/.test(KH.stoneBlock || '') ? FRONT_SHARE_GRAUSTEN : FRONT_SHARE); // (bench: req.details.hearthFront true or false)
     if ((req.details && req.details.hearthFront != null ? req.details.hearthFront : want) && hearthFront(b, KH, hearth, { F, SH, storeys, R: FR, why: info })) info.hearthFront = true;
   }
+  railOpenEdges(b, K);
   Details.exterior(b, dctx);
   clearDoorways(b);
   // the fire's place for the decorator: under the ridge vent, or a cell of a flat roof (a chimney goes up from it),
@@ -2132,6 +2133,35 @@ function propUp(b, K, biome, o = {}) {
     if (!added) break;
   }
   if (n) b.notes.push(`${n} post${n > 1 ? 's' : ''} up to the roof where it would not hold by itself.`);
+  return n;
+}
+
+// Every open edge of a floor people stand on high gets posts and a beam at 1 m (D-164; lib/checks.js openEdges): decks,
+// balconies, walkways and roof decks alike. A hole inside the building (a ladder hatch, a stairwell, an opening over a
+// hall) is left to its own rails: its far side has floor under it within a storey and cover over it.
+function railOpenEdges(b, K) {
+  const Ck = checksLib();
+  // (as the game has them: the pieces that stand on their pivot at their foot)
+  const shell = b.pieces.filter(p => !p.decor).map(p => { const pi = P.piece(p.name); return pi.onPivot && !p.footed ? { ...p, y: p.y - pi.size[1] / 2 } : p; });
+  const boxes = shell.map(p => Ck.catBox(p));
+  let n = 0;
+  for (const r of Ck.openEdges(shell)) {
+    if (r.len < 0.9) continue;
+    const ox = r.x + r.nx * 0.5, oz = r.z + r.nz * 0.5;
+    const under = boxes.some(o => o.info.role === 'floor' && ox > o.x0 && ox < o.x1 && oz > o.z0 && oz < o.z1 && o.y1 < r.y - 0.5 && o.y1 > r.y - 3.6);
+    const cover = boxes.some(o => ['roof', 'roofTop', 'roofCorner', 'floor'].includes(o.info.role) && ox > o.x0 && ox < o.x1 && oz > o.z0 && oz < o.z1 && o.y0 > r.y + 1.5);
+    if (under && cover) continue;
+    const yaw = r.nx ? 90 : 0, ux = r.nx ? 0 : 1, uz = r.nx ? 1 : 0, a0 = (r.nx ? r.z : r.x) - r.len / 2;
+    const segs = Math.max(1, Math.round(r.len / 2));
+    for (let k = 0; k < segs; k++) {
+      const t = segs === 1 ? a0 + r.len / 2 : Math.min(a0 + 1 + 2 * k, a0 + r.len - 1);
+      const x = (r.nx ? r.x - r.nx * 0.1 : t), z = (r.nx ? t : r.z - r.nz * 0.1);
+      railing(b, K, x, r.y, z, yaw, { trim: true });
+      n++;
+    }
+    void ux; void uz;
+  }
+  if (n) b.notes.push('Rails along the open edges of the floors up high.');
   return n;
 }
 
@@ -3693,7 +3723,7 @@ function campDesign(b, K, biome, stage, R, decor) {
 }
 
 // what lib/hub.js builds with
-const HUB_TOOLS = { Build, quat, doorSteps, propUp, wallSegment, gablePieces, posts, putLadder, column, putDoor, valleys, inside, surfaceAt };
+const HUB_TOOLS = { Build, quat, doorSteps, propUp, railOpenEdges, wallSegment, gablePieces, posts, putLadder, column, putDoor, valleys, inside, surfaceAt };
 
 if (NODE) module.exports = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE, windowKit, propUp, doorSteps };
 else window.VHGenerate = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };

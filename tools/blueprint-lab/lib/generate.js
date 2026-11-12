@@ -1918,6 +1918,51 @@ function dropLoose(b) {
   }
 }
 
+// Steps down from every outside door to the ground the game puts the design on (D-096). The mod sets a design's
+// lowest pivot on the terrain (src/Villheim.Logic/Designs/Blueprints.cs Center), so a stone hearth floor half in the
+// ground (-0.4 m) or a bush set into it (-0.49 m) lifts the whole house that much over the terrain. The doorstep beams
+// laid 5 cm over the floor (2026-11-09) then stood 0.6 m over the ground outside, a log across the doorway that stopped
+// Tyler at the door of a Meadows home (showcase 11, 2026-11-11). Where the floor in a doorway stands more than
+// checks.js DOOR_STEP over that ground and nothing lies within a step of it outside, the doorstep beams come out and
+// treads of beams go down to the ground, each no more than DOOR_STEP under the one before.
+function doorSteps(b) {
+  const Ck = checksLib(), step = Ck.DOOR_STEP || 0.3;
+  const G = Math.min(0, ...b.pieces.map(p => p.y));
+  const beam = 'wood_beam';
+  for (const d of b.pieces.filter(p => P.piece(p.name).role === 'door' && !p.decor)) {
+    const o = P.doorOpening(d);
+    if (o.w < 1.2) continue;
+    const top = o.y + 0.1;
+    if (top - G <= step + 0.01) continue;
+    // the outside: the side with no floor, deck or stair within a step of the door's floor a metre out
+    const near = (sg, dist) => b.pieces.some(p => {
+      const role = P.piece(p.name).role;
+      if (p === d || !['floor', 'stair'].includes(role) && !(role === 'beam' && p.trim)) return false;
+      const a = Ck.aabb(p), x = o.x + o.nx * sg * dist, z = o.z + o.nz * sg * dist;
+      return x > a.x0 - 0.05 && x < a.x1 + 0.05 && z > a.z0 - 0.05 && z < a.z1 + 0.05 && a.y1 > top - step - 0.05 && a.y1 < top + 0.4;
+    });
+    const stairOut = sg => b.pieces.some(p => P.piece(p.name).role === 'stair' && Math.abs((p.x - o.x) * o.ux + (p.z - o.z) * o.uz) < 1.2 && (p.x - o.x) * o.nx * sg + (p.z - o.z) * o.nz * sg > 0 && (p.x - o.x) * o.nx * sg + (p.z - o.z) * o.nz * sg < 3);
+    for (const sg of [-1, 1]) {
+      if (stairOut(sg)) continue;
+      if (near(sg, 1.0) && !near(sg, 0.5)) continue;
+      // a floor a metre out at the door's height: inside, or a deck
+      const floorOut = b.pieces.some(p => P.piece(p.name).role === 'floor' && (() => { const a = Ck.aabb(p), x = o.x + o.nx * sg * 1.2, z = o.z + o.nz * sg * 1.2; return x > a.x0 && x < a.x1 && z > a.z0 && z < a.z1 && Math.abs(a.y1 - top) < 0.25; })());
+      if (floorOut) continue;
+      // the doorstep beams laid in the lane come out
+      const inLane = p => P.piece(p.name).role === 'beam' && !p.decor && (() => { const s = (p.x - o.x) * o.nx * sg + (p.z - o.z) * o.nz * sg, t = (p.x - o.x) * o.ux + (p.z - o.z) * o.uz; return s > 0.1 && s < 1.2 && Math.abs(t) < 0.6 && Math.abs(p.y - (top - 0.15)) < 0.25; })();
+      const old = b.pieces.filter(inLane), name = old.length ? old[0].name : beam;
+      b.pieces = b.pieces.filter(p => !inLane(p));
+      const m = Math.ceil((top - G) / step - 1e-6), h = (top - G) / m;
+      for (let k = 1; k < m; k++) {
+        const y = top - k * h, s = 0.35 + 0.4 * (k - 1);
+        // a tread: one beam along the door, its top at y (the beam's collider is 0.4 m deep and tall)
+        b.put(name, o.x + o.nx * sg * s, y - 0.2, o.z + o.nz * sg * s, d.yaw || 0, { trim: true, step: true });
+        // and the beams under it to the ground, so it stands on something
+        for (let yy = y - 0.6; yy >= G + 0.2 - 1e-6; yy -= 0.4) b.put(name, o.x + o.nx * sg * s, yy, o.z + o.nz * sg * s, d.yaw || 0, { trim: true, step: true });
+      }
+    }
+  }
+}
 function finish(b, info) {
   dropLoose(b);
   // a table rolled dressed that the passes left bare gets one thing on it (lib/kitbash.js redressTables)
@@ -1934,6 +1979,7 @@ function finish(b, info) {
   dropOrphans(b);
   // the generator places walls by their middle; the pieces that stand on their pivot go down to their foot
   for (const p of b.pieces) { const pi = P.piece(p.name); if (pi.onPivot && !p.decor && !p.footed) { p.y = +(p.y - pi.size[1] / 2).toFixed(3); p.footed = true; } }
+  doorSteps(b);
   const name = `${info.type}_${info.biome.replace(' ', '')}_${info.cultureKey}_${info.plan || 'x'}-${info.roof || 'x'}-${info.walls || 'x'}${info.asked || ''}_${info.stage}${info.decor}_${info.seed}`;
   return {
     ground: 0,
@@ -3448,7 +3494,7 @@ function campDesign(b, K, biome, stage, R, decor) {
 }
 
 // what lib/hub.js builds with
-const HUB_TOOLS = { Build, quat, wallSegment, gablePieces, posts, putLadder, column, putDoor, valleys, inside, surfaceAt };
+const HUB_TOOLS = { Build, quat, doorSteps, wallSegment, gablePieces, posts, putLadder, column, putDoor, valleys, inside, surfaceAt };
 
 if (NODE) module.exports = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE, windowKit };
 else window.VHGenerate = { generate, quat, PLAN_BY_TYPE, ROOF_BY_CULTURE };

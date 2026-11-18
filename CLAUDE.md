@@ -126,6 +126,11 @@ Before ending a session that changed something:
    `- **DATE (short title)** - see docs/daily-notes/YYYY-MM/YYYY-MM-DD.md`.
 3. Tick or add `docs/ROADMAP.md` items: `[x]` names the file or commit, and built items not tried in the game say so.
 4. Commit and push as Baz. Push work in progress during long sessions as well as at the end.
+5. Rename the session by the `session-naming` skill: update the summary in its title to what the session did, and
+   drop the green marker once steps 1 to 4 are done (Tyler, chat 2026-11-18).
+
+Name every session by the `session-naming` skill as soon as its topic is clear, usually two or three exchanges in:
+`<green marker> Villheim vX.Y.Z (short summary)`, with the next version number in the project.
 
 Keep `SESSION_HISTORY.md` to the current state; narrative goes in daily notes. One doc per purpose: update an existing
 doc before creating a new one.

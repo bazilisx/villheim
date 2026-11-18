@@ -171,6 +171,7 @@ walkable building pads, underwater rocks, smaller lag spikes, D-080.
 
 ## Recent milestones
 
+- **2026-11-18 (session names and versions)** - see docs/daily-notes/2026-11/2026-11-18.md
 - **2026-11-12 (session instructions tune-up, audited)** - see docs/daily-notes/2026-11/2026-11-12.md
 - **2026-11-12 (showcase review: eight design tracks, stand and armor stand fixes, council)** - see docs/daily-notes/2026-11/2026-11-12.md
 - **2026-11-11 (design rounds 4 to 7c merged, hub and landscaping, build labels, test channels)** - see docs/daily-notes/2026-11/2026-11-11.md
